@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: 'IBM Plex Sans KR', 'Schibsted Grotesk', system-ui, sans-serif; }
+  a { color: #9c6a4e; text-decoration: none; }
+  a:hover { color: #7d523a; }
+  @keyframes sheetUp { from { transform: translateY(36px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+  @keyframes pulseRing { 0% { transform: scale(0.9); opacity: 0.55 } 70% { transform: scale(1.4); opacity: 0 } 100% { transform: scale(1.4); opacity: 0 } }
+</style>
+</helmet>
+
+<div style="{{ s.page }}">
+
+  <div style="{{ s.bar }}">
+    <div style="{{ s.barHead }}">
+      <span style="{{ s.barTitle }}">Cortex · 테마</span>
+      <span style="{{ s.barSub }}">{{ themeNote }}</span>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+        <div style="{{ c.style }}" onClick="{{ c.onClick }}">
+          <span style="{{ c.dot }}"></span>
+          <span>{{ c.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="{{ s.row }}">
+
+    <!-- ① 홈 -->
+    <div style="{{ s.frameWrap }}">
+      <div style="{{ s.screen }}">
+        <div style="{{ s.status }}"><span>9:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+        <div style="{{ s.headPad }}">
+          <div style="{{ s.brand }}">CORTEX</div>
+          <div style="{{ s.heroBox }}">
+            <div style="{{ s.heroGlow }}"></div>
+            <div style="{{ s.heroLabel }}">{{ txt.heroLabel }}</div>
+            <div style="display: flex; align-items: flex-end; gap: 10px; margin-top: 10px;">
+              <span style="{{ s.bigNum }}">{{ totalSaved }}</span>
+              <span style="{{ s.bigNumSuffix }}">{{ txt.heroSuffix }}</span>
+            </div>
+            <div style="{{ s.heroFoot }}">
+              <span style="{{ s.pulse }}"><span style="{{ s.pulseRing }}"></span></span>
+              <span>{{ txt.heroFoot }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="{{ s.tabs }}">
+          <span style="{{ s.tabOn }}">모두</span>
+          <span style="{{ s.tab }}">맛집</span>
+          <span style="{{ s.tab }}">여행</span>
+          <span style="{{ s.tab }}">레시피</span>
+        </div>
+
+        <div style="{{ s.listPad }}">
+          <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+            <div style="{{ s.item }}">
+              <span style="{{ s.itemNo }}">{{ it.no }}</span>
+              <div style="min-width: 0;">
+                <div style="{{ s.itemTitle }}">{{ it.title }}</div>
+                <div style="{{ s.itemMeta }}">{{ it.meta }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="{{ s.nav }}">
+          <div style="{{ s.navOn }}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{ navOnColor }}" stroke-width="1.3"><rect x="1.5" y="1.5" width="15" height="15" rx="3"></rect><path d="M1.5 6.5h15"></path></svg>
+            <span>보관함</span>
+          </div>
+          <div style="{{ s.navOff }}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{ navOffColor }}" stroke-width="1.3"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+            <span>검색</span>
+          </div>
+          <div style="{{ s.navOff }}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{ navOffColor }}" stroke-width="1.3"><path d="M9 3v12M3 9h12"></path></svg>
+            <span>추가</span>
+          </div>
+        </div>
+      </div>
+      <div style="{{ s.caption }}">① 홈</div>
+    </div>
+
+    <!-- ② 검색 -->
+    <div style="{{ s.frameWrap }}">
+      <div style="{{ s.screen }}">
+        <div style="{{ s.status }}"><span>9:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+        <div style="{{ s.headPad }}">
+          <div style="{{ s.searchTitle }}">{{ txt.searchTitle }}</div>
+          <div style="{{ s.searchBox }}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{ accent }}" stroke-width="1.4"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+            <span style="{{ s.searchText }}">{{ query }}</span>
+            <span style="{{ s.caret }}"></span>
+          </div>
+          <div style="{{ s.metaRow }}">
+            <span>{{ txt.hits }}</span><span>최신순</span>
+          </div>
+        </div>
+
+        <div style="{{ s.listPad }}">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+            <div style="{{ s.resultItem }}">
+              <div style="{{ s.itemTitle }}"><span style="{{ s.hit }}">{{ r.hit }}</span>{{ r.rest }}</div>
+              <div style="{{ s.snippet }}">{{ r.snippet }}</div>
+              <div style="{{ s.itemMeta }}">{{ r.meta }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="{{ s.nav }}">
+          <div style="{{ s.navOff }}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{ navOffColor }}" stroke-width="1.3"><rect x="1.5" y="1.5" width="15" height="15" rx="3"></rect><path d="M1.5 6.5h15"></path></svg>
+            <span>보관함</span>
+          </div>
+          <div style="{{ s.navOn }}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{ navOnColor }}" stroke-width="1.3"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+            <span>검색</span>
+          </div>
+          <div style="{{ s.navOff }}">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="{{ navOffColor }}" stroke-width="1.3"><path d="M9 3v12M3 9h12"></path></svg>
+            <span>추가</span>
+          </div>
+        </div>
+      </div>
+      <div style="{{ s.caption }}">② 검색</div>
+    </div>
+
+    <!-- ③ 저장 완료 -->
+    <div style="{{ s.frameWrap }}">
+      <div style="{{ s.screenPlain }}">
+        <div style="{{ s.ghost }}">
+          <div style="{{ s.ghostBar }}"></div>
+          <div style="{{ s.ghostBlock }}"></div>
+          <div style="{{ s.ghostLine }}"></div>
+          <div style="{{ s.ghostLineShort }}"></div>
+        </div>
+        <div style="{{ s.scrim }}"></div>
+
+        <div style="{{ s.sheet }}">
+          <div style="{{ s.grabber }}"></div>
+
+          <div style="{{ s.savedHead }}">
+            <span style="{{ s.savedMark }}">
+              <svg width="{{ markIcon }}" height="{{ markIcon }}" viewBox="0 0 24 24" fill="none" stroke="{{ markColor }}" stroke-width="1.7" stroke-linecap="round"><path d="M6 12.6 10 16.6 18 7.6"></path></svg>
+            </span>
+            <div>
+              <div style="{{ s.savedLabel }}">{{ txt.savedLabel }}</div>
+              <div style="{{ s.savedTitle }}">{{ txt.savedTitle }}</div>
+              <div style="{{ s.savedSub }}">단어 하나만 적으면 다시 꺼내 드려요.</div>
+            </div>
+          </div>
+
+          <div style="{{ s.savedCard }}">
+            <div style="{{ s.savedCardMeta }}"><span>INSTAGRAM</span><span>#{{ nextCardNo }}</span></div>
+            <div style="{{ s.itemTitle }}">성수동 크로플 맛집 3곳 총정리</div>
+            <div style="{{ s.snippet }}">@seoul_bread · 사진 4장 함께 저장</div>
+          </div>
+
+          <div style="{{ s.tagLabel }}">{{ txt.tagLabel }}</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+            <span style="{{ s.tag }}">맛집</span>
+            <span style="{{ s.tag }}">성수동</span>
+            <span style="{{ s.tag }}">디저트</span>
+            <span style="{{ s.tagAdd }}">+ 추가</span>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 26px;">
+            <div style="{{ s.btnGhost }}">메모 추가</div>
+            <div style="{{ s.btnSolid }}">확인</div>
+          </div>
+        </div>
+      </div>
+      <div style="{{ s.caption }}">③ 저장 완료</div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:1100},&quot;defaultTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;paper&quot;,&quot;ink&quot;,&quot;neural&quot;,&quot;sage&quot;,&quot;blush&quot;],&quot;default&quot;:&quot;paper&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;테마&quot;},&quot;totalSaved&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:342,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:9999,&quot;section&quot;:&quot;내용&quot;},&quot;query&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;제주도 맛집&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;내용&quot;}}">
+const THEMES = {
+  paper: {
+    label: "Paper", note: "기본 테마 · 종이빛 크림 + 점토색, 세리프 표제",
+    bg: "#fbfaf7", page: "#f3f1ec", ink: "#14140f", sub: "#6a675e",
+    line: "#e4e0d6", soft: "#eeebe2", accent: "#8d5c41",
+    surface: "transparent", surfaceEdge: "none", ghost: "#e8e4d9", ghostBar: "#dcd8cd",
+    head: "'Instrument Serif', serif", headWeight: 400, headSize: 38, numSize: 78, numTrack: "-0.035em",
+    radius: 34, cardRadius: 0, btnRadius: 999, list: "line", dark: false,
+    hitStyle: "marker", labelCase: "mono", copy: "plain", pulse: false
+  },
+  ink: {
+    label: "Ink", note: "어두운 테마 · 잉크 블랙 + 앰버, 세리프 표제 유지",
+    bg: "#151417", page: "#0e0d10", ink: "#f2efe9", sub: "#a6a29a",
+    line: "#2a2930", soft: "#232228", accent: "#d99a6c",
+    surface: "#1c1b20", surfaceEdge: "#272630", ghost: "#242329", ghostBar: "#2d2c34",
+    head: "'Instrument Serif', serif", headWeight: 400, headSize: 38, numSize: 78, numTrack: "-0.035em",
+    radius: 34, cardRadius: 0, btnRadius: 999, list: "line", dark: true,
+    hitStyle: "marker", labelCase: "mono", copy: "plain", pulse: false
+  },
+  neural: {
+    label: "Neural", note: "미래적 다크 · 그래파이트 + 아이스 라벤더, 카드 리스트",
+    bg: "#14171c", page: "#0c0e11", ink: "#eef1f5", sub: "#9aa6b6",
+    line: "#22272e", soft: "#1b1f26", accent: "#a8b4ff",
+    surface: "#191d23", surfaceEdge: "#22272e", ghost: "#202631", ghostBar: "#2a3038",
+    head: "'Schibsted Grotesk', sans-serif", headWeight: 600, headSize: 27, numSize: 58, numTrack: "-0.045em",
+    radius: 40, cardRadius: 18, btnRadius: 14, list: "card", dark: true,
+    hitStyle: "underline", labelCase: "mono", copy: "tech", pulse: true
+  },
+  sage: {
+    label: "Sage", note: "밝은 세이지 · 흰 카드 레이어, 큰 알약 버튼",
+    bg: "#f4f2ec", page: "#e7e3db", ink: "#23251f", sub: "#5f6159",
+    line: "#ddd9cf", soft: "#ffffff", accent: "#4f7360",
+    surface: "#ffffff", surfaceEdge: "none", ghost: "#e4e0d6", ghostBar: "#dcd8cf",
+    head: "'Schibsted Grotesk', sans-serif", headWeight: 700, headSize: 26, numSize: 54, numTrack: "-0.04em",
+    radius: 40, cardRadius: 20, btnRadius: 999, list: "card", dark: false,
+    hitStyle: "chip", labelCase: "plain", copy: "plain", pulse: false
+  },
+  blush: {
+    label: "Blush", note: "따뜻한 로즈 · 세리프 표제 + 카드 리스트 혼합",
+    bg: "#fbf6f4", page: "#efe4e0", ink: "#241c1b", sub: "#6d5b58",
+    line: "#e8dad6", soft: "#ffffff", accent: "#b0524a",
+    surface: "#ffffff", surfaceEdge: "none", ghost: "#eadfdb", ghostBar: "#e0d1cd",
+    head: "'Instrument Serif', serif", headWeight: 400, headSize: 36, numSize: 70, numTrack: "-0.035em",
+    radius: 36, cardRadius: 16, btnRadius: 999, list: "card", dark: false,
+    hitStyle: "marker", labelCase: "plain", copy: "plain", pulse: false
+  }
+};
+
+const MONO = "'IBM Plex Mono', monospace";
+
+class Component extends DCLogic {
+  state = { theme: null };
+
+  renderVals() {
+    const key = this.state.theme || this.props.defaultTheme || "paper";
+    const t = THEMES[key] || THEMES.paper;
+    const card = t.list === "card";
+    const tech = t.copy === "tech";
+    // mono micro-labels only where the strings are genuinely Latin (tech copy)
+    const mono = tech;
+    const labelFont = mono ? MONO : "inherit";
+    const labelTrack = mono ? "0.14em" : "0.01em";
+
+    const recent = [
+      { no: "01", title: "성수동 크로플 맛집 3곳 총정리", meta: tech ? "INSTAGRAM · 10분 전" : "인스타그램 · 10분 전" },
+      { no: "02", title: "엄마가 보내준 김치찌개 레시피", meta: tech ? "KAKAOTALK · 어제" : "카카오톡 · 어제" },
+      { no: "03", title: "제주 2박3일 뚜벅이 코스 후기", meta: tech ? "SAFARI · 3일 전" : "사파리 · 3일 전" },
+      { no: "04", title: "작은 방 정리 수납 아이디어 12가지", meta: tech ? "YOUTUBE · 지난주" : "유튜브 · 지난주" }
+    ];
+    const results = [
+      { hit: "제주", rest: " 2박3일 뚜벅이 코스 후기", snippet: "애월 카페거리 → 한담해변 산책로 순서로 돌면 편하다는 내용", meta: tech ? "SAFARI · 3일 전" : "사파리 · 3일 전" },
+      { hit: "제주도", rest: " 갈치조림 맛집 지도 링크", snippet: "지혜가 보낸 링크 · 동문시장 근처 3곳 표시됨", meta: tech ? "KAKAOTALK · 2주 전" : "카카오톡 · 2주 전" },
+      { hit: "제주", rest: " 흑돼지 골목 웨이팅 팁", snippet: "6시 전에 가면 바로 앉을 수 있다고", meta: tech ? "INSTAGRAM · 1개월 전" : "인스타그램 · 1개월 전" },
+      { hit: "제주", rest: " 가면 꼭 사올 것", snippet: "한라봉 청, 오메기떡, 우도 땅콩 쿠키", meta: tech ? "MEMO · 2개월 전" : "메모 · 2개월 전" }
+    ];
+    const total = this.props.totalSaved ?? 342;
+
+    const hit = t.hitStyle === "underline"
+      ? { color: t.accent, borderBottom: "1px solid " + t.accent, paddingBottom: "1px" }
+      : t.hitStyle === "chip"
+        ? { background: t.accent + "26", borderRadius: "4px", padding: "1px 4px" }
+        : { background: "linear-gradient(transparent 62%, " + t.accent + "3d 62%)" };
+
+    const itemBase = card
+      ? { background: t.surface, border: t.surfaceEdge === "none" ? "none" : "1px solid " + t.surfaceEdge,
+          borderRadius: t.cardRadius + "px", padding: "15px 17px", marginBottom: "10px",
+          boxShadow: t.dark ? "none" : "0 3px 10px rgba(0,0,0,0.05)" }
+      : { borderBottom: "1px solid " + t.soft, padding: "20px 0" };
+
+    const navItem = (on) => ({
+      minWidth: "54px", minHeight: "44px", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: "7px",
+      fontFamily: labelFont, fontSize: mono ? "10px" : "12px", letterSpacing: labelTrack,
+      color: on ? t.ink : t.sub, opacity: on ? 1 : 0.75
+    });
+
+    const chips = Object.keys(THEMES).map((k) => {
+      const th = THEMES[k], on = k === key;
+      return {
+        label: th.label,
+        onClick: () => this.setState({ theme: k }),
+        style: {
+          display: "flex", alignItems: "center", gap: "8px", cursor: "pointer",
+          minHeight: "38px", padding: "8px 15px", borderRadius: "999px",
+          border: "1px solid " + (on ? t.ink : t.line),
+          background: on ? t.ink : "transparent",
+          color: on ? t.bg : t.ink,
+          fontSize: "13.5px", letterSpacing: "0.01em", userSelect: "none"
+        },
+        dot: { width: "10px", height: "10px", borderRadius: "50%", background: th.accent,
+               boxShadow: "0 0 0 1px " + (on ? t.bg : t.line) }
+      };
+    });
+
+    const s = {
+      page: { background: t.page, padding: "56px 48px 72px", display: "flex", flexDirection: "column",
+              gap: "36px", alignItems: "center", minHeight: "100%" },
+      bar: { width: "100%", maxWidth: "1340px", display: "flex", flexWrap: "wrap", gap: "18px",
+             alignItems: "center", justifyContent: "space-between",
+             paddingBottom: "18px", borderBottom: "1px solid " + t.line },
+      barHead: { display: "flex", flexDirection: "column", gap: "5px" },
+      barTitle: { fontFamily: t.head, fontWeight: t.headWeight, fontSize: "24px",
+                  letterSpacing: "-0.01em", color: t.ink },
+      barSub: { fontSize: "13.5px", color: t.sub },
+      row: { display: "flex", flexWrap: "wrap", gap: "44px", justifyContent: "center", alignItems: "flex-start" },
+      frameWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: "14px" },
+      screen: { width: "390px", height: "844px", borderRadius: t.radius + "px", background: t.bg,
+                border: t.dark ? "1px solid " + t.line : "none", overflow: "hidden",
+                display: "flex", flexDirection: "column",
+                boxShadow: t.dark ? "0 24px 56px rgba(0,0,0,0.5)" : "0 18px 40px rgba(20,20,15,0.13)" },
+      screenPlain: { position: "relative", width: "390px", height: "844px", borderRadius: t.radius + "px",
+                     background: t.bg, border: t.dark ? "1px solid " + t.line : "none", overflow: "hidden",
+                     boxShadow: t.dark ? "0 24px 56px rgba(0,0,0,0.5)" : "0 18px 40px rgba(20,20,15,0.13)" },
+      caption: { fontFamily: MONO, fontSize: "11.5px", letterSpacing: "0.14em", color: t.sub },
+      status: { display: "flex", justifyContent: "space-between", padding: "18px 26px 0",
+                fontFamily: MONO, fontSize: "11.5px", color: t.sub },
+      headPad: { padding: card ? "26px 24px 0" : "38px 26px 0" },
+      brand: { fontFamily: MONO, fontSize: "11px", letterSpacing: "0.26em", color: t.accent },
+      heroBox: card
+        ? { position: "relative", overflow: "hidden", marginTop: "18px", background: t.surface,
+            border: t.surfaceEdge === "none" ? "none" : "1px solid " + t.surfaceEdge,
+            borderRadius: (t.cardRadius + 6) + "px", padding: "24px 22px 20px",
+            boxShadow: t.dark ? "none" : "0 6px 18px rgba(0,0,0,0.06)" }
+        : { position: "relative", marginTop: "22px" },
+      heroGlow: t.pulse
+        ? { position: "absolute", top: "-40px", right: "-30px", width: "150px", height: "150px",
+            borderRadius: "50%", background: "radial-gradient(circle, " + t.accent + "29, transparent 65%)" }
+        : { display: "none" },
+      heroLabel: { fontFamily: mono ? MONO : "inherit", fontSize: mono ? "10.5px" : "13.5px",
+                   letterSpacing: mono ? "0.22em" : "0.01em", color: t.sub },
+      bigNum: { fontFamily: t.head, fontWeight: t.headWeight, fontSize: t.numSize + "px",
+                lineHeight: 0.86, letterSpacing: t.numTrack, color: t.ink },
+      bigNumSuffix: { fontSize: "14px", color: t.sub, paddingBottom: "9px", lineHeight: 1.5, whiteSpace: "pre-line" },
+      heroFoot: { display: "flex", alignItems: "center", gap: "8px", marginTop: "18px",
+                  fontFamily: mono ? MONO : "inherit", fontSize: mono ? "11px" : "12.5px",
+                  letterSpacing: mono ? "0.1em" : "0.01em", color: t.accent },
+      pulse: { position: "relative", width: "8px", height: "8px", borderRadius: "50%",
+               background: t.accent, display: "inline-grid", placeItems: "center", flex: "none" },
+      pulseRing: t.pulse
+        ? { position: "absolute", inset: "-5px", borderRadius: "50%", border: "1px solid " + t.accent,
+            animation: "pulseRing 2.4s ease-out infinite" }
+        : { display: "none" },
+      tabs: { display: "flex", gap: card ? "8px" : "18px", padding: card ? "20px 24px 12px" : "28px 26px 0",
+              borderBottom: card ? "none" : "1px solid " + t.line, fontSize: "13px" },
+      tabOn: card
+        ? { padding: "6px 13px", borderRadius: "999px", background: t.ink, color: t.bg, fontSize: "12.5px" }
+        : { paddingBottom: "10px", borderBottom: "2px solid " + t.ink, color: t.ink },
+      tab: card
+        ? { padding: "6px 13px", borderRadius: "999px", border: "1px solid " + t.line, color: t.sub, fontSize: "12.5px" }
+        : { paddingBottom: "10px", color: t.sub },
+      listPad: { flex: 1, overflow: "hidden", padding: card ? "0 24px" : "0 26px" },
+      item: Object.assign({ display: "flex", gap: "13px", alignItems: card ? "center" : "baseline" }, itemBase),
+      resultItem: Object.assign({}, itemBase),
+      itemNo: { fontFamily: card ? MONO : t.head, fontStyle: card ? "normal" : "italic",
+                fontSize: card ? "11px" : "17px", color: t.accent, minWidth: "24px",
+                paddingTop: card ? "2px" : "0" },
+      itemTitle: { fontSize: "15.5px", lineHeight: 1.45, color: t.ink, textWrap: "pretty" },
+      itemMeta: { fontFamily: mono ? MONO : "inherit", fontSize: mono ? "10.5px" : "12.5px",
+                  letterSpacing: mono ? "0.1em" : "0.01em", color: t.sub, marginTop: "7px" },
+      snippet: { fontSize: "13px", color: t.sub, marginTop: "7px", lineHeight: 1.6 },
+      hit: hit,
+      searchTitle: { fontFamily: t.head, fontWeight: t.headWeight, fontSize: t.headSize + "px",
+                     lineHeight: 1.1, letterSpacing: "-0.02em", color: t.ink },
+      searchBox: card
+        ? { marginTop: "16px", background: t.surface, borderRadius: "999px", padding: "14px 20px",
+            display: "flex", alignItems: "center", gap: "12px",
+            border: t.dark ? "1px solid " + t.line : "none",
+            boxShadow: t.dark ? "0 0 0 3px " + t.accent + "1a" : "0 4px 14px rgba(0,0,0,0.07)" }
+        : { marginTop: "24px", display: "flex", alignItems: "center", gap: "12px",
+            borderBottom: "1.5px solid " + t.ink, paddingBottom: "12px" },
+      searchText: { fontSize: "17px", color: t.ink },
+      caret: { width: "1.5px", height: "19px", background: t.accent },
+      metaRow: { display: "flex", justifyContent: "space-between", marginTop: "16px",
+                 fontFamily: mono ? MONO : "inherit", fontSize: mono ? "10.5px" : "12.5px",
+                 letterSpacing: mono ? "0.12em" : "0.01em", color: t.sub, paddingBottom: card ? "4px" : "0" },
+      nav: { borderTop: "1px solid " + t.line, padding: "16px 40px 30px",
+             display: "flex", justifyContent: "space-between", alignItems: "center" },
+      navOn: navItem(true),
+      navOff: navItem(false),
+      ghost: { position: "absolute", inset: 0, padding: "60px 26px", display: "flex",
+               flexDirection: "column", gap: "16px", opacity: t.dark ? 0.45 : 0.6 },
+      ghostBar: { height: "12px", width: "130px", background: t.ghostBar, borderRadius: "6px" },
+      ghostBlock: { flex: 1, background: t.ghost, borderRadius: card ? "16px" : "8px" },
+      ghostLine: { height: "10px", width: "70%", background: t.ghostBar, borderRadius: "5px" },
+      ghostLineShort: { height: "10px", width: "45%", background: t.ghostBar, borderRadius: "5px" },
+      scrim: { position: "absolute", inset: 0, backdropFilter: "blur(2px)",
+               background: t.dark ? "rgba(4,5,7,0.62)" : "rgba(20,20,15,0.36)" },
+      sheet: { position: "absolute", left: 0, right: 0, bottom: 0, background: t.bg,
+               borderTop: t.dark ? "1px solid " + t.line : "none",
+               borderRadius: (card ? 30 : 26) + "px " + (card ? 30 : 26) + "px 0 0",
+               padding: "20px 24px 32px", animation: "sheetUp 400ms ease-out both" },
+      grabber: { width: "40px", height: "4px", borderRadius: "2px", background: t.line, margin: "0 auto 24px" },
+      savedHead: { display: "flex", alignItems: "flex-start", gap: "14px" },
+      savedMark: { flex: "none", width: card ? "54px" : "40px", height: card ? "54px" : "40px",
+                   borderRadius: "50%", display: "grid", placeItems: "center",
+                   background: card ? t.accent + "26" : "transparent",
+                   border: card ? "none" : "1px solid " + t.accent, position: "relative" },
+      savedLabel: { fontFamily: mono ? MONO : "inherit", fontSize: mono ? "10.5px" : "12.5px",
+                    letterSpacing: mono ? "0.22em" : "0.02em", color: t.accent },
+      savedTitle: { fontFamily: t.head, fontWeight: t.headWeight, fontSize: (t.headSize - 2) + "px",
+                    lineHeight: 1.15, letterSpacing: "-0.02em", color: t.ink, marginTop: "8px" },
+      savedSub: { fontSize: "13.5px", color: t.sub, marginTop: "7px", lineHeight: 1.6 },
+      savedCard: card
+        ? { marginTop: "22px", background: t.surface, borderRadius: t.cardRadius + "px",
+            border: t.surfaceEdge === "none" ? "none" : "1px solid " + t.surfaceEdge,
+            padding: "16px 18px", boxShadow: t.dark ? "none" : "0 3px 10px rgba(0,0,0,0.05)" }
+        : { marginTop: "24px", paddingTop: "20px", borderTop: "1px solid " + t.line },
+      savedCardMeta: { display: "flex", justifyContent: "space-between", fontFamily: MONO,
+                       fontSize: "10.5px", letterSpacing: "0.12em", color: t.sub, marginBottom: "10px" },
+      tagLabel: { fontFamily: mono ? MONO : "inherit", fontSize: mono ? "10.5px" : "13px",
+                  letterSpacing: mono ? "0.14em" : "0.01em", color: t.sub, marginTop: "22px" },
+      tag: { borderRadius: "999px", padding: card ? "7px 14px" : "6px 14px", fontSize: "13px",
+             background: card ? t.accent + "1f" : "transparent",
+             border: card ? "none" : "1px solid " + t.ink,
+             color: card ? t.accent : t.ink },
+      tagAdd: { borderRadius: "999px", padding: "6px 14px", fontSize: "13px",
+                border: "1px dashed " + t.sub, color: t.sub },
+      btnGhost: { flex: 1, minHeight: "52px", display: "grid", placeItems: "center",
+                  borderRadius: t.btnRadius + "px", fontSize: "15px", color: t.ink,
+                  border: "1px solid " + (card ? t.line : t.ink),
+                  background: card ? t.surface : "transparent" },
+      btnSolid: { flex: 1.1, minHeight: "52px", display: "grid", placeItems: "center",
+                  borderRadius: t.btnRadius + "px", fontSize: "15px",
+                  background: t.ink, color: t.bg, fontWeight: 500 }
+    };
+
+    return {
+      s, chips, recent, results,
+      accent: t.accent, navOnColor: t.ink, navOffColor: t.sub,
+      markColor: t.accent, markIcon: card ? 24 : 18,
+      themeNote: t.note,
+      totalSaved: total, nextCardNo: total + 1,
+      query: this.props.query ?? "제주도 맛집",
+      txt: {
+        heroLabel: tech ? "MEMORY INDEX" : "보관한 기억",
+        heroSuffix: "개의 기억\n보관 중",
+        heroFoot: tech ? "LIVE · 방금 1건 추가" : "이번 주 +12건 · 방금 저장됨",
+        searchTitle: tech ? "기억 불러오기" : "무엇을 찾고 계신가요",
+        hits: tech ? results.length + " MATCHES · 0.08s" : "결과 " + results.length + "건",
+        savedLabel: tech ? "SAVED TO CORTEX" : "저장 완료",
+        savedTitle: tech ? "기억에 저장했어요" : "잘 보관했어요",
+        tagLabel: tech ? "AUTO TAGS" : "자동으로 붙은 태그"
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

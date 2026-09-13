@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Gaegu:wght@300;400;700&family=Gowun+Dodum&family=Courier+Prime:wght@400;700&family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #cdc5b4; font-family: 'Gaegu', system-ui, sans-serif; }
+  a { color: #b2452c; text-decoration: none; }
+  a:hover { color: #8e3520; }
+  @keyframes sheetUp { from { transform: translateY(40px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+  @keyframes popIn { from { transform: scale(0.7) rotate(-12deg) } to { transform: scale(1) rotate(-4deg) } }
+</style>
+</helmet>
+
+<section style="padding: 64px 48px 80px; background: #6f6247; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)' opacity='0.3'/%3E%3C/svg%3E&quot;); display: flex; flex-direction: column; align-items: center; gap: 40px; font-family: 'Gowun Batang', serif; color: #3a3026;">
+  <div style="display: flex; align-items: center; gap: 14px; color: #efe6d2;">
+    <span style="border: 1px solid #efe6d2; border-radius: 2px; padding: 4px 12px; font-family: 'Courier Prime', monospace; font-size: 13px; letter-spacing: 0.1em;">3a</span>
+    <span style="font-family: 'Courier Prime', monospace; font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase;">Card catalog · vintage archive</span>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 48px; justify-content: center; align-items: flex-start;">
+
+    <!-- ① 홈 -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+      <div style="position: relative; width: 390px; height: 844px; border-radius: 38px; overflow: hidden; background: #f2e8d2; box-shadow: 0 22px 44px rgba(31,24,14,0.4); display: flex; flex-direction: column;">
+        <div style="position: absolute; inset: 0; z-index: 4; pointer-events: none; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='130' height='130' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E&quot;); opacity: 0.28; mix-blend-mode: multiply;"></div>
+
+        <div style="position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%;">
+          <div style="display: flex; justify-content: space-between; padding: 16px 26px 0; font-family: 'Courier Prime', monospace; font-size: 12px; color: #5f5340;">
+            <span>9:41</span><span>|||</span>
+          </div>
+
+          <div style="padding: 22px 26px 16px; border-bottom: 2px double #c2b393;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.3em; color: #5f5340;">PERSONAL ARCHIVE</div>
+                <div style="font-size: 34px; font-weight: 700; letter-spacing: 0.02em; margin-top: 4px;">Cortex</div>
+              </div>
+              <div style="border: 2px solid #9c5a44; color: #9c5a44; border-radius: 3px; padding: 5px 9px; transform: rotate(-7deg); text-align: center; opacity: 0.85;">
+                <div style="font-family: 'Courier Prime', monospace; font-size: 10.5px; letter-spacing: 0.16em; line-height: 1.25;">NO.{{ totalSaved }}<br>FILED</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding: 18px 26px 14px; background: #ece0c5; border-bottom: 1px solid #d4c5a5;">
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <span style="font-family: 'Courier Prime', monospace; font-size: 42px; font-weight: 700; letter-spacing: -0.02em;">{{ totalSaved }}</span>
+              <span style="font-size: 15px; color: #6d6047;">건이 서랍에 보관됨</span>
+            </div>
+            <div style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.1em; color: #5f5340; margin-top: 8px;">LAST FILED · 10 MIN AGO</div>
+          </div>
+
+          <div style="display: flex; gap: 6px; padding: 14px 26px 10px;">
+            <span style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.1em; padding: 5px 11px; background: #3a3026; color: #f2e8d2;">ALL</span>
+            <span style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.1em; padding: 5px 11px; border: 1px solid #b5a487; color: #6d6047;">맛집</span>
+            <span style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.1em; padding: 5px 11px; border: 1px solid #b5a487; color: #6d6047;">여행</span>
+            <span style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.1em; padding: 5px 11px; border: 1px solid #b5a487; color: #6d6047;">레시피</span>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 6px 20px 0; display: flex; flex-direction: column; gap: 12px;">
+            <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+              <div style="background: #fbf6e9; border: 1px solid #cfbf9f; border-left: 4px solid #9c8f72; border-radius: 2px; padding: 13px 15px; box-shadow: 0 2px 0 rgba(58,48,38,0.1);">
+                <div style="display: flex; justify-content: space-between; align-items: center; font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: 0.12em; color: #5f5340; border-bottom: 1px dotted #cfbf9f; padding-bottom: 6px;">
+                  <span>{{ it.source }}</span><span>{{ it.when }}</span>
+                </div>
+                <div style="font-size: 16.5px; line-height: 1.5; margin-top: 8px; text-wrap: pretty;">{{ it.title }}</div>
+                <div style="font-family: 'Courier Prime', monospace; font-size: 11.5px; color: #9c5a44; margin-top: 7px; letter-spacing: 0.06em;">{{ it.tags }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="border-top: 2px double #c2b393; background: #ece0c5; padding: 13px 34px 28px; display: flex; justify-content: space-between; font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.14em;">
+            <div style="min-width: 56px; min-height: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3a3026" stroke-width="1.4"><rect x="3.5" y="6" width="17" height="12" rx="1"></rect><path d="M9 6V4.5h6V6M9.5 12h5"></path></svg>
+              <span>서랍</span>
+            </div>
+            <div style="min-width: 56px; min-height: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #9c8f72;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9c8f72" stroke-width="1.4"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15.5 15.5 20 20"></path></svg>
+              <span>색인</span>
+            </div>
+            <div style="min-width: 56px; min-height: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #9c8f72;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9c8f72" stroke-width="1.4"><circle cx="12" cy="8.5" r="3.8"></circle><path d="M5 20c1.5-3.8 4-5.4 7-5.4s5.5 1.6 7 5.4"></path></svg>
+              <span>내 카드</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-family: 'Courier Prime', monospace; font-size: 12px; letter-spacing: 0.16em; color: #efe6d2;">① HOME</div>
+    </div>
+
+    <!-- ② 검색 -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+      <div style="position: relative; width: 390px; height: 844px; border-radius: 38px; overflow: hidden; background: #f2e8d2; box-shadow: 0 22px 44px rgba(31,24,14,0.4);">
+        <div style="position: absolute; inset: 0; z-index: 4; pointer-events: none; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='130' height='130' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E&quot;); opacity: 0.28; mix-blend-mode: multiply;"></div>
+
+        <div style="position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%;">
+          <div style="display: flex; justify-content: space-between; padding: 16px 26px 0; font-family: 'Courier Prime', monospace; font-size: 12px; color: #5f5340;">
+            <span>9:41</span><span>|||</span>
+          </div>
+
+          <div style="padding: 22px 26px 18px; border-bottom: 2px double #c2b393;">
+            <div style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.3em; color: #5f5340;">CARD INDEX</div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-top: 14px; background: #fbf6e9; border: 1px solid #cfbf9f; border-radius: 2px; padding: 12px 14px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3a3026" stroke-width="1.4"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15.5 15.5 20 20"></path></svg>
+              <span style="font-family: 'Courier Prime', monospace; font-size: 16.5px; letter-spacing: 0.02em;">{{ query }}</span>
+              <span style="width: 8px; height: 17px; background: #3a3026; opacity: 0.8;"></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.1em; color: #5f5340;">
+              <span>{{ hitCount }} CARDS FOUND</span><span>SORT · NEWEST</span>
+            </div>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 14px 20px 0; display: flex; flex-direction: column; gap: 12px;">
+            <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+              <div style="background: #fbf6e9; border: 1px solid #cfbf9f; border-left: 4px solid #9c5a44; border-radius: 2px; padding: 13px 15px;">
+                <div style="display: flex; justify-content: space-between; font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: 0.12em; color: #5f5340; border-bottom: 1px dotted #cfbf9f; padding-bottom: 6px;">
+                  <span>{{ r.source }}</span><span>{{ r.when }}</span>
+                </div>
+                <div style="font-size: 16.5px; line-height: 1.5; margin-top: 8px;">
+                  <span style="background: rgba(214,178,108,0.45); box-shadow: 0 1px 0 #9c5a44;">{{ r.hit }}</span>{{ r.rest }}
+                </div>
+                <div style="font-size: 13.5px; color: #6d6047; margin-top: 6px; line-height: 1.6;">{{ r.snippet }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="padding: 16px 26px 0; font-size: 14px; color: #6d6047;">기억나는 낱말 하나만 적으면 서랍 전체를 뒤져 드려요.</div>
+
+          <div style="border-top: 2px double #c2b393; background: #ece0c5; margin-top: 16px; padding: 13px 34px 28px; display: flex; justify-content: space-between; font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.14em;">
+            <div style="min-width: 56px; min-height: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #9c8f72;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9c8f72" stroke-width="1.4"><rect x="3.5" y="6" width="17" height="12" rx="1"></rect><path d="M9 6V4.5h6V6M9.5 12h5"></path></svg>
+              <span>서랍</span>
+            </div>
+            <div style="min-width: 56px; min-height: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3a3026" stroke-width="1.4"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15.5 15.5 20 20"></path></svg>
+              <span>색인</span>
+            </div>
+            <div style="min-width: 56px; min-height: 46px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #9c8f72;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9c8f72" stroke-width="1.4"><circle cx="12" cy="8.5" r="3.8"></circle><path d="M5 20c1.5-3.8 4-5.4 7-5.4s5.5 1.6 7 5.4"></path></svg>
+              <span>내 카드</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-family: 'Courier Prime', monospace; font-size: 12px; letter-spacing: 0.16em; color: #efe6d2;">② INDEX</div>
+    </div>
+
+    <!-- ③ 저장 완료 -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+      <div style="position: relative; width: 390px; height: 844px; border-radius: 38px; overflow: hidden; background: #f2e8d2; box-shadow: 0 22px 44px rgba(31,24,14,0.4);">
+        <div style="position: absolute; inset: 0; z-index: 5; pointer-events: none; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='130' height='130' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E&quot;); opacity: 0.28; mix-blend-mode: multiply;"></div>
+
+        <div style="position: absolute; inset: 0; background: #ddd3bd; padding: 56px 24px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="height: 14px; width: 120px; background: rgba(58,48,38,0.25);"></div>
+          <div style="flex: 1; background-image: repeating-linear-gradient(135deg, rgba(58,48,38,0.22) 0 1.5px, transparent 1.5px 11px); border: 1px solid rgba(58,48,38,0.25);"></div>
+          <div style="height: 12px; width: 70%; background: rgba(58,48,38,0.2);"></div>
+          <div style="height: 12px; width: 45%; background: rgba(58,48,38,0.2);"></div>
+        </div>
+        <div style="position: absolute; inset: 0; background: rgba(43,34,22,0.5);"></div>
+
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; background: #f7efdc; border-top: 2px double #c2b393; border-radius: 20px 20px 0 0; padding: 18px 26px 30px; animation: sheetUp 400ms ease-out both; box-shadow: 0 -10px 30px rgba(31,24,14,0.3);">
+          <div style="width: 52px; height: 3px; background: #c2b393; margin: 0 auto 20px;"></div>
+
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+            <div>
+              <div style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.28em; color: #5f5340;">FILED SUCCESSFULLY</div>
+              <div style="font-size: 30px; font-weight: 700; margin-top: 8px; letter-spacing: 0.01em;">서랍에 넣었습니다</div>
+              <div style="font-size: 14px; color: #6d6047; margin-top: 7px;">색인에 자동 등록 — 낱말 하나로 다시 꺼낼 수 있어요.</div>
+            </div>
+            <div style="flex: none; border: 2.5px solid #9c5a44; color: #9c5a44; border-radius: 50%; width: 78px; height: 78px; display: grid; place-items: center; text-align: center; transform: rotate(-11deg); opacity: 0.9;">
+              <div style="font-family: 'Courier Prime', monospace; font-size: 10px; letter-spacing: 0.12em; line-height: 1.35;">FILED<br>SEP 13<br>2026</div>
+            </div>
+          </div>
+
+          <div style="background: #fbf6e9; border: 1px solid #cfbf9f; border-left: 4px solid #9c8f72; border-radius: 2px; padding: 14px 16px; margin-top: 22px;">
+            <div style="display: flex; justify-content: space-between; font-family: 'Courier Prime', monospace; font-size: 11px; letter-spacing: 0.12em; color: #5f5340; border-bottom: 1px dotted #cfbf9f; padding-bottom: 6px;">
+              <span>INSTAGRAM</span><span>NO.{{ nextCardNo }}</span>
+            </div>
+            <div style="font-size: 17px; line-height: 1.5; margin-top: 8px;">성수동 크로플 맛집 3곳 총정리</div>
+            <div style="font-size: 13px; color: #6d6047; margin-top: 6px;">@seoul_bread · 사진 4장 함께 보관</div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <div style="font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #5f5340;">SUBJECT HEADINGS</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+              <span style="border: 1px solid #3a3026; border-radius: 2px; padding: 5px 12px; font-family: 'Courier Prime', monospace; font-size: 12.5px; background: #ece0c5;">맛집</span>
+              <span style="border: 1px solid #3a3026; border-radius: 2px; padding: 5px 12px; font-family: 'Courier Prime', monospace; font-size: 12.5px; background: #ece0c5;">성수동</span>
+              <span style="border: 1px solid #3a3026; border-radius: 2px; padding: 5px 12px; font-family: 'Courier Prime', monospace; font-size: 12.5px; background: #ece0c5;">디저트</span>
+              <span style="border: 1px dashed #9c8f72; border-radius: 2px; padding: 5px 12px; font-family: 'Courier Prime', monospace; font-size: 12.5px; color: #6d6047;">+ 추가</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 26px;">
+            <div style="flex: 1; min-height: 50px; display: grid; place-items: center; border: 1.5px solid #3a3026; border-radius: 2px; font-size: 15.5px;">메모 남기기</div>
+            <div style="flex: 1.2; min-height: 50px; display: grid; place-items: center; background: #3a3026; color: #f7efdc; border-radius: 2px; font-size: 15.5px;">확인</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-family: 'Courier Prime', monospace; font-size: 12px; letter-spacing: 0.16em; color: #efe6d2;">③ FILED</div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding: 64px 48px 80px; background: #f4f3f1; display: flex; flex-direction: column; align-items: center; gap: 40px; font-family: 'Gowun Dodum', system-ui, sans-serif; color: #1c1c1a;">
+  <div style="display: flex; align-items: baseline; gap: 14px;">
+    <span style="border: 1.5px solid #1c1c1a; border-radius: 999px; padding: 3px 12px; font-size: 13px; letter-spacing: 0.08em;">2a</span>
+    <span style="font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase;">Monoline · no fill</span>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 48px; justify-content: center; align-items: flex-start;">
+
+    <!-- ① 홈 -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+      <div style="width: 390px; height: 844px; border: 1.5px solid #1c1c1a; border-radius: 40px; background: #fbfbfa; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; padding: 16px 28px 0; font-size: 12px; letter-spacing: 0.04em; color: #8a8a85;">
+          <span>9:41</span><span>◦◦◦</span>
+        </div>
+
+        <div style="padding: 34px 28px 0;">
+          <div style="font-size: 13px; letter-spacing: 0.3em; text-transform: uppercase; color: #8a8a85;">Cortex</div>
+          <div style="display: flex; align-items: flex-end; justify-content: space-between; margin-top: 34px;">
+            <div>
+              <div style="font-size: 64px; line-height: 0.9; letter-spacing: -0.03em;">{{ totalSaved }}</div>
+              <div style="font-size: 14px; color: #8a8a85; margin-top: 10px;">모아둔 조각</div>
+            </div>
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="#1c1c1a" stroke-width="1.5" stroke-linecap="round">
+              <circle cx="32" cy="32" r="21"></circle>
+              <path d="M32 11v42M11 32h42"></path>
+              <circle cx="32" cy="32" r="8"></circle>
+            </svg>
+          </div>
+          <div style="height: 1px; background: #dcdad5; margin: 30px 0 0;"></div>
+        </div>
+
+        <div style="flex: 1; overflow: hidden; padding: 0 28px;">
+          <div style="display: flex; gap: 20px; padding: 20px 0 6px; font-size: 14px;">
+            <span style="padding-bottom: 4px; border-bottom: 1.5px solid #1c1c1a;">전체</span>
+            <span style="color: #8a8a85;">맛집</span>
+            <span style="color: #8a8a85;">여행</span>
+            <span style="color: #8a8a85;">레시피</span>
+          </div>
+          <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+            <div style="display: flex; gap: 16px; align-items: flex-start; padding: 22px 0; border-bottom: 1px solid #e6e4df;">
+              <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#1c1c1a" stroke-width="1.5" stroke-linecap="round" style="flex: none; margin-top: 2px;">
+                <rect x="3.5" y="3.5" width="19" height="19" rx="4"></rect>
+                <path d="M3.5 16l5-5 5 5"></path>
+                <circle cx="16.5" cy="9.5" r="2"></circle>
+              </svg>
+              <div style="min-width: 0;">
+                <div style="font-size: 16px; line-height: 1.45; text-wrap: pretty;">{{ it.title }}</div>
+                <div style="font-size: 13px; color: #8a8a85; margin-top: 7px; letter-spacing: 0.02em;">{{ it.source }} · {{ it.when }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="border-top: 1.5px solid #1c1c1a; padding: 18px 44px 30px; display: flex; justify-content: space-between; align-items: center;">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#1c1c1a" stroke-width="1.5" stroke-linecap="round"><path d="M4 12 13 4l9 8"></path><path d="M7 12v10h12V12"></path></svg>
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#b9b7b1" stroke-width="1.5" stroke-linecap="round"><circle cx="11.5" cy="11.5" r="7"></circle><path d="M16.5 16.5 22 22"></path></svg>
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#b9b7b1" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="5" width="18" height="16" rx="3"></rect><path d="M4 11h18"></path></svg>
+        </div>
+      </div>
+      <div style="font-size: 14px; color: #6f6f6a; letter-spacing: 0.04em;">① 홈</div>
+    </div>
+
+    <!-- ② 검색 -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+      <div style="width: 390px; height: 844px; border: 1.5px solid #1c1c1a; border-radius: 40px; background: #fbfbfa; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; padding: 16px 28px 0; font-size: 12px; letter-spacing: 0.04em; color: #8a8a85;">
+          <span>9:41</span><span>◦◦◦</span>
+        </div>
+
+        <div style="padding: 34px 28px 0;">
+          <div style="display: flex; align-items: center; gap: 14px; border-bottom: 1.5px solid #1c1c1a; padding-bottom: 14px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1c1c1a" stroke-width="1.5" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.5 15.5 21 21"></path></svg>
+            <span style="font-size: 20px;">{{ query }}</span>
+            <span style="width: 1px; height: 22px; background: #1c1c1a;"></span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 22px;">
+            <span style="font-size: 14px; color: #8a8a85;">{{ hitCount }}개의 결과</span>
+            <span style="font-size: 13px; color: #8a8a85;">최신순</span>
+          </div>
+        </div>
+
+        <div style="flex: 1; overflow: hidden; padding: 0 28px;">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+            <div style="padding: 24px 0; border-bottom: 1px solid #e6e4df;">
+              <div style="font-size: 16px; line-height: 1.45;">
+                <span style="border-bottom: 1.5px solid #1c1c1a; padding-bottom: 1px;">{{ r.hit }}</span>{{ r.rest }}
+              </div>
+              <div style="font-size: 13.5px; color: #8a8a85; margin-top: 8px; line-height: 1.6;">{{ r.snippet }}</div>
+              <div style="font-size: 12.5px; color: #b9b7b1; margin-top: 8px; letter-spacing: 0.02em;">{{ r.source }} · {{ r.when }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="padding: 18px 28px 0; font-size: 13.5px; color: #8a8a85;">
+          기억나는 단어 하나면 충분해요
+        </div>
+
+        <div style="border-top: 1.5px solid #1c1c1a; margin-top: 18px; padding: 18px 44px 30px; display: flex; justify-content: space-between; align-items: center;">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#b9b7b1" stroke-width="1.5" stroke-linecap="round"><path d="M4 12 13 4l9 8"></path><path d="M7 12v10h12V12"></path></svg>
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#1c1c1a" stroke-width="1.5" stroke-linecap="round"><circle cx="11.5" cy="11.5" r="7"></circle><path d="M16.5 16.5 22 22"></path></svg>
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#b9b7b1" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="5" width="18" height="16" rx="3"></rect><path d="M4 11h18"></path></svg>
+        </div>
+      </div>
+      <div style="font-size: 14px; color: #6f6f6a; letter-spacing: 0.04em;">② 검색</div>
+    </div>
+
+    <!-- ③ 저장 완료 -->
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+      <div style="position: relative; width: 390px; height: 844px; border: 1.5px solid #1c1c1a; border-radius: 40px; background: #fbfbfa; overflow: hidden;">
+        <div style="position: absolute; inset: 0; padding: 60px 28px; display: flex; flex-direction: column; gap: 18px; opacity: 0.25;">
+          <div style="height: 1px; background: #1c1c1a;"></div>
+          <div style="flex: 1; border: 1.5px solid #1c1c1a; border-radius: 6px;"></div>
+          <div style="height: 1px; background: #1c1c1a; width: 70%;"></div>
+          <div style="height: 1px; background: #1c1c1a; width: 45%;"></div>
+        </div>
+
+        <div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1.5px solid #1c1c1a; border-radius: 28px 28px 0 0; background: #fbfbfa; padding: 20px 28px 32px; animation: sheetUp 380ms ease-out both;">
+          <div style="width: 44px; height: 1.5px; background: #1c1c1a; margin: 0 auto 30px;"></div>
+
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke="#1c1c1a" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="26" cy="26" r="18.5"></circle>
+            <path d="M17.5 26.5 24 33l11-13"></path>
+          </svg>
+          <div style="font-size: 26px; letter-spacing: -0.01em; margin-top: 22px;">저장했어요</div>
+          <div style="font-size: 14px; color: #8a8a85; margin-top: 8px;">검색 한 번으로 다시 찾을 수 있어요</div>
+
+          <div style="height: 1px; background: #dcdad5; margin: 26px 0;"></div>
+
+          <div style="display: flex; gap: 16px; align-items: flex-start;">
+            <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="#1c1c1a" stroke-width="1.5" stroke-linecap="round" style="flex: none; margin-top: 2px;">
+              <rect x="3.5" y="3.5" width="19" height="19" rx="4"></rect>
+              <path d="M3.5 16l5-5 5 5"></path>
+              <circle cx="16.5" cy="9.5" r="2"></circle>
+            </svg>
+            <div>
+              <div style="font-size: 16px; line-height: 1.45;">성수동 크로플 맛집 3곳 총정리</div>
+              <div style="font-size: 13px; color: #8a8a85; margin-top: 7px;">인스타그램 · 사진 4장 함께</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px;">
+            <span style="border: 1px solid #1c1c1a; border-radius: 999px; padding: 6px 14px; font-size: 13.5px;">맛집</span>
+            <span style="border: 1px solid #1c1c1a; border-radius: 999px; padding: 6px 14px; font-size: 13.5px;">성수동</span>
+            <span style="border: 1px solid #1c1c1a; border-radius: 999px; padding: 6px 14px; font-size: 13.5px;">디저트</span>
+            <span style="border: 1px dashed #b9b7b1; border-radius: 999px; padding: 6px 14px; font-size: 13.5px; color: #8a8a85;">태그 추가</span>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 30px;">
+            <div style="flex: 1; min-height: 50px; display: grid; place-items: center; border: 1.5px solid #1c1c1a; border-radius: 999px; font-size: 15px;">메모 추가</div>
+            <div style="flex: 1; min-height: 50px; display: grid; place-items: center; border: 1.5px solid #1c1c1a; border-radius: 999px; font-size: 15px;">확인</div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 14px; color: #6f6f6a; letter-spacing: 0.04em;">③ 저장 완료</div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding: 56px 48px 72px; display: flex; flex-wrap: wrap; gap: 56px; justify-content: center; align-items: flex-start; background: #cdc5b4; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.28'/%3E%3C/svg%3E&quot;);">
+
+  <!-- ① 홈 -->
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="position: relative; width: 390px; height: 844px; border: 2.5px solid #26241f; border-radius: 44px; overflow: hidden; background: #f7f2e7; box-shadow: 12px 16px 0 rgba(38,36,31,0.18); transform: rotate(-0.6deg);">
+      <div style="position: absolute; inset: 0; pointer-events: none; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E&quot;); opacity: 0.3; mix-blend-mode: multiply;"></div>
+
+      <div style="position: relative; height: 100%; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; padding: 14px 26px 0; font-family: 'Gowun Dodum', sans-serif; font-size: 13px; color: #6b665b;">
+          <span>9:41</span><span>●●● ▮</span>
+        </div>
+
+        <div style="padding: 18px 26px 10px;">
+          <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+            <div>
+              <div style="font-family: 'Nanum Pen Script', cursive; font-size: 46px; line-height: 0.95; color: #26241f;">Cortex</div>
+              <div style="font-family: 'Gaegu', cursive; font-size: 17px; color: #6b665b; margin-top: 2px;">내 두 번째 뇌</div>
+            </div>
+            <div style="width: 46px; height: 46px; border: 2px solid #26241f; border-radius: 50% 46% 52% 48%; display: grid; place-items: center; background: #efe7d3;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="4.2"></circle><path d="M4.5 21c1.6-4.2 4.3-6 7.5-6s5.9 1.8 7.5 6"></path></svg>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin: 6px 22px 18px; position: relative;">
+          <div style="position: absolute; top: -12px; left: 26px; width: 96px; height: 26px; background: rgba(228,206,150,0.85); border-left: 1px dashed rgba(38,36,31,0.25); border-right: 1px dashed rgba(38,36,31,0.25); transform: rotate(-3deg); box-shadow: 0 1px 0 rgba(38,36,31,0.12);"></div>
+          <div style="border: 2.5px solid #26241f; border-radius: 18px 12px 20px 14px / 14px 20px 12px 18px; background: #fffdf6; padding: 22px 24px 20px; transform: rotate(0.8deg); box-shadow: 5px 6px 0 rgba(38,36,31,0.14);">
+            <div style="font-family: 'Gaegu', cursive; font-size: 18px; color: #6b665b;">지금까지 모아둔 조각</div>
+            <div style="display: flex; align-items: flex-end; gap: 8px; margin-top: 2px;">
+              <span style="font-family: 'Nanum Pen Script', cursive; font-size: 62px; line-height: 0.9; color: #26241f;">{{ totalSaved }}</span>
+              <span style="font-family: 'Gaegu', cursive; font-size: 24px; color: #26241f; padding-bottom: 8px;">개</span>
+              <span style="margin-left: auto; font-family: 'Gaegu', cursive; font-size: 16px; color: #b2452c; padding-bottom: 10px;">이번 주 +12</span>
+            </div>
+            <div style="margin-top: 12px; font-family: 'Gowun Dodum', sans-serif; font-size: 13.5px; color: #6b665b; line-height: 1.6;">어디서든 <span style="background: linear-gradient(transparent 55%, rgba(243,213,110,0.9) 55%);">공유 버튼 → Cortex</span> 만 누르면 끝!</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; padding: 0 24px 14px; overflow: hidden;">
+          <div style="border: 2px solid #26241f; border-radius: 999px; padding: 7px 16px; background: #26241f; color: #f7f2e7; font-size: 16px; transform: rotate(-1.5deg);">전체</div>
+          <div style="border: 2px solid #26241f; border-radius: 999px; padding: 7px 16px; background: transparent; color: #26241f; font-size: 16px; transform: rotate(1deg);">맛집</div>
+          <div style="border: 2px solid #26241f; border-radius: 999px; padding: 7px 16px; background: transparent; color: #26241f; font-size: 16px; transform: rotate(-0.5deg);">여행</div>
+          <div style="border: 2px dashed #6b665b; border-radius: 999px; padding: 7px 14px; color: #6b665b; font-size: 16px; transform: rotate(1.5deg);">+ 태그</div>
+        </div>
+
+        <div style="flex: 1; overflow: hidden; padding: 0 22px;">
+          <div style="font-family: 'Nanum Pen Script', cursive; font-size: 28px; color: #26241f; margin-bottom: 8px;">방금 던져둔 것들</div>
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+              <div style="position: relative; border: 2.2px solid #26241f; border-radius: 16px 11px 18px 13px / 13px 18px 11px 16px; background: #fffdf6; padding: 14px 16px; box-shadow: 4px 5px 0 rgba(38,36,31,0.12);">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                  <span style="font-family: 'Gaegu', cursive; font-size: 15px; border: 1.6px solid #26241f; border-radius: 6px 4px 7px 5px; padding: 1px 8px; background: #efe7d3;">{{ it.source }}</span>
+                  <span style="font-family: 'Gowun Dodum', sans-serif; font-size: 12.5px; color: #6b665b;">{{ it.when }}</span>
+                </div>
+                <div style="font-family: 'Gaegu', cursive; font-weight: 700; font-size: 20px; color: #26241f; line-height: 1.3; text-wrap: pretty;">{{ it.title }}</div>
+                <div style="font-family: 'Gowun Dodum', sans-serif; font-size: 13px; color: #6b665b; margin-top: 3px;">{{ it.tags }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="position: absolute; right: 22px; bottom: 106px; width: 70px; height: 70px; border: 2.5px solid #26241f; border-radius: 50% 47% 52% 49%; background: #f3d56e; display: grid; place-items: center; box-shadow: 4px 5px 0 rgba(38,36,31,0.2); transform: rotate(-4deg);">
+          <span style="font-family: 'Nanum Pen Script', cursive; font-size: 40px; line-height: 1; color: #26241f; margin-top: -4px;">+</span>
+        </div>
+
+        <div style="border-top: 2.5px solid #26241f; background: #f0e9d8; padding: 12px 30px 26px; display: flex; justify-content: space-between;">
+          <div style="min-width: 60px; min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2" stroke-linecap="round"><path d="M4 11 12 4l8 7"></path><rect x="6.5" y="11" width="11" height="9" rx="1.5"></rect></svg>
+            <span style="font-family: 'Gaegu', cursive; font-size: 15px; color: #26241f;">홈</span>
+          </div>
+          <div style="min-width: 60px; min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.55;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15.5 15.5 20 20"></path></svg>
+            <span style="font-family: 'Gaegu', cursive; font-size: 15px; color: #26241f;">찾기</span>
+          </div>
+          <div style="min-width: 60px; min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.55;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg>
+            <span style="font-family: 'Gaegu', cursive; font-size: 15px; color: #26241f;">서랍</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-family: 'Nanum Pen Script', cursive; font-size: 26px; color: #4a463c;">① 홈 — 최근 저장 + 총 개수</div>
+  </div>
+
+  <!-- ② 검색 -->
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="position: relative; width: 390px; height: 844px; border: 2.5px solid #26241f; border-radius: 44px; overflow: hidden; background: #f7f2e7; box-shadow: 12px 16px 0 rgba(38,36,31,0.18); transform: rotate(0.7deg);">
+      <div style="position: absolute; inset: 0; pointer-events: none; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E&quot;); opacity: 0.3; mix-blend-mode: multiply;"></div>
+
+      <div style="position: relative; height: 100%; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; padding: 14px 26px 0; font-family: 'Gowun Dodum', sans-serif; font-size: 13px; color: #6b665b;">
+          <span>9:41</span><span>●●● ▮</span>
+        </div>
+
+        <div style="padding: 16px 24px 6px;">
+          <div style="font-family: 'Nanum Pen Script', cursive; font-size: 38px; color: #26241f; line-height: 1;">뭐 찾아줄까?</div>
+          <div style="font-family: 'Gowun Dodum', sans-serif; font-size: 13.5px; color: #6b665b; margin-top: 6px;">기억나는 단어 아무거나 적어도 돼요</div>
+        </div>
+
+        <div style="margin: 12px 22px 6px; display: flex; align-items: center; gap: 10px; border: 2.5px solid #26241f; border-radius: 999px; background: #fffdf6; padding: 12px 18px; box-shadow: 4px 5px 0 rgba(38,36,31,0.14); transform: rotate(-0.8deg);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15.5 15.5 20 20"></path></svg>
+          <span style="font-family: 'Gaegu', cursive; font-weight: 700; font-size: 21px; color: #26241f;">{{ query }}</span>
+          <span style="width: 2px; height: 20px; background: #b2452c; margin-left: -2px;"></span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; padding: 10px 26px 12px;">
+          <span style="font-family: 'Nanum Pen Script', cursive; font-size: 28px; color: #b2452c;">{{ hitCount }}개</span>
+          <span style="font-family: 'Gaegu', cursive; font-size: 18px; color: #26241f;">찾았어요!</span>
+          <span style="margin-left: auto; font-family: 'Gaegu', cursive; font-size: 16px; color: #6b665b; border-bottom: 1.5px solid #6b665b;">최신순 ▾</span>
+        </div>
+
+        <div style="flex: 1; overflow: hidden; padding: 0 22px;">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+              <div style="position: relative; border: 2.2px solid #26241f; border-radius: 15px 12px 17px 13px / 13px 17px 12px 15px; background: #fffdf6; padding: 14px 16px 15px; box-shadow: 4px 5px 0 rgba(38,36,31,0.12);">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                  <span style="font-family: 'Gaegu', cursive; font-size: 15px; border: 1.6px solid #26241f; border-radius: 6px 4px 7px 5px; padding: 1px 8px; background: #efe7d3;">{{ r.source }}</span>
+                  <span style="font-family: 'Gowun Dodum', sans-serif; font-size: 12.5px; color: #6b665b;">{{ r.when }}</span>
+                </div>
+                <div style="font-family: 'Gaegu', cursive; font-weight: 700; font-size: 20px; line-height: 1.3; color: #26241f;">
+                  <span style="background: linear-gradient(transparent 52%, rgba(243,213,110,0.95) 52%);">{{ r.hit }}</span>{{ r.rest }}
+                </div>
+                <div style="font-family: 'Gowun Dodum', sans-serif; font-size: 13px; color: #6b665b; margin-top: 4px; line-height: 1.55;">{{ r.snippet }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="padding: 10px 24px 8px;">
+          <div style="font-family: 'Gaegu', cursive; font-size: 17px; color: #6b665b; margin-bottom: 6px;">이렇게도 물어볼 수 있어요</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <span style="border: 1.8px dashed #26241f; border-radius: 999px; padding: 6px 14px; font-size: 16px; transform: rotate(-1deg);">지난달에 저장한 거</span>
+            <span style="border: 1.8px dashed #26241f; border-radius: 999px; padding: 6px 14px; font-size: 16px; transform: rotate(1deg);">카톡에서 온 링크</span>
+          </div>
+        </div>
+
+        <div style="border-top: 2.5px solid #26241f; background: #f0e9d8; padding: 12px 30px 26px; display: flex; justify-content: space-between;">
+          <div style="min-width: 60px; min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.55;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2" stroke-linecap="round"><path d="M4 11 12 4l8 7"></path><rect x="6.5" y="11" width="11" height="9" rx="1.5"></rect></svg>
+            <span style="font-family: 'Gaegu', cursive; font-size: 15px; color: #26241f;">홈</span>
+          </div>
+          <div style="min-width: 60px; min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"></circle><path d="M15.5 15.5 20 20"></path></svg>
+            <span style="font-family: 'Gaegu', cursive; font-size: 15px; color: #26241f;">찾기</span>
+          </div>
+          <div style="min-width: 60px; min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.55;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M8 9h8M8 13h5"></path></svg>
+            <span style="font-family: 'Gaegu', cursive; font-size: 15px; color: #26241f;">서랍</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="font-family: 'Nanum Pen Script', cursive; font-size: 26px; color: #4a463c;">② 검색 — 한 번에 다 찾기</div>
+  </div>
+
+  <!-- ③ 저장 완료 바텀시트 -->
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 18px;">
+    <div style="position: relative; width: 390px; height: 844px; border: 2.5px solid #26241f; border-radius: 44px; overflow: hidden; background: #f7f2e7; box-shadow: 12px 16px 0 rgba(38,36,31,0.18); transform: rotate(-0.4deg);">
+      <div style="position: absolute; inset: 0; pointer-events: none; background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E&quot;); opacity: 0.3; mix-blend-mode: multiply; z-index: 3;"></div>
+
+      <!-- 뒤에 깔린 인스타 화면 느낌 -->
+      <div style="position: absolute; inset: 0; background: #e8e2d3; padding: 60px 24px; display: flex; flex-direction: column; gap: 14px;">
+        <div style="height: 26px; width: 120px; border: 2px solid #6b665b; border-radius: 8px 6px 9px 7px; opacity: 0.5;"></div>
+        <div style="flex: 1; border: 2px solid #6b665b; border-radius: 14px; opacity: 0.45; background-image: repeating-linear-gradient(135deg, rgba(107,102,91,0.35) 0 2px, transparent 2px 12px);"></div>
+        <div style="height: 18px; width: 70%; background: rgba(107,102,91,0.3); border-radius: 4px;"></div>
+        <div style="height: 18px; width: 45%; background: rgba(107,102,91,0.3); border-radius: 4px;"></div>
+      </div>
+      <div style="position: absolute; inset: 0; background: rgba(38,36,31,0.42);"></div>
+
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; border: 2.5px solid #26241f; border-bottom: none; border-radius: 30px 34px 0 0; background: #fffdf6; padding: 16px 24px 30px; animation: sheetUp 420ms ease-out both; box-shadow: 0 -6px 0 rgba(38,36,31,0.1);">
+        <div style="width: 68px; height: 5px; background: #26241f; border-radius: 999px; margin: 0 auto 14px; opacity: 0.5;"></div>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 58px; height: 58px; flex: none; border: 2.5px solid #26241f; border-radius: 50% 47% 53% 48%; background: #cfe3c4; display: grid; place-items: center; animation: popIn 340ms 120ms ease-out both;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#26241f" stroke-width="2.4" stroke-linecap="round"><path d="M5 13l4.5 4.5L19.5 7"></path></svg>
+          </div>
+          <div>
+            <div style="font-family: 'Nanum Pen Script', cursive; font-size: 40px; line-height: 1; color: #26241f;">뇌에 넣었어요!</div>
+            <div style="font-family: 'Gowun Dodum', sans-serif; font-size: 13.5px; color: #6b665b; margin-top: 4px;">나중에 아무 단어로나 찾을 수 있어요</div>
+          </div>
+        </div>
+
+        <div style="position: relative; margin: 20px 0 0;">
+          <div style="position: absolute; top: -11px; right: 24px; width: 82px; height: 24px; background: rgba(228,206,150,0.85); border-left: 1px dashed rgba(38,36,31,0.25); border-right: 1px dashed rgba(38,36,31,0.25); transform: rotate(4deg);"></div>
+          <div style="border: 2.2px solid #26241f; border-radius: 16px 12px 18px 13px / 13px 18px 12px 16px; background: #f7f2e7; padding: 14px 16px; transform: rotate(-0.9deg); box-shadow: 4px 5px 0 rgba(38,36,31,0.12);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+              <span style="font-family: 'Gaegu', cursive; font-size: 15px; border: 1.6px solid #26241f; border-radius: 6px 4px 7px 5px; padding: 1px 8px; background: #efe7d3;">인스타그램</span>
+              <span style="font-family: 'Gowun Dodum', sans-serif; font-size: 12.5px; color: #6b665b;">방금</span>
+            </div>
+            <div style="font-family: 'Gaegu', cursive; font-weight: 700; font-size: 20px; color: #26241f; line-height: 1.3;">성수동 크로플 맛집 3곳 총정리</div>
+            <div style="font-family: 'Gowun Dodum', sans-serif; font-size: 13px; color: #6b665b; margin-top: 4px;">@seoul_bread · 사진 4장 같이 저장됨</div>
+          </div>
+        </div>
+
+        <div style="margin-top: 18px;">
+          <div style="font-family: 'Gaegu', cursive; font-size: 17px; color: #6b665b;">알아서 붙여둔 태그 <span style="color: #b2452c;">(고쳐도 돼요)</span></div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+            <span style="border: 2px solid #26241f; border-radius: 999px; padding: 6px 14px; background: #f3d56e; font-size: 16px; transform: rotate(-1.5deg);">맛집</span>
+            <span style="border: 2px solid #26241f; border-radius: 999px; padding: 6px 14px; background: #f3d56e; font-size: 16px; transform: rotate(1deg);">성수동</span>
+            <span style="border: 2px solid #26241f; border-radius: 999px; padding: 6px 14px; background: #f3d56e; font-size: 16px; transform: rotate(-0.5deg);">디저트</span>
+            <span style="border: 2px dashed #6b665b; border-radius: 999px; padding: 6px 13px; color: #6b665b; font-size: 16px; transform: rotate(1.5deg);">+ 직접 추가</span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 22px;">
+          <div style="flex: 1; min-height: 52px; display: grid; place-items: center; border: 2.2px solid #26241f; border-radius: 14px 11px 15px 12px / 12px 15px 11px 14px; background: transparent; font-family: 'Gaegu', cursive; font-weight: 700; font-size: 19px; color: #26241f; transform: rotate(-0.7deg);">메모 덧붙이기</div>
+          <div style="flex: 1.2; min-height: 52px; display: grid; place-items: center; border: 2.2px solid #26241f; border-radius: 14px 11px 15px 12px / 12px 15px 11px 14px; background: #26241f; color: #fffdf6; font-family: 'Gaegu', cursive; font-weight: 700; font-size: 19px; box-shadow: 4px 5px 0 rgba(38,36,31,0.22); transform: rotate(0.6deg);">이대로 저장</div>
+        </div>
+        <div style="text-align: center; font-family: 'Gowun Dodum', sans-serif; font-size: 12.5px; color: #6b665b; margin-top: 12px;">2초 뒤 자동으로 닫혀요 — 그냥 두셔도 괜찮아요</div>
+      </div>
+    </div>
+    <div style="font-family: 'Nanum Pen Script', cursive; font-size: 26px; color: #4a463c;">③ 저장 완료 바텀시트</div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;totalSaved&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:342,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:9999,&quot;section&quot;:&quot;내용&quot;},&quot;query&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;제주도 맛집&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;내용&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const recent = [
+      { source: "인스타그램", when: "10분 전", title: "성수동 크로플 맛집 3곳 총정리", tags: "#맛집 #성수동 #디저트" },
+      { source: "카카오톡", when: "어제", title: "엄마가 보내준 김치찌개 레시피", tags: "#레시피 #집밥" },
+      { source: "사파리", when: "3일 전", title: "제주 2박3일 뚜벅이 코스 후기", tags: "#여행 #제주도" },
+      { source: "유튜브", when: "지난주", title: "작은 방 정리 수납 아이디어 12가지", tags: "#살림 #정리" }
+    ];
+    const results = [
+      { source: "사파리", when: "3일 전", hit: "제주", rest: " 2박3일 뚜벅이 코스 후기", snippet: "…애월 카페거리 → 한담해변 산책로 순서로 돌면 편하다는 내용" },
+      { source: "카카오톡", when: "2주 전", hit: "제주도", rest: " 갈치조림 맛집 지도 링크", snippet: "지혜가 보낸 링크 · 동문시장 근처 3곳 표시됨" },
+      { source: "인스타그램", when: "1개월 전", hit: "제주", rest: " 흑돼지 골목 웨이팅 팁", snippet: "@jeju_eats · 6시 전에 가면 바로 앉는다고" },
+      { source: "메모", when: "2개월 전", hit: "제주", rest: " 가면 꼭 사올 것", snippet: "한라봉 청, 오메기떡, 우도 땅콩 쿠키" }
+    ];
+    return {
+      totalSaved: this.props.totalSaved ?? 342,
+      query: this.props.query ?? "제주도 맛집",
+      hitCount: results.length,
+      nextCardNo: (this.props.totalSaved ?? 342) + 1,
+      recent, results
+    };
+  }
+}
+</script>
+</body>
+</html>

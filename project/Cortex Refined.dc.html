@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #e4e2dd; font-family: 'IBM Plex Sans KR', 'Schibsted Grotesk', system-ui, sans-serif; }
+  a { color: #9c6a4e; text-decoration: none; }
+  a:hover { color: #7d523a; }
+  @keyframes sheetUp { from { transform: translateY(36px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+  @keyframes pulseRing { 0% { transform: scale(0.9); opacity: 0.5 } 70% { transform: scale(1.35); opacity: 0 } 100% { transform: scale(1.35); opacity: 0 } }
+</style>
+</helmet>
+
+<section style="display: flex; flex-direction: column;">
+
+  <!-- ============ 4c · NEURAL DARK (futuristic) ============ -->
+  <div id="4c" style="padding: 72px 56px 84px; background: #0c0e11; display: flex; flex-direction: column; align-items: center; gap: 44px;">
+    <div style="width: 100%; max-width: 1340px; display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid #24282e; padding-bottom: 16px; color: #eef1f5;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.16em; border: 1px solid #4d5561; border-radius: 2px; padding: 3px 9px; color: #c9d3e0;">4C</span>
+      <span style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -0.02em;">Neural Dark</span>
+      <span style="font-size: 13.5px; color: #8e99a8; margin-left: auto;">미래적 · 그래파이트 + 아이스 라벤더 · 모노 라벨</span>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 44px; justify-content: center; align-items: flex-start;">
+
+      <!-- 홈 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="width: 390px; height: 844px; border-radius: 40px; background: #14171c; border: 1px solid #262b33; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.55);">
+          <div style="display: flex; justify-content: space-between; padding: 18px 26px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #7f8b9a;"><span>09:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+          <div style="padding: 28px 26px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.3em; color: #a8b4ff;">CORTEX</span>
+              <span style="width: 36px; height: 36px; border-radius: 12px; border: 1px solid #2e343d; display: grid; place-items: center;">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#c9d3e0" stroke-width="1.3"><circle cx="9" cy="6.2" r="2.8"></circle><path d="M3.5 15.5c1.2-2.9 3.1-4.2 5.5-4.2s4.3 1.3 5.5 4.2"></path></svg>
+              </span>
+            </div>
+
+            <div style="margin-top: 24px; border: 1px solid #262b33; border-radius: 22px; padding: 24px 22px; background: linear-gradient(155deg, #1b1f26 0%, #15181d 70%); position: relative; overflow: hidden;">
+              <div style="position: absolute; top: -40px; right: -30px; width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, rgba(168,180,255,0.16), transparent 65%);"></div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.22em; color: #8e99a8;">MEMORY INDEX</div>
+              <div style="display: flex; align-items: flex-end; gap: 10px; margin-top: 12px;">
+                <span style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 58px; line-height: 0.88; letter-spacing: -0.045em; color: #f2f5f9;">{{ totalSaved }}</span>
+                <span style="font-size: 14px; color: #9aa6b6; padding-bottom: 9px;">조각 동기화됨</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 20px;">
+                <span style="position: relative; width: 8px; height: 8px; border-radius: 50%; background: #a8b4ff; display: inline-grid; place-items: center;">
+                  <span style="position: absolute; inset: -5px; border-radius: 50%; border: 1px solid #a8b4ff; animation: pulseRing 2.4s ease-out infinite;"></span>
+                </span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em; color: #a8b4ff;">LIVE · 방금 1건 추가</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; padding: 22px 26px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.1em;">
+            <span style="padding: 6px 12px; border-radius: 999px; background: #eef1f5; color: #14171c;">ALL</span>
+            <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid #2e343d; color: #9aa6b6;">맛집</span>
+            <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid #2e343d; color: #9aa6b6;">여행</span>
+            <span style="padding: 6px 12px; border-radius: 999px; border: 1px solid #2e343d; color: #9aa6b6;">레시피</span>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 0 26px;">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+                <div style="border: 1px solid #22272e; border-radius: 18px; background: #191d23; padding: 15px 17px; display: flex; gap: 13px; align-items: flex-start;">
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #a8b4ff; padding-top: 3px; min-width: 22px;">{{ it.no }}</span>
+                  <div style="min-width: 0;">
+                    <div style="font-size: 15.5px; line-height: 1.45; color: #eef1f5; text-wrap: pretty;">{{ it.title }}</div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: #8e99a8; margin-top: 8px;">{{ it.meta }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid #22272e; padding: 16px 40px 30px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em;">
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #eef1f5;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#eef1f5" stroke-width="1.3"><rect x="1.5" y="1.5" width="15" height="15" rx="4"></rect><path d="M1.5 6.5h15"></path></svg>
+              <span>VAULT</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6f7a88;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6f7a88" stroke-width="1.3"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              <span>RECALL</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6f7a88;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6f7a88" stroke-width="1.3"><path d="M9 3v12M3 9h12"></path></svg>
+              <span>ADD</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #9aa6b6;">① VAULT</div>
+      </div>
+
+      <!-- 검색 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="width: 390px; height: 844px; border-radius: 40px; background: #14171c; border: 1px solid #262b33; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.55);">
+          <div style="display: flex; justify-content: space-between; padding: 18px 26px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #7f8b9a;"><span>09:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+          <div style="padding: 30px 26px 0;">
+            <div style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 27px; letter-spacing: -0.03em; color: #f2f5f9;">기억 불러오기</div>
+            <div style="margin-top: 18px; border: 1px solid #343b45; border-radius: 16px; background: #1a1e24; padding: 14px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 0 0 3px rgba(168,180,255,0.1);">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#a8b4ff" stroke-width="1.4"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              <span style="font-size: 16.5px; color: #f2f5f9;">{{ query }}</span>
+              <span style="width: 1.5px; height: 19px; background: #a8b4ff;"></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: #8e99a8;">
+              <span>{{ hitCount }} MATCHES · 0.08s</span><span>RECENT ▾</span>
+            </div>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 16px 26px 0;">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+                <div style="border: 1px solid #22272e; border-left: 2px solid #a8b4ff; border-radius: 6px 18px 18px 6px; background: #191d23; padding: 15px 17px;">
+                  <div style="font-size: 15.5px; line-height: 1.45; color: #eef1f5;">
+                    <span style="color: #c3ccff; border-bottom: 1px solid rgba(168,180,255,0.6);">{{ r.hit }}</span>{{ r.rest }}
+                  </div>
+                  <div style="font-size: 13px; color: #9aa6b6; margin-top: 7px; line-height: 1.6;">{{ r.snippet }}</div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: #8e99a8; margin-top: 8px;">{{ r.meta }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="padding: 16px 26px 0;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: #8e99a8;">TRY</div>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+              <span style="border: 1px solid #2e343d; border-radius: 999px; padding: 6px 13px; font-size: 12.5px; color: #c9d3e0;">지난달 저장한 것</span>
+              <span style="border: 1px solid #2e343d; border-radius: 999px; padding: 6px 13px; font-size: 12.5px; color: #c9d3e0;">카톡 링크</span>
+            </div>
+          </div>
+
+          <div style="border-top: 1px solid #22272e; margin-top: 18px; padding: 16px 40px 30px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em;">
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6f7a88;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6f7a88" stroke-width="1.3"><rect x="1.5" y="1.5" width="15" height="15" rx="4"></rect><path d="M1.5 6.5h15"></path></svg>
+              <span>VAULT</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #eef1f5;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#eef1f5" stroke-width="1.3"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              <span>RECALL</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6f7a88;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6f7a88" stroke-width="1.3"><path d="M9 3v12M3 9h12"></path></svg>
+              <span>ADD</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #9aa6b6;">② RECALL</div>
+      </div>
+
+      <!-- 바텀시트 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="position: relative; width: 390px; height: 844px; border-radius: 40px; background: #14171c; border: 1px solid #262b33; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.55);">
+          <div style="position: absolute; inset: 0; padding: 60px 26px; display: flex; flex-direction: column; gap: 16px; opacity: 0.45;">
+            <div style="height: 12px; width: 130px; background: #2a3038; border-radius: 6px;"></div>
+            <div style="flex: 1; background: #202631; border-radius: 10px;"></div>
+            <div style="height: 10px; width: 70%; background: #2a3038; border-radius: 5px;"></div>
+            <div style="height: 10px; width: 45%; background: #2a3038; border-radius: 5px;"></div>
+          </div>
+          <div style="position: absolute; inset: 0; background: rgba(6,8,11,0.66); backdrop-filter: blur(3px);"></div>
+
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #171b21; border-top: 1px solid #2e343d; border-radius: 28px 28px 0 0; padding: 20px 26px 32px; animation: sheetUp 400ms ease-out both;">
+            <div style="width: 40px; height: 4px; background: #343b45; border-radius: 2px; margin: 0 auto 26px;"></div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="position: relative; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #a8b4ff; display: grid; place-items: center;">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#a8b4ff" stroke-width="1.6"><path d="M4.5 9.4 7.4 12.3 13.5 5.8"></path></svg>
+                <span style="position: absolute; inset: -6px; border-radius: 50%; border: 1px solid rgba(168,180,255,0.6); animation: pulseRing 2.6s ease-out infinite;"></span>
+              </span>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.24em; color: #a8b4ff;">SYNCED TO CORTEX</span>
+            </div>
+            <div style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 30px; letter-spacing: -0.03em; color: #f2f5f9; margin-top: 16px;">기억에 저장했어요</div>
+            <div style="font-size: 13.5px; color: #9aa6b6; margin-top: 8px; line-height: 1.65;">단어 하나만 입력하면 다시 꺼내 드려요.</div>
+
+            <div style="margin-top: 24px; border: 1px solid #262b33; border-radius: 18px; background: #1b1f26; padding: 16px 18px;">
+              <div style="display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; color: #8e99a8;">
+                <span>INSTAGRAM</span><span>#{{ nextCardNo }}</span>
+              </div>
+              <div style="font-size: 16px; line-height: 1.45; color: #eef1f5; margin-top: 10px;">성수동 크로플 맛집 3곳 총정리</div>
+              <div style="font-size: 12.5px; color: #8e99a8; margin-top: 6px;">@seoul_bread · 이미지 4장 함께 저장</div>
+            </div>
+
+            <div style="margin-top: 22px;">
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.14em; color: #8e99a8;">AUTO TAGS</div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+                <span style="border: 1px solid #a8b4ff; border-radius: 999px; padding: 6px 14px; font-size: 12.5px; color: #c3ccff;">맛집</span>
+                <span style="border: 1px solid #a8b4ff; border-radius: 999px; padding: 6px 14px; font-size: 12.5px; color: #c3ccff;">성수동</span>
+                <span style="border: 1px solid #a8b4ff; border-radius: 999px; padding: 6px 14px; font-size: 12.5px; color: #c3ccff;">디저트</span>
+                <span style="border: 1px dashed #4d5561; border-radius: 999px; padding: 6px 14px; font-size: 12.5px; color: #9aa6b6;">+ 추가</span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 28px;">
+              <div style="flex: 1; min-height: 50px; display: grid; place-items: center; border: 1px solid #343b45; border-radius: 14px; font-size: 15px; color: #eef1f5;">메모 추가</div>
+              <div style="flex: 1.1; min-height: 50px; display: grid; place-items: center; background: #eef1f5; color: #14171c; border-radius: 14px; font-size: 15px; font-weight: 500;">확인</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #9aa6b6;">③ SYNCED</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 4a · EDITORIAL QUIET ============ -->
+  <div id="4a" style="padding: 72px 56px 84px; background: #f3f1ec; display: flex; flex-direction: column; align-items: center; gap: 44px;">
+    <div style="width: 100%; max-width: 1340px; display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid #d5d1c7; padding-bottom: 16px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.16em; border: 1px solid #14140f; border-radius: 2px; padding: 3px 9px;">4A</span>
+      <span style="font-family: 'Instrument Serif', serif; font-size: 26px; letter-spacing: -0.01em; color: #14140f;">Editorial Quiet</span>
+      <span style="font-size: 13.5px; color: #6a675e; margin-left: auto;">세리프 표제 · 넓은 여백 · 점토색 한 포인트</span>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 44px; justify-content: center; align-items: flex-start;">
+
+      <!-- 홈 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="width: 390px; height: 844px; border-radius: 34px; background: #fbfaf7; box-shadow: 0 18px 40px rgba(20,20,15,0.12); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; padding: 18px 26px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #8b877d;"><span>9:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+          <div style="padding: 40px 26px 0;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.26em; color: #9c6a4e;">CORTEX</div>
+            <div style="display: flex; align-items: flex-end; gap: 12px; margin-top: 26px;">
+              <span style="font-family: 'Instrument Serif', serif; font-size: 82px; line-height: 0.82; letter-spacing: -0.035em; color: #14140f;">{{ totalSaved }}</span>
+              <span style="font-size: 14px; color: #6a675e; padding-bottom: 10px; line-height: 1.5;">개의 기억<br>보관 중</span>
+            </div>
+            <div style="font-size: 13.5px; color: #6a675e; margin-top: 22px; line-height: 1.7; max-width: 300px;">어디서든 공유 버튼 → Cortex. 나머지는 알아서 정리해 둘게요.</div>
+          </div>
+
+          <div style="display: flex; gap: 18px; padding: 30px 26px 0; font-size: 13px; border-bottom: 1px solid #e4e0d6;">
+            <span style="padding-bottom: 10px; border-bottom: 2px solid #14140f; color: #14140f;">모두</span>
+            <span style="padding-bottom: 10px; color: #8b877d;">맛집</span>
+            <span style="padding-bottom: 10px; color: #8b877d;">여행</span>
+            <span style="padding-bottom: 10px; color: #8b877d;">레시피</span>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 0 26px;">
+            <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+              <div style="padding: 22px 0; border-bottom: 1px solid #eeebe2; display: flex; gap: 14px; align-items: baseline;">
+                <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 17px; color: #9c6a4e; min-width: 26px;">{{ it.no }}</span>
+                <div style="min-width: 0;">
+                  <div style="font-size: 16px; line-height: 1.5; color: #14140f; text-wrap: pretty;">{{ it.title }}</div>
+                  <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: #6a675e; margin-top: 8px;">{{ it.meta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="border-top: 1px solid #e4e0d6; padding: 16px 40px 30px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em;">
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #14140f;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#14140f" stroke-width="1.3"><rect x="1.5" y="1.5" width="15" height="15" rx="2"></rect><path d="M1.5 6.5h15"></path></svg>
+              <span>ARCHIVE</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6a675e;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6a675e" stroke-width="1.3"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              <span>SEARCH</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6a675e;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6a675e" stroke-width="1.3"><circle cx="9" cy="6.2" r="2.8"></circle><path d="M3.5 15.5c1.2-2.9 3.1-4.2 5.5-4.2s4.3 1.3 5.5 4.2"></path></svg>
+              <span>ME</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #6a675e;">① HOME</div>
+      </div>
+
+      <!-- 검색 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="width: 390px; height: 844px; border-radius: 34px; background: #fbfaf7; box-shadow: 0 18px 40px rgba(20,20,15,0.12); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; padding: 18px 26px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: #8b877d;"><span>9:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+          <div style="padding: 40px 26px 0;">
+            <div style="font-family: 'Instrument Serif', serif; font-size: 38px; line-height: 1.05; letter-spacing: -0.02em; color: #14140f;">무엇을 <span style="font-style: italic; color: #9c6a4e;">찾고</span> 계신가요</div>
+            <div style="display: flex; align-items: center; gap: 12px; margin-top: 26px; border-bottom: 1.5px solid #14140f; padding-bottom: 12px;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#14140f" stroke-width="1.3"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              <span style="font-size: 18px; color: #14140f;">{{ query }}</span>
+              <span style="width: 1.5px; height: 20px; background: #9c6a4e;"></span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 16px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.12em; color: #6a675e;">
+              <span>결과 {{ hitCount }}건</span><span>최신순</span>
+            </div>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 8px 26px 0;">
+            <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+              <div style="padding: 22px 0; border-bottom: 1px solid #eeebe2;">
+                <div style="font-size: 16px; line-height: 1.5; color: #14140f;">
+                  <span style="background: linear-gradient(transparent 62%, rgba(156,106,78,0.24) 62%);">{{ r.hit }}</span>{{ r.rest }}
+                </div>
+                <div style="font-size: 13.5px; color: #6a675e; margin-top: 7px; line-height: 1.6;">{{ r.snippet }}</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: #6a675e; margin-top: 8px;">{{ r.meta }}</div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="border-top: 1px solid #e4e0d6; padding: 16px 40px 30px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.14em;">
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6a675e;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6a675e" stroke-width="1.3"><rect x="1.5" y="1.5" width="15" height="15" rx="2"></rect><path d="M1.5 6.5h15"></path></svg>
+              <span>ARCHIVE</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #14140f;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#14140f" stroke-width="1.3"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              <span>SEARCH</span>
+            </div>
+            <div style="min-width: 54px; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #6a675e;">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6a675e" stroke-width="1.3"><circle cx="9" cy="6.2" r="2.8"></circle><path d="M3.5 15.5c1.2-2.9 3.1-4.2 5.5-4.2s4.3 1.3 5.5 4.2"></path></svg>
+              <span>ME</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #6a675e;">② SEARCH</div>
+      </div>
+
+      <!-- 바텀시트 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="position: relative; width: 390px; height: 844px; border-radius: 34px; background: #fbfaf7; box-shadow: 0 18px 40px rgba(20,20,15,0.12); overflow: hidden;">
+          <div style="position: absolute; inset: 0; padding: 60px 26px; display: flex; flex-direction: column; gap: 16px; opacity: 0.55;">
+            <div style="height: 12px; width: 130px; background: #dcd8cd; border-radius: 6px;"></div>
+            <div style="flex: 1; background: #e8e4d9; border-radius: 8px;"></div>
+            <div style="height: 10px; width: 70%; background: #dcd8cd; border-radius: 5px;"></div>
+            <div style="height: 10px; width: 45%; background: #dcd8cd; border-radius: 5px;"></div>
+          </div>
+          <div style="position: absolute; inset: 0; background: rgba(20,20,15,0.36); backdrop-filter: blur(2px);"></div>
+
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #fbfaf7; border-radius: 26px 26px 0 0; padding: 20px 26px 32px; animation: sheetUp 400ms ease-out both;">
+            <div style="width: 40px; height: 4px; background: #ded9ce; border-radius: 2px; margin: 0 auto 26px;"></div>
+
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9c6a4e" stroke-width="1.4"><circle cx="12" cy="12" r="10.5"></circle><path d="M7.5 12.4 10.6 15.5 16.5 8.8"></path></svg>
+              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.22em; color: #9c6a4e;">SAVED</span>
+            </div>
+            <div style="font-family: 'Instrument Serif', serif; font-size: 40px; line-height: 1.1; letter-spacing: -0.02em; color: #14140f; margin-top: 14px;">잘 보관했어요</div>
+            <div style="font-size: 14px; color: #6a675e; margin-top: 8px; line-height: 1.65;">필요할 때 단어 하나만 적으면 다시 꺼내 드려요.</div>
+
+            <div style="margin-top: 26px; padding-top: 22px; border-top: 1px solid #e4e0d6; display: flex; gap: 14px; align-items: baseline;">
+              <span style="font-family: 'Instrument Serif', serif; font-style: italic; font-size: 17px; color: #9c6a4e;">{{ nextCardNo }}</span>
+              <div>
+                <div style="font-size: 16.5px; line-height: 1.45; color: #14140f;">성수동 크로플 맛집 3곳 총정리</div>
+                <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.1em; color: #6a675e; margin-top: 8px;">INSTAGRAM · 사진 4장</div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 24px;">
+              <span style="border: 1px solid #14140f; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #14140f;">맛집</span>
+              <span style="border: 1px solid #14140f; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #14140f;">성수동</span>
+              <span style="border: 1px solid #14140f; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #14140f;">디저트</span>
+              <span style="border: 1px dashed #a29c8c; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #6a675e;">태그 추가</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 30px;">
+              <div style="flex: 1; min-height: 50px; display: grid; place-items: center; border: 1px solid #14140f; border-radius: 999px; font-size: 15px; color: #14140f;">메모 추가</div>
+              <div style="flex: 1.1; min-height: 50px; display: grid; place-items: center; background: #14140f; color: #fbfaf7; border-radius: 999px; font-size: 15px;">확인</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #6a675e;">③ SAVED</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 4b · SOFT STACK ============ -->
+  <div id="4b" style="padding: 72px 56px 84px; background: #e7e3db; display: flex; flex-direction: column; align-items: center; gap: 44px;">
+    <div style="width: 100%; max-width: 1340px; display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid #d0cbc1; padding-bottom: 16px;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.16em; border: 1px solid #23251f; border-radius: 2px; padding: 3px 9px;">4B</span>
+      <span style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -0.02em; color: #23251f;">Soft Stack</span>
+      <span style="font-size: 13.5px; color: #5f6159; margin-left: auto;">부드러운 카드 레이어 · 세이지 포인트 · 큰 터치 영역</span>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 44px; justify-content: center; align-items: flex-start;">
+
+      <!-- 홈 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="width: 390px; height: 844px; border-radius: 40px; background: #f1eee7; box-shadow: 0 20px 44px rgba(35,37,31,0.16); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; padding: 18px 24px 0; font-family: 'Schibsted Grotesk', sans-serif; font-size: 12px; color: #6e7169;"><span>9:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+          <div style="padding: 22px 20px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 6px;">
+              <span style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: -0.02em; color: #23251f;">Cortex</span>
+              <span style="width: 38px; height: 38px; border-radius: 50%; background: #dcd8cf; display: grid; place-items: center;">
+                <svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#5f6159" stroke-width="1.5"><circle cx="9" cy="6.2" r="2.8"></circle><path d="M3.5 15.5c1.2-2.9 3.1-4.2 5.5-4.2s4.3 1.3 5.5 4.2"></path></svg>
+              </span>
+            </div>
+
+            <div style="margin-top: 20px; background: #ffffff; border-radius: 26px; padding: 26px 24px 22px; box-shadow: 0 6px 18px rgba(35,37,31,0.07);">
+              <div style="font-size: 13.5px; color: #5f6159;">보관한 기억</div>
+              <div style="display: flex; align-items: flex-end; gap: 8px; margin-top: 6px;">
+                <span style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 700; font-size: 54px; line-height: 0.9; letter-spacing: -0.04em; color: #23251f;">{{ totalSaved }}</span>
+                <span style="font-size: 15px; color: #5f6159; padding-bottom: 7px;">개</span>
+                <span style="margin-left: auto; font-size: 12.5px; color: #2f4a3a; background: #dbe7dd; border-radius: 999px; padding: 5px 11px;">이번 주 +12</span>
+              </div>
+              <div style="display: flex; gap: 6px; margin-top: 20px;">
+                <span style="flex: 3; height: 6px; border-radius: 3px; background: #4f7360;"></span>
+                <span style="flex: 2; height: 6px; border-radius: 3px; background: #a9bdae;"></span>
+                <span style="flex: 1.2; height: 6px; border-radius: 3px; background: #dcd8cf;"></span>
+              </div>
+              <div style="display: flex; gap: 14px; margin-top: 10px; font-size: 12px; color: #5f6159;">
+                <span>맛집 41%</span><span>여행 27%</span><span>그 외</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 22px 20px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 6px 12px;">
+              <span style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 600; font-size: 15px; color: #23251f;">최근 저장</span>
+              <span style="font-size: 12.5px; color: #5f6159;">모두 보기</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{ recent }}" as="it" hint-placeholder-count="4">
+                <div style="background: #ffffff; border-radius: 20px; padding: 15px 17px; box-shadow: 0 3px 10px rgba(35,37,31,0.05); display: flex; gap: 13px; align-items: center;">
+                  <span style="flex: none; width: 38px; height: 38px; border-radius: 13px; background: #eceade; display: grid; place-items: center;">
+                    <svg width="17" height="17" viewBox="0 0 18 18" fill="none" stroke="#5f6159" stroke-width="1.4"><rect x="2" y="2" width="14" height="14" rx="4"></rect><path d="M2 12l3.5-3.5L9 12"></path></svg>
+                  </span>
+                  <div style="min-width: 0;">
+                    <div style="font-size: 15.5px; line-height: 1.4; color: #23251f; text-wrap: pretty;">{{ it.title }}</div>
+                    <div style="font-size: 12.5px; color: #5f6159; margin-top: 5px;">{{ it.meta }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="padding: 14px 20px 28px;">
+            <div style="background: #ffffff; border-radius: 999px; padding: 10px; display: flex; justify-content: space-between; box-shadow: 0 6px 18px rgba(35,37,31,0.08);">
+              <div style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #23251f; border-radius: 999px; color: #f1eee7; font-size: 14px;">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#f1eee7" stroke-width="1.5"><rect x="2" y="2" width="14" height="14" rx="4"></rect><path d="M2 11.5h14"></path></svg>
+                <span>보관함</span>
+              </div>
+              <div style="flex: 1; min-height: 44px; display: grid; place-items: center;">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6e7169" stroke-width="1.5"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              </div>
+              <div style="flex: 1; min-height: 44px; display: grid; place-items: center;">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6e7169" stroke-width="1.5"><path d="M9 3v12M3 9h12"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #5f6159;">① HOME</div>
+      </div>
+
+      <!-- 검색 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="width: 390px; height: 844px; border-radius: 40px; background: #f1eee7; box-shadow: 0 20px 44px rgba(35,37,31,0.16); overflow: hidden; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; padding: 18px 24px 0; font-family: 'Schibsted Grotesk', sans-serif; font-size: 12px; color: #6e7169;"><span>9:41</span><span style="letter-spacing: 0.12em;">▲ ▮</span></div>
+
+          <div style="padding: 24px 20px 0;">
+            <div style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 700; font-size: 26px; letter-spacing: -0.03em; color: #23251f; padding: 0 6px;">검색</div>
+            <div style="margin-top: 16px; background: #ffffff; border-radius: 999px; padding: 14px 20px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 14px rgba(35,37,31,0.07);">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#23251f" stroke-width="1.5"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+              <span style="font-size: 16.5px; color: #23251f;">{{ query }}</span>
+              <span style="margin-left: auto; width: 22px; height: 22px; border-radius: 50%; background: #ebe8e0; display: grid; place-items: center;">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="#5f6159" stroke-width="1.4"><path d="M1 1l8 8M9 1l-8 8"></path></svg>
+              </span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 18px 6px 0;">
+              <span style="font-size: 14px; color: #23251f;"><span style="font-weight: 600;">{{ hitCount }}개</span> 찾았어요</span>
+              <span style="font-size: 12.5px; color: #5f6159;">최신순</span>
+            </div>
+          </div>
+
+          <div style="flex: 1; overflow: hidden; padding: 14px 20px 0;">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+                <div style="background: #ffffff; border-radius: 22px; padding: 16px 18px; box-shadow: 0 3px 10px rgba(35,37,31,0.05);">
+                  <div style="font-size: 15.5px; line-height: 1.45; color: #23251f;">
+                    <span style="background: #dbe7dd; border-radius: 4px; padding: 1px 3px;">{{ r.hit }}</span>{{ r.rest }}
+                  </div>
+                  <div style="font-size: 13px; color: #5f6159; margin-top: 7px; line-height: 1.6;">{{ r.snippet }}</div>
+                  <div style="font-size: 12.5px; color: #5f6159; margin-top: 8px;">{{ r.meta }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="padding: 14px 26px 0; display: flex; gap: 8px; flex-wrap: wrap;">
+            <span style="background: #ffffff; border-radius: 999px; padding: 7px 14px; font-size: 12.5px; color: #23251f; box-shadow: 0 2px 8px rgba(35,37,31,0.05);">지난달 저장한 것</span>
+            <span style="background: #ffffff; border-radius: 999px; padding: 7px 14px; font-size: 12.5px; color: #23251f; box-shadow: 0 2px 8px rgba(35,37,31,0.05);">카톡에서 온 링크</span>
+          </div>
+
+          <div style="padding: 14px 20px 28px;">
+            <div style="background: #ffffff; border-radius: 999px; padding: 10px; display: flex; justify-content: space-between; box-shadow: 0 6px 18px rgba(35,37,31,0.08);">
+              <div style="flex: 1; min-height: 44px; display: grid; place-items: center;">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6e7169" stroke-width="1.5"><rect x="2" y="2" width="14" height="14" rx="4"></rect><path d="M2 11.5h14"></path></svg>
+              </div>
+              <div style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; background: #23251f; border-radius: 999px; color: #f1eee7; font-size: 14px;">
+                <svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="#f1eee7" stroke-width="1.5"><circle cx="8" cy="8" r="5.2"></circle><path d="M11.8 11.8 16.5 16.5"></path></svg>
+                <span>검색</span>
+              </div>
+              <div style="flex: 1; min-height: 44px; display: grid; place-items: center;">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#6e7169" stroke-width="1.5"><path d="M9 3v12M3 9h12"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #5f6159;">② SEARCH</div>
+      </div>
+
+      <!-- 바텀시트 -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+        <div style="position: relative; width: 390px; height: 844px; border-radius: 40px; background: #f1eee7; box-shadow: 0 20px 44px rgba(35,37,31,0.16); overflow: hidden;">
+          <div style="position: absolute; inset: 0; padding: 60px 24px; display: flex; flex-direction: column; gap: 16px; opacity: 0.6;">
+            <div style="height: 12px; width: 130px; background: #dcd8cf; border-radius: 6px;"></div>
+            <div style="flex: 1; background: #e4e0d6; border-radius: 18px;"></div>
+            <div style="height: 10px; width: 70%; background: #dcd8cf; border-radius: 5px;"></div>
+            <div style="height: 10px; width: 45%; background: #dcd8cf; border-radius: 5px;"></div>
+          </div>
+          <div style="position: absolute; inset: 0; background: rgba(35,37,31,0.34); backdrop-filter: blur(2px);"></div>
+
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #f6f4ee; border-radius: 32px 32px 0 0; padding: 20px 22px 30px; animation: sheetUp 400ms ease-out both;">
+            <div style="width: 40px; height: 4px; background: #d7d3c9; border-radius: 2px; margin: 0 auto 22px;"></div>
+
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center;">
+              <span style="width: 62px; height: 62px; border-radius: 50%; background: #dbe7dd; display: grid; place-items: center;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2f4a3a" stroke-width="1.8" stroke-linecap="round"><path d="M6 12.6 10 16.6 18 7.6"></path></svg>
+              </span>
+              <div style="font-family: 'Schibsted Grotesk', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.02em; color: #23251f; margin-top: 16px;">저장 완료!</div>
+              <div style="font-size: 13.5px; color: #5f6159; margin-top: 7px; line-height: 1.6;">나중에 단어 하나만 검색하면 바로 나와요.</div>
+            </div>
+
+            <div style="background: #ffffff; border-radius: 22px; padding: 16px 18px; margin-top: 22px; display: flex; gap: 13px; align-items: center; box-shadow: 0 3px 10px rgba(35,37,31,0.05);">
+              <span style="flex: none; width: 42px; height: 42px; border-radius: 14px; background: #eceade; display: grid; place-items: center;">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#5f6159" stroke-width="1.4"><rect x="2" y="2" width="14" height="14" rx="4"></rect><path d="M2 12l3.5-3.5L9 12"></path></svg>
+              </span>
+              <div>
+                <div style="font-size: 15.5px; line-height: 1.4; color: #23251f;">성수동 크로플 맛집 3곳 총정리</div>
+                <div style="font-size: 12.5px; color: #5f6159; margin-top: 5px;">인스타그램 · 사진 4장 · #{{ nextCardNo }}</div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px;">
+              <span style="background: #dbe7dd; border-radius: 999px; padding: 7px 14px; font-size: 13px; color: #2f4a3a;">맛집</span>
+              <span style="background: #dbe7dd; border-radius: 999px; padding: 7px 14px; font-size: 13px; color: #2f4a3a;">성수동</span>
+              <span style="background: #dbe7dd; border-radius: 999px; padding: 7px 14px; font-size: 13px; color: #2f4a3a;">디저트</span>
+              <span style="background: #ffffff; border: 1px solid #d7d3c9; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #5f6159;">+ 태그</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 26px;">
+              <div style="flex: 1; min-height: 52px; display: grid; place-items: center; background: #ffffff; border-radius: 999px; font-size: 15px; color: #23251f; box-shadow: 0 2px 8px rgba(35,37,31,0.06);">메모 추가</div>
+              <div style="flex: 1.1; min-height: 52px; display: grid; place-items: center; background: #23251f; color: #f1eee7; border-radius: 999px; font-size: 15px;">확인</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.16em; color: #5f6159;">③ SAVED</div>
+      </div>
+
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;totalSaved&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:342,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:9999,&quot;section&quot;:&quot;내용&quot;},&quot;query&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;제주도 맛집&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;내용&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const recent = [
+      { no: "01", title: "성수동 크로플 맛집 3곳 총정리", meta: "INSTAGRAM · 10분 전" },
+      { no: "02", title: "엄마가 보내준 김치찌개 레시피", meta: "KAKAOTALK · 어제" },
+      { no: "03", title: "제주 2박3일 뚜벅이 코스 후기", meta: "SAFARI · 3일 전" },
+      { no: "04", title: "작은 방 정리 수납 아이디어 12가지", meta: "YOUTUBE · 지난주" }
+    ];
+    const results = [
+      { hit: "제주", rest: " 2박3일 뚜벅이 코스 후기", snippet: "애월 카페거리 → 한담해변 산책로 순서로 돌면 편하다는 내용", meta: "SAFARI · 3일 전" },
+      { hit: "제주도", rest: " 갈치조림 맛집 지도 링크", snippet: "지혜가 보낸 링크 · 동문시장 근처 3곳 표시됨", meta: "KAKAOTALK · 2주 전" },
+      { hit: "제주", rest: " 흑돼지 골목 웨이팅 팁", snippet: "6시 전에 가면 바로 앉을 수 있다고", meta: "INSTAGRAM · 1개월 전" },
+      { hit: "제주", rest: " 가면 꼭 사올 것", snippet: "한라봉 청, 오메기떡, 우도 땅콩 쿠키", meta: "MEMO · 2개월 전" }
+    ];
+    const total = this.props.totalSaved ?? 342;
+    return {
+      totalSaved: total,
+      nextCardNo: total + 1,
+      query: this.props.query ?? "제주도 맛집",
+      hitCount: results.length,
+      recent, results
+    };
+  }
+}
+</script>
+</body>
+</html>

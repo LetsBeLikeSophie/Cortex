@@ -40,8 +40,8 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
     }
-    const items = await listItems(DEV_USER_ID, parsed.data.limit);
-    return reply.send({ items });
+    const { items, total } = await listItems(DEV_USER_ID, parsed.data.limit);
+    return reply.send({ items, total });
   });
 
   // Search across title/snippet/raw text for the Search screen.

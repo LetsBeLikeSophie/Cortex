@@ -41,14 +41,24 @@ create table if not exists items (
 create index if not exists items_user_id_shared_at_idx on items (user_id, shared_at desc);
 create index if not exists items_category_idx on items (user_id, category);
 
+-- array_to_string/text[]::text are marked STABLE on this Postgres build
+-- (collation-aware output), which Postgres refuses inside an index
+-- expression. Our tags use the default deterministic collation, so this
+-- thin IMMUTABLE wrapper is safe.
+create or replace function immutable_tags_to_text(tags text[])
+returns text
+language sql
+immutable
+as $$ select array_to_string(tags, ' ') $$;
+
 -- Simple search over title/snippet/tags/raw_text for v1. Swap for a proper
 -- tsvector + GIN index once search quality/volume demands it.
 create index if not exists items_search_idx on items
   using gin (
     to_tsvector(
-      'simple',
+      'simple'::regconfig,
       coalesce(title, '') || ' ' || coalesce(snippet, '') || ' ' ||
-      coalesce(array_to_string(tags, ' '), '') || ' ' || coalesce(raw_text, '')
+      coalesce(immutable_tags_to_text(tags), '') || ' ' || coalesce(raw_text, '')
     )
   );
 

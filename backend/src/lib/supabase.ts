@@ -70,16 +70,16 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
   return data as ItemRecord;
 }
 
-export async function listItems(userId: string, limit = 30): Promise<ItemRecord[]> {
-  const { data, error } = await getClient()
+export async function listItems(userId: string, limit = 30): Promise<{ items: ItemRecord[]; total: number }> {
+  const { data, error, count } = await getClient()
     .from("items")
-    .select()
+    .select("*", { count: "exact" })
     .eq("user_id", userId)
     .order("shared_at", { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(`listItems failed: ${error.message}`);
-  return (data ?? []) as ItemRecord[];
+  return { items: (data ?? []) as ItemRecord[], total: count ?? 0 };
 }
 
 export async function searchItems(userId: string, query: string, limit = 30): Promise<ItemRecord[]> {

@@ -1,26 +1,61 @@
 import React, { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { copyFor, RECENT_ITEMS, HOME_TABS, DEFAULT_TOTAL_SAVED } from '../data/content';
+import { copyFor, HOME_TABS, RecentItem, RECENT_ITEMS, DEFAULT_TOTAL_SAVED } from '../data/content';
+import { fetchRecentItems, ApiItem } from '../api/client';
+import { toRecentItem } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { TabChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
 import type { RootStackParamList } from '../navigation/types';
 
+const TAB_CATEGORY: Record<string, string | null> = { 모두: null, 맛집: '맛집', 여행: '여행', 레시피: '레시피' };
+
 export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [activeTab, setActiveTab] = useState(0);
+  const [rawItems, setRawItems] = useState<ApiItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [offline, setOffline] = useState(false);
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
-  const total = DEFAULT_TOTAL_SAVED;
+
+  const load = React.useCallback(() => {
+    setLoading(true);
+    fetchRecentItems()
+      .then((res) => {
+        setRawItems(res.items);
+        setTotal(res.total);
+        setOffline(false);
+      })
+      // No backend reachable (e.g. this build is deployed standalone with no
+      // live API behind it) -- fall back to the design's demo data instead
+      // of an error/empty screen.
+      .catch(() => setOffline(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Refetch whenever Home regains focus (e.g. after saving a new item)
+  // rather than just once on mount, so a fresh save shows up immediately.
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const activeCategory = TAB_CATEGORY[HOME_TABS[activeTab]];
+  const filtered = activeCategory ? rawItems.filter((it) => it.category === activeCategory) : rawItems;
+  const items: RecentItem[] = offline ? RECENT_ITEMS : filtered.map(toRecentItem);
+  const displayTotal = offline ? DEFAULT_TOTAL_SAVED : total;
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -91,7 +126,7 @@ export default function HomeScreen() {
                 color: theme.ink,
               }}
             >
-              {total}
+              {displayTotal}
             </Text>
             <Text style={[styles.numSuffix, { color: theme.sub }]}>{txt.heroSuffix}</Text>
           </View>
@@ -130,13 +165,21 @@ export default function HomeScreen() {
         ))}
       </View>
 
-      <FlatList
-        data={RECENT_ITEMS}
-        keyExtractor={(item) => item.no}
-        renderItem={({ item }) => <RecentRow item={item} theme={theme} tech={tech} />}
-        contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
-        style={styles.list}
-      />
+      {loading && items.length === 0 ? (
+        <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
+      ) : items.length === 0 ? (
+        <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+          아직 저장된 기억이 없어요.
+        </Text>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item, i) => item.no + i}
+          renderItem={({ item }) => <RecentRow item={item} theme={theme} tech={tech} />}
+          contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
+          style={styles.list}
+        />
+      )}
     </SafeAreaView>
   );
 }

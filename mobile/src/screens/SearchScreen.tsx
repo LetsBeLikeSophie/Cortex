@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { copyFor, SEARCH_RESULTS, DEFAULT_QUERY } from '../data/content';
+import { copyFor, DEFAULT_QUERY, SearchResult, SEARCH_RESULTS } from '../data/content';
+import { searchItems as apiSearchItems } from '../api/client';
+import { toSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
 import { SearchIcon } from '../components/Icons';
 
@@ -15,6 +17,25 @@ export default function SearchScreen() {
   const mono = tech;
   const txt = copyFor(theme.copy);
   const [query, setQuery] = useState(DEFAULT_QUERY);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setResults([]);
+      return;
+    }
+    setLoading(true);
+    const timer = setTimeout(() => {
+      apiSearchItems(trimmed)
+        .then((res) => setResults(res.items.map((item) => toSearchResult(item, trimmed))))
+        // No backend reachable -- fall back to the design's demo results.
+        .catch(() => setResults(SEARCH_RESULTS))
+        .finally(() => setLoading(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -71,7 +92,7 @@ export default function SearchScreen() {
               color: theme.sub,
             }}
           >
-            {txt.hits(SEARCH_RESULTS.length)}
+            {loading ? '검색 중...' : txt.hits(results.length)}
           </Text>
           <Text
             style={{
@@ -86,13 +107,17 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      <FlatList
-        data={SEARCH_RESULTS}
-        keyExtractor={(item, i) => item.hit + i}
-        renderItem={({ item }) => <ResultRow item={item} theme={theme} tech={tech} />}
-        contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
-        style={styles.list}
-      />
+      {loading && results.length === 0 ? (
+        <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(item, i) => item.hit + item.rest + i}
+          renderItem={({ item }) => <ResultRow item={item} theme={theme} tech={tech} />}
+          contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
+          style={styles.list}
+        />
+      )}
     </SafeAreaView>
   );
 }

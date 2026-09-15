@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
-import { listItems, searchItems } from "../lib/supabase.js";
+import { countItemsSince, listItems, searchItems } from "../lib/supabase.js";
 import { DEV_USER_ID } from "../lib/devUser.js";
 
 const ListQuerySchema = z.object({
@@ -28,6 +28,29 @@ export async function itemsRoutes(app: FastifyInstance) {
     const parsed = IncomingItemSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
+    }
+
+    // Every branch ends up calling Claude (text classification or, for
+    // screenshots, the pricier vision call), so this is the one place that
+    // caps real per-request cost. Rolling 24h rather than calendar-day to
+    // dodge timezone-boundary edge cases.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const usedToday = await countItemsSince(DEV_USER_ID, since);
+    if (usedToday >= config.dailyItemLimit) {
+      return reply.code(429).send({
+        error: "daily item limit reached",
+        limit: config.dailyItemLimit,
+      });
+    }
+
+    if (parsed.data.captureType === "screenshot") {
+      const approxBytes = Math.floor((parsed.data.imageBase64.length * 3) / 4);
+      if (approxBytes > config.maxImageBytes) {
+        return reply.code(413).send({
+          error: "image too large",
+          maxBytes: config.maxImageBytes,
+        });
+      }
     }
 
     const item = await processIncomingItem(parsed.data);

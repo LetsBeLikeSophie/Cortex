@@ -113,6 +113,17 @@ export async function uploadScreenshot(userId: string, bytes: Buffer, contentTyp
   return path;
 }
 
+export async function countItemsSince(userId: string, sinceIso: string): Promise<number> {
+  const { count, error } = await getClient()
+    .from("items")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", sinceIso);
+
+  if (error) throw new Error(`countItemsSince failed: ${error.message}`);
+  return count ?? 0;
+}
+
 export function isSupabaseConfigured(): boolean {
   return config.hasSupabase;
 }

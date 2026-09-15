@@ -34,16 +34,28 @@ function resolveBaseUrl(): string {
 
 export const API_BASE_URL = resolveBaseUrl();
 
+// A frontend-only deploy (no backend behind it) would otherwise hang on the
+// browser's default connect timeout -- often 60s+ -- before the read/search
+// screens fall back to demo data. Fail fast instead.
+const REQUEST_TIMEOUT_MS = 8000;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`${init?.method ?? 'GET'} ${path} failed (${res.status}): ${body}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      ...init,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`${init?.method ?? 'GET'} ${path} failed (${res.status}): ${body}`);
+    }
+    return (await res.json()) as T;
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json() as Promise<T>;
 }
 
 export function fetchRecentItems(limit = 50) {

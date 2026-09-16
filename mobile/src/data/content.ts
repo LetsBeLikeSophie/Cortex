@@ -8,8 +8,9 @@ export interface RecentItem {
 }
 
 export interface SearchResult {
+  before: string;
   hit: string;
-  rest: string;
+  after: string;
   snippet: string;
   metaPlain: string;
   metaTech: string;
@@ -26,22 +27,22 @@ export const HOME_TABS = ['모두', '맛집', '여행', '레시피'] as const;
 
 export const SEARCH_RESULTS: SearchResult[] = [
   {
-    hit: '제주', rest: ' 2박3일 뚜벅이 코스 후기',
+    before: '', hit: '제주', after: ' 2박3일 뚜벅이 코스 후기',
     snippet: '애월 카페거리 → 한담해변 산책로 순서로 돌면 편하다는 내용',
     metaPlain: '사파리 · 3일 전', metaTech: 'SAFARI · 3일 전',
   },
   {
-    hit: '제주도', rest: ' 갈치조림 맛집 지도 링크',
+    before: '', hit: '제주도', after: ' 갈치조림 맛집 지도 링크',
     snippet: '지혜가 보낸 링크 · 동문시장 근처 3곳 표시됨',
     metaPlain: '카카오톡 · 2주 전', metaTech: 'KAKAOTALK · 2주 전',
   },
   {
-    hit: '제주', rest: ' 흑돼지 골목 웨이팅 팁',
+    before: '', hit: '제주', after: ' 흑돼지 골목 웨이팅 팁',
     snippet: '6시 전에 가면 바로 앉을 수 있다고',
     metaPlain: '인스타그램 · 1개월 전', metaTech: 'INSTAGRAM · 1개월 전',
   },
   {
-    hit: '제주', rest: ' 가면 꼭 사올 것',
+    before: '', hit: '제주', after: ' 가면 꼭 사올 것',
     snippet: '한라봉 청, 오메기떡, 우도 땅콩 쿠키',
     metaPlain: '메모 · 2개월 전', metaTech: 'MEMO · 2개월 전',
   },

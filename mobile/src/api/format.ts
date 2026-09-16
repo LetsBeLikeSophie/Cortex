@@ -46,16 +46,17 @@ export function toRecentItem(item: ApiItem, index: number): RecentItem {
   };
 }
 
-// HighlightText only ever renders `hit` immediately followed by `rest` (see
-// components/HighlightText.tsx), so we can only highlight a match that sits
-// at the very start of the title -- anything else just renders unhighlighted.
+// Highlights the query wherever it appears in the title (case-insensitive).
+// If the title itself doesn't contain it -- the match came from the
+// snippet/tags instead -- the whole title renders unhighlighted.
 export function toSearchResult(item: ApiItem, query: string): SearchResult {
   const title = item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)';
-  const startsWithQuery = query.length > 0 && title.toLowerCase().startsWith(query.toLowerCase());
+  const idx = query ? title.toLowerCase().indexOf(query.toLowerCase()) : -1;
 
   return {
-    hit: startsWithQuery ? title.slice(0, query.length) : '',
-    rest: startsWithQuery ? title.slice(query.length) : title,
+    before: idx >= 0 ? title.slice(0, idx) : title,
+    hit: idx >= 0 ? title.slice(idx, idx + query.length) : '',
+    after: idx >= 0 ? title.slice(idx + query.length) : '',
     snippet: item.snippet ?? item.raw_text ?? '',
     ...metaFor(item),
   };

@@ -82,20 +82,32 @@ export async function listItems(userId: string, limit = 30): Promise<{ items: It
   return { items: (data ?? []) as ItemRecord[], total: count ?? 0 };
 }
 
+// PostgREST's `or=()` logic-tree parser doesn't accept a `column::cast`
+// inside a grouped filter, so `tags::text.ilike...` can't sit alongside the
+// other ilike clauses there (see db/schema.sql's tsvector index --
+// `.textSearch` against that is the real fix once search quality/volume
+// demands it). For v1, filter tags in JS instead: fetch a generous window
+// for this user and match title/snippet/raw_text/tags here.
 export async function searchItems(userId: string, query: string, limit = 30): Promise<ItemRecord[]> {
-  // Simple ILIKE search across the enriched fields for v1 -- matches the
-  // GIN/tsvector index in db/schema.sql if you switch to `.textSearch`
-  // once search quality/volume demands it.
   const { data, error } = await getClient()
     .from("items")
     .select()
     .eq("user_id", userId)
-    .or(`title.ilike.%${query}%,snippet.ilike.%${query}%,raw_text.ilike.%${query}%`)
     .order("shared_at", { ascending: false })
-    .limit(limit);
+    .limit(500);
 
   if (error) throw new Error(`searchItems failed: ${error.message}`);
-  return (data ?? []) as ItemRecord[];
+
+  const needle = query.toLowerCase();
+  const matches = (data ?? []).filter((item: ItemRecord) => {
+    if (item.title?.toLowerCase().includes(needle)) return true;
+    if (item.snippet?.toLowerCase().includes(needle)) return true;
+    if (item.raw_text?.toLowerCase().includes(needle)) return true;
+    if (item.tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
+    return false;
+  });
+
+  return matches.slice(0, limit) as ItemRecord[];
 }
 
 // Uploads a screenshot capture to Supabase Storage and returns its storage

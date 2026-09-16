@@ -3,8 +3,9 @@ import { StyleSheet, Text, TextStyle, StyleProp } from 'react-native';
 import { HitStyle } from '../theme/themes';
 
 interface Props {
+  before: string;
   hit: string;
-  rest: string;
+  after: string;
   accent: string;
   hitStyle: HitStyle;
   baseStyle: StyleProp<TextStyle>;
@@ -12,7 +13,7 @@ interface Props {
 
 // Three ways a search match can be called out, one per theme family:
 // a highlighter-marker wash, an underline, or a small pill chip.
-export function HighlightText({ hit, rest, accent, hitStyle, baseStyle }: Props) {
+export function HighlightText({ before, hit, after, accent, hitStyle, baseStyle }: Props) {
   const baseColor = (StyleSheet.flatten(baseStyle) as TextStyle | undefined)?.color;
   const hitTextStyle: TextStyle =
     hitStyle === 'underline'
@@ -23,8 +24,9 @@ export function HighlightText({ hit, rest, accent, hitStyle, baseStyle }: Props)
 
   return (
     <Text style={baseStyle}>
+      {before}
       <Text style={hitTextStyle}>{hit}</Text>
-      {rest}
+      {after}
     </Text>
   );
 }

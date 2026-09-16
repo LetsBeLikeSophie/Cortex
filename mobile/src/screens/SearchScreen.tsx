@@ -16,7 +16,7 @@ export default function SearchScreen() {
   const tech = theme.copy === 'tech';
   const mono = tech;
   const txt = copyFor(theme.copy);
-  const [query, setQuery] = useState(DEFAULT_QUERY);
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -78,41 +78,43 @@ export default function SearchScreen() {
             onChangeText={setQuery}
             style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }]}
             selectionColor={theme.accent}
-            placeholder={txt.searchTitle}
+            placeholder={DEFAULT_QUERY}
             placeholderTextColor={theme.sub}
           />
         </View>
 
-        <View style={[styles.metaRow, { paddingBottom: card ? 4 : 0 }]}>
-          <Text
-            style={{
-              fontFamily: mono ? MONO : 'IBMPlexSansKR_400Regular',
-              fontSize: mono ? 10.5 : 12.5,
-              letterSpacing: mono ? emToTracking(0.12, 10.5) : emToTracking(0.01, 12.5),
-              color: theme.sub,
-            }}
-          >
-            {loading ? '검색 중...' : txt.hits(results.length)}
-          </Text>
-          <Text
-            style={{
-              fontFamily: mono ? MONO : 'IBMPlexSansKR_400Regular',
-              fontSize: mono ? 10.5 : 12.5,
-              letterSpacing: mono ? emToTracking(0.12, 10.5) : emToTracking(0.01, 12.5),
-              color: theme.sub,
-            }}
-          >
-            최신순
-          </Text>
-        </View>
+        {query.trim().length > 0 && (
+          <View style={[styles.metaRow, { paddingBottom: card ? 4 : 0 }]}>
+            <Text
+              style={{
+                fontFamily: mono ? MONO : 'IBMPlexSansKR_400Regular',
+                fontSize: mono ? 10.5 : 12.5,
+                letterSpacing: mono ? emToTracking(0.12, 10.5) : emToTracking(0.01, 12.5),
+                color: theme.sub,
+              }}
+            >
+              {loading ? '검색 중...' : txt.hits(results.length)}
+            </Text>
+            <Text
+              style={{
+                fontFamily: mono ? MONO : 'IBMPlexSansKR_400Regular',
+                fontSize: mono ? 10.5 : 12.5,
+                letterSpacing: mono ? emToTracking(0.12, 10.5) : emToTracking(0.01, 12.5),
+                color: theme.sub,
+              }}
+            >
+              최신순
+            </Text>
+          </View>
+        )}
       </View>
 
-      {loading && results.length === 0 ? (
+      {query.trim().length === 0 ? null : loading && results.length === 0 ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={results}
-          keyExtractor={(item, i) => item.hit + item.rest + i}
+          keyExtractor={(item, i) => item.hit + item.after + i}
           renderItem={({ item }) => <ResultRow item={item} theme={theme} tech={tech} />}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
           style={styles.list}

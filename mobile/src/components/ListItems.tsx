@@ -63,8 +63,9 @@ export function ResultRow({ item, theme, tech }: { item: SearchResult; theme: Th
   return (
     <View style={cardShellStyle(theme)}>
       <HighlightText
+        before={item.before}
         hit={item.hit}
-        rest={item.rest}
+        after={item.after}
         accent={theme.accent}
         hitStyle={theme.hitStyle}
         baseStyle={[styles.title, { color: theme.ink }]}

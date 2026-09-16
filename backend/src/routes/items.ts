@@ -3,7 +3,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
 import { countItemsSince, getStats, listItems, searchItems } from "../lib/supabase.js";
-import { DEV_USER_ID } from "../lib/devUser.js";
+import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -23,19 +23,27 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
   });
 
+  app.setErrorHandler((err, _req, reply) => {
+    if (err instanceof UnauthorizedError) {
+      return reply.code(401).send({ error: err.message });
+    }
+    reply.send(err);
+  });
+
   // Ingest a shared item from the mobile app's share extension.
   app.post("/items", async (req, reply) => {
     const parsed = IncomingItemSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
     }
+    const userId = await resolveUserId(req);
 
     // Every branch ends up calling Claude (text classification or, for
     // screenshots, the pricier vision call), so this is the one place that
     // caps real per-request cost. Rolling 24h rather than calendar-day to
     // dodge timezone-boundary edge cases.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const usedToday = await countItemsSince(DEV_USER_ID, since);
+    const usedToday = await countItemsSince(userId, since);
     if (usedToday >= config.dailyItemLimit) {
       return reply.code(429).send({
         error: "daily item limit reached",
@@ -53,7 +61,7 @@ export async function itemsRoutes(app: FastifyInstance) {
       }
     }
 
-    const item = await processIncomingItem(parsed.data);
+    const item = await processIncomingItem(parsed.data, userId);
     return reply.code(201).send(item);
   });
 
@@ -63,7 +71,8 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
     }
-    const { items, total } = await listItems(DEV_USER_ID, parsed.data.limit);
+    const userId = await resolveUserId(req);
+    const { items, total } = await listItems(userId, parsed.data.limit);
     return reply.send({ items, total });
   });
 
@@ -73,13 +82,15 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
     }
-    const items = await searchItems(DEV_USER_ID, parsed.data.q, parsed.data.limit);
+    const userId = await resolveUserId(req);
+    const items = await searchItems(userId, parsed.data.q, parsed.data.limit);
     return reply.send({ items });
   });
 
   // Aggregate counts for the Stats screen (category/source/month/heatmap).
-  app.get("/items/stats", async (_req, reply) => {
-    const stats = await getStats(DEV_USER_ID);
+  app.get("/items/stats", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const stats = await getStats(userId);
     return reply.send(stats);
   });
 }

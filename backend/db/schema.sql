@@ -64,6 +64,16 @@ create index if not exists items_search_idx on items
 
 alter table items enable row level security;
 
--- Placeholder policy for single-user/dev use. Replace with a real
--- auth.uid() = user_id check once user auth is wired up.
-create policy "dev: allow all" on items for all using (true) with check (true);
+-- Real per-user policy now that the backend resolves auth.uid() from the
+-- Supabase access token (see src/lib/auth.ts) instead of always using
+-- DEV_USER_ID. Note this is defense-in-depth, not the primary guard: the
+-- backend talks to Supabase with the service-role key, which bypasses RLS
+-- entirely, so the actual access check happens in resolveUserId() before a
+-- query is ever made. This matters if anything other than the backend
+-- (e.g. the mobile app talking to Supabase directly) ever gets DB access.
+--
+-- If you're re-running this against a database that still has the old
+-- "dev: allow all" policy, drop it first:
+--   drop policy if exists "dev: allow all" on items;
+create policy "users manage their own items" on items
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -76,7 +76,7 @@ export default function SearchScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }]}
+            style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
             selectionColor={theme.accent}
             placeholder={DEFAULT_QUERY}
             placeholderTextColor={theme.sub}

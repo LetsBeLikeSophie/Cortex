@@ -134,6 +134,7 @@ export default function SaveSheetScreen() {
                   borderColor: theme.line,
                   backgroundColor: card ? theme.surface : 'transparent',
                   fontFamily: 'IBMPlexSansKR_400Regular',
+                  outlineWidth: 0,
                 },
               ]}
             />

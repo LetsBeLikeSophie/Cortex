@@ -23,8 +23,6 @@ export const RECENT_ITEMS: RecentItem[] = [
   { no: '04', title: '작은 방 정리 수납 아이디어 12가지', metaPlain: '유튜브 · 지난주', metaTech: 'YOUTUBE · 지난주' },
 ];
 
-export const HOME_TABS = ['모두', '맛집', '여행', '레시피'] as const;
-
 export const SEARCH_RESULTS: SearchResult[] = [
   {
     before: '', hit: '제주', after: ' 2박3일 뚜벅이 코스 후기',

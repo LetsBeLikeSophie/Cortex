@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../theme/themes';
+import { PlusIcon } from './Icons';
 
 // Home category tabs: an underline-tab strip in the "line" list themes,
 // a pill-tab strip in the "card" list themes.
@@ -17,6 +18,17 @@ export function TabChip({ label, active, theme, onPress }: { label: string; acti
       >
         {label}
       </Text>
+    </Pressable>
+  );
+}
+
+// Sits at the end of the home-screen tab strip -- tapping it opens the tab
+// picker so custom category tabs can be added/removed, regardless of
+// whether the strip currently renders as underline tabs or pill tabs.
+export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.tabAdd, { borderColor: theme.sub }]}>
+      <PlusIcon size={13} color={theme.sub} strokeWidth={1.4} />
     </Pressable>
   );
 }
@@ -54,4 +66,13 @@ const styles = StyleSheet.create({
   pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   underlineTab: { paddingBottom: 10, borderBottomWidth: 2 },
   tag: { borderRadius: 999, paddingHorizontal: 14 },
+  tabAdd: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

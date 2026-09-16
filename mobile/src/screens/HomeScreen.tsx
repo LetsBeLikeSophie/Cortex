@@ -7,20 +7,20 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { copyFor, HOME_TABS, RecentItem, RECENT_ITEMS, DEFAULT_TOTAL_SAVED } from '../data/content';
+import { copyFor, RecentItem, RECENT_ITEMS, DEFAULT_TOTAL_SAVED } from '../data/content';
+import { CategoryTab, loadHomeTabs } from '../data/tabs';
 import { fetchRecentItems, ApiItem } from '../api/client';
 import { toRecentItem } from '../api/format';
 import { RecentRow } from '../components/ListItems';
-import { TabChip } from '../components/Chips';
+import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
 import type { RootStackParamList } from '../navigation/types';
-
-const TAB_CATEGORY: Record<string, string | null> = { 모두: null, 맛집: '맛집', 여행: '여행', 레시피: '레시피' };
 
 export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [activeTab, setActiveTab] = useState(0);
+  const [customTabs, setCustomTabs] = useState<CategoryTab[]>([]);
+  const [activeCategory, setActiveCategory] = useState<CategoryTab | null>(null);
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -44,15 +44,19 @@ export default function HomeScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Refetch whenever Home regains focus (e.g. after saving a new item)
-  // rather than just once on mount, so a fresh save shows up immediately.
+  // Refetch whenever Home regains focus (e.g. after saving a new item, or
+  // coming back from the tab picker) rather than just once on mount.
   useFocusEffect(
     React.useCallback(() => {
       load();
+      loadHomeTabs().then((tabs) => {
+        setCustomTabs(tabs);
+        // A tab the user just removed in the picker can't stay selected.
+        setActiveCategory((current) => (current && !tabs.includes(current) ? null : current));
+      });
     }, [load])
   );
 
-  const activeCategory = TAB_CATEGORY[HOME_TABS[activeTab]];
   const filtered = activeCategory ? rawItems.filter((it) => it.category === activeCategory) : rawItems;
   const items: RecentItem[] = offline ? RECENT_ITEMS : filtered.map(toRecentItem);
   const displayTotal = offline ? DEFAULT_TOTAL_SAVED : total;
@@ -160,9 +164,11 @@ export default function HomeScreen() {
           },
         ]}
       >
-        {HOME_TABS.map((label, i) => (
-          <TabChip key={label} label={label} active={i === activeTab} theme={theme} onPress={() => setActiveTab(i)} />
+        <TabChip label="모두" active={activeCategory === null} theme={theme} onPress={() => setActiveCategory(null)} />
+        {customTabs.map((cat) => (
+          <TabChip key={cat} label={cat} active={activeCategory === cat} theme={theme} onPress={() => setActiveCategory(cat)} />
         ))}
+        <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </View>
 
       {loading && items.length === 0 ? (
@@ -204,6 +210,6 @@ const styles = StyleSheet.create({
   numRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 },
   numSuffix: { fontSize: 14, lineHeight: 21, paddingBottom: 9, fontFamily: 'IBMPlexSansKR_400Regular' },
   heroFoot: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 },
-  tabs: { flexDirection: 'row' },
+  tabs: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', rowGap: 10 },
   list: { flex: 1 },
 });

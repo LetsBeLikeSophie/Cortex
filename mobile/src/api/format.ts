@@ -10,6 +10,10 @@ const SOURCE_LABEL: Record<ItemSource, string> = {
   other: '기타',
 };
 
+// Fixed display order for anything that lists all sources (e.g. the stats
+// screen), so a chart's legend/bars don't reshuffle between renders.
+export const SOURCE_ORDER = Object.keys(SOURCE_LABEL) as ItemSource[];
+
 export function sourceLabel(source: ItemSource, tech: boolean): string {
   return tech ? source.toUpperCase() : SOURCE_LABEL[source];
 }

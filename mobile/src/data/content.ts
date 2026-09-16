@@ -57,6 +57,46 @@ export const SAVED_ITEM = {
 export const DEFAULT_QUERY = '제주도 맛집';
 export const DEFAULT_TOTAL_SAVED = 342;
 
+// Offline fallback for the stats screen (frontend-only deploy, no backend
+// reachable) -- shaped like a real ItemStats response, numbers loosely
+// summing to DEFAULT_TOTAL_SAVED so the demo reads as one consistent archive.
+export const MOCK_STATS = {
+  total: DEFAULT_TOTAL_SAVED,
+  byCategory: [
+    { category: '맛집', count: 120 },
+    { category: '여행', count: 80 },
+    { category: '레시피', count: 60 },
+    { category: '쇼핑', count: 40 },
+    { category: '읽을거리', count: 30 },
+    { category: '기타', count: 12 },
+  ],
+  bySource: [
+    { source: 'instagram', count: 150 },
+    { source: 'kakaotalk', count: 90 },
+    { source: 'safari', count: 50 },
+    { source: 'youtube', count: 40 },
+    { source: 'memo', count: 10 },
+    { source: 'other', count: 2 },
+  ],
+  byMonth: [
+    { month: '4월', count: 30 },
+    { month: '5월', count: 45 },
+    { month: '6월', count: 52 },
+    { month: '7월', count: 68 },
+    { month: '8월', count: 75 },
+    { month: '9월', count: 72 },
+  ],
+  heatmap: [
+    { weekday: 0, band: 0, count: 1 }, { weekday: 0, band: 1, count: 2 }, { weekday: 0, band: 2, count: 6 }, { weekday: 0, band: 3, count: 9 },
+    { weekday: 1, band: 0, count: 0 }, { weekday: 1, band: 1, count: 3 }, { weekday: 1, band: 2, count: 5 }, { weekday: 1, band: 3, count: 12 },
+    { weekday: 2, band: 0, count: 0 }, { weekday: 2, band: 1, count: 2 }, { weekday: 2, band: 2, count: 4 }, { weekday: 2, band: 3, count: 14 },
+    { weekday: 3, band: 0, count: 1 }, { weekday: 3, band: 1, count: 3 }, { weekday: 3, band: 2, count: 6 }, { weekday: 3, band: 3, count: 15 },
+    { weekday: 4, band: 0, count: 1 }, { weekday: 4, band: 1, count: 4 }, { weekday: 4, band: 2, count: 7 }, { weekday: 4, band: 3, count: 18 },
+    { weekday: 5, band: 0, count: 2 }, { weekday: 5, band: 1, count: 5 }, { weekday: 5, band: 2, count: 10 }, { weekday: 5, band: 3, count: 20 },
+    { weekday: 6, band: 0, count: 2 }, { weekday: 6, band: 1, count: 6 }, { weekday: 6, band: 2, count: 11 }, { weekday: 6, band: 3, count: 16 },
+  ],
+};
+
 // Copy tone: `tech` (Neural) leans on English/instrument-panel phrasing,
 // `plain` (everyone else) reads as plain, low-barrier Korean.
 export function copyFor(tone: CopyTone) {

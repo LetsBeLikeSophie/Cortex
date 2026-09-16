@@ -72,3 +72,15 @@ export function saveTextItem(source: ItemSource, text: string) {
     body: JSON.stringify({ captureType: 'text', source, text }),
   });
 }
+
+export interface ItemStats {
+  total: number;
+  byCategory: { category: ItemCategory; count: number }[];
+  bySource: { source: ItemSource; count: number }[];
+  byMonth: { month: string; count: number }[];
+  heatmap: { weekday: number; band: number; count: number }[];
+}
+
+export function fetchStats() {
+  return request<ItemStats>('/items/stats');
+}

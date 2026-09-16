@@ -136,6 +136,87 @@ export async function countItemsSince(userId: string, sinceIso: string): Promise
   return count ?? 0;
 }
 
+export interface ItemStats {
+  total: number;
+  byCategory: { category: string; count: number }[];
+  bySource: { source: string; count: number }[];
+  // month as "YYYY-MM", oldest first, zero-filled for the last 6 months
+  // (including ones with no saves) so a trend chart has a continuous axis.
+  byMonth: { month: string; count: number }[];
+  // weekday 0 (일) - 6 (토) x band 0-3 (each a 6h window: 00-05/06-11/12-17/18-23).
+  // A grid this coarse reads as a real heatmap on a phone; 7x24 wouldn't.
+  heatmap: { weekday: number; band: number; count: number }[];
+}
+
+// The server runs in UTC, but every real user of this app is in Korea --
+// grouping by the server's local getDay()/getHours() would shift (and for
+// weekday, sometimes flip to the wrong day entirely) saves made late at
+// night KST. Shift into KST first and read the fields back with the UTC
+// getters so the result doesn't depend on the server's own TZ setting.
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+function toKST(iso: string): Date {
+  return new Date(new Date(iso).getTime() + KST_OFFSET_MS);
+}
+
+// REST/PostgREST has no GROUP BY, and at personal-archive volume fetching
+// everything and aggregating here is simpler than standing up an RPC for it
+// (same tradeoff as searchItems above).
+export async function getStats(userId: string): Promise<ItemStats> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select("category, source, shared_at")
+    .eq("user_id", userId)
+    .limit(5000);
+
+  if (error) throw new Error(`getStats failed: ${error.message}`);
+  const rows = (data ?? []) as Pick<ItemRecord, "category" | "source" | "shared_at">[];
+
+  const categoryCounts = new Map<string, number>();
+  const sourceCounts = new Map<string, number>();
+  const heatmapCounts = new Map<string, number>();
+
+  for (const row of rows) {
+    categoryCounts.set(row.category, (categoryCounts.get(row.category) ?? 0) + 1);
+    sourceCounts.set(row.source, (sourceCounts.get(row.source) ?? 0) + 1);
+
+    const d = toKST(row.shared_at);
+    const weekday = d.getUTCDay();
+    const band = Math.floor(d.getUTCHours() / 6);
+    const key = `${weekday}-${band}`;
+    heatmapCounts.set(key, (heatmapCounts.get(key) ?? 0) + 1);
+  }
+
+  const now = toKST(new Date().toISOString());
+  const monthCounts = new Map<string, number>();
+  const monthKeys: string[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    monthKeys.push(key);
+    monthCounts.set(key, 0);
+  }
+  for (const row of rows) {
+    const d = toKST(row.shared_at);
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    if (monthCounts.has(key)) monthCounts.set(key, (monthCounts.get(key) ?? 0) + 1);
+  }
+
+  const heatmap: ItemStats["heatmap"] = [];
+  for (let weekday = 0; weekday < 7; weekday++) {
+    for (let band = 0; band < 4; band++) {
+      heatmap.push({ weekday, band, count: heatmapCounts.get(`${weekday}-${band}`) ?? 0 });
+    }
+  }
+
+  return {
+    total: rows.length,
+    byCategory: [...categoryCounts.entries()].map(([category, count]) => ({ category, count })),
+    bySource: [...sourceCounts.entries()].map(([source, count]) => ({ source, count })),
+    byMonth: monthKeys.map((month) => ({ month, count: monthCounts.get(month) ?? 0 })),
+    heatmap,
+  };
+}
+
 export function isSupabaseConfigured(): boolean {
   return config.hasSupabase;
 }

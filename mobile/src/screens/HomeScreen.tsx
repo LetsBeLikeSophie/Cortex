@@ -14,6 +14,7 @@ import { toRecentItem } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
+import { StatsIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
 export default function HomeScreen() {
@@ -68,15 +69,24 @@ export default function HomeScreen() {
           <Text style={{ fontFamily: MONO, fontSize: 11, letterSpacing: emToTracking(0.26, 11), color: theme.accent }}>
             CORTEX
           </Text>
-          <Pressable
-            onPress={() => navigation.navigate('ThemePicker')}
-            style={[styles.themeButton, { borderColor: theme.line }]}
-          >
-            <View style={[styles.themeDot, { backgroundColor: theme.accent }]} />
-            <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-              {theme.label}
-            </Text>
-          </Pressable>
+          <View style={styles.brandRowActions}>
+            <Pressable
+              onPress={() => navigation.navigate('Stats')}
+              style={[styles.iconButton, { borderColor: theme.line }]}
+              hitSlop={6}
+            >
+              <StatsIcon size={15} color={theme.ink} strokeWidth={1.4} />
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('ThemePicker')}
+              style={[styles.themeButton, { borderColor: theme.line }]}
+            >
+              <View style={[styles.themeDot, { backgroundColor: theme.accent }]} />
+              <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                {theme.label}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <View
@@ -194,6 +204,15 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   headPad: {},
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   themeButton: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -8,4 +8,5 @@ export type RootStackParamList = {
   SaveSheet: undefined;
   ThemePicker: undefined;
   TabPicker: undefined;
+  Stats: undefined;
 };

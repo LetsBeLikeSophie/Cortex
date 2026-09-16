@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
-import { countItemsSince, listItems, searchItems } from "../lib/supabase.js";
+import { countItemsSince, getStats, listItems, searchItems } from "../lib/supabase.js";
 import { DEV_USER_ID } from "../lib/devUser.js";
 
 const ListQuerySchema = z.object({
@@ -75,5 +75,11 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
     const items = await searchItems(DEV_USER_ID, parsed.data.q, parsed.data.limit);
     return reply.send({ items });
+  });
+
+  // Aggregate counts for the Stats screen (category/source/month/heatmap).
+  app.get("/items/stats", async (_req, reply) => {
+    const stats = await getStats(DEV_USER_ID);
+    return reply.send(stats);
   });
 }

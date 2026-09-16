@@ -13,6 +13,7 @@ import SearchScreen from '../screens/SearchScreen';
 import SaveSheetScreen from '../screens/SaveSheetScreen';
 import ThemePickerScreen from '../screens/ThemePickerScreen';
 import TabPickerScreen from '../screens/TabPickerScreen';
+import StatsScreen from '../screens/StatsScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -97,6 +98,7 @@ export default function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
+        <Stack.Screen name="Stats" component={StatsScreen} />
         <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'fade', animationDuration: 180 }}>
           <Stack.Screen name="SaveSheet" component={SaveSheetScreen} />
           <Stack.Screen name="ThemePicker" component={ThemePickerScreen} />

@@ -165,6 +165,12 @@ export default function HomeScreen() {
         style={[
           styles.tabs,
           {
+            // Underline tabs top-align their label (padding only sits below
+            // it, for the active-state border); centering the add chip's
+            // fixed height against that box would land it a few px below
+            // the label. Pill tabs are symmetric top/bottom, so centering
+            // there is correct as-is.
+            alignItems: card ? 'center' : 'flex-start',
             gap: card ? 8 : 18,
             paddingHorizontal: card ? 24 : 26,
             paddingTop: card ? 20 : 28,
@@ -229,6 +235,6 @@ const styles = StyleSheet.create({
   numRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 },
   numSuffix: { fontSize: 14, lineHeight: 21, paddingBottom: 9, fontFamily: 'IBMPlexSansKR_400Regular' },
   heroFoot: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 },
-  tabs: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', rowGap: 10 },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10 },
   list: { flex: 1 },
 });

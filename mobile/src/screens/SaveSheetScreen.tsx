@@ -96,10 +96,11 @@ export default function SaveSheetScreen() {
             borderTopRightRadius: card ? 30 : 26,
             paddingBottom: 32 + insets.bottom,
             transform: [{ translateY }],
+            shadowOpacity: theme.dark ? 0.45 : 0.14,
           },
         ]}
       >
-        <View style={[styles.grabber, { backgroundColor: theme.line }]} />
+        <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
 
         {status === 'input' || status === 'saving' || status === 'error' ? (
           <>
@@ -257,7 +258,18 @@ export default function SaveSheetScreen() {
 }
 
 const styles = StyleSheet.create({
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 24, paddingTop: 20 },
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowRadius: 24,
+    elevation: 16,
+  },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 24 },
   savedHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   savedMark: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },

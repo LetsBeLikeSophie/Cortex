@@ -48,10 +48,11 @@ export default function TabPickerScreen() {
             borderTopLeftRadius: card ? 30 : 26,
             borderTopRightRadius: card ? 30 : 26,
             paddingBottom: 24 + insets.bottom,
+            shadowOpacity: theme.dark ? 0.45 : 0.14,
           },
         ]}
       >
-        <View style={[styles.grabber, { backgroundColor: theme.line }]} />
+        <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
         <Text style={[styles.heading, { color: theme.ink, fontFamily: theme.headFamily, fontWeight: theme.headWeight }]}>
           홈 화면 탭
         </Text>
@@ -76,7 +77,18 @@ export default function TabPickerScreen() {
 }
 
 const styles = StyleSheet.create({
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 20 },
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowRadius: 24,
+    elevation: 16,
+  },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 18 },
   heading: { fontSize: 20, marginBottom: 6, paddingHorizontal: 4 },
   sub: { fontSize: 13, marginBottom: 16, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular', lineHeight: 19 },

@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import { config } from "./config.js";
 import { itemsRoutes } from "./routes/items.js";
+import { authRoutes } from "./routes/auth.js";
 
 // Base64 inflates bytes by ~33%, so give Fastify's own body-size cap enough
 // headroom above maxImageBytes that our friendlier "image too large" check
@@ -27,6 +28,7 @@ app.get("/health", async () => ({
 }));
 
 await app.register(itemsRoutes);
+await app.register(authRoutes);
 
 app.listen({ port: config.port, host: "0.0.0.0" }).catch((err) => {
   app.log.error(err);

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { completePendingWebLogin } from './kakaoLogin';
 
 interface AuthState {
   session: Session | null;
@@ -14,10 +15,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    completePendingWebLogin()
+      .catch((err) => console.warn('kakao login completion failed', err))
+      .then(() => supabase.auth.getSession())
+      .then(({ data }) => {
+        setSession(data.session);
+        setLoading(false);
+      });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);

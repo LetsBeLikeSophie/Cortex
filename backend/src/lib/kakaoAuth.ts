@@ -94,9 +94,12 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
   const hashedToken = linkData?.properties?.hashed_token;
   if (linkError || !hashedToken) throw new Error(`failed to generate session link: ${linkError?.message}`);
 
+  // generateLink's hashed_token is verified via the `token_hash` field, not
+  // `token` -- `token` is for the separate numeric-OTP flow (email/sms
+  // codes). Passing it as `token` silently fails auth ("Token has expired
+  // or is invalid") regardless of how fresh it actually is.
   const { data: verified, error: verifyError } = await admin.auth.verifyOtp({
-    email: syntheticEmail,
-    token: hashedToken,
+    token_hash: hashedToken,
     type: "magiclink",
   });
   if (verifyError || !verified.session) throw new Error(`failed to verify session: ${verifyError?.message}`);

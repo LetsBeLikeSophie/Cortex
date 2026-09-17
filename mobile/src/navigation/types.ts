@@ -9,4 +9,5 @@ export type RootStackParamList = {
   ThemePicker: undefined;
   TabPicker: undefined;
   Stats: undefined;
+  Profile: undefined;
 };

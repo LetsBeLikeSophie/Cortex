@@ -51,6 +51,15 @@ export function BackIcon({ size = 18, color, strokeWidth = 1.4 }: IconProps) {
   );
 }
 
+export function ProfileIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Circle cx={9} cy={6.2} r={3.2} stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M2.8 15.5c0-3.2 2.8-5.3 6.2-5.3s6.2 2.1 6.2 5.3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 24, color, strokeWidth = 1.7 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

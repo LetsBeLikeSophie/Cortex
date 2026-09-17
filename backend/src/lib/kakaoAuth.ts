@@ -75,16 +75,26 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
   const syntheticEmail = `kakao-${kakaoUser.id}@users.cortex.app`;
 
   const admin = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
+  const metadata = { provider: "kakao", kakao_id: kakaoUser.id, nickname, avatar_url: avatarUrl };
 
   const { error: createError } = await admin.auth.admin.createUser({
     email: syntheticEmail,
     email_confirm: true,
-    user_metadata: { provider: "kakao", kakao_id: kakaoUser.id, nickname, avatar_url: avatarUrl },
+    user_metadata: metadata,
   });
-  // Ignore "this email is already registered" -- generateLink below targets
-  // the existing user by email either way. Anything else is a real failure.
-  if (createError && !/already/i.test(createError.message)) {
-    throw new Error(`failed to create user: ${createError.message}`);
+  if (createError) {
+    if (!/already/i.test(createError.message)) {
+      throw new Error(`failed to create user: ${createError.message}`);
+    }
+    // Existing user logging in again -- refresh their profile instead of
+    // leaving whatever nickname/photo they had at signup permanently
+    // stale. generateLink below still targets them by email either way,
+    // so this lookup only exists for the update.
+    const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
+    const existing = userList?.users.find((u) => u.email === syntheticEmail);
+    if (existing) {
+      await admin.auth.admin.updateUserById(existing.id, { user_metadata: metadata });
+    }
   }
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
@@ -110,4 +120,37 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
     expires_at: verified.session.expires_at ?? 0,
     user: { id: verified.session.user.id, email: verified.session.user.email ?? null },
   };
+}
+
+// Deletes the account entirely -- Kakao login is the only way in, so
+// there's no lesser "unlink but keep the account" state that makes sense
+// here. Calling Kakao's own unlink API (rather than just deleting our
+// side) also means Kakao's "연결된 서비스" list stops showing Cortex as
+// attached; per Kakao's docs, a service-initiated unlink like this does
+// *not* re-trigger the unlink webhook, so this and webhooks.ts's handler
+// (the reverse direction -- Kakao telling us they unlinked) don't race.
+export async function deleteAccount(userId: string): Promise<void> {
+  const admin = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
+
+  const { data: userData } = await admin.auth.admin.getUserById(userId);
+  const kakaoId = userData?.user?.user_metadata?.kakao_id;
+  const adminKey = process.env.KAKAO_ADMIN_KEY;
+
+  if (kakaoId && adminKey) {
+    // Best-effort: if this fails (already unlinked, Kakao hiccup, etc.)
+    // the more important half -- deleting the local account/items -- still
+    // goes ahead below.
+    await fetch("https://kapi.kakao.com/v1/user/unlink", {
+      method: "POST",
+      headers: {
+        Authorization: `KakaoAK ${adminKey}`,
+        "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",
+      },
+      body: new URLSearchParams({ target_id_type: "user_id", target_id: String(kakaoId) }).toString(),
+    }).catch(() => {});
+  }
+
+  await admin.from("items").delete().eq("user_id", userId);
+  const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+  if (deleteError) throw new Error(`failed to delete user: ${deleteError.message}`);
 }

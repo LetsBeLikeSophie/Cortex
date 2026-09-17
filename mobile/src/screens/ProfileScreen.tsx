@@ -8,14 +8,18 @@ import { useTheme } from '../theme/ThemeContext';
 import { emToTracking } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signOut } from '../auth/kakaoLogin';
+import { deleteAccount } from '../api/client';
 import { BackIcon, ProfileIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
+
+type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'deleteError';
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
   const { session } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [signingOut, setSigningOut] = useState(false);
+  const [state, setState] = useState<FooterState>('idle');
+  const [error, setError] = useState('');
   const card = theme.list === 'card';
 
   const meta = session?.user.user_metadata as { nickname?: string; avatar_url?: string } | undefined;
@@ -23,13 +27,23 @@ export default function ProfileScreen() {
   const avatarUrl = meta?.avatar_url;
 
   const onSignOut = async () => {
-    setSigningOut(true);
+    setState('signingOut');
     await signOut();
-    // No need to reset signingOut/navigate on success -- AuthContext's
-    // session flips to null and App.tsx swaps this whole stack for
-    // LoginScreen. If signOut ever throws, falling through to idle here
-    // would be the fix, but supabase-js's signOut clears local state even
-    // when the network call fails, so this path is effectively always hit.
+    // No need to reset state/navigate on success -- AuthContext's session
+    // flips to null and App.tsx swaps this whole stack for LoginScreen.
+    // supabase-js's signOut clears local state even if the network call
+    // fails, so this path is effectively always hit.
+  };
+
+  const onConfirmDelete = async () => {
+    setState('deleting');
+    try {
+      await deleteAccount();
+      await signOut(); // clears the now-pointless local session -> LoginScreen
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setState('deleteError');
+    }
   };
 
   return (
@@ -66,17 +80,54 @@ export default function ProfileScreen() {
           <Text style={[styles.provider, { color: theme.sub }]}>카카오 계정으로 로그인됨</Text>
         </View>
 
-        <Pressable
-          onPress={onSignOut}
-          disabled={signingOut}
-          style={[styles.signOutButton, { borderColor: theme.line, opacity: signingOut ? 0.6 : 1 }]}
-        >
-          {signingOut ? (
-            <ActivityIndicator color={theme.ink} />
-          ) : (
-            <Text style={[styles.signOutLabel, { color: theme.ink }]}>로그아웃</Text>
-          )}
-        </Pressable>
+        {state === 'confirmingDelete' || state === 'deleting' || state === 'deleteError' ? (
+          <View style={[styles.confirmCard, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
+            <Text style={[styles.confirmTitle, { color: theme.ink }]}>정말 탈퇴하시겠어요?</Text>
+            <Text style={[styles.confirmBody, { color: theme.sub }]}>
+              저장된 기억이 모두 사라지고, 되돌릴 수 없어요.
+            </Text>
+            {state === 'deleteError' && (
+              <Text style={[styles.errorText, { color: theme.accent }]}>탈퇴 실패: {error}</Text>
+            )}
+            <View style={styles.confirmButtonRow}>
+              <Pressable
+                onPress={() => setState('idle')}
+                disabled={state === 'deleting'}
+                style={[styles.ghostButton, { borderColor: theme.line }]}
+              >
+                <Text style={[styles.ghostButtonLabel, { color: theme.ink }]}>취소</Text>
+              </Pressable>
+              <Pressable
+                onPress={onConfirmDelete}
+                disabled={state === 'deleting'}
+                style={[styles.deleteButton, { opacity: state === 'deleting' ? 0.7 : 1 }]}
+              >
+                {state === 'deleting' ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.deleteButtonLabel}>탈퇴하기</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <View style={{ gap: 14 }}>
+            <Pressable
+              onPress={onSignOut}
+              disabled={state === 'signingOut'}
+              style={[styles.signOutButton, { borderColor: theme.line, opacity: state === 'signingOut' ? 0.6 : 1 }]}
+            >
+              {state === 'signingOut' ? (
+                <ActivityIndicator color={theme.ink} />
+              ) : (
+                <Text style={[styles.signOutLabel, { color: theme.ink }]}>로그아웃</Text>
+              )}
+            </Pressable>
+            <Pressable onPress={() => setState('confirmingDelete')} style={styles.deleteLinkButton}>
+              <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>회원 탈퇴</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -107,4 +158,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   signOutLabel: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
+  deleteLinkButton: { alignItems: 'center', paddingVertical: 6 },
+  deleteLinkLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  confirmCard: { borderWidth: 1, borderRadius: 16, padding: 18, gap: 6 },
+  confirmTitle: { fontSize: 15.5, fontFamily: 'IBMPlexSansKR_500Medium' },
+  confirmBody: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
+  errorText: { fontSize: 12.5, marginTop: 6, fontFamily: 'IBMPlexSansKR_400Regular' },
+  confirmButtonRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  ghostButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  ghostButtonLabel: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#c0392b',
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+  },
+  deleteButtonLabel: { fontSize: 14, color: '#fff', fontFamily: 'IBMPlexSansKR_500Medium' },
 });

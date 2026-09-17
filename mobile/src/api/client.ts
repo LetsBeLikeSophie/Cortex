@@ -95,3 +95,7 @@ export interface ItemStats {
 export function fetchStats() {
   return request<ItemStats>('/items/stats');
 }
+
+export function deleteAccount() {
+  return request<{ ok: true }>('/auth/me', { method: 'DELETE' });
+}

@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { THEME_ORDER, THEMES, ThemeKey } from '../theme/themes';
 import { CheckIcon } from '../components/Icons';
+import { signOut } from '../auth/kakaoLogin';
 import type { RootStackParamList } from '../navigation/types';
 
 // The design's own top comparison bar ("상단 칩을 눌러 5가지 테마를 전환") — reworked
@@ -69,6 +70,10 @@ export default function ThemePickerScreen() {
             </Pressable>
           );
         })}
+
+        <Pressable style={styles.signOutRow} onPress={() => signOut()}>
+          <Text style={[styles.signOutLabel, { color: theme.sub }]}>로그아웃</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -94,4 +99,6 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1 },
   rowLabel: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
   rowNote: { fontSize: 12, marginTop: 3, fontFamily: 'IBMPlexSansKR_400Regular', lineHeight: 17 },
+  signOutRow: { alignItems: 'center', paddingVertical: 16, marginTop: 4 },
+  signOutLabel: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_400Regular' },
 });

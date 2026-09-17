@@ -18,16 +18,20 @@ import {
 import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
 
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import LoginScreen from './src/screens/LoginScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppShell() {
   const { theme } = useTheme();
+  const { session, loading } = useAuth();
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <RootNavigator />
+      {loading ? null : session ? <RootNavigator /> : <LoginScreen />}
     </View>
   );
 }
@@ -62,9 +66,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <AppShell />
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <AppShell />
+        </ThemeProvider>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

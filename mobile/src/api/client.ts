@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { supabase } from '../auth/supabase';
 
 export type ItemSource = 'instagram' | 'kakaotalk' | 'safari' | 'youtube' | 'memo' | 'other';
 export type ItemCategory = '맛집' | '여행' | '레시피' | '쇼핑' | '읽을거리' | '기타';
@@ -43,8 +44,18 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
+    // getSession() reads the in-memory/stored session -- no network round
+    // trip unless the SDK's own refresh timer just kicked in -- so this
+    // stays cheap to call on every request rather than threading the token
+    // through every call site.
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+
     const res = await fetch(`${API_BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       signal: controller.signal,
       ...init,
     });

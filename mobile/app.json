@@ -3,6 +3,7 @@
     "name": "Cortex",
     "slug": "cortex",
     "version": "1.0.0",
+    "scheme": "cortex",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,6 +25,9 @@
     },
     "experiments": {
       "baseUrl": "/cortex"
-    }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

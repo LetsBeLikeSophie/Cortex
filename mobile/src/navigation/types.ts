@@ -12,5 +12,6 @@ export type RootStackParamList = {
   TabPicker: undefined;
   Stats: undefined;
   Profile: undefined;
+  Trash: undefined;
   ItemDetail: { item: ApiItem };
 };

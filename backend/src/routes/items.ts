@@ -3,15 +3,19 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
 import {
+  addUserTag,
   countItemsSince,
-  deleteItem,
   getScreenshotUrl,
   getStats,
   listItems,
   listTags,
+  listTrash,
   logAnalyticsEvent,
+  permanentlyDeleteItem,
+  removeUserTag,
+  restoreItem,
   searchItems,
-  updateItemTags,
+  trashItem,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
@@ -24,8 +28,8 @@ const SearchQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
-const UpdateTagsSchema = z.object({
-  tags: z.array(z.string().min(1).max(30)).max(20),
+const AddTagSchema = z.object({
+  tag: z.string().min(1).max(30),
 });
 
 export async function itemsRoutes(app: FastifyInstance) {
@@ -123,34 +127,79 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
   });
 
-  // Distinct tags across everything this user has saved, for the home tab
-  // picker's search-as-you-type list.
+  // Distinct tags (AI-assigned + user-added) across everything this user
+  // has saved, for the home tab picker's search-as-you-type list.
   app.get("/items/tags", async (req, reply) => {
     const userId = await resolveUserId(req);
     const tags = await listTags(userId);
     return reply.send({ tags });
   });
 
+  // Trashed items, most recently deleted first.
+  app.get("/items/trash", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const items = await listTrash(userId);
+    return reply.send({ items });
+  });
+
+  // Soft delete -- moves the item to the trash rather than removing it.
   app.delete("/items/:id", async (req, reply) => {
     const userId = await resolveUserId(req);
     const { id } = req.params as { id: string };
     try {
-      await deleteItem(userId, id);
+      await trashItem(userId, id);
       return reply.code(200).send({ ok: true });
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "delete failed" });
     }
   });
 
-  app.patch("/items/:id/tags", async (req, reply) => {
-    const parsed = UpdateTagsSchema.safeParse(req.body);
+  app.post("/items/:id/restore", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    try {
+      await restoreItem(userId, id);
+      return reply.code(200).send({ ok: true });
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "restore failed" });
+    }
+  });
+
+  // The real, unrecoverable delete -- only valid from the trash (see
+  // permanentlyDeleteItem's own guard against deleting a non-trashed item).
+  app.delete("/items/:id/permanent", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    try {
+      await permanentlyDeleteItem(userId, id);
+      return reply.code(200).send({ ok: true });
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "delete failed" });
+    }
+  });
+
+  // Adds one user tag. The AI-assigned `tags` column has no route that can
+  // touch it at all -- this only ever reads/writes user_tags.
+  app.post("/items/:id/tags", async (req, reply) => {
+    const parsed = AddTagSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
     }
     const userId = await resolveUserId(req);
     const { id } = req.params as { id: string };
     try {
-      const item = await updateItemTags(userId, id, parsed.data.tags);
+      const item = await addUserTag(userId, id, parsed.data.tag);
+      return reply.send(item);
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });
+    }
+  });
+
+  app.delete("/items/:id/tags/:tag", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id, tag } = req.params as { id: string; tag: string };
+    try {
+      const item = await removeUserTag(userId, id, tag);
       return reply.send(item);
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });

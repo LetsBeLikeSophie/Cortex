@@ -60,6 +60,25 @@ export function ProfileIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) 
   );
 }
 
+export function TrashIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M3.5 5h11M7 5V3.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M4.5 5v9a1.5 1.5 0 0 0 1.5 1.5h6A1.5 1.5 0 0 0 13.5 14V5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M7.3 8v4M10.7 8v4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function RestoreIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M3 9a6 6 0 1 0 1.8-4.3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M3 3v4h4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 24, color, strokeWidth = 1.7 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

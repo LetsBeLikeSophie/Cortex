@@ -113,6 +113,12 @@ export default function ProfileScreen() {
         ) : (
           <View style={{ gap: 14 }}>
             <Pressable
+              onPress={() => navigation.navigate('Trash')}
+              style={[styles.signOutButton, { borderColor: theme.line }]}
+            >
+              <Text style={[styles.signOutLabel, { color: theme.ink }]}>휴지통</Text>
+            </Pressable>
+            <Pressable
               onPress={onSignOut}
               disabled={state === 'signingOut'}
               style={[styles.signOutButton, { borderColor: theme.line, opacity: state === 'signingOut' ? 0.6 : 1 }]}

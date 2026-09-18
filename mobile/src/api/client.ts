@@ -13,7 +13,8 @@ export interface ApiItem {
   title: string | null;
   snippet: string | null;
   category: ItemCategory;
-  tags: string[];
+  tags: string[]; // AI-assigned, read-only
+  user_tags: string[]; // user-added, freely add/removable
   shared_at: string;
 }
 
@@ -127,14 +128,35 @@ export function getScreenshotUrl(itemId: string) {
   return request<{ url: string }>(`/items/${encodeURIComponent(itemId)}/screenshot-url`);
 }
 
+// Soft delete -- moves the item to the trash, doesn't remove it.
 export function deleteItem(itemId: string) {
   return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 }
 
-export function updateItemTags(itemId: string, tags: string[]) {
+export function fetchTrash() {
+  return request<{ items: ApiItem[] }>('/items/trash');
+}
+
+export function restoreItem(itemId: string) {
+  return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/restore`, { method: 'POST' });
+}
+
+export function permanentlyDeleteItem(itemId: string) {
+  return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/permanent`, { method: 'DELETE' });
+}
+
+// Both only ever touch user_tags -- there's no route that can change the
+// AI-assigned tags.
+export function addTag(itemId: string, tag: string) {
   return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/tags`, {
-    method: 'PATCH',
-    body: JSON.stringify({ tags }),
+    method: 'POST',
+    body: JSON.stringify({ tag }),
+  });
+}
+
+export function removeTag(itemId: string, tag: string) {
+  return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/tags/${encodeURIComponent(tag)}`, {
+    method: 'DELETE',
   });
 }
 

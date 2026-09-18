@@ -31,9 +31,11 @@ export interface ItemRecord {
   title: string | null;
   snippet: string | null;
   category: Category;
-  tags: string[];
+  tags: string[]; // AI-assigned, read-only from the client
+  user_tags: string[]; // user-added, freely add/removable
   shared_at: string;
   created_at: string;
+  deleted_at: string | null;
 }
 
 export interface NewItem {
@@ -71,10 +73,37 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
   return data as ItemRecord;
 }
 
-// Deletes one item, plus its screenshot file in Storage if it has one.
-// Scoped to the owning user -- .eq("user_id", userId) is the ownership
-// check, since the service-role client bypasses RLS entirely.
-export async function deleteItem(userId: string, itemId: string): Promise<void> {
+// Soft delete: moves the item to the trash instead of removing it (an
+// archive app shouldn't make "permanently gone" the default outcome of one
+// tap). The screenshot file stays in Storage too, since restoring later
+// needs it. Scoped to the owning user -- .eq("user_id", userId) is the
+// ownership check, since the service-role client bypasses RLS entirely.
+export async function trashItem(userId: string, itemId: string): Promise<void> {
+  const { error, count } = await getClient()
+    .from("items")
+    .update({ deleted_at: new Date().toISOString() }, { count: "exact" })
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+  if (error) throw new Error(`trashItem failed: ${error.message}`);
+  if (!count) throw new Error("item not found");
+}
+
+export async function restoreItem(userId: string, itemId: string): Promise<void> {
+  const { error, count } = await getClient()
+    .from("items")
+    .update({ deleted_at: null }, { count: "exact" })
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .not("deleted_at", "is", null);
+  if (error) throw new Error(`restoreItem failed: ${error.message}`);
+  if (!count) throw new Error("item not found in trash");
+}
+
+// The real, unrecoverable delete -- only ever called from the trash view,
+// on an item that's already been soft-deleted (the .not("deleted_at", "is",
+// null) below is what enforces that, not just a UI convention).
+export async function permanentlyDeleteItem(userId: string, itemId: string): Promise<void> {
   const client = getClient();
 
   const { data: item, error: lookupError } = await client
@@ -82,42 +111,95 @@ export async function deleteItem(userId: string, itemId: string): Promise<void> 
     .select("image_path")
     .eq("id", itemId)
     .eq("user_id", userId)
+    .not("deleted_at", "is", null)
     .maybeSingle();
-  if (lookupError) throw new Error(`deleteItem lookup failed: ${lookupError.message}`);
-  if (!item) throw new Error("item not found");
+  if (lookupError) throw new Error(`permanentlyDeleteItem lookup failed: ${lookupError.message}`);
+  if (!item) throw new Error("item not found in trash");
 
   if (item.image_path) {
     await client.storage.from(SCREENSHOTS_BUCKET).remove([item.image_path]);
   }
 
   const { error } = await client.from("items").delete().eq("id", itemId).eq("user_id", userId);
-  if (error) throw new Error(`deleteItem failed: ${error.message}`);
+  if (error) throw new Error(`permanentlyDeleteItem failed: ${error.message}`);
 }
 
-export async function updateItemTags(userId: string, itemId: string, tags: string[]): Promise<ItemRecord> {
+export async function listTrash(userId: string): Promise<ItemRecord[]> {
   const { data, error } = await getClient()
     .from("items")
-    .update({ tags })
+    .select("*")
+    .eq("user_id", userId)
+    .not("deleted_at", "is", null)
+    .order("deleted_at", { ascending: false });
+
+  if (error) throw new Error(`listTrash failed: ${error.message}`);
+  return (data ?? []) as ItemRecord[];
+}
+
+// user_tags only -- the AI-assigned `tags` column has no API path that can
+// touch it, so there's no way to accidentally (or even deliberately, short
+// of direct DB access) remove an auto-assigned tag through the app.
+async function getUserTags(userId: string, itemId: string): Promise<string[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select("user_tags")
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`getUserTags failed: ${error.message}`);
+  if (!data) throw new Error("item not found");
+  return data.user_tags as string[];
+}
+
+export async function addUserTag(userId: string, itemId: string, tag: string): Promise<ItemRecord> {
+  const current = await getUserTags(userId, itemId);
+  const next = current.includes(tag) ? current : [...current, tag];
+
+  const { data, error } = await getClient()
+    .from("items")
+    .update({ user_tags: next })
     .eq("id", itemId)
     .eq("user_id", userId)
     .select()
-    .maybeSingle();
-  if (error) throw new Error(`updateItemTags failed: ${error.message}`);
-  if (!data) throw new Error("item not found");
+    .single();
+  if (error) throw new Error(`addUserTag failed: ${error.message}`);
   return data as ItemRecord;
 }
 
-// Distinct tags across everything this user has saved, for the home tab
-// picker's search-as-you-type list. PostgREST has no "flatten array column
-// across rows" op, so this fetches the (small, personal-archive-scale) tags
-// arrays and flattens them in JS -- same tradeoff as searchItems below.
+export async function removeUserTag(userId: string, itemId: string, tag: string): Promise<ItemRecord> {
+  const current = await getUserTags(userId, itemId);
+  const next = current.filter((t) => t !== tag);
+
+  const { data, error } = await getClient()
+    .from("items")
+    .update({ user_tags: next })
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) throw new Error(`removeUserTag failed: ${error.message}`);
+  return data as ItemRecord;
+}
+
+// Distinct tags (both AI-assigned and user-added) across everything this
+// user has saved, for the home tab picker's search-as-you-type list.
+// PostgREST has no "flatten array column across rows" op, so this fetches
+// the (small, personal-archive-scale) tag arrays and flattens them in JS --
+// same tradeoff as searchItems below.
 export async function listTags(userId: string): Promise<string[]> {
-  const { data, error } = await getClient().from("items").select("tags").eq("user_id", userId).limit(2000);
+  const { data, error } = await getClient()
+    .from("items")
+    .select("tags, user_tags")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .limit(2000);
   if (error) throw new Error(`listTags failed: ${error.message}`);
 
   const set = new Set<string>();
-  for (const row of (data ?? []) as { tags: string[] }[]) {
+  for (const row of (data ?? []) as { tags: string[]; user_tags: string[] }[]) {
     for (const tag of row.tags) set.add(tag);
+    for (const tag of row.user_tags) set.add(tag);
   }
   return [...set].sort((a, b) => a.localeCompare(b, "ko"));
 }
@@ -127,6 +209,7 @@ export async function listItems(userId: string, limit = 30): Promise<{ items: It
     .from("items")
     .select("*", { count: "exact" })
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("shared_at", { ascending: false })
     .limit(limit);
 
@@ -145,6 +228,7 @@ export async function searchItems(userId: string, query: string, limit = 30): Pr
     .from("items")
     .select()
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .order("shared_at", { ascending: false })
     .limit(500);
 
@@ -156,6 +240,7 @@ export async function searchItems(userId: string, query: string, limit = 30): Pr
     if (item.snippet?.toLowerCase().includes(needle)) return true;
     if (item.raw_text?.toLowerCase().includes(needle)) return true;
     if (item.tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
+    if (item.user_tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
     return false;
   });
 
@@ -218,6 +303,7 @@ export async function getStats(userId: string): Promise<ItemStats> {
     .from("items")
     .select("category, source, shared_at")
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .limit(5000);
 
   if (error) throw new Error(`getStats failed: ${error.message}`);

@@ -15,6 +15,7 @@ import ThemePickerScreen from '../screens/ThemePickerScreen';
 import TabPickerScreen from '../screens/TabPickerScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import TrashScreen from '../screens/TrashScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
@@ -102,6 +103,7 @@ export default function RootNavigator() {
         <Stack.Screen name="Tabs" component={Tabs} />
         <Stack.Screen name="Stats" component={StatsScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Trash" component={TrashScreen} />
         <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'fade', animationDuration: 180 }}>
           <Stack.Screen name="SaveSheet" component={SaveSheetScreen} />
           <Stack.Screen name="ThemePicker" component={ThemePickerScreen} />

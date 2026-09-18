@@ -20,10 +20,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { deleteItem, getScreenshotUrl, updateItemTags } from '../api/client';
+import { addTag, deleteItem, getScreenshotUrl, removeTag as removeTagApi } from '../api/client';
 import { relativeTime, sourceLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
+import { TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -42,7 +43,9 @@ export default function ItemDetailScreen() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
 
-  const [tags, setTags] = useState(item.tags);
+  // item.tags (AI-assigned) never changes here -- there's no API path that
+  // can touch it. Only user_tags is locally editable.
+  const [userTags, setUserTags] = useState(item.user_tags);
   const [tagError, setTagError] = useState('');
   const [addingTag, setAddingTag] = useState(false);
   const [newTag, setNewTag] = useState('');
@@ -79,28 +82,26 @@ export default function ItemDetailScreen() {
 
   // Optimistic: the tag chip disappears/appears immediately, and rolls back
   // if the server call fails rather than leaving the UI ahead of reality.
-  const persistTags = (next: string[], previous: string[]) => {
-    setTags(next);
+  const removeTag = (tag: string) => {
+    setUserTags((current) => current.filter((t) => t !== tag));
     setTagError('');
-    updateItemTags(item.id, next).catch((err) => {
-      setTags(previous);
+    removeTagApi(item.id, tag).catch((err) => {
+      setUserTags((current) => [...current, tag]);
       setTagError(err instanceof Error ? err.message : String(err));
     });
-  };
-
-  const removeTag = (tag: string) => {
-    persistTags(
-      tags.filter((t) => t !== tag),
-      tags
-    );
   };
 
   const submitNewTag = () => {
     const trimmed = newTag.trim();
     setAddingTag(false);
     setNewTag('');
-    if (!trimmed || tags.includes(trimmed)) return;
-    persistTags([...tags, trimmed], tags);
+    if (!trimmed || item.tags.includes(trimmed) || userTags.includes(trimmed)) return;
+    setUserTags((current) => [...current, trimmed]);
+    setTagError('');
+    addTag(item.id, trimmed).catch((err) => {
+      setUserTags((current) => current.filter((t) => t !== trimmed));
+      setTagError(err instanceof Error ? err.message : String(err));
+    });
   };
 
   const confirmDelete = async () => {
@@ -147,9 +148,18 @@ export default function ItemDetailScreen() {
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
               {sourceLabel(item.source, tech)}
             </Text>
-            <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-              {item.category}
-            </Text>
+            <View style={styles.metaRowRight}>
+              <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
+                {item.category}
+              </Text>
+              <Pressable
+                onPress={() => setDeleteState('confirming')}
+                hitSlop={8}
+                style={[styles.trashButton, { borderColor: theme.line }]}
+              >
+                <TrashIcon size={13.5} color={theme.sub} strokeWidth={1.3} />
+              </Pressable>
+            </View>
           </View>
 
           <Text
@@ -195,7 +205,10 @@ export default function ItemDetailScreen() {
           )}
 
           <View style={styles.tagRow}>
-            {tags.map((tag) => (
+            {item.tags.map((tag) => (
+              <TagChip key={tag} label={tag} theme={theme} />
+            ))}
+            {userTags.map((tag) => (
               <TagChip key={tag} label={tag} theme={theme} onRemove={() => removeTag(tag)} />
             ))}
             {addingTag ? (
@@ -219,13 +232,9 @@ export default function ItemDetailScreen() {
 
           <Text style={[styles.timestamp, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
 
-          {deleteState === 'idle' ? (
-            <Pressable onPress={() => setDeleteState('confirming')} style={styles.deleteLinkButton}>
-              <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>이 항목 삭제</Text>
-            </Pressable>
-          ) : (
+          {deleteState !== 'idle' && (
             <View style={[styles.deleteConfirmCard, { borderColor: theme.line }]}>
-              <Text style={[styles.deleteConfirmText, { color: theme.ink }]}>정말 삭제할까요? 되돌릴 수 없어요.</Text>
+              <Text style={[styles.deleteConfirmText, { color: theme.ink }]}>휴지통으로 이동할까요? 나중에 복원할 수 있어요.</Text>
               {deleteError !== '' && (
                 <Text style={[styles.errorText, { color: theme.accent }]}>삭제 실패: {deleteError}</Text>
               )}
@@ -282,7 +291,9 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  metaRowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  trashButton: { width: 24, height: 24, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   imageBox: { marginTop: 16, borderRadius: 14, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
@@ -291,8 +302,6 @@ const styles = StyleSheet.create({
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
-  deleteLinkButton: { alignItems: 'center', paddingVertical: 10, marginTop: 10 },
-  deleteLinkLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   deleteConfirmCard: { borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 14 },
   deleteConfirmText: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_500Medium' },
   deleteConfirmButtons: { flexDirection: 'row', gap: 10, marginTop: 12 },

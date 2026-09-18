@@ -59,7 +59,11 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
 
     const res = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
-        'Content-Type': 'application/json',
+        // Only set for requests that actually have a body -- Fastify's
+        // JSON parser rejects a declared-but-empty JSON body (e.g. a
+        // bodyless DELETE), which is exactly what every no-body call here
+        // was sending before this check existed.
+        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       signal: controller.signal,

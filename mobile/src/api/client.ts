@@ -84,6 +84,15 @@ export function saveTextItem(source: ItemSource, text: string) {
   });
 }
 
+// expo-image-picker's base64 output is always re-encoded as JPEG regardless
+// of the original file's format, so mediaType is always 'image/jpeg' here.
+export function saveScreenshotItem(source: ItemSource, imageBase64: string) {
+  return request<ApiItem>('/items', {
+    method: 'POST',
+    body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg' }),
+  });
+}
+
 export interface ItemStats {
   total: number;
   byCategory: { category: ItemCategory; count: number }[];

@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -12,13 +13,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
-import { saveTextItem, ApiItem } from '../api/client';
+import { saveTextItem, saveScreenshotItem, ApiItem } from '../api/client';
 import { sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip } from '../components/Chips';
@@ -43,6 +45,7 @@ export default function SaveSheetScreen() {
   const txt = copyFor(theme.copy);
 
   const [text, setText] = useState('');
+  const [image, setImage] = useState<{ base64: string; previewUri: string } | null>(null);
   const [status, setStatus] = useState<Status>('input');
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
@@ -59,12 +62,44 @@ export default function SaveSheetScreen() {
 
   const close = () => navigation.goBack();
 
+  // Picking a photo and typing a memo are mutually exclusive in this sheet
+  // -- picking one clears the other rather than trying to send both.
+  const pickFromLibrary = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      setError('사진 접근 권한이 필요해요');
+      setStatus('error');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.8 });
+    const asset = result.canceled ? null : result.assets[0];
+    if (!asset?.base64) return;
+    setText('');
+    setStatus('input');
+    setImage({ base64: asset.base64, previewUri: asset.uri });
+  };
+
+  const takePhoto = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      setError('카메라 권한이 필요해요');
+      setStatus('error');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.8 });
+    const asset = result.canceled ? null : result.assets[0];
+    if (!asset?.base64) return;
+    setText('');
+    setStatus('input');
+    setImage({ base64: asset.base64, previewUri: asset.uri });
+  };
+
   const submit = () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!image && !text.trim()) return;
     setStatus('saving');
     setError('');
-    saveTextItem('memo', trimmed)
+    const request = image ? saveScreenshotItem('other', image.base64) : saveTextItem('memo', text.trim());
+    request
       .then((item) => {
         setSaved(item);
         setStatus('done');
@@ -120,24 +155,58 @@ export default function SaveSheetScreen() {
               공유 시트에서 넘어올 텍스트를 아직은 여기에 붙여넣어 테스트해요.
             </Text>
 
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              multiline
-              editable={status !== 'saving'}
-              placeholder="예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래"
-              placeholderTextColor={theme.sub}
-              style={[
-                styles.input,
-                {
-                  color: theme.ink,
-                  borderColor: theme.line,
-                  backgroundColor: card ? theme.surface : 'transparent',
-                  fontFamily: 'IBMPlexSansKR_400Regular',
-                  outlineWidth: 0,
-                },
-              ]}
-            />
+            {image ? (
+              <View style={styles.imagePreviewWrap}>
+                <Image source={{ uri: image.previewUri }} style={[styles.imagePreview, { borderColor: theme.line }]} />
+                <Pressable onPress={() => setImage(null)} disabled={status === 'saving'}>
+                  <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5, marginTop: 10 }}>
+                    사진 지우고 다시 선택
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <>
+                <TextInput
+                  value={text}
+                  onChangeText={setText}
+                  multiline
+                  editable={status !== 'saving'}
+                  placeholder="예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래"
+                  placeholderTextColor={theme.sub}
+                  style={[
+                    styles.input,
+                    {
+                      color: theme.ink,
+                      borderColor: theme.line,
+                      backgroundColor: card ? theme.surface : 'transparent',
+                      fontFamily: 'IBMPlexSansKR_400Regular',
+                      outlineWidth: 0,
+                    },
+                  ]}
+                />
+
+                <View style={styles.photoButtonRow}>
+                  <Pressable
+                    onPress={pickFromLibrary}
+                    disabled={status === 'saving'}
+                    style={[styles.photoButton, { borderColor: theme.line }]}
+                  >
+                    <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
+                      앨범에서 선택
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={takePhoto}
+                    disabled={status === 'saving'}
+                    style={[styles.photoButton, { borderColor: theme.line }]}
+                  >
+                    <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
+                      카메라로 촬영
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
 
             {status === 'error' && (
               <Text style={{ color: theme.accent, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
@@ -272,6 +341,10 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 24 },
+  photoButtonRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  photoButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  imagePreviewWrap: { marginTop: 18, alignItems: 'center' },
+  imagePreview: { width: '100%', aspectRatio: 1, borderRadius: 14, borderWidth: 1 },
   savedHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   savedMark: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   savedHeadBody: { flex: 1 },

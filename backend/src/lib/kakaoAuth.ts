@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
+import { deleteUserAccount } from "./supabase.js";
 
 interface KakaoTokenResponse {
   access_token: string;
@@ -150,7 +151,5 @@ export async function deleteAccount(userId: string): Promise<void> {
     }).catch(() => {});
   }
 
-  await admin.from("items").delete().eq("user_id", userId);
-  const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
-  if (deleteError) throw new Error(`failed to delete user: ${deleteError.message}`);
+  await deleteUserAccount(userId);
 }

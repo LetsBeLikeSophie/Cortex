@@ -217,6 +217,29 @@ export async function getStats(userId: string): Promise<ItemStats> {
   };
 }
 
+// Removes everything a user's account owns: uploaded screenshots (stored
+// under `${userId}/...` in the bucket, per uploadScreenshot above), item
+// rows, then the auth user itself. Called from both account-deletion paths
+// (self-serve DELETE /auth/me and the Kakao unlink webhook) so a deleted
+// account doesn't leave orphaned screenshot files sitting in Storage forever.
+export async function deleteUserAccount(userId: string): Promise<void> {
+  const client = getClient();
+
+  const { data: files, error: listError } = await client.storage.from(SCREENSHOTS_BUCKET).list(userId);
+  if (listError) throw new Error(`failed to list screenshots: ${listError.message}`);
+  if (files && files.length > 0) {
+    const paths = files.map((file) => `${userId}/${file.name}`);
+    const { error: removeError } = await client.storage.from(SCREENSHOTS_BUCKET).remove(paths);
+    if (removeError) throw new Error(`failed to delete screenshots: ${removeError.message}`);
+  }
+
+  const { error: itemsError } = await client.from("items").delete().eq("user_id", userId);
+  if (itemsError) throw new Error(`failed to delete items: ${itemsError.message}`);
+
+  const { error: userError } = await client.auth.admin.deleteUser(userId);
+  if (userError) throw new Error(`failed to delete user: ${userError.message}`);
+}
+
 export function isSupabaseConfigured(): boolean {
   return config.hasSupabase;
 }

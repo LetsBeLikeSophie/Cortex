@@ -77,3 +77,28 @@ alter table items enable row level security;
 --   drop policy if exists "dev: allow all" on items;
 create policy "users manage their own items" on items
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Pseudonymous product analytics. `pseudonym` is an HMAC-SHA256 of the
+-- user's id (see logAnalyticsEvent in src/lib/supabase.ts), never the id
+-- itself -- lets us tell "same user, two events" apart from "two different
+-- users" without being able to reverse the hash back to an account, so this
+-- survives account deletion instead of needing to be destroyed with it.
+-- No content fields (titles/text/tags) are ever logged here, only
+-- category/source, which is enough to see usage patterns without carrying
+-- anything personal.
+create table if not exists analytics_events (
+  id uuid primary key default gen_random_uuid(),
+  pseudonym text not null,
+  event_type text not null, -- 'account_created' | 'account_deleted' | 'item_saved'
+  category item_category,
+  source item_source,
+  occurred_at timestamptz not null default now()
+);
+
+create index if not exists analytics_events_pseudonym_idx on analytics_events (pseudonym);
+create index if not exists analytics_events_type_time_idx on analytics_events (event_type, occurred_at);
+
+-- Only the backend (service role, bypasses RLS) ever touches this table --
+-- enabling RLS with no policies just makes that the enforced default
+-- instead of an assumption, same as items above.
+alter table analytics_events enable row level security;

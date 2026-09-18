@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
-import { deleteUserAccount } from "./supabase.js";
+import { deleteUserAccount, logAnalyticsEvent } from "./supabase.js";
 
 interface KakaoTokenResponse {
   access_token: string;
@@ -78,7 +78,7 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
   const admin = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
   const metadata = { provider: "kakao", kakao_id: kakaoUser.id, nickname, avatar_url: avatarUrl };
 
-  const { error: createError } = await admin.auth.admin.createUser({
+  const { data: createData, error: createError } = await admin.auth.admin.createUser({
     email: syntheticEmail,
     email_confirm: true,
     user_metadata: metadata,
@@ -96,6 +96,8 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
     if (existing) {
       await admin.auth.admin.updateUserById(existing.id, { user_metadata: metadata });
     }
+  } else if (createData.user) {
+    await logAnalyticsEvent({ eventType: "account_created", userId: createData.user.id });
   }
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
@@ -151,5 +153,6 @@ export async function deleteAccount(userId: string): Promise<void> {
     }).catch(() => {});
   }
 
+  await logAnalyticsEvent({ eventType: "account_deleted", userId });
   await deleteUserAccount(userId);
 }

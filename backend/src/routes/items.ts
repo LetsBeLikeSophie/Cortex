@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
-import { countItemsSince, getStats, listItems, searchItems } from "../lib/supabase.js";
+import { countItemsSince, getStats, listItems, logAnalyticsEvent, searchItems } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
 const ListQuerySchema = z.object({
@@ -62,6 +62,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
 
     const item = await processIncomingItem(parsed.data, userId);
+    await logAnalyticsEvent({ eventType: "item_saved", userId, category: item.category, source: item.source });
     return reply.code(201).send(item);
   });
 

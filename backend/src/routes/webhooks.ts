@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
-import { deleteUserAccount } from "../lib/supabase.js";
+import { deleteUserAccount, logAnalyticsEvent } from "../lib/supabase.js";
 
 interface KakaoUnlinkBody {
   app_id?: string;
@@ -51,6 +51,7 @@ export async function webhookRoutes(app: FastifyInstance) {
         // means the account itself is gone -- delete their items and
         // screenshots too rather than leaving them orphaned under a
         // user_id nothing can ever authenticate as again.
+        await logAnalyticsEvent({ eventType: "account_deleted", userId: user.id });
         await deleteUserAccount(user.id);
         req.log.info({ kakaoUserId, referrerType: body?.referrer_type }, "kakao unlink webhook: account deleted");
       } else {

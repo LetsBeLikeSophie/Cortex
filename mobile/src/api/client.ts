@@ -40,9 +40,15 @@ export const API_BASE_URL = resolveBaseUrl();
 // screens fall back to demo data. Fail fast instead.
 const REQUEST_TIMEOUT_MS = 8000;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// Screenshot saves go through compression + a Claude vision call + a
+// Storage upload server-side, on a 1 OCPU box -- routinely well past 8s.
+// The short default above exists to fail fast when there's no backend at
+// all, which doesn't apply here.
+const SCREENSHOT_TIMEOUT_MS = 45000;
+
+async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     // getSession() reads the in-memory/stored session -- no network round
     // trip unless the SDK's own refresh timer just kicked in -- so this
@@ -87,10 +93,14 @@ export function saveTextItem(source: ItemSource, text: string) {
 // expo-image-picker's base64 output is always re-encoded as JPEG regardless
 // of the original file's format, so mediaType is always 'image/jpeg' here.
 export function saveScreenshotItem(source: ItemSource, imageBase64: string) {
-  return request<ApiItem>('/items', {
-    method: 'POST',
-    body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg' }),
-  });
+  return request<ApiItem>(
+    '/items',
+    {
+      method: 'POST',
+      body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg' }),
+    },
+    SCREENSHOT_TIMEOUT_MS
+  );
 }
 
 export interface ItemStats {

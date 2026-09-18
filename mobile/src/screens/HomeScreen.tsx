@@ -8,7 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
-import { CategoryTab, loadHomeTabs } from '../data/tabs';
+import { TagTab, loadHomeTabs } from '../data/tabs';
 import { fetchRecentItems, ApiItem } from '../api/client';
 import { toRecentItem } from '../api/format';
 import { RecentRow } from '../components/ListItems';
@@ -20,8 +20,8 @@ import type { RootStackParamList } from '../navigation/types';
 export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [customTabs, setCustomTabs] = useState<CategoryTab[]>([]);
-  const [activeCategory, setActiveCategory] = useState<CategoryTab | null>(null);
+  const [customTabs, setCustomTabs] = useState<TagTab[]>([]);
+  const [activeTag, setActiveTag] = useState<TagTab | null>(null);
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -53,12 +53,12 @@ export default function HomeScreen() {
       loadHomeTabs().then((tabs) => {
         setCustomTabs(tabs);
         // A tab the user just removed in the picker can't stay selected.
-        setActiveCategory((current) => (current && !tabs.includes(current) ? null : current));
+        setActiveTag((current) => (current && !tabs.includes(current) ? null : current));
       });
     }, [load])
   );
 
-  const filtered = activeCategory ? rawItems.filter((it) => it.category === activeCategory) : rawItems;
+  const filtered = activeTag ? rawItems.filter((it) => it.tags.includes(activeTag)) : rawItems;
   const items = filtered.map(toRecentItem);
 
   return (
@@ -186,9 +186,9 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <TabChip label="모두" active={activeCategory === null} theme={theme} onPress={() => setActiveCategory(null)} />
-        {customTabs.map((cat) => (
-          <TabChip key={cat} label={cat} active={activeCategory === cat} theme={theme} onPress={() => setActiveCategory(cat)} />
+        <TabChip label="모두" active={activeTag === null} theme={theme} onPress={() => setActiveTag(null)} />
+        {customTabs.map((tag) => (
+          <TabChip key={tag} label={tag} active={activeTag === tag} theme={theme} onPress={() => setActiveTag(tag)} />
         ))}
         <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </View>

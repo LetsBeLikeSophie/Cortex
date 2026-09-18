@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,13 +20,15 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { getScreenshotUrl } from '../api/client';
+import { deleteItem, getScreenshotUrl, updateItemTags } from '../api/client';
 import { relativeTime, sourceLabel } from '../api/format';
-import { TagChip } from '../components/Chips';
+import { TagChip, TagAddChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
+
+type DeleteState = 'idle' | 'confirming' | 'deleting';
 
 export default function ItemDetailScreen() {
   const { theme } = useTheme();
@@ -38,6 +41,14 @@ export default function ItemDetailScreen() {
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+
+  const [tags, setTags] = useState(item.tags);
+  const [tagError, setTagError] = useState('');
+  const [addingTag, setAddingTag] = useState(false);
+  const [newTag, setNewTag] = useState('');
+
+  const [deleteState, setDeleteState] = useState<DeleteState>('idle');
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     if (item.capture_type !== 'screenshot') return;
@@ -65,6 +76,43 @@ export default function ItemDetailScreen() {
   }, [translateY]);
 
   const close = () => navigation.goBack();
+
+  // Optimistic: the tag chip disappears/appears immediately, and rolls back
+  // if the server call fails rather than leaving the UI ahead of reality.
+  const persistTags = (next: string[], previous: string[]) => {
+    setTags(next);
+    setTagError('');
+    updateItemTags(item.id, next).catch((err) => {
+      setTags(previous);
+      setTagError(err instanceof Error ? err.message : String(err));
+    });
+  };
+
+  const removeTag = (tag: string) => {
+    persistTags(
+      tags.filter((t) => t !== tag),
+      tags
+    );
+  };
+
+  const submitNewTag = () => {
+    const trimmed = newTag.trim();
+    setAddingTag(false);
+    setNewTag('');
+    if (!trimmed || tags.includes(trimmed)) return;
+    persistTags([...tags, trimmed], tags);
+  };
+
+  const confirmDelete = async () => {
+    setDeleteState('deleting');
+    try {
+      await deleteItem(item.id);
+      close();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err));
+      setDeleteState('confirming');
+    }
+  };
 
   return (
     <View style={StyleSheet.absoluteFill}>
@@ -146,15 +194,63 @@ export default function ItemDetailScreen() {
             </Pressable>
           )}
 
-          {item.tags.length > 0 && (
-            <View style={styles.tagRow}>
-              {item.tags.map((tag) => (
-                <TagChip key={tag} label={tag} theme={theme} />
-              ))}
-            </View>
-          )}
+          <View style={styles.tagRow}>
+            {tags.map((tag) => (
+              <TagChip key={tag} label={tag} theme={theme} onRemove={() => removeTag(tag)} />
+            ))}
+            {addingTag ? (
+              <View style={[styles.newTagBox, { borderColor: theme.line }]}>
+                <TextInput
+                  value={newTag}
+                  onChangeText={setNewTag}
+                  autoFocus
+                  onSubmitEditing={submitNewTag}
+                  onBlur={submitNewTag}
+                  placeholder="새 태그"
+                  placeholderTextColor={theme.sub}
+                  style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, padding: 0, minWidth: 60, outlineWidth: 0 }}
+                />
+              </View>
+            ) : (
+              <TagAddChip label="+ 태그" theme={theme} onPress={() => setAddingTag(true)} />
+            )}
+          </View>
+          {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
 
           <Text style={[styles.timestamp, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
+
+          {deleteState === 'idle' ? (
+            <Pressable onPress={() => setDeleteState('confirming')} style={styles.deleteLinkButton}>
+              <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>이 항목 삭제</Text>
+            </Pressable>
+          ) : (
+            <View style={[styles.deleteConfirmCard, { borderColor: theme.line }]}>
+              <Text style={[styles.deleteConfirmText, { color: theme.ink }]}>정말 삭제할까요? 되돌릴 수 없어요.</Text>
+              {deleteError !== '' && (
+                <Text style={[styles.errorText, { color: theme.accent }]}>삭제 실패: {deleteError}</Text>
+              )}
+              <View style={styles.deleteConfirmButtons}>
+                <Pressable
+                  onPress={() => setDeleteState('idle')}
+                  disabled={deleteState === 'deleting'}
+                  style={[styles.smallGhostButton, { borderColor: theme.line }]}
+                >
+                  <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>취소</Text>
+                </Pressable>
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={deleteState === 'deleting'}
+                  style={[styles.smallDeleteButton, { opacity: deleteState === 'deleting' ? 0.7 : 1 }]}
+                >
+                  {deleteState === 'deleting' ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>삭제</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
         </ScrollView>
 
         <View style={styles.buttonRow}>
@@ -191,7 +287,16 @@ const styles = StyleSheet.create({
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   linkRow: { marginTop: 14 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16, alignItems: 'center' },
+  newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  deleteLinkButton: { alignItems: 'center', paddingVertical: 10, marginTop: 10 },
+  deleteLinkLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  deleteConfirmCard: { borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 14 },
+  deleteConfirmText: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_500Medium' },
+  deleteConfirmButtons: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  smallGhostButton: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 10, alignItems: 'center' },
+  smallDeleteButton: { flex: 1, backgroundColor: '#c0392b', borderRadius: 999, paddingVertical: 10, alignItems: 'center' },
   buttonRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
 });

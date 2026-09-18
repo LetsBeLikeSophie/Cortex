@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import { Theme } from '../theme/themes';
 import { PlusIcon } from './Icons';
 
@@ -33,12 +33,18 @@ export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => vo
   );
 }
 
-export function TagChip({ label, theme }: { label: string; theme: Theme }) {
+// `onRemove` turns this into a tap-to-remove control (used in the item
+// detail sheet to edit auto-assigned tags) -- omit it for the plain
+// read-only display used elsewhere (e.g. SaveSheetScreen's post-save view).
+export function TagChip({ label, theme, onRemove }: { label: string; theme: Theme; onRemove?: () => void }) {
   const card = theme.list === 'card';
   return (
-    <View
+    <Pressable
+      onPress={onRemove}
+      disabled={!onRemove}
       style={[
         styles.tag,
+        styles.tagRow,
         {
           paddingVertical: card ? 7 : 6,
           backgroundColor: card ? theme.accent + '1f' : 'transparent',
@@ -50,7 +56,10 @@ export function TagChip({ label, theme }: { label: string; theme: Theme }) {
       <Text style={{ fontSize: 13, color: card ? theme.accent : theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>
         {label}
       </Text>
-    </View>
+      {onRemove && (
+        <Text style={{ fontSize: 13, color: card ? theme.accent : theme.ink, marginLeft: 6, opacity: 0.6 }}>×</Text>
+      )}
+    </Pressable>
   );
 }
 
@@ -66,6 +75,7 @@ const styles = StyleSheet.create({
   pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   underlineTab: { paddingBottom: 10, borderBottomWidth: 2 },
   tag: { borderRadius: 999, paddingHorizontal: 14 },
+  tagRow: { flexDirection: 'row', alignItems: 'center' },
   tabAdd: {
     width: 26,
     height: 26,

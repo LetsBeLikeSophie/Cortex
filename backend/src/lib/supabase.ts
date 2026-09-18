@@ -71,6 +71,57 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
   return data as ItemRecord;
 }
 
+// Deletes one item, plus its screenshot file in Storage if it has one.
+// Scoped to the owning user -- .eq("user_id", userId) is the ownership
+// check, since the service-role client bypasses RLS entirely.
+export async function deleteItem(userId: string, itemId: string): Promise<void> {
+  const client = getClient();
+
+  const { data: item, error: lookupError } = await client
+    .from("items")
+    .select("image_path")
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (lookupError) throw new Error(`deleteItem lookup failed: ${lookupError.message}`);
+  if (!item) throw new Error("item not found");
+
+  if (item.image_path) {
+    await client.storage.from(SCREENSHOTS_BUCKET).remove([item.image_path]);
+  }
+
+  const { error } = await client.from("items").delete().eq("id", itemId).eq("user_id", userId);
+  if (error) throw new Error(`deleteItem failed: ${error.message}`);
+}
+
+export async function updateItemTags(userId: string, itemId: string, tags: string[]): Promise<ItemRecord> {
+  const { data, error } = await getClient()
+    .from("items")
+    .update({ tags })
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(`updateItemTags failed: ${error.message}`);
+  if (!data) throw new Error("item not found");
+  return data as ItemRecord;
+}
+
+// Distinct tags across everything this user has saved, for the home tab
+// picker's search-as-you-type list. PostgREST has no "flatten array column
+// across rows" op, so this fetches the (small, personal-archive-scale) tags
+// arrays and flattens them in JS -- same tradeoff as searchItems below.
+export async function listTags(userId: string): Promise<string[]> {
+  const { data, error } = await getClient().from("items").select("tags").eq("user_id", userId).limit(2000);
+  if (error) throw new Error(`listTags failed: ${error.message}`);
+
+  const set = new Set<string>();
+  for (const row of (data ?? []) as { tags: string[] }[]) {
+    for (const tag of row.tags) set.add(tag);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, "ko"));
+}
+
 export async function listItems(userId: string, limit = 30): Promise<{ items: ItemRecord[]; total: number }> {
   const { data, error, count } = await getClient()
     .from("items")

@@ -122,3 +122,18 @@ export function deleteAccount() {
 export function getScreenshotUrl(itemId: string) {
   return request<{ url: string }>(`/items/${encodeURIComponent(itemId)}/screenshot-url`);
 }
+
+export function deleteItem(itemId: string) {
+  return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
+}
+
+export function updateItemTags(itemId: string, tags: string[]) {
+  return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/tags`, {
+    method: 'PATCH',
+    body: JSON.stringify({ tags }),
+  });
+}
+
+export function fetchTags() {
+  return request<{ tags: string[] }>('/items/tags');
+}

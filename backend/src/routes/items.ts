@@ -2,7 +2,17 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
-import { countItemsSince, getScreenshotUrl, getStats, listItems, logAnalyticsEvent, searchItems } from "../lib/supabase.js";
+import {
+  countItemsSince,
+  deleteItem,
+  getScreenshotUrl,
+  getStats,
+  listItems,
+  listTags,
+  logAnalyticsEvent,
+  searchItems,
+  updateItemTags,
+} from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
 const ListQuerySchema = z.object({
@@ -12,6 +22,10 @@ const ListQuerySchema = z.object({
 const SearchQuerySchema = z.object({
   q: z.string().min(1),
   limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+const UpdateTagsSchema = z.object({
+  tags: z.array(z.string().min(1).max(30)).max(20),
 });
 
 export async function itemsRoutes(app: FastifyInstance) {
@@ -106,6 +120,40 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.send({ url });
     } catch {
       return reply.code(404).send({ error: "screenshot not found" });
+    }
+  });
+
+  // Distinct tags across everything this user has saved, for the home tab
+  // picker's search-as-you-type list.
+  app.get("/items/tags", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const tags = await listTags(userId);
+    return reply.send({ tags });
+  });
+
+  app.delete("/items/:id", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    try {
+      await deleteItem(userId, id);
+      return reply.code(200).send({ ok: true });
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "delete failed" });
+    }
+  });
+
+  app.patch("/items/:id/tags", async (req, reply) => {
+    const parsed = UpdateTagsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
+    }
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    try {
+      const item = await updateItemTags(userId, id, parsed.data.tags);
+      return reply.send(item);
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });
     }
   });
 }

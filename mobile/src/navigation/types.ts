@@ -1,3 +1,5 @@
+import type { ApiItem } from '../api/client';
+
 export type TabParamList = {
   Home: undefined;
   Search: undefined;
@@ -10,4 +12,5 @@ export type RootStackParamList = {
   TabPicker: undefined;
   Stats: undefined;
   Profile: undefined;
+  ItemDetail: { item: ApiItem };
 };

@@ -1,37 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor, DEFAULT_QUERY, SearchResult, SEARCH_RESULTS } from '../data/content';
-import { searchItems as apiSearchItems } from '../api/client';
+import { searchItems as apiSearchItems, ApiItem } from '../api/client';
 import { toSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
 import { SearchIcon } from '../components/Icons';
+import type { RootStackParamList } from '../navigation/types';
 
 export default function SearchScreen() {
   const { theme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const mono = tech;
   const txt = copyFor(theme.copy);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
+  // Kept alongside `results` (same order, same indices) so tapping a row
+  // can open the detail sheet with the full item -- `results` itself is
+  // the display-only shape shared with the offline demo data, which has no
+  // real item behind it to open.
+  const [rawResults, setRawResults] = useState<ApiItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) {
       setResults([]);
+      setRawResults([]);
       return;
     }
     setLoading(true);
     const timer = setTimeout(() => {
       apiSearchItems(trimmed)
-        .then((res) => setResults(res.items.map((item) => toSearchResult(item, trimmed))))
+        .then((res) => {
+          setResults(res.items.map((item) => toSearchResult(item, trimmed)));
+          setRawResults(res.items);
+        })
         // No backend reachable -- fall back to the design's demo results.
-        .catch(() => setResults(SEARCH_RESULTS))
+        .catch(() => {
+          setResults(SEARCH_RESULTS);
+          setRawResults([]);
+        })
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);
@@ -115,7 +131,14 @@ export default function SearchScreen() {
         <FlatList
           data={results}
           keyExtractor={(item, i) => item.hit + item.after + i}
-          renderItem={({ item }) => <ResultRow item={item} theme={theme} tech={tech} />}
+          renderItem={({ item, index }) => (
+            <ResultRow
+              item={item}
+              theme={theme}
+              tech={tech}
+              onPress={rawResults[index] ? () => navigation.navigate('ItemDetail', { item: rawResults[index] }) : undefined}
+            />
+          )}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
           style={styles.list}
         />

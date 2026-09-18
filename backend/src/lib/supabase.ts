@@ -218,6 +218,30 @@ export async function getStats(userId: string): Promise<ItemStats> {
   };
 }
 
+// Short-lived signed URL for a screenshot capture, generated on demand
+// (rather than eagerly for every list response) since it's only ever needed
+// when someone actually opens that item's detail view. Scoped to the owning
+// user -- .eq("user_id", userId) is the ownership check, since the
+// service-role client bypasses RLS entirely.
+export async function getScreenshotUrl(userId: string, itemId: string): Promise<string> {
+  const client = getClient();
+
+  const { data: item, error: itemError } = await client
+    .from("items")
+    .select("image_path")
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .single();
+  if (itemError || !item?.image_path) throw new Error("screenshot not found");
+
+  const { data: signed, error: signError } = await client.storage
+    .from(SCREENSHOTS_BUCKET)
+    .createSignedUrl(item.image_path, 300);
+  if (signError || !signed) throw new Error(`failed to sign screenshot url: ${signError?.message}`);
+
+  return signed.signedUrl;
+}
+
 // Removes everything a user's account owns: uploaded screenshots (stored
 // under `${userId}/...` in the bucket, per uploadScreenshot above), item
 // rows, then the auth user itself. Called from both account-deletion paths

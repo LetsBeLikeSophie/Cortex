@@ -99,3 +99,7 @@ export function fetchStats() {
 export function deleteAccount() {
   return request<{ ok: true }>('/auth/me', { method: 'DELETE' });
 }
+
+export function getScreenshotUrl(itemId: string) {
+  return request<{ url: string }>(`/items/${encodeURIComponent(itemId)}/screenshot-url`);
+}

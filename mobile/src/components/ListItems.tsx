@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Theme, emToTracking, MONO } from '../theme/themes';
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
@@ -23,11 +23,29 @@ function cardShellStyle(theme: Theme): ViewStyle {
   };
 }
 
-export function RecentRow({ item, theme, tech }: { item: RecentItem; theme: Theme; tech: boolean }) {
+export function RecentRow({
+  item,
+  theme,
+  tech,
+  onPress,
+}: {
+  item: RecentItem;
+  theme: Theme;
+  tech: boolean;
+  onPress?: () => void;
+}) {
   const card = theme.list === 'card';
   const meta = tech ? item.metaTech : item.metaPlain;
   return (
-    <View style={[styles.row, { alignItems: card ? 'center' : 'baseline' }, cardShellStyle(theme)]}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { alignItems: card ? 'center' : 'baseline', opacity: pressed ? 0.6 : 1 },
+        cardShellStyle(theme),
+      ]}
+    >
       <Text
         style={{
           fontFamily: card ? MONO : theme.headFamily,
@@ -54,14 +72,28 @@ export function RecentRow({ item, theme, tech }: { item: RecentItem; theme: Them
           {meta}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
-export function ResultRow({ item, theme, tech }: { item: SearchResult; theme: Theme; tech: boolean }) {
+export function ResultRow({
+  item,
+  theme,
+  tech,
+  onPress,
+}: {
+  item: SearchResult;
+  theme: Theme;
+  tech: boolean;
+  onPress?: () => void;
+}) {
   const meta = tech ? item.metaTech : item.metaPlain;
   return (
-    <View style={cardShellStyle(theme)}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [cardShellStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
+    >
       <HighlightText
         before={item.before}
         hit={item.hit}
@@ -82,7 +114,7 @@ export function ResultRow({ item, theme, tech }: { item: SearchResult; theme: Th
       >
         {meta}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 

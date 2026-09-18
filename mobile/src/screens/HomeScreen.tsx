@@ -204,7 +204,14 @@ export default function HomeScreen() {
         <FlatList
           data={items}
           keyExtractor={(item, i) => item.no + i}
-          renderItem={({ item }) => <RecentRow item={item} theme={theme} tech={tech} />}
+          renderItem={({ item, index }) => (
+            <RecentRow
+              item={item}
+              theme={theme}
+              tech={tech}
+              onPress={offline ? undefined : () => navigation.navigate('ItemDetail', { item: filtered[index] })}
+            />
+          )}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
           style={styles.list}
         />

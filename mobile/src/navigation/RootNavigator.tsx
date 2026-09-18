@@ -15,6 +15,7 @@ import ThemePickerScreen from '../screens/ThemePickerScreen';
 import TabPickerScreen from '../screens/TabPickerScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import ItemDetailScreen from '../screens/ItemDetailScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -105,6 +106,7 @@ export default function RootNavigator() {
           <Stack.Screen name="SaveSheet" component={SaveSheetScreen} />
           <Stack.Screen name="ThemePicker" component={ThemePickerScreen} />
           <Stack.Screen name="TabPicker" component={TabPickerScreen} />
+          <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
         </Stack.Group>
       </Stack.Navigator>
     </NavigationContainer>

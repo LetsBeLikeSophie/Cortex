@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
-import { countItemsSince, getStats, listItems, logAnalyticsEvent, searchItems } from "../lib/supabase.js";
+import { countItemsSince, getScreenshotUrl, getStats, listItems, logAnalyticsEvent, searchItems } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
 const ListQuerySchema = z.object({
@@ -93,5 +93,19 @@ export async function itemsRoutes(app: FastifyInstance) {
     const userId = await resolveUserId(req);
     const stats = await getStats(userId);
     return reply.send(stats);
+  });
+
+  // A signed URL to view one screenshot capture's image, generated fresh
+  // per request rather than stored -- it's only ever needed when the item
+  // detail sheet is actually opened.
+  app.get("/items/:id/screenshot-url", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    try {
+      const url = await getScreenshotUrl(userId, id);
+      return reply.send({ url });
+    } catch {
+      return reply.code(404).send({ error: "screenshot not found" });
+    }
   });
 }

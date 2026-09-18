@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { copyFor, RecentItem, RECENT_ITEMS, DEFAULT_TOTAL_SAVED } from '../data/content';
+import { copyFor } from '../data/content';
 import { CategoryTab, loadHomeTabs } from '../data/tabs';
 import { fetchRecentItems, ApiItem } from '../api/client';
 import { toRecentItem } from '../api/format';
@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [offline, setOffline] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
@@ -36,12 +36,12 @@ export default function HomeScreen() {
       .then((res) => {
         setRawItems(res.items);
         setTotal(res.total);
-        setOffline(false);
+        setError(null);
       })
-      // No backend reachable (e.g. this build is deployed standalone with no
-      // live API behind it) -- fall back to the design's demo data instead
-      // of an error/empty screen.
-      .catch(() => setOffline(true))
+      // Leave whatever was already on screen alone -- a transient failure
+      // (the backend mid-restart, a slow request timing out) shouldn't
+      // wipe real saved items out from under someone who's just browsing.
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
   }, []);
 
@@ -59,8 +59,7 @@ export default function HomeScreen() {
   );
 
   const filtered = activeCategory ? rawItems.filter((it) => it.category === activeCategory) : rawItems;
-  const items: RecentItem[] = offline ? RECENT_ITEMS : filtered.map(toRecentItem);
-  const displayTotal = offline ? DEFAULT_TOTAL_SAVED : total;
+  const items = filtered.map(toRecentItem);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -147,7 +146,7 @@ export default function HomeScreen() {
                 color: theme.ink,
               }}
             >
-              {displayTotal}
+              {total}
             </Text>
             <Text style={[styles.numSuffix, { color: theme.sub }]}>{txt.heroSuffix}</Text>
           </View>
@@ -196,6 +195,16 @@ export default function HomeScreen() {
 
       {loading && items.length === 0 ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
+      ) : items.length === 0 && error ? (
+        <View style={{ marginTop: 40, alignItems: 'center', paddingHorizontal: 24 }}>
+          <Text style={{ color: theme.sub, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' }}>
+            불러오지 못했어요.{'\n'}
+            {error}
+          </Text>
+          <Pressable onPress={load} style={[styles.retryButton, { borderColor: theme.line }]}>
+            <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
+          </Pressable>
+        </View>
       ) : items.length === 0 ? (
         <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
           아직 저장된 기억이 없어요.
@@ -209,7 +218,7 @@ export default function HomeScreen() {
               item={item}
               theme={theme}
               tech={tech}
-              onPress={offline ? undefined : () => navigation.navigate('ItemDetail', { item: filtered[index] })}
+              onPress={() => navigation.navigate('ItemDetail', { item: filtered[index] })}
             />
           )}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
@@ -223,6 +232,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   headPad: {},
+  retryButton: { marginTop: 16, borderWidth: 1, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: {

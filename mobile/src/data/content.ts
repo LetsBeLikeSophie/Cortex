@@ -16,36 +16,6 @@ export interface SearchResult {
   metaTech: string;
 }
 
-export const RECENT_ITEMS: RecentItem[] = [
-  { no: '01', title: '성수동 크로플 맛집 3곳 총정리', metaPlain: '인스타그램 · 10분 전', metaTech: 'INSTAGRAM · 10분 전' },
-  { no: '02', title: '엄마가 보내준 김치찌개 레시피', metaPlain: '카카오톡 · 어제', metaTech: 'KAKAOTALK · 어제' },
-  { no: '03', title: '제주 2박3일 뚜벅이 코스 후기', metaPlain: '사파리 · 3일 전', metaTech: 'SAFARI · 3일 전' },
-  { no: '04', title: '작은 방 정리 수납 아이디어 12가지', metaPlain: '유튜브 · 지난주', metaTech: 'YOUTUBE · 지난주' },
-];
-
-export const SEARCH_RESULTS: SearchResult[] = [
-  {
-    before: '', hit: '제주', after: ' 2박3일 뚜벅이 코스 후기',
-    snippet: '애월 카페거리 → 한담해변 산책로 순서로 돌면 편하다는 내용',
-    metaPlain: '사파리 · 3일 전', metaTech: 'SAFARI · 3일 전',
-  },
-  {
-    before: '', hit: '제주도', after: ' 갈치조림 맛집 지도 링크',
-    snippet: '지혜가 보낸 링크 · 동문시장 근처 3곳 표시됨',
-    metaPlain: '카카오톡 · 2주 전', metaTech: 'KAKAOTALK · 2주 전',
-  },
-  {
-    before: '', hit: '제주', after: ' 흑돼지 골목 웨이팅 팁',
-    snippet: '6시 전에 가면 바로 앉을 수 있다고',
-    metaPlain: '인스타그램 · 1개월 전', metaTech: 'INSTAGRAM · 1개월 전',
-  },
-  {
-    before: '', hit: '제주', after: ' 가면 꼭 사올 것',
-    snippet: '한라봉 청, 오메기떡, 우도 땅콩 쿠키',
-    metaPlain: '메모 · 2개월 전', metaTech: 'MEMO · 2개월 전',
-  },
-];
-
 export const SAVED_ITEM = {
   source: 'INSTAGRAM',
   title: '성수동 크로플 맛집 3곳 총정리',
@@ -55,48 +25,6 @@ export const SAVED_ITEM = {
 };
 
 export const DEFAULT_QUERY = '제주도 맛집';
-export const DEFAULT_TOTAL_SAVED = 342;
-
-// Offline fallback for the stats screen (frontend-only deploy, no backend
-// reachable) -- shaped like a real ItemStats response, numbers loosely
-// summing to DEFAULT_TOTAL_SAVED so the demo reads as one consistent archive.
-export const MOCK_STATS = {
-  total: DEFAULT_TOTAL_SAVED,
-  byCategory: [
-    { category: '맛집', count: 120 },
-    { category: '여행', count: 80 },
-    { category: '레시피', count: 60 },
-    { category: '쇼핑', count: 40 },
-    { category: '읽을거리', count: 30 },
-    { category: '기타', count: 12 },
-  ],
-  bySource: [
-    { source: 'instagram', count: 150 },
-    { source: 'kakaotalk', count: 90 },
-    { source: 'safari', count: 50 },
-    { source: 'youtube', count: 40 },
-    { source: 'memo', count: 10 },
-    { source: 'other', count: 2 },
-  ],
-  byMonth: [
-    { month: '4월', count: 30 },
-    { month: '5월', count: 45 },
-    { month: '6월', count: 52 },
-    { month: '7월', count: 68 },
-    { month: '8월', count: 75 },
-    { month: '9월', count: 72 },
-  ],
-  heatmap: [
-    { weekday: 0, band: 0, count: 1 }, { weekday: 0, band: 1, count: 2 }, { weekday: 0, band: 2, count: 6 }, { weekday: 0, band: 3, count: 9 },
-    { weekday: 1, band: 0, count: 0 }, { weekday: 1, band: 1, count: 3 }, { weekday: 1, band: 2, count: 5 }, { weekday: 1, band: 3, count: 12 },
-    { weekday: 2, band: 0, count: 0 }, { weekday: 2, band: 1, count: 2 }, { weekday: 2, band: 2, count: 4 }, { weekday: 2, band: 3, count: 14 },
-    { weekday: 3, band: 0, count: 1 }, { weekday: 3, band: 1, count: 3 }, { weekday: 3, band: 2, count: 6 }, { weekday: 3, band: 3, count: 15 },
-    { weekday: 4, band: 0, count: 1 }, { weekday: 4, band: 1, count: 4 }, { weekday: 4, band: 2, count: 7 }, { weekday: 4, band: 3, count: 18 },
-    { weekday: 5, band: 0, count: 2 }, { weekday: 5, band: 1, count: 5 }, { weekday: 5, band: 2, count: 10 }, { weekday: 5, band: 3, count: 20 },
-    { weekday: 6, band: 0, count: 2 }, { weekday: 6, band: 1, count: 6 }, { weekday: 6, band: 2, count: 11 }, { weekday: 6, band: 3, count: 16 },
-  ],
-};
-
 // Copy tone: `tech` (Neural) leans on English/instrument-panel phrasing,
 // `plain` (everyone else) reads as plain, low-barrier Korean.
 export function copyFor(tone: CopyTone) {

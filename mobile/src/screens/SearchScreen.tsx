@@ -6,7 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { copyFor, DEFAULT_QUERY, SearchResult, SEARCH_RESULTS } from '../data/content';
+import { copyFor, DEFAULT_QUERY, SearchResult } from '../data/content';
 import { searchItems as apiSearchItems, ApiItem } from '../api/client';
 import { toSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
@@ -23,17 +23,17 @@ export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   // Kept alongside `results` (same order, same indices) so tapping a row
-  // can open the detail sheet with the full item -- `results` itself is
-  // the display-only shape shared with the offline demo data, which has no
-  // real item behind it to open.
+  // can open the detail sheet with the full item.
   const [rawResults, setRawResults] = useState<ApiItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const trimmed = query.trim();
     if (!trimmed) {
       setResults([]);
       setRawResults([]);
+      setError(null);
       return;
     }
     setLoading(true);
@@ -42,11 +42,12 @@ export default function SearchScreen() {
         .then((res) => {
           setResults(res.items.map((item) => toSearchResult(item, trimmed)));
           setRawResults(res.items);
+          setError(null);
         })
-        // No backend reachable -- fall back to the design's demo results.
-        .catch(() => {
-          setResults(SEARCH_RESULTS);
+        .catch((err) => {
+          setResults([]);
           setRawResults([]);
+          setError(err instanceof Error ? err.message : String(err));
         })
         .finally(() => setLoading(false));
     }, 300);
@@ -127,6 +128,18 @@ export default function SearchScreen() {
 
       {query.trim().length === 0 ? null : loading && results.length === 0 ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
+      ) : error ? (
+        <Text
+          style={{
+            color: theme.accent,
+            textAlign: 'center',
+            marginTop: 40,
+            paddingHorizontal: 24,
+            fontFamily: 'IBMPlexSansKR_400Regular',
+          }}
+        >
+          검색 실패: {error}
+        </Text>
       ) : (
         <FlatList
           data={results}
@@ -136,7 +149,7 @@ export default function SearchScreen() {
               item={item}
               theme={theme}
               tech={tech}
-              onPress={rawResults[index] ? () => navigation.navigate('ItemDetail', { item: rawResults[index] }) : undefined}
+              onPress={() => navigation.navigate('ItemDetail', { item: rawResults[index] })}
             />
           )}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}

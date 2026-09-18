@@ -6,7 +6,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { emToTracking } from '../theme/themes';
-import { MOCK_STATS } from '../data/content';
 import { fetchStats, ItemStats } from '../api/client';
 import { sourceLabel, SOURCE_ORDER } from '../api/format';
 import { ALL_CATEGORIES } from '../data/tabs';
@@ -45,20 +44,23 @@ export default function StatsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [stats, setStats] = useState<ItemStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [offline, setOffline] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const card = theme.list === 'card';
 
-  useEffect(() => {
+  const load = React.useCallback(() => {
+    setLoading(true);
     fetchStats()
       .then((res) => {
         setStats(res);
-        setOffline(false);
+        setError(null);
       })
-      .catch(() => setOffline(true))
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
   }, []);
 
-  const data = offline ? (MOCK_STATS as ItemStats) : stats;
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -81,7 +83,17 @@ export default function StatsScreen() {
 
       {loading ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: 60 }} />
-      ) : !data || data.total === 0 ? (
+      ) : error ? (
+        <View style={{ marginTop: 60, alignItems: 'center', paddingHorizontal: 24 }}>
+          <Text style={{ color: theme.sub, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' }}>
+            불러오지 못했어요.{'\n'}
+            {error}
+          </Text>
+          <Pressable onPress={load} style={[styles.retryButton, { borderColor: theme.line }]}>
+            <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
+          </Pressable>
+        </View>
+      ) : !stats || stats.total === 0 ? (
         <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 60, fontFamily: 'IBMPlexSansKR_400Regular' }}>
           아직 통계를 보여드릴 만큼 저장된 게 없어요.
         </Text>
@@ -95,13 +107,13 @@ export default function StatsScreen() {
               theme={theme}
               segments={ALL_CATEGORIES.map((cat) => ({
                 label: cat,
-                value: data.byCategory.find((c) => c.category === cat)?.count ?? 0,
+                value: stats.byCategory.find((c) => c.category === cat)?.count ?? 0,
               }))}
             />
           </Section>
 
           <Section title="언제 많이 저장했나요" note="요일 × 시간대 저장 빈도" theme={theme}>
-            <Heatmap theme={theme} cells={data.heatmap} />
+            <Heatmap theme={theme} cells={stats.heatmap} />
           </Section>
 
           <Section title="어디서 가져왔나요" theme={theme}>
@@ -109,7 +121,7 @@ export default function StatsScreen() {
               theme={theme}
               data={SOURCE_ORDER.map((src) => ({
                 label: sourceLabel(src, false),
-                value: data.bySource.find((s) => s.source === src)?.count ?? 0,
+                value: stats.bySource.find((s) => s.source === src)?.count ?? 0,
               })).filter((d) => d.value > 0)}
             />
           </Section>
@@ -117,7 +129,7 @@ export default function StatsScreen() {
           <Section title="월별 저장 추이" note="최근 6개월" theme={theme}>
             <BarChart
               theme={theme}
-              data={data.byMonth.map((m) => ({
+              data={stats.byMonth.map((m) => ({
                 label: /^\d{4}-\d{2}$/.test(m.month) ? `${parseInt(m.month.slice(5), 10)}월` : m.month,
                 value: m.count,
               }))}
@@ -143,4 +155,5 @@ const styles = StyleSheet.create({
   section: { marginTop: 20 },
   sectionTitle: { fontSize: 17 },
   sectionNote: { fontSize: 12, marginTop: 3, fontFamily: 'IBMPlexSansKR_400Regular' },
+  retryButton: { marginTop: 16, borderWidth: 1, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 },
 });

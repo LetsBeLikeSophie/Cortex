@@ -4,18 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts, InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif';
-import {
-  SchibstedGrotesk_400Regular,
-  SchibstedGrotesk_600SemiBold,
-  SchibstedGrotesk_700Bold,
-} from '@expo-google-fonts/schibsted-grotesk';
-import {
-  IBMPlexSansKR_300Light,
-  IBMPlexSansKR_400Regular,
-  IBMPlexSansKR_500Medium,
-  IBMPlexSansKR_600SemiBold,
-} from '@expo-google-fonts/ibm-plex-sans-kr';
-import { IBMPlexMono_400Regular, IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono';
+import { SchibstedGrotesk_600SemiBold, SchibstedGrotesk_700Bold } from '@expo-google-fonts/schibsted-grotesk';
+import { IBMPlexSansKR_400Regular, IBMPlexSansKR_500Medium } from '@expo-google-fonts/ibm-plex-sans-kr';
+import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
 
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
@@ -37,17 +28,17 @@ function AppShell() {
 }
 
 export default function App() {
+  // Only the weights actually referenced anywhere in src/ (checked via
+  // grep) -- IBM Plex Sans KR's full Korean glyph set makes each unused
+  // weight here a multi-megabyte dead download that blocks first paint
+  // (see the `!fontsLoaded` gate below) for nothing.
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
-    SchibstedGrotesk_400Regular,
     SchibstedGrotesk_600SemiBold,
     SchibstedGrotesk_700Bold,
-    IBMPlexSansKR_300Light,
     IBMPlexSansKR_400Regular,
     IBMPlexSansKR_500Medium,
-    IBMPlexSansKR_600SemiBold,
     IBMPlexMono_400Regular,
-    IBMPlexMono_500Medium,
   });
 
   const onLayoutRootView = useCallback(async () => {

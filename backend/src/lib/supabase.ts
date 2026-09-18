@@ -261,8 +261,28 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   const { error: itemsError } = await client.from("items").delete().eq("user_id", userId);
   if (itemsError) throw new Error(`failed to delete items: ${itemsError.message}`);
 
+  const { error: mappingError } = await client.from("kakao_users").delete().eq("user_id", userId);
+  if (mappingError) throw new Error(`failed to delete kakao_users mapping: ${mappingError.message}`);
+
   const { error: userError } = await client.auth.admin.deleteUser(userId);
   if (userError) throw new Error(`failed to delete user: ${userError.message}`);
+}
+
+// One indexed row lookup instead of paging through every account -- see
+// kakao_users in db/schema.sql for why this table exists at all.
+export async function findUserIdByKakaoId(kakaoId: number): Promise<string | null> {
+  const { data, error } = await getClient()
+    .from("kakao_users")
+    .select("user_id")
+    .eq("kakao_id", String(kakaoId))
+    .maybeSingle();
+  if (error) throw new Error(`findUserIdByKakaoId failed: ${error.message}`);
+  return data?.user_id ?? null;
+}
+
+export async function linkKakaoUser(kakaoId: number, userId: string): Promise<void> {
+  const { error } = await getClient().from("kakao_users").insert({ kakao_id: String(kakaoId), user_id: userId });
+  if (error) throw new Error(`linkKakaoUser failed: ${error.message}`);
 }
 
 export type AnalyticsEventType = "account_created" | "account_deleted" | "item_saved";

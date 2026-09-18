@@ -46,7 +46,6 @@ export const SERIF = 'InstrumentSerif_400Regular';
 export const GROTESK_SEMIBOLD = 'SchibstedGrotesk_600SemiBold';
 export const GROTESK_BOLD = 'SchibstedGrotesk_700Bold';
 export const MONO = 'IBMPlexMono_400Regular';
-export const MONO_MEDIUM = 'IBMPlexMono_500Medium';
 export const BODY_KR = 'IBMPlexSansKR_400Regular';
 export const BODY_KR_MEDIUM = 'IBMPlexSansKR_500Medium';
 

@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
-import { deleteUserAccount, logAnalyticsEvent } from "./supabase.js";
+import { deleteUserAccount, findUserIdByKakaoId, linkKakaoUser, logAnalyticsEvent } from "./supabase.js";
 
 interface KakaoTokenResponse {
   access_token: string;
@@ -78,26 +78,37 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
   const admin = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
   const metadata = { provider: "kakao", kakao_id: kakaoUser.id, nickname, avatar_url: avatarUrl };
 
-  const { data: createData, error: createError } = await admin.auth.admin.createUser({
-    email: syntheticEmail,
-    email_confirm: true,
-    user_metadata: metadata,
-  });
-  if (createError) {
-    if (!/already/i.test(createError.message)) {
+  // kakao_users maps kakao_id -> our user id directly, so a returning user
+  // (the common case, hit on every single login) skips straight to a
+  // metadata refresh instead of always attempting createUser first and
+  // parsing its error message to tell "new" from "existing". Accounts
+  // created before this mapping table existed have no row yet -- the
+  // "already exists" branch below backfills one lazily on their next
+  // login, so the slow admin.listUsers() scan only ever runs once per
+  // legacy account instead of on every login forever.
+  let userId = await findUserIdByKakaoId(kakaoUser.id);
+  if (userId) {
+    await admin.auth.admin.updateUserById(userId, { user_metadata: metadata });
+  } else {
+    const { data: createData, error: createError } = await admin.auth.admin.createUser({
+      email: syntheticEmail,
+      email_confirm: true,
+      user_metadata: metadata,
+    });
+    if (!createError) {
+      userId = createData.user!.id;
+      await linkKakaoUser(kakaoUser.id, userId);
+      await logAnalyticsEvent({ eventType: "account_created", userId });
+    } else if (/already/i.test(createError.message)) {
+      const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      const existing = userList?.users.find((u) => u.email === syntheticEmail);
+      if (!existing) throw new Error("account exists but could not be located");
+      userId = existing.id;
+      await admin.auth.admin.updateUserById(userId, { user_metadata: metadata });
+      await linkKakaoUser(kakaoUser.id, userId);
+    } else {
       throw new Error(`failed to create user: ${createError.message}`);
     }
-    // Existing user logging in again -- refresh their profile instead of
-    // leaving whatever nickname/photo they had at signup permanently
-    // stale. generateLink below still targets them by email either way,
-    // so this lookup only exists for the update.
-    const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
-    const existing = userList?.users.find((u) => u.email === syntheticEmail);
-    if (existing) {
-      await admin.auth.admin.updateUserById(existing.id, { user_metadata: metadata });
-    }
-  } else if (createData.user) {
-    await logAnalyticsEvent({ eventType: "account_created", userId: createData.user.id });
   }
 
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({

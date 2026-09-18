@@ -102,3 +102,20 @@ create index if not exists analytics_events_type_time_idx on analytics_events (e
 -- enabling RLS with no policies just makes that the enforced default
 -- instead of an assumption, same as items above.
 alter table analytics_events enable row level security;
+
+-- kakao_id -> auth user id, so a returning user's login can look themselves
+-- up with one indexed row read instead of admin.auth.admin.listUsers()
+-- paging through up to 1000 accounts to find the matching email every
+-- single time someone re-logs in (see loginWithKakaoCode in
+-- src/lib/kakaoAuth.ts) -- that scan was the slow part of "login feels
+-- slow" for any returning user, and it only gets worse as the user count
+-- grows.
+create table if not exists kakao_users (
+  kakao_id text primary key,
+  user_id uuid not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists kakao_users_user_id_idx on kakao_users (user_id);
+
+alter table kakao_users enable row level security;

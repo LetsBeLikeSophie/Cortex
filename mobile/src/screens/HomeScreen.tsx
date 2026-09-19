@@ -92,15 +92,6 @@ export default function HomeScreen() {
             >
               <TrashIcon size={14} color={theme.ink} strokeWidth={1.3} />
             </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('ThemePicker')}
-              style={[styles.themeButton, { borderColor: theme.line }]}
-            >
-              <View style={[styles.themeDot, { backgroundColor: theme.accent }]} />
-              <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-                {theme.label}
-              </Text>
-            </Pressable>
           </View>
         </View>
 
@@ -252,16 +243,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  themeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  themeDot: { width: 8, height: 8, borderRadius: 4 },
   heroBox: { position: 'relative', overflow: 'hidden' },
   heroShadow: { shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 18, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
   heroGlow: { position: 'absolute', top: -40, right: -30 },

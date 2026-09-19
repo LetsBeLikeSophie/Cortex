@@ -17,10 +17,19 @@ await app.register(cors, { origin: true });
 // Kakao's unlink webhook posts application/x-www-form-urlencoded, not JSON.
 await app.register(formbody);
 
-// Burst protection -- keyed by IP since there's no auth yet to key by user.
-// The daily quota in routes/items.ts catches steady (non-burst) abuse this
-// doesn't.
+// Burst protection for the one expensive route (POST /items, which calls
+// Claude) -- keyed by IP since there's no per-user key to use before auth
+// resolves. The daily quota in routes/items.ts catches steady (non-burst)
+// abuse this doesn't. global:false + registering here (before the routes)
+// means nothing is throttled unless a route opts in via
+// { config: { rateLimit: {} } } -- see routes/items.ts's POST /items.
+// This used to be registered as the app-wide default, which meant every
+// read (list/search/stats/tags/screenshot-url) shared the same 30-per-15min
+// budget as the AI-classification endpoint -- easy to exhaust just by
+// browsing, which read as the whole app being slow/broken rather than what
+// it actually was, silent 429s.
 await app.register(rateLimit, {
+  global: false,
   max: config.rateLimitMax,
   timeWindow: config.rateLimitWindowMs,
 });

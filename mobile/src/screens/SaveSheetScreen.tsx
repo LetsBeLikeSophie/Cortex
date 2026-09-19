@@ -50,11 +50,14 @@ export default function SaveSheetScreen() {
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
 
+  // Shorter than it looks like it should be -- RN Web always falls back to
+  // JS-driven Animated (no native driver there), so 220ms already reads
+  // about as snappy as a native 360ms slide would.
   const translateY = useRef(new Animated.Value(SHEET_TRAVEL)).current;
   useEffect(() => {
     Animated.timing(translateY, {
       toValue: 0,
-      duration: 360,
+      duration: 220,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();

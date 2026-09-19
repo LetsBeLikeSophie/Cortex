@@ -48,8 +48,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     reply.send(err);
   });
 
-  // Ingest a shared item from the mobile app's share extension.
-  app.post("/items", async (req, reply) => {
+  // Ingest a shared item from the mobile app's share extension. The only
+  // route rate-limited (see server.ts) -- it's the one that calls Claude.
+  app.post("/items", { config: { rateLimit: {} } }, async (req, reply) => {
     const parsed = IncomingItemSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });

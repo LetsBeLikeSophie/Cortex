@@ -68,11 +68,15 @@ export default function ItemDetailScreen() {
     };
   }, [item.id, item.capture_type]);
 
+  // On web there's no native animation driver (RN Web always falls back to
+  // JS-driven Animated regardless of useNativeDriver), so a shorter duration
+  // here reads as noticeably snappier than the 360ms native apps can get
+  // away with.
   const translateY = useRef(new Animated.Value(SHEET_TRAVEL)).current;
   useEffect(() => {
     Animated.timing(translateY, {
       toValue: 0,
-      duration: 360,
+      duration: 220,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();

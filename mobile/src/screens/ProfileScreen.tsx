@@ -113,10 +113,14 @@ export default function ProfileScreen() {
         ) : (
           <View style={{ gap: 14 }}>
             <Pressable
-              onPress={() => navigation.navigate('Trash')}
-              style={[styles.signOutButton, { borderColor: theme.line }]}
+              onPress={() => navigation.navigate('ThemePicker')}
+              style={[styles.signOutButton, styles.themeRow, { borderColor: theme.line }]}
             >
-              <Text style={[styles.signOutLabel, { color: theme.ink }]}>휴지통</Text>
+              <Text style={[styles.signOutLabel, { color: theme.ink }]}>테마</Text>
+              <View style={styles.themeRowRight}>
+                <View style={[styles.themeDot, { backgroundColor: theme.accent }]} />
+                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{theme.label}</Text>
+              </View>
             </Pressable>
             <Pressable
               onPress={onSignOut}
@@ -164,6 +168,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   signOutLabel: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
+  themeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18 },
+  themeRowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  themeDot: { width: 8, height: 8, borderRadius: 4 },
   deleteLinkButton: { alignItems: 'center', paddingVertical: 6 },
   deleteLinkLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   confirmCard: { borderWidth: 1, borderRadius: 16, padding: 18, gap: 6 },

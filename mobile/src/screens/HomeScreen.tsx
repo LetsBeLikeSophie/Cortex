@@ -14,7 +14,7 @@ import { toRecentItem } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
-import { StatsIcon, ProfileIcon } from '../components/Icons';
+import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
 export default function HomeScreen() {
@@ -58,7 +58,9 @@ export default function HomeScreen() {
     }, [load])
   );
 
-  const filtered = activeTag ? rawItems.filter((it) => it.tags.includes(activeTag)) : rawItems;
+  const filtered = activeTag
+    ? rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))
+    : rawItems;
   const items = filtered.map(toRecentItem);
 
   return (
@@ -82,6 +84,13 @@ export default function HomeScreen() {
               hitSlop={6}
             >
               <StatsIcon size={15} color={theme.ink} strokeWidth={1.4} />
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('Trash')}
+              style={[styles.iconButton, { borderColor: theme.line }]}
+              hitSlop={6}
+            >
+              <TrashIcon size={14} color={theme.ink} strokeWidth={1.3} />
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('ThemePicker')}

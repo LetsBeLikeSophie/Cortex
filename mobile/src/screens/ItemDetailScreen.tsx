@@ -162,6 +162,35 @@ export default function ItemDetailScreen() {
             </View>
           </View>
 
+          {deleteState !== 'idle' && (
+            <View style={[styles.deleteConfirmCard, { borderColor: theme.line }]}>
+              <Text style={[styles.deleteConfirmText, { color: theme.ink }]}>휴지통으로 이동할까요? 나중에 복원할 수 있어요.</Text>
+              {deleteError !== '' && (
+                <Text style={[styles.errorText, { color: theme.accent }]}>삭제 실패: {deleteError}</Text>
+              )}
+              <View style={styles.deleteConfirmButtons}>
+                <Pressable
+                  onPress={() => setDeleteState('idle')}
+                  disabled={deleteState === 'deleting'}
+                  style={[styles.smallGhostButton, { borderColor: theme.line }]}
+                >
+                  <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>취소</Text>
+                </Pressable>
+                <Pressable
+                  onPress={confirmDelete}
+                  disabled={deleteState === 'deleting'}
+                  style={[styles.smallDeleteButton, { opacity: deleteState === 'deleting' ? 0.7 : 1 }]}
+                >
+                  {deleteState === 'deleting' ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>삭제</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
+
           <Text
             style={{
               fontFamily: theme.headFamily,
@@ -231,35 +260,6 @@ export default function ItemDetailScreen() {
           {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
 
           <Text style={[styles.timestamp, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
-
-          {deleteState !== 'idle' && (
-            <View style={[styles.deleteConfirmCard, { borderColor: theme.line }]}>
-              <Text style={[styles.deleteConfirmText, { color: theme.ink }]}>휴지통으로 이동할까요? 나중에 복원할 수 있어요.</Text>
-              {deleteError !== '' && (
-                <Text style={[styles.errorText, { color: theme.accent }]}>삭제 실패: {deleteError}</Text>
-              )}
-              <View style={styles.deleteConfirmButtons}>
-                <Pressable
-                  onPress={() => setDeleteState('idle')}
-                  disabled={deleteState === 'deleting'}
-                  style={[styles.smallGhostButton, { borderColor: theme.line }]}
-                >
-                  <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>취소</Text>
-                </Pressable>
-                <Pressable
-                  onPress={confirmDelete}
-                  disabled={deleteState === 'deleting'}
-                  style={[styles.smallDeleteButton, { opacity: deleteState === 'deleting' ? 0.7 : 1 }]}
-                >
-                  {deleteState === 'deleting' ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={{ color: '#fff', fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>삭제</Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
-          )}
         </ScrollView>
 
         <View style={styles.buttonRow}>

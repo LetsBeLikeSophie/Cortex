@@ -1,18 +1,35 @@
-import { createClient } from "@supabase/supabase-js";
 import type { FastifyRequest } from "fastify";
-import { config, required } from "../config.js";
+import { config } from "../config.js";
 import { DEV_USER_ID } from "./devUser.js";
+import { getClient } from "./supabase.js";
+
+// auth.getUser(token) is a real network round trip to Supabase's Auth
+// server (~300ms observed), and every single authenticated request was
+// paying it on top of whatever the actual data query cost -- two sequential
+// network hops per tap instead of one. Caching the verified result for a
+// short window cuts that in half for the common case (someone actively
+// browsing makes several requests within seconds of each other) while
+// still re-checking often enough that a revoked session isn't trusted for
+// long. Keyed by the raw token, not the user id, so a stolen/expired token
+// can't outlive its own verification window regardless of user activity.
+const VERIFIED_TOKEN_TTL_MS = 60_000;
+const verifiedTokens = new Map<string, { userId: string; expiresAt: number }>();
 
 // Verifies a Supabase access token (the JWT issued after social login) and
 // returns the real user id it belongs to, or null if missing/invalid.
-// Uses the service-role client only as a way to reach the Auth server --
-// auth.getUser(token) validates the token itself, it doesn't need
-// service-role privileges to do that.
 export async function verifyAccessToken(token: string): Promise<string | null> {
   if (!config.hasSupabase) return null;
-  const client = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
-  const { data, error } = await client.auth.getUser(token);
+
+  const cached = verifiedTokens.get(token);
+  if (cached) {
+    if (cached.expiresAt > Date.now()) return cached.userId;
+    verifiedTokens.delete(token);
+  }
+
+  const { data, error } = await getClient().auth.getUser(token);
   if (error || !data.user) return null;
+
+  verifiedTokens.set(token, { userId: data.user.id, expiresAt: Date.now() + VERIFIED_TOKEN_TTL_MS });
   return data.user.id;
 }
 

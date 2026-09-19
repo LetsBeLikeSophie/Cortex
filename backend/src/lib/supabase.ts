@@ -10,7 +10,7 @@ let client: SupabaseClient | null = null;
 // Lazy singleton so the server can boot (and e.g. serve /health, or exercise
 // the metadata fetcher) even before Supabase credentials are configured --
 // only routes that actually touch the DB pay for the missing-config error.
-function getClient(): SupabaseClient {
+export function getClient(): SupabaseClient {
   if (!client) {
     client = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
   }

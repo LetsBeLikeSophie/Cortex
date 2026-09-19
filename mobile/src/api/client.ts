@@ -124,8 +124,21 @@ export function deleteAccount() {
   return request<{ ok: true }>('/auth/me', { method: 'DELETE' });
 }
 
-export function getScreenshotUrl(itemId: string) {
-  return request<{ url: string }>(`/items/${encodeURIComponent(itemId)}/screenshot-url`);
+// The server signs these for 5 minutes; caching client-side for a bit less
+// than that means reopening the same item shortly after doesn't pay for a
+// fresh sign + re-download -- same URL means the browser's own HTTP cache
+// serves the image bytes too, instead of every open being a cache miss by
+// construction (a fresh signature makes a "new" URL every time otherwise).
+const SCREENSHOT_URL_TTL_MS = 4 * 60 * 1000;
+const screenshotUrlCache = new Map<string, { url: string; expiresAt: number }>();
+
+export async function getScreenshotUrl(itemId: string): Promise<{ url: string }> {
+  const cached = screenshotUrlCache.get(itemId);
+  if (cached && cached.expiresAt > Date.now()) return { url: cached.url };
+
+  const result = await request<{ url: string }>(`/items/${encodeURIComponent(itemId)}/screenshot-url`);
+  screenshotUrlCache.set(itemId, { url: result.url, expiresAt: Date.now() + SCREENSHOT_URL_TTL_MS });
+  return result;
 }
 
 // Soft delete -- moves the item to the trash, doesn't remove it.

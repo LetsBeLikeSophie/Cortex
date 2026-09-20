@@ -223,12 +223,17 @@ export async function listItems(userId: string, limit = 30): Promise<{ items: It
 // `.textSearch` against that is the real fix once search quality/volume
 // demands it). For v1, filter tags in JS instead: fetch a generous window
 // for this user and match title/snippet/raw_text/tags here.
+// Deliberately searches trashed items too (unlike listItems/getStats/
+// listTags) -- something you trashed a while back is exactly the kind of
+// thing you'd go looking for by name rather than find by browsing, and the
+// alternative (silently excluding it) reads as "search is broken" rather
+// than "working as designed." The route marks matches by their deleted_at
+// so the client can badge/offer-restore instead of opening them normally.
 export async function searchItems(userId: string, query: string, limit = 30): Promise<ItemRecord[]> {
   const { data, error } = await getClient()
     .from("items")
     .select()
     .eq("user_id", userId)
-    .is("deleted_at", null)
     .order("shared_at", { ascending: false })
     .limit(500);
 

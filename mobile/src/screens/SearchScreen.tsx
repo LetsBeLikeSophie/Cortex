@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor, DEFAULT_QUERY, SearchResult } from '../data/content';
-import { searchItems as apiSearchItems, ApiItem } from '../api/client';
+import { searchItems as apiSearchItems, restoreItem, ApiItem } from '../api/client';
 import { toSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
 import { SearchIcon } from '../components/Icons';
@@ -53,6 +53,15 @@ export default function SearchScreen() {
     }, 300);
     return () => clearTimeout(timer);
   }, [query]);
+
+  // Restoring a trashed hit in place -- flip its deleted_at locally instead
+  // of re-running the whole search, so the row just loses its badge/button.
+  const restore = (itemId: string) => {
+    setRawResults((current) => current.map((it) => (it.id === itemId ? { ...it, deleted_at: null } : it)));
+    restoreItem(itemId).catch(() => {
+      setRawResults((current) => current.map((it) => (it.id === itemId ? { ...it, deleted_at: new Date().toISOString() } : it)));
+    });
+  };
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -144,14 +153,20 @@ export default function SearchScreen() {
         <FlatList
           data={results}
           keyExtractor={(item, i) => item.hit + item.after + i}
-          renderItem={({ item, index }) => (
-            <ResultRow
-              item={item}
-              theme={theme}
-              tech={tech}
-              onPress={() => navigation.navigate('ItemDetail', { item: rawResults[index] })}
-            />
-          )}
+          renderItem={({ item, index }) => {
+            const raw = rawResults[index];
+            const trashed = !!raw?.deleted_at;
+            return (
+              <ResultRow
+                item={item}
+                theme={theme}
+                tech={tech}
+                trashed={trashed}
+                onRestore={() => raw && restore(raw.id)}
+                onPress={trashed ? undefined : () => navigation.navigate('ItemDetail', { item: raw })}
+              />
+            );
+          }}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
           style={styles.list}
         />

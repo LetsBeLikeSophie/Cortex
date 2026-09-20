@@ -111,7 +111,10 @@ export default function ProfileScreen() {
             </View>
           </View>
         ) : (
-          <View style={{ gap: 14 }}>
+          // Theme sits in its own group, well clear of sign-out/delete --
+          // matching borders on adjacent buttons with only a small gap
+          // read as one connected control and invited mis-taps.
+          <View style={{ gap: 28 }}>
             <Pressable
               onPress={() => navigation.navigate('ThemePicker')}
               style={[styles.signOutButton, styles.themeRow, { borderColor: theme.line }]}
@@ -122,20 +125,22 @@ export default function ProfileScreen() {
                 <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{theme.label}</Text>
               </View>
             </Pressable>
-            <Pressable
-              onPress={onSignOut}
-              disabled={state === 'signingOut'}
-              style={[styles.signOutButton, { borderColor: theme.line, opacity: state === 'signingOut' ? 0.6 : 1 }]}
-            >
-              {state === 'signingOut' ? (
-                <ActivityIndicator color={theme.ink} />
-              ) : (
-                <Text style={[styles.signOutLabel, { color: theme.ink }]}>로그아웃</Text>
-              )}
-            </Pressable>
-            <Pressable onPress={() => setState('confirmingDelete')} style={styles.deleteLinkButton}>
-              <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>회원 탈퇴</Text>
-            </Pressable>
+            <View style={{ gap: 14 }}>
+              <Pressable
+                onPress={onSignOut}
+                disabled={state === 'signingOut'}
+                style={[styles.signOutButton, { borderColor: theme.line, opacity: state === 'signingOut' ? 0.6 : 1 }]}
+              >
+                {state === 'signingOut' ? (
+                  <ActivityIndicator color={theme.ink} />
+                ) : (
+                  <Text style={[styles.signOutLabel, { color: theme.ink }]}>로그아웃</Text>
+                )}
+              </Pressable>
+              <Pressable onPress={() => setState('confirmingDelete')} style={styles.deleteLinkButton}>
+                <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>회원 탈퇴</Text>
+              </Pressable>
+            </View>
           </View>
         )}
       </View>

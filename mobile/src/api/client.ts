@@ -16,6 +16,7 @@ export interface ApiItem {
   tags: string[]; // AI-assigned, read-only
   user_tags: string[]; // user-added, freely add/removable
   shared_at: string;
+  deleted_at: string | null; // non-null means it's in the trash
 }
 
 // Web preview runs on the same host as the backend (localhost during dev),

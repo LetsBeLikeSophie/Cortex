@@ -52,6 +52,7 @@ export interface NewItem {
   snippet?: string;
   category: Category;
   tags: string[];
+  userTags?: string[];
 }
 
 export async function insertItem(item: NewItem): Promise<ItemRecord> {
@@ -69,6 +70,7 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
       snippet: item.snippet ?? null,
       category: item.category,
       tags: item.tags,
+      user_tags: item.userTags ?? [],
     })
     .select()
     .single();

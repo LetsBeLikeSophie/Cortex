@@ -67,6 +67,7 @@ export default function SaveSheetScreen() {
   const [text, setText] = useState(route.params?.sharedText ?? '');
   const [linkUrl, setLinkUrl] = useState(route.params?.sharedUrl ?? null);
   const [image, setImage] = useState<{ base64: string; previewUri: string } | null>(null);
+  const [tagsText, setTagsText] = useState('');
   const [status, setStatus] = useState<Status>('input');
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
@@ -149,11 +150,15 @@ export default function SaveSheetScreen() {
     if (!image && !linkUrl && !text.trim()) return;
     setStatus('saving');
     setError('');
+    // Space-separated, deduped -- "맛집 성수동 성수동" is typed as fast as
+    // it's thought, so collapsing the repeat here is one less thing to
+    // second-guess while typing.
+    const userTags = [...new Set(tagsText.trim().split(/\s+/).filter(Boolean))];
     const request = image
-      ? saveScreenshotItem('other', image.base64)
+      ? saveScreenshotItem('other', image.base64, userTags)
       : linkUrl
-        ? saveLinkItem(guessSourceFromUrl(linkUrl), linkUrl)
-        : saveTextItem('memo', text.trim());
+        ? saveLinkItem(guessSourceFromUrl(linkUrl), linkUrl, userTags)
+        : saveTextItem('memo', text.trim(), userTags);
     request
       .then((item) => {
         setSaved(item);
@@ -283,6 +288,25 @@ export default function SaveSheetScreen() {
               </>
             )}
 
+            <TextInput
+              value={tagsText}
+              onChangeText={setTagsText}
+              editable={status !== 'saving'}
+              onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50)}
+              placeholder="태그 (띄어쓰기로 구분, 예: 맛집 성수동)"
+              placeholderTextColor={theme.sub}
+              style={[
+                styles.tagsInput,
+                {
+                  color: theme.ink,
+                  borderColor: theme.line,
+                  backgroundColor: card ? theme.surface : 'transparent',
+                  fontFamily: 'IBMPlexSansKR_400Regular',
+                  outlineWidth: 0,
+                },
+              ]}
+            />
+
             {status === 'error' && (
               <Text style={{ color: theme.accent, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
                 저장 실패: {error}
@@ -391,6 +415,9 @@ export default function SaveSheetScreen() {
                 {saved.tags.map((tag) => (
                   <TagChip key={tag} label={tag} theme={theme} />
                 ))}
+                {saved.user_tags.map((tag) => (
+                  <TagChip key={tag} label={tag} theme={theme} />
+                ))}
               </View>
 
               <View style={styles.buttonRow}>
@@ -443,6 +470,14 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 15,
     textAlignVertical: 'top',
+  },
+  tagsInput: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
   },
   savingButton: { flex: 1, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
 });

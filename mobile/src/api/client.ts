@@ -137,6 +137,13 @@ export function deleteAccount() {
   return request<{ ok: true }>('/auth/me', { method: 'DELETE' });
 }
 
+// Kakao signup gets a sample item server-side (kakaoAuth.ts); guest signup
+// happens entirely client-side via supabase.auth.signInAnonymously(), so
+// LoginScreen calls this right after to get the same starting point.
+export function seedSampleItem() {
+  return request<{ ok: true }>('/auth/seed-sample', { method: 'POST' });
+}
+
 // The server signs these for 5 minutes; caching client-side for a bit less
 // than that means reopening the same item shortly after doesn't pay for a
 // fresh sign + re-download -- same URL means the browser's own HTTP cache

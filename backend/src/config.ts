@@ -14,8 +14,9 @@ function required(name: string): string {
 export const config = {
   port: Number(optional("PORT") ?? 8787),
 
-  // Cost safety: no auth yet, so these key off DEV_USER_ID / IP for now --
-  // the same checks carry over once real per-user auth exists.
+  // Cost safety: dailyItemLimit is checked per real signed-in user id (see
+  // resolveUserId), rateLimitMax is IP-keyed (fastify/rate-limit's default)
+  // since it runs before auth resolves.
   dailyItemLimit: Number(optional("DAILY_ITEM_LIMIT") ?? 50),
   rateLimitMax: Number(optional("RATE_LIMIT_MAX") ?? 30),
   rateLimitWindowMs: Number(optional("RATE_LIMIT_WINDOW_MS") ?? 15 * 60 * 1000),

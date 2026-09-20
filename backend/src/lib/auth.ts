@@ -1,6 +1,5 @@
 import type { FastifyRequest } from "fastify";
 import { config } from "../config.js";
-import { DEV_USER_ID } from "./devUser.js";
 import { getClient } from "./supabase.js";
 
 // auth.getUser(token) is a real network round trip to Supabase's Auth
@@ -57,18 +56,15 @@ export async function verifyAccessToken(token: string): Promise<string | null> {
 
 export class UnauthorizedError extends Error {}
 
-// Transitional: the mobile app doesn't have a login screen yet, so most
-// requests still arrive with no Authorization header at all -- those fall
-// back to the shared dev user, same as today. Once login ships, this starts
-// returning the real signed-in user's id automatically with no other
-// request-shape changes needed. A header that *is* present but doesn't
-// verify is treated as a real (failed) login attempt, not "no auth" --
-// falling back to DEV_USER_ID there would quietly mix a rejected caller
-// into the shared dev bucket instead of telling them their session is bad.
-// Remove the DEV_USER_ID fallback entirely once login is mandatory client-side.
+// Login (Kakao or guest/anonymous) is mandatory client-side -- the app never
+// reaches a screen that calls this without a session, so both "no header"
+// and "header present but doesn't verify" are real, equally invalid callers
+// now. Used to fall back to a shared DEV_USER_ID for the no-header case
+// (back when there was no login screen at all); that quietly let anyone
+// hitting the API directly, with no token, read/write a shared bucket.
 export async function resolveUserId(req: FastifyRequest): Promise<string> {
   const header = req.headers.authorization;
-  if (!header?.startsWith("Bearer ")) return DEV_USER_ID;
+  if (!header?.startsWith("Bearer ")) throw new UnauthorizedError("인증이 필요해요");
 
   const userId = await verifyAccessToken(header.slice("Bearer ".length));
   if (!userId) throw new UnauthorizedError("invalid or expired access token");

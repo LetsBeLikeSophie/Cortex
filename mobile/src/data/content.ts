@@ -19,14 +19,6 @@ export interface SearchResult {
   timeLabel: string;
 }
 
-export const SAVED_ITEM = {
-  source: 'INSTAGRAM',
-  title: '성수동 크로플 맛집 3곳 총정리',
-  author: '@seoul_bread',
-  photos: 4,
-  tags: ['맛집', '성수동', '디저트'],
-};
-
 export const DEFAULT_QUERY = '제주도 맛집';
 // Copy tone: `tech` (Neural) leans on English/instrument-panel phrasing,
 // `plain` (everyone else) reads as plain, low-barrier Korean.

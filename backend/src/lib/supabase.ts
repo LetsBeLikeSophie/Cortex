@@ -79,6 +79,27 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
   return data as ItemRecord;
 }
 
+// One real, deletable/editable example item so a brand-new account isn't a
+// totally blank slate -- the home list has something to show, and the tag
+// picker (which searches actual saved tags) has something to find. Shared
+// by both the Kakao signup path (kakaoAuth.ts) and the guest/anonymous
+// signup path (POST /auth/seed-sample) so neither one starts emptier than
+// the other. Best-effort at each call site: a seeding hiccup shouldn't
+// block signup.
+export async function seedSampleItem(userId: string): Promise<void> {
+  await insertItem({
+    userId,
+    source: "instagram",
+    captureType: "text",
+    rawText:
+      "성수동에 새로 생긴 크로플 맛집 3곳 정리해봤어요! 카페 위치랑 시그니처 메뉴까지 한번에 볼 수 있어요.",
+    title: "성수동 크로플 맛집 3곳 총정리",
+    snippet: "카페 3곳 위치와 시그니처 메뉴 정리",
+    category: "맛집",
+    tags: ["맛집", "성수동", "디저트"],
+  });
+}
+
 // Soft delete: moves the item to the trash instead of removing it (an
 // archive app shouldn't make "permanently gone" the default outcome of one
 // tap). The screenshot file stays in Storage too, since restoring later

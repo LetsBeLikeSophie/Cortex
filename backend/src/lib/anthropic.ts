@@ -6,11 +6,12 @@ import { CATEGORIES } from "./categories.js";
 // Reads ANTHROPIC_API_KEY from the environment -- never hardcode a key.
 const client = new Anthropic();
 
-// Defaults to Opus 5 per Anthropic's current guidance. This runs once per
-// shared item, so on high volume it's worth weighing against a cheaper
-// model (e.g. claude-haiku-4-5) for a classification-sized task -- override
-// via CLASSIFY_MODEL rather than editing this file.
-const MODEL = process.env.CLASSIFY_MODEL ?? "claude-opus-5";
+// Runs on every single save (text or vision), so cost scales directly with
+// usage -- Opus was overkill for a bounded structured-output task this
+// small (title/snippet/category/≤5 tags via a Zod schema, no open-ended
+// reasoning), so this defaults to Haiku instead. Override via CLASSIFY_MODEL
+// if quality ever demands stepping back up for a specific deployment.
+const MODEL = process.env.CLASSIFY_MODEL ?? "claude-haiku-4-5-20251001";
 
 const ClassificationSchema = z.object({
   title: z.string().max(120).describe("Short list-item title, in Korean, plain wording"),

@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { signInWithKakao } from '../auth/kakaoLogin';
 import { supabase } from '../auth/supabase';
+import { seedSampleItem } from '../api/client';
 
 // Kakao's own brand yellow (#FEE500) + near-black text/glyph -- their design
 // guidelines ask that the login button keep this exact pair regardless of
@@ -50,6 +51,10 @@ export default function LoginScreen() {
       setStatus('error');
       return;
     }
+    // Best-effort, same as the Kakao path's server-side seeding -- a guest
+    // starting with an empty archive isn't wrong, just an inconsistency
+    // worth smoothing over, not something worth blocking sign-in for.
+    seedSampleItem().catch(() => {});
     setStatus('idle');
   };
 

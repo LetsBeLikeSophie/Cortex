@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
-import { deleteUserAccount, findUserIdByKakaoId, insertItem, linkKakaoUser, logAnalyticsEvent } from "./supabase.js";
+import { deleteUserAccount, findUserIdByKakaoId, linkKakaoUser, logAnalyticsEvent, seedSampleItem } from "./supabase.js";
 
 interface KakaoTokenResponse {
   access_token: string;
@@ -99,22 +99,7 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
       userId = createData.user!.id;
       await linkKakaoUser(kakaoUser.id, userId);
       await logAnalyticsEvent({ eventType: "account_created", userId });
-      // One real, deletable/editable example item so a brand-new account
-      // isn't a totally blank slate -- the home list has something to show,
-      // and the tag picker (which searches actual saved tags) has
-      // something to find. Best-effort: a seeding hiccup shouldn't block
-      // signup.
-      await insertItem({
-        userId,
-        source: "instagram",
-        captureType: "text",
-        rawText:
-          "성수동에 새로 생긴 크로플 맛집 3곳 정리해봤어요! 카페 위치랑 시그니처 메뉴까지 한번에 볼 수 있어요.",
-        title: "성수동 크로플 맛집 3곳 총정리",
-        snippet: "카페 3곳 위치와 시그니처 메뉴 정리",
-        category: "맛집",
-        tags: ["맛집", "성수동", "디저트"],
-      }).catch(() => {});
+      await seedSampleItem(userId).catch(() => {});
     } else if (/already/i.test(createError.message)) {
       const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
       const existing = userList?.users.find((u) => u.email === syntheticEmail);

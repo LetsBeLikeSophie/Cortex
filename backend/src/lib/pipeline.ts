@@ -3,7 +3,6 @@ import sharp from "sharp";
 import { fetchLinkMetadata } from "./metadata.js";
 import { classifyText, classifyImage } from "./anthropic.js";
 import { insertItem, uploadScreenshot, ItemRecord, ItemSource } from "./supabase.js";
-import { DEV_USER_ID } from "./devUser.js";
 
 // Bounds both Storage growth and Claude vision cost, which scale with image
 // size -- downscale-only (a small screenshot stays as-is) and re-encoded as
@@ -68,7 +67,7 @@ function resolveUserTags(userTags: string[] | undefined, aiTags: string[]): stri
 // link -> og:tags/oEmbed, text -> shared straight through, screenshot ->
 // Claude vision -- all three converge on the same classifyText/classifyImage
 // call so every item ends up with a title/snippet/category/tags.
-export async function processIncomingItem(input: IncomingItem, userId = DEV_USER_ID): Promise<ItemRecord> {
+export async function processIncomingItem(input: IncomingItem, userId: string): Promise<ItemRecord> {
   if (input.captureType === "link") {
     const meta = await fetchLinkMetadata(input.url);
     const classification = await classifyText({

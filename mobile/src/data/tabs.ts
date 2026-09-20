@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // -- e.g. the stats screen's category breakdown -- separate from the home
 // tab strip below, which now pins arbitrary tags instead.
 export const ALL_CATEGORIES = ['맛집', '여행', '레시피', '쇼핑', '읽을거리', '기타'] as const;
-export type CategoryTab = (typeof ALL_CATEGORIES)[number];
 
 // Home tab strip: pins any tag (freeform, one per saved item's auto-assigned
 // tags array) rather than one of the fixed categories above -- picked via a

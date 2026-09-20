@@ -107,10 +107,6 @@ export default function ItemDetailScreen() {
   const openTagInput = () => {
     tagSubmittedRef.current = false;
     setAddingTag(true);
-    // The box mounts below everything else already in the tag row, right
-    // before the timestamp -- scroll it into view instead of leaving it
-    // wherever the sheet happened to be scrolled to.
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
   };
 
   const submitNewTag = () => {
@@ -168,11 +164,16 @@ export default function ItemDetailScreen() {
       >
         <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
 
-        {/* Android already resizes the window around the keyboard
-            (windowSoftInputMode="adjustResize" in AndroidManifest), so this
-            is a no-op there and only does real work on iOS. */}
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexShrink}>
-        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        {/* This sheet is a native-stack "transparentModal", which on Android
+            react-native-screens renders inside a BottomSheetDialog -- a
+            separate Dialog window that does NOT inherit the Activity's
+            windowSoftInputMode="adjustResize" from AndroidManifest.xml
+            (confirmed: ScreenModalFragment never calls
+            getWindow().setSoftInputMode). The OS never resizes around the
+            keyboard here on either platform, so this actually has to do the
+            work on both. */}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
+        <ScrollView ref={scrollRef} style={styles.flexShrink} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.metaRow}>
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
               {sourceLabel(item.source, tech)}
@@ -234,6 +235,39 @@ export default function ItemDetailScreen() {
             {item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)'}
           </Text>
 
+          <View style={styles.tagRow}>
+            <MetaChip
+              icon={<SourceIcon source={item.source} size={12} color={theme.sub} strokeWidth={1.3} />}
+              label={sourceLabel(item.source, tech)}
+              theme={theme}
+            />
+            <MetaChip label={captureTypeLabel(item.capture_type, tech)} theme={theme} />
+            {item.tags.map((tag) => (
+              <TagChip key={tag} label={tag} theme={theme} />
+            ))}
+            {userTags.map((tag) => (
+              <TagChip key={tag} label={tag} theme={theme} onRemove={() => removeTag(tag)} />
+            ))}
+            {addingTag ? (
+              <View style={[styles.newTagBox, { borderColor: theme.line }]}>
+                <TextInput
+                  value={newTag}
+                  onChangeText={setNewTag}
+                  autoFocus
+                  onFocus={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+                  onSubmitEditing={submitNewTag}
+                  onBlur={submitNewTag}
+                  placeholder="새 태그"
+                  placeholderTextColor={theme.sub}
+                  style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, padding: 0, minWidth: 60, outlineWidth: 0 }}
+                />
+              </View>
+            ) : (
+              <TagAddChip label="+ 태그" theme={theme} onPress={openTagInput} />
+            )}
+          </View>
+          {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
+
           {item.capture_type === 'screenshot' && (
             <View style={[styles.imageBox, { backgroundColor: theme.soft, borderColor: theme.line }]}>
               {imageError ? (
@@ -269,39 +303,6 @@ export default function ItemDetailScreen() {
               </Text>
             </Pressable>
           )}
-
-          <View style={styles.tagRow}>
-            <MetaChip
-              icon={<SourceIcon source={item.source} size={12} color={theme.sub} strokeWidth={1.3} />}
-              label={sourceLabel(item.source, tech)}
-              theme={theme}
-            />
-            <MetaChip label={captureTypeLabel(item.capture_type, tech)} theme={theme} />
-            {item.tags.map((tag) => (
-              <TagChip key={tag} label={tag} theme={theme} />
-            ))}
-            {userTags.map((tag) => (
-              <TagChip key={tag} label={tag} theme={theme} onRemove={() => removeTag(tag)} />
-            ))}
-            {addingTag ? (
-              <View style={[styles.newTagBox, { borderColor: theme.line }]}>
-                <TextInput
-                  value={newTag}
-                  onChangeText={setNewTag}
-                  autoFocus
-                  onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
-                  onSubmitEditing={submitNewTag}
-                  onBlur={submitNewTag}
-                  placeholder="새 태그"
-                  placeholderTextColor={theme.sub}
-                  style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, padding: 0, minWidth: 60, outlineWidth: 0 }}
-                />
-              </View>
-            ) : (
-              <TagAddChip label="+ 태그" theme={theme} onPress={openTagInput} />
-            )}
-          </View>
-          {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
 
           <Text style={[styles.timestamp, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
         </ScrollView>

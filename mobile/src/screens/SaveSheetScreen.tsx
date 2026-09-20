@@ -195,13 +195,13 @@ export default function SaveSheetScreen() {
 
         {status === 'input' || status === 'saving' || status === 'error' ? (
           <>
-          {/* Android already resizes the window around the keyboard
-              (windowSoftInputMode="adjustResize"), so this KeyboardAvoidingView
-              only does real work on iOS -- the ScrollView is what lets the
-              memo input scroll into view on both platforms when it doesn't
-              fit above the keyboard. */}
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexShrink}>
-          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {/* This sheet is a native-stack "transparentModal", rendered on
+              Android inside a BottomSheetDialog (a separate Dialog window)
+              that does NOT get the Activity's windowSoftInputMode=
+              "adjustResize" -- the OS never resizes around the keyboard
+              here on either platform, so this has to do the work itself. */}
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
+          <ScrollView ref={scrollRef} style={styles.flexShrink} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text
               style={{
                 fontFamily: theme.headFamily,

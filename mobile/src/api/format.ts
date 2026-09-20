@@ -18,6 +18,20 @@ export function sourceLabel(source: ItemSource, tech: boolean): string {
   return tech ? source.toUpperCase() : SOURCE_LABEL[source];
 }
 
+const CAPTURE_TYPE_LABEL: Record<ApiItem['capture_type'], string> = {
+  link: '링크',
+  text: '메모',
+  screenshot: '사진',
+};
+
+// The "method" half of an item's fixed classification (source is the
+// "channel" half) -- how it was captured, independent of which app/site it
+// came from (e.g. a KakaoTalk text share and a memo typed by hand are both
+// capture_type 'text').
+export function captureTypeLabel(captureType: ApiItem['capture_type'], tech: boolean): string {
+  return tech ? captureType.toUpperCase() : CAPTURE_TYPE_LABEL[captureType];
+}
+
 export function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
@@ -35,18 +49,13 @@ export function relativeTime(iso: string): string {
   return `${Math.floor(days / 365)}년 전`;
 }
 
-function metaFor(item: ApiItem) {
-  return {
-    metaPlain: `${sourceLabel(item.source, false)} · ${relativeTime(item.shared_at)}`,
-    metaTech: `${sourceLabel(item.source, true)} · ${relativeTime(item.shared_at)}`,
-  };
-}
-
 export function toRecentItem(item: ApiItem, index: number): RecentItem {
   return {
     no: String(index + 1).padStart(2, '0'),
     title: item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)',
-    ...metaFor(item),
+    source: item.source,
+    captureType: item.capture_type,
+    timeLabel: relativeTime(item.shared_at),
   };
 }
 
@@ -62,6 +71,8 @@ export function toSearchResult(item: ApiItem, query: string): SearchResult {
     hit: idx >= 0 ? title.slice(idx, idx + query.length) : '',
     after: idx >= 0 ? title.slice(idx + query.length) : '',
     snippet: item.snippet ?? item.raw_text ?? '',
-    ...metaFor(item),
+    source: item.source,
+    captureType: item.capture_type,
+    timeLabel: relativeTime(item.shared_at),
   };
 }

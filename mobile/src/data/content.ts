@@ -1,10 +1,12 @@
 import { CopyTone } from '../theme/themes';
+import type { ApiItem, ItemSource } from '../api/client';
 
 export interface RecentItem {
   no: string;
   title: string;
-  metaPlain: string;
-  metaTech: string;
+  source: ItemSource;
+  captureType: ApiItem['capture_type'];
+  timeLabel: string;
 }
 
 export interface SearchResult {
@@ -12,8 +14,9 @@ export interface SearchResult {
   hit: string;
   after: string;
   snippet: string;
-  metaPlain: string;
-  metaTech: string;
+  source: ItemSource;
+  captureType: ApiItem['capture_type'];
+  timeLabel: string;
 }
 
 export const SAVED_ITEM = {

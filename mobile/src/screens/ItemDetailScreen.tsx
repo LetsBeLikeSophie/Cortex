@@ -21,10 +21,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { addTag, deleteItem, getScreenshotUrl, removeTag as removeTagApi } from '../api/client';
-import { relativeTime, sourceLabel } from '../api/format';
-import { TagChip, TagAddChip } from '../components/Chips';
+import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
+import { TagChip, TagAddChip, MetaChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
-import { TrashIcon } from '../components/Icons';
+import { TrashIcon, SourceIcon } from '../components/Icons';
+import { useKeyboardOffset } from '../hooks/useKeyboardOffset';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -81,6 +82,8 @@ export default function ItemDetailScreen() {
       useNativeDriver: true,
     }).start();
   }, [translateY]);
+
+  const keyboardOffset = useKeyboardOffset();
 
   const close = () => navigation.goBack();
 
@@ -140,7 +143,7 @@ export default function ItemDetailScreen() {
             borderTopRightRadius: card ? 30 : 26,
             paddingBottom: 24 + insets.bottom,
             maxHeight: SHEET_TRAVEL * 0.82,
-            transform: [{ translateY }],
+            transform: [{ translateY }, { translateY: Animated.multiply(keyboardOffset, -1) }],
             shadowOpacity: theme.dark ? 0.45 : 0.14,
           },
         ]}
@@ -246,6 +249,12 @@ export default function ItemDetailScreen() {
           )}
 
           <View style={styles.tagRow}>
+            <MetaChip
+              icon={<SourceIcon source={item.source} size={12} color={theme.sub} strokeWidth={1.3} />}
+              label={sourceLabel(item.source, tech)}
+              theme={theme}
+            />
+            <MetaChip label={captureTypeLabel(item.capture_type, tech)} theme={theme} />
             {item.tags.map((tag) => (
               <TagChip key={tag} label={tag} theme={theme} />
             ))}

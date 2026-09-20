@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../theme/themes';
 import { PlusIcon } from './Icons';
 
@@ -63,6 +63,32 @@ export function TagChip({ label, theme, onRemove }: { label: string; theme: Them
   );
 }
 
+// A fixed classification chip (channel/method) shown in the item detail's
+// tag row alongside AI/user tags -- never tappable, never removable, since
+// it isn't a tag at all: it's derived straight from source/capture_type,
+// which no route can change.
+export function MetaChip({ icon, label, theme }: { icon?: React.ReactNode; label: string; theme: Theme }) {
+  const card = theme.list === 'card';
+  return (
+    <View
+      style={[
+        styles.tag,
+        styles.tagRow,
+        styles.metaChip,
+        {
+          paddingVertical: card ? 7 : 6,
+          backgroundColor: card ? theme.soft : 'transparent',
+          borderWidth: card ? 0 : 1,
+          borderColor: theme.sub,
+        },
+      ]}
+    >
+      {icon}
+      <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{label}</Text>
+    </View>
+  );
+}
+
 export function TagAddChip({ label, theme, onPress }: { label: string; theme: Theme; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.tag, { borderWidth: 1, borderStyle: 'dashed', borderColor: theme.sub, paddingVertical: 6 }]}>
@@ -76,6 +102,7 @@ const styles = StyleSheet.create({
   underlineTab: { paddingBottom: 10, borderBottomWidth: 2 },
   tag: { borderRadius: 999, paddingHorizontal: 14 },
   tagRow: { flexDirection: 'row', alignItems: 'center' },
+  metaChip: { gap: 5 },
   tabAdd: {
     width: 26,
     height: 26,

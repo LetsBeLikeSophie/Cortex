@@ -42,7 +42,8 @@
           "androidIntentFilters": ["text/*", "image/*"],
           "disableIOS": true
         }
-      ]
+      ],
+      "./plugins/withDisableAndroidBackup"
     ]
   }
 }

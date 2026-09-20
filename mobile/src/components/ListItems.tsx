@@ -3,6 +3,36 @@ import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Theme, emToTracking, MONO } from '../theme/themes';
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
+import { captureTypeLabel } from '../api/format';
+import { SourceIcon } from './Icons';
+
+// e.g. "▶ 링크 · 3분전" -- the channel reads as its icon (a text label per
+// source would crowd this line), the method and time stay as text.
+function MetaLine({
+  item,
+  theme,
+  tech,
+}: {
+  item: Pick<RecentItem, 'source' | 'captureType' | 'timeLabel'>;
+  theme: Theme;
+  tech: boolean;
+}) {
+  return (
+    <View style={styles.metaLine}>
+      <SourceIcon source={item.source} size={11} color={theme.sub} strokeWidth={1.3} />
+      <Text
+        style={{
+          fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
+          fontSize: tech ? 10.5 : 12.5,
+          letterSpacing: tech ? emToTracking(0.1, 10.5) : emToTracking(0.01, 12.5),
+          color: theme.sub,
+        }}
+      >
+        {captureTypeLabel(item.captureType, tech)} · {item.timeLabel}
+      </Text>
+    </View>
+  );
+}
 
 function cardShellStyle(theme: Theme): ViewStyle {
   const card = theme.list === 'card';
@@ -35,7 +65,6 @@ export function RecentRow({
   onPress?: () => void;
 }) {
   const card = theme.list === 'card';
-  const meta = tech ? item.metaTech : item.metaPlain;
   return (
     <Pressable
       onPress={onPress}
@@ -60,17 +89,9 @@ export function RecentRow({
       </Text>
       <View style={styles.rowBody}>
         <Text style={[styles.title, { color: theme.ink }]}>{item.title}</Text>
-        <Text
-          style={{
-            fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-            fontSize: tech ? 10.5 : 12.5,
-            letterSpacing: tech ? emToTracking(0.1, 10.5) : emToTracking(0.01, 12.5),
-            color: theme.sub,
-            marginTop: 7,
-          }}
-        >
-          {meta}
-        </Text>
+        <View style={{ marginTop: 7 }}>
+          <MetaLine item={item} theme={theme} tech={tech} />
+        </View>
       </View>
     </Pressable>
   );
@@ -96,7 +117,6 @@ export function ResultRow({
   trashed?: boolean;
   onRestore?: () => void;
 }) {
-  const meta = tech ? item.metaTech : item.metaPlain;
   return (
     <Pressable
       onPress={trashed ? undefined : onPress}
@@ -118,16 +138,9 @@ export function ResultRow({
       />
       <Text style={[styles.snippet, { color: theme.sub, opacity: trashed ? 0.6 : 1 }]}>{item.snippet}</Text>
       <View style={styles.resultFooter}>
-        <Text
-          style={{
-            fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-            fontSize: tech ? 10.5 : 12.5,
-            letterSpacing: tech ? emToTracking(0.1, 10.5) : emToTracking(0.01, 12.5),
-            color: theme.sub,
-          }}
-        >
-          {meta}
-        </Text>
+        <View style={{ opacity: trashed ? 0.6 : 1 }}>
+          <MetaLine item={item} theme={theme} tech={tech} />
+        </View>
         {trashed && (
           <Pressable onPress={onRestore} hitSlop={8} style={[styles.restoreButton, { borderColor: theme.line }]}>
             <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium' }}>복원</Text>
@@ -141,6 +154,7 @@ export function ResultRow({
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 13 },
   rowBody: { flex: 1, minWidth: 0 },
+  metaLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: 'IBMPlexSansKR_400Regular' },
   trashBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginBottom: 8 },

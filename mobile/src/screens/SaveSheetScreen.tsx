@@ -26,6 +26,7 @@ import { sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
+import { useKeyboardOffset } from '../hooks/useKeyboardOffset';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -104,6 +105,8 @@ export default function SaveSheetScreen() {
     }).start();
   }, [translateY]);
 
+  const keyboardOffset = useKeyboardOffset();
+
   const close = () => navigation.goBack();
 
   // Picking a photo and typing a memo are mutually exclusive in this sheet
@@ -180,7 +183,7 @@ export default function SaveSheetScreen() {
             borderTopLeftRadius: card ? 30 : 26,
             borderTopRightRadius: card ? 30 : 26,
             paddingBottom: 32 + insets.bottom,
-            transform: [{ translateY }],
+            transform: [{ translateY }, { translateY: Animated.multiply(keyboardOffset, -1) }],
             shadowOpacity: theme.dark ? 0.45 : 0.14,
           },
         ]}

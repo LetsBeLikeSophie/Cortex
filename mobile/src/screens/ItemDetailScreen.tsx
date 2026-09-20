@@ -5,7 +5,9 @@ import {
   Dimensions,
   Easing,
   Image,
+  KeyboardAvoidingView,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,7 +27,6 @@ import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip, MetaChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
 import { TrashIcon, SourceIcon } from '../components/Icons';
-import { useKeyboardOffset } from '../hooks/useKeyboardOffset';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -53,6 +54,13 @@ export default function ItemDetailScreen() {
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
+
+  const scrollRef = useRef<ScrollView>(null);
+  // TextInput's onSubmitEditing fires, then setAddingTag(false) below
+  // unmounts it, which fires onBlur too -- both handlers call submitNewTag
+  // in the same tick, before the newTag state clear has re-rendered, so
+  // without this guard the same typed tag got added twice.
+  const tagSubmittedRef = useRef(false);
 
   useEffect(() => {
     if (item.capture_type !== 'screenshot') return;
@@ -83,8 +91,6 @@ export default function ItemDetailScreen() {
     }).start();
   }, [translateY]);
 
-  const keyboardOffset = useKeyboardOffset();
-
   const close = () => navigation.goBack();
 
   // Optimistic: the tag chip disappears/appears immediately, and rolls back
@@ -98,7 +104,19 @@ export default function ItemDetailScreen() {
     });
   };
 
+  const openTagInput = () => {
+    tagSubmittedRef.current = false;
+    setAddingTag(true);
+    // The box mounts below everything else already in the tag row, right
+    // before the timestamp -- scroll it into view instead of leaving it
+    // wherever the sheet happened to be scrolled to.
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+  };
+
   const submitNewTag = () => {
+    if (tagSubmittedRef.current) return;
+    tagSubmittedRef.current = true;
+
     const trimmed = newTag.trim();
     setAddingTag(false);
     setNewTag('');
@@ -143,14 +161,18 @@ export default function ItemDetailScreen() {
             borderTopRightRadius: card ? 30 : 26,
             paddingBottom: 24 + insets.bottom,
             maxHeight: SHEET_TRAVEL * 0.82,
-            transform: [{ translateY }, { translateY: Animated.multiply(keyboardOffset, -1) }],
+            transform: [{ translateY }],
             shadowOpacity: theme.dark ? 0.45 : 0.14,
           },
         ]}
       >
         <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
 
-        <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Android already resizes the window around the keyboard
+            (windowSoftInputMode="adjustResize" in AndroidManifest), so this
+            is a no-op there and only does real work on iOS. */}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexShrink}>
+        <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.metaRow}>
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
               {sourceLabel(item.source, tech)}
@@ -267,6 +289,7 @@ export default function ItemDetailScreen() {
                   value={newTag}
                   onChangeText={setNewTag}
                   autoFocus
+                  onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                   onSubmitEditing={submitNewTag}
                   onBlur={submitNewTag}
                   placeholder="새 태그"
@@ -275,13 +298,14 @@ export default function ItemDetailScreen() {
                 />
               </View>
             ) : (
-              <TagAddChip label="+ 태그" theme={theme} onPress={() => setAddingTag(true)} />
+              <TagAddChip label="+ 태그" theme={theme} onPress={openTagInput} />
             )}
           </View>
           {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
 
           <Text style={[styles.timestamp, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
         </ScrollView>
+        </KeyboardAvoidingView>
 
         <View style={styles.buttonRow}>
           {item.raw_url ? (
@@ -312,6 +336,7 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  flexShrink: { flexShrink: 1 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   metaRowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   trashButton: { width: 24, height: 24, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

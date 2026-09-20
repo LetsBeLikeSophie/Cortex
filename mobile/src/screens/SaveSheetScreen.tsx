@@ -5,7 +5,10 @@ import {
   Dimensions,
   Easing,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -26,7 +29,6 @@ import { sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
-import { useKeyboardOffset } from '../hooks/useKeyboardOffset';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -105,7 +107,7 @@ export default function SaveSheetScreen() {
     }).start();
   }, [translateY]);
 
-  const keyboardOffset = useKeyboardOffset();
+  const scrollRef = useRef<ScrollView>(null);
 
   const close = () => navigation.goBack();
 
@@ -183,7 +185,8 @@ export default function SaveSheetScreen() {
             borderTopLeftRadius: card ? 30 : 26,
             borderTopRightRadius: card ? 30 : 26,
             paddingBottom: 32 + insets.bottom,
-            transform: [{ translateY }, { translateY: Animated.multiply(keyboardOffset, -1) }],
+            maxHeight: SHEET_TRAVEL * 0.86,
+            transform: [{ translateY }],
             shadowOpacity: theme.dark ? 0.45 : 0.14,
           },
         ]}
@@ -192,6 +195,13 @@ export default function SaveSheetScreen() {
 
         {status === 'input' || status === 'saving' || status === 'error' ? (
           <>
+          {/* Android already resizes the window around the keyboard
+              (windowSoftInputMode="adjustResize"), so this KeyboardAvoidingView
+              only does real work on iOS -- the ScrollView is what lets the
+              memo input scroll into view on both platforms when it doesn't
+              fit above the keyboard. */}
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flexShrink}>
+          <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text
               style={{
                 fontFamily: theme.headFamily,
@@ -235,6 +245,7 @@ export default function SaveSheetScreen() {
                   onChangeText={setText}
                   multiline
                   editable={status !== 'saving'}
+                  onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50)}
                   placeholder="예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래"
                   placeholderTextColor={theme.sub}
                   style={[
@@ -277,6 +288,8 @@ export default function SaveSheetScreen() {
                 저장 실패: {error}
               </Text>
             )}
+          </ScrollView>
+          </KeyboardAvoidingView>
 
             <View style={styles.buttonRow}>
               <GhostButton label="취소" theme={theme} onPress={close} />
@@ -405,6 +418,7 @@ const styles = StyleSheet.create({
     elevation: 16,
   },
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 24 },
+  flexShrink: { flexShrink: 1 },
   photoButtonRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
   photoButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   imagePreviewWrap: { marginTop: 18, alignItems: 'center' },

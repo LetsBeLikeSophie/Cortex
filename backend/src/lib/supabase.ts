@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { config, required } from "../config.js";
 import { Category } from "./categories.js";
+import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG } from "./sourceCatalog.js";
 
 const SCREENSHOTS_BUCKET = "item-screenshots";
 
@@ -249,6 +250,13 @@ export async function searchItems(userId: string, query: string, limit = 30): Pr
     if (item.raw_text?.toLowerCase().includes(needle)) return true;
     if (item.tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
     if (item.user_tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
+    // The channel/method chips shown in the app aren't stored as tags, but
+    // they're presented like tags there -- searching "유튜브" or "링크"
+    // should find everything tagged with that channel/method too.
+    const source = SOURCE_CATALOG[item.source];
+    if (source.label.toLowerCase().includes(needle) || source.labelEn.includes(needle)) return true;
+    const captureType = CAPTURE_TYPE_CATALOG[item.capture_type];
+    if (captureType.label.toLowerCase().includes(needle) || captureType.labelEn.includes(needle)) return true;
     return false;
   });
 

@@ -1,35 +1,22 @@
 import type { ApiItem, ItemSource } from './client';
 import type { RecentItem, SearchResult } from '../data/content';
+import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG, SOURCE_ORDER } from '../data/sourceCatalog';
 
-const SOURCE_LABEL: Record<ItemSource, string> = {
-  instagram: '인스타그램',
-  kakaotalk: '카카오톡',
-  safari: '사파리',
-  youtube: '유튜브',
-  memo: '메모',
-  other: '기타',
-};
-
-// Fixed display order for anything that lists all sources (e.g. the stats
-// screen), so a chart's legend/bars don't reshuffle between renders.
-export const SOURCE_ORDER = Object.keys(SOURCE_LABEL) as ItemSource[];
+// Re-exported so existing call sites (e.g. StatsScreen) don't need to know
+// the labels moved into a shared catalog -- see sourceCatalog.ts, the single
+// place channel/method labels and per-channel capabilities are defined.
+export { SOURCE_ORDER };
 
 export function sourceLabel(source: ItemSource, tech: boolean): string {
-  return tech ? source.toUpperCase() : SOURCE_LABEL[source];
+  return tech ? SOURCE_CATALOG[source].labelTech : SOURCE_CATALOG[source].label;
 }
-
-const CAPTURE_TYPE_LABEL: Record<ApiItem['capture_type'], string> = {
-  link: '링크',
-  text: '메모',
-  screenshot: '사진',
-};
 
 // The "method" half of an item's fixed classification (source is the
 // "channel" half) -- how it was captured, independent of which app/site it
 // came from (e.g. a KakaoTalk text share and a memo typed by hand are both
 // capture_type 'text').
 export function captureTypeLabel(captureType: ApiItem['capture_type'], tech: boolean): string {
-  return tech ? captureType.toUpperCase() : CAPTURE_TYPE_LABEL[captureType];
+  return tech ? CAPTURE_TYPE_CATALOG[captureType].labelTech : CAPTURE_TYPE_CATALOG[captureType].label;
 }
 
 export function relativeTime(iso: string): string {

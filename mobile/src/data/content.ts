@@ -32,7 +32,14 @@ export function copyFor(tone: CopyTone) {
   return {
     heroLabel: tech ? 'MEMORY INDEX' : '보관한 기억',
     heroSuffix: '개의 기억\n보관 중',
-    heroFoot: tech ? 'LIVE · 방금 1건 추가' : '이번 주 +12건 · 방금 저장됨',
+    // weekCount/lastSaved are real, derived from the fetched items -- this
+    // used to be a hardcoded '이번 주 +12건 · 방금 저장됨' regardless of
+    // what was actually saved.
+    heroFoot: (weekCount: number, lastSaved: string | null) => {
+      if (tech) return lastSaved ? `LIVE · ${lastSaved} 저장` : 'LIVE · 대기 중';
+      const base = `이번 주 +${weekCount}건`;
+      return lastSaved ? `${base} · ${lastSaved} 저장됨` : base;
+    },
     searchTitle: tech ? '기억 불러오기' : '무엇을 찾고 계신가요',
     hits: (n: number) => (tech ? `${n} MATCHES · 0.08s` : `결과 ${n}건`),
     savedLabel: tech ? 'SAVED TO CORTEX' : '저장 완료',

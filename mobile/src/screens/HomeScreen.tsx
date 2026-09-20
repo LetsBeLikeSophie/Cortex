@@ -10,7 +10,7 @@ import { MONO, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { fetchRecentItems, ApiItem } from '../api/client';
-import { toRecentItem } from '../api/format';
+import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
@@ -63,6 +63,12 @@ export default function HomeScreen() {
     : rawItems;
   const items = filtered.map(toRecentItem);
 
+  // Always off the unfiltered list -- the hero card describes the whole
+  // archive, not whatever tag tab happens to be active.
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekCount = rawItems.filter((it) => new Date(it.shared_at).getTime() >= weekAgo).length;
+  const lastSaved = rawItems[0] ? relativeTime(rawItems[0].shared_at) : null;
+
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
       <View style={[styles.headPad, { paddingHorizontal: card ? 24 : 26, paddingTop: card ? 26 : 30 }]}>
@@ -107,6 +113,7 @@ export default function HomeScreen() {
                   padding: 22,
                   paddingTop: 24,
                   paddingBottom: 20,
+                  marginTop: 20,
                   ...(theme.dark ? null : styles.heroShadow),
                 }
               : { marginTop: 22 },
@@ -161,7 +168,7 @@ export default function HomeScreen() {
                 color: theme.accent,
               }}
             >
-              {txt.heroFoot}
+              {txt.heroFoot(weekCount, lastSaved)}
             </Text>
           </View>
         </View>

@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# locally-built release APKs kept for sideload testing -- too large for git
+/releases

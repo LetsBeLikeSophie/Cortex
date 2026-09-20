@@ -22,9 +22,10 @@ export default function ProfileScreen() {
   const [error, setError] = useState('');
   const card = theme.list === 'card';
 
+  const isGuest = session?.user.is_anonymous ?? false;
   const meta = session?.user.user_metadata as { nickname?: string; avatar_url?: string } | undefined;
-  const nickname = meta?.nickname ?? '이름 없음';
-  const avatarUrl = meta?.avatar_url;
+  const nickname = isGuest ? '게스트' : meta?.nickname ?? '이름 없음';
+  const avatarUrl = isGuest ? undefined : meta?.avatar_url;
 
   const onSignOut = async () => {
     setState('signingOut');
@@ -77,17 +78,23 @@ export default function ProfileScreen() {
           <Text style={[styles.nickname, { color: theme.ink, fontFamily: theme.headFamily, fontWeight: theme.headWeight }]}>
             {nickname}
           </Text>
-          <Text style={[styles.provider, { color: theme.sub }]}>카카오 계정으로 로그인됨</Text>
+          <Text style={[styles.provider, { color: theme.sub }]}>
+            {isGuest ? '게스트로 이용 중' : '카카오 계정으로 로그인됨'}
+          </Text>
         </View>
 
         {state === 'confirmingDelete' || state === 'deleting' || state === 'deleteError' ? (
           <View style={[styles.confirmCard, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
-            <Text style={[styles.confirmTitle, { color: theme.ink }]}>정말 탈퇴하시겠어요?</Text>
+            <Text style={[styles.confirmTitle, { color: theme.ink }]}>
+              {isGuest ? '정말 삭제하시겠어요?' : '정말 탈퇴하시겠어요?'}
+            </Text>
             <Text style={[styles.confirmBody, { color: theme.sub }]}>
-              저장된 기억이 모두 사라지고, 되돌릴 수 없어요.
+              {isGuest
+                ? '이 게스트가 저장한 기억이 모두 사라지고, 되돌릴 수 없어요.'
+                : '저장된 기억이 모두 사라지고, 되돌릴 수 없어요.'}
             </Text>
             {state === 'deleteError' && (
-              <Text style={[styles.errorText, { color: theme.accent }]}>탈퇴 실패: {error}</Text>
+              <Text style={[styles.errorText, { color: theme.accent }]}>삭제 실패: {error}</Text>
             )}
             <View style={styles.confirmButtonRow}>
               <Pressable
@@ -105,7 +112,7 @@ export default function ProfileScreen() {
                 {state === 'deleting' ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.deleteButtonLabel}>탈퇴하기</Text>
+                  <Text style={styles.deleteButtonLabel}>{isGuest ? '삭제하기' : '탈퇴하기'}</Text>
                 )}
               </Pressable>
             </View>
@@ -138,7 +145,7 @@ export default function ProfileScreen() {
                 )}
               </Pressable>
               <Pressable onPress={() => setState('confirmingDelete')} style={styles.deleteLinkButton}>
-                <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>회원 탈퇴</Text>
+                <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>{isGuest ? '게스트 데이터 삭제' : '회원 탈퇴'}</Text>
               </Pressable>
             </View>
           </View>

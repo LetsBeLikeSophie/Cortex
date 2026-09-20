@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { signInWithKakao } from '../auth/kakaoLogin';
+import { supabase } from '../auth/supabase';
 
 // Kakao's own brand yellow (#FEE500) + near-black text/glyph -- their design
 // guidelines ask that the login button keep this exact pair regardless of
@@ -13,13 +14,15 @@ import { signInWithKakao } from '../auth/kakaoLogin';
 const KAKAO_YELLOW = '#FEE500';
 const KAKAO_TEXT = '#191919';
 
+type Status = 'idle' | 'kakaoLoading' | 'guestLoading' | 'error';
+
 export default function LoginScreen() {
   const { theme } = useTheme();
-  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
 
   const onPress = async () => {
-    setStatus('loading');
+    setStatus('kakaoLoading');
     setError('');
     try {
       await signInWithKakao();
@@ -31,6 +34,23 @@ export default function LoginScreen() {
       setError(err instanceof Error ? err.message : String(err));
       setStatus('error');
     }
+  };
+
+  // Anonymous Supabase auth -- a real, isolated account (own user_id, own
+  // data, nothing shared with other guests the way the old DEV_USER_ID
+  // fallback was), just one with no recoverable credential. Signing out (or
+  // uninstalling) loses access to it for good, which is the honest version
+  // of "guest data doesn't follow you" -- it's not that nothing gets saved.
+  const onGuestPress = async () => {
+    setStatus('guestLoading');
+    setError('');
+    const { error: signInError } = await supabase.auth.signInAnonymously();
+    if (signInError) {
+      setError(signInError.message);
+      setStatus('error');
+      return;
+    }
+    setStatus('idle');
   };
 
   return (
@@ -58,15 +78,29 @@ export default function LoginScreen() {
         )}
         <Pressable
           onPress={onPress}
-          disabled={status === 'loading'}
-          style={[styles.kakaoButton, { opacity: status === 'loading' ? 0.7 : 1 }]}
+          disabled={status !== 'idle' && status !== 'error'}
+          style={[styles.kakaoButton, { opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
         >
-          {status === 'loading' ? (
+          {status === 'kakaoLoading' ? (
             <ActivityIndicator color={KAKAO_TEXT} />
           ) : (
             <Text style={styles.kakaoButtonText}>카카오로 로그인</Text>
           )}
         </Pressable>
+        <Pressable
+          onPress={onGuestPress}
+          disabled={status !== 'idle' && status !== 'error'}
+          style={[styles.guestButton, { borderColor: theme.line, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
+        >
+          {status === 'guestLoading' ? (
+            <ActivityIndicator color={theme.ink} />
+          ) : (
+            <Text style={[styles.guestButtonText, { color: theme.ink }]}>게스트로 시작</Text>
+          )}
+        </Pressable>
+        <Text style={[styles.guestNote, { color: theme.sub }]}>
+          게스트는 이 기기에서 로그아웃하면 다시 못 봐요.
+        </Text>
       </View>
     </SafeAreaView>
   );
@@ -87,4 +121,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   kakaoButtonText: { color: KAKAO_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
+  guestButton: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestButtonText: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
+  guestNote: { fontSize: 12.5, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' },
 });

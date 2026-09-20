@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -22,7 +22,22 @@ function AppShell() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.bg }}>
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      {loading ? null : session ? <RootNavigator /> : <LoginScreen />}
+      {loading ? (
+        // This is the window where the Kakao redirect-back is exchanging its
+        // code for a session (a few sequential network calls -- Kakao's own
+        // APIs plus Supabase admin calls -- so it's routinely a full second
+        // or more). Rendering nothing here made that look frozen: a reload
+        // "fixed" it only because the second mount re-read an
+        // already-completed session from storage instead of actually being
+        // faster.
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.accent} />
+        </View>
+      ) : session ? (
+        <RootNavigator />
+      ) : (
+        <LoginScreen />
+      )}
     </View>
   );
 }

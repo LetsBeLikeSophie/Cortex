@@ -96,6 +96,17 @@ export function saveTextItem(source: ItemSource, text: string) {
   });
 }
 
+// Goes through the backend's og:tags/oEmbed metadata fetch instead of
+// storing the bare URL as unstructured text -- worth using whenever we
+// actually have a clean link (e.g. the OS share sheet's webUrl), which
+// saveTextItem alone had no path to before this.
+export function saveLinkItem(source: ItemSource, url: string) {
+  return request<ApiItem>('/items', {
+    method: 'POST',
+    body: JSON.stringify({ captureType: 'link', source, url }),
+  });
+}
+
 // expo-image-picker's base64 output is always re-encoded as JPEG regardless
 // of the original file's format, so mediaType is always 'image/jpeg' here.
 export function saveScreenshotItem(source: ItemSource, imageBase64: string) {

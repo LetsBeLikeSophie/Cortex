@@ -14,13 +14,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation } from '@react-navigation/native';
+import { File } from 'expo-file-system';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
-import { saveTextItem, saveScreenshotItem, ApiItem } from '../api/client';
+import { saveTextItem, saveLinkItem, saveScreenshotItem, ApiItem, ItemSource } from '../api/client';
 import { sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip } from '../components/Chips';
@@ -29,26 +30,66 @@ import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
 
-// There's no real OS share extension wired up yet (see mobile/AGENTS.md /
-// the project handoff notes) -- until then this screen doubles as the
-// "share" entry point itself: type/paste what you'd have shared, and it
-// goes through the same POST /items -> Claude classification -> Supabase
-// pipeline a real share hand-off would use.
+// Android's OS share sheet lands here now (expo-share-intent, see
+// HomeScreen's handler) with sharedText/sharedUrl/sharedImageUri route
+// params -- pre-filling below instead of requiring anyone to paste
+// anything. Typing/pasting/picking manually still works the same way for
+// everything else (and for iOS, which has no share extension yet).
 type Status = 'input' | 'saving' | 'done' | 'error';
+
+// No reliable way to know which app a share came from (Android's generic
+// ACTION_SEND doesn't carry the sender's identity), but a link's own domain
+// is a good enough guess to avoid dumping every URL into 'other'.
+function guessSourceFromUrl(url: string): ItemSource {
+  let host = '';
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return 'other';
+  }
+  if (host.includes('instagram.com')) return 'instagram';
+  if (host.includes('youtube.com') || host.includes('youtu.be')) return 'youtube';
+  return 'safari';
+}
 
 export default function SaveSheetScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'SaveSheet'>>();
   const insets = useSafeAreaInsets();
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
 
-  const [text, setText] = useState('');
+  const [text, setText] = useState(route.params?.sharedText ?? '');
+  const [linkUrl, setLinkUrl] = useState(route.params?.sharedUrl ?? null);
   const [image, setImage] = useState<{ base64: string; previewUri: string } | null>(null);
   const [status, setStatus] = useState<Status>('input');
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
+
+  // The share sheet only ever hands us a content:// / file:// URI for an
+  // image, never the bytes directly -- read it into base64 once, here,
+  // same shape pickFromLibrary/takePhoto already produce.
+  useEffect(() => {
+    const uri = route.params?.sharedImageUri;
+    if (!uri) return;
+    let cancelled = false;
+    new File(uri)
+      .base64()
+      .then((base64) => {
+        if (!cancelled) setImage({ base64, previewUri: uri });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : String(err));
+          setStatus('error');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [route.params?.sharedImageUri]);
 
   // Shorter than it looks like it should be -- RN Web always falls back to
   // JS-driven Animated (no native driver there), so 220ms already reads
@@ -78,6 +119,7 @@ export default function SaveSheetScreen() {
     const asset = result.canceled ? null : result.assets[0];
     if (!asset?.base64) return;
     setText('');
+    setLinkUrl(null);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
   };
@@ -93,15 +135,20 @@ export default function SaveSheetScreen() {
     const asset = result.canceled ? null : result.assets[0];
     if (!asset?.base64) return;
     setText('');
+    setLinkUrl(null);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
   };
 
   const submit = () => {
-    if (!image && !text.trim()) return;
+    if (!image && !linkUrl && !text.trim()) return;
     setStatus('saving');
     setError('');
-    const request = image ? saveScreenshotItem('other', image.base64) : saveTextItem('memo', text.trim());
+    const request = image
+      ? saveScreenshotItem('other', image.base64)
+      : linkUrl
+        ? saveLinkItem(guessSourceFromUrl(linkUrl), linkUrl)
+        : saveTextItem('memo', text.trim());
     request
       .then((item) => {
         setSaved(item);
@@ -155,7 +202,7 @@ export default function SaveSheetScreen() {
               무엇을 저장할까요?
             </Text>
             <Text style={[styles.savedSub, { color: theme.sub }]}>
-              공유 시트에서 넘어올 텍스트를 아직은 여기에 붙여넣어 테스트해요.
+              다른 앱에서 공유하거나, 텍스트를 붙여넣거나 사진을 골라서 저장해요.
             </Text>
 
             {image ? (
@@ -164,6 +211,17 @@ export default function SaveSheetScreen() {
                 <Pressable onPress={() => setImage(null)} disabled={status === 'saving'}>
                   <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5, marginTop: 10 }}>
                     사진 지우고 다시 선택
+                  </Text>
+                </Pressable>
+              </View>
+            ) : linkUrl ? (
+              <View style={[styles.linkPreview, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
+                <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 14 }} numberOfLines={2}>
+                  {linkUrl}
+                </Text>
+                <Pressable onPress={() => setLinkUrl(null)} disabled={status === 'saving'}>
+                  <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, marginTop: 10 }}>
+                    지우고 직접 입력
                   </Text>
                 </Pressable>
               </View>
@@ -348,6 +406,7 @@ const styles = StyleSheet.create({
   photoButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   imagePreviewWrap: { marginTop: 18, alignItems: 'center' },
   imagePreview: { width: '100%', aspectRatio: 1, borderRadius: 14, borderWidth: 1 },
+  linkPreview: { marginTop: 18, borderWidth: 1, borderRadius: 14, padding: 16 },
   savedHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   savedMark: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   savedHeadBody: { flex: 1 },

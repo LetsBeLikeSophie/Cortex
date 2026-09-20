@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useShareIntent } from 'expo-share-intent';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
@@ -57,6 +58,21 @@ export default function HomeScreen() {
       });
     }, [load])
   );
+
+  // Android-only for now (expo-share-intent's disableIOS: true) -- someone
+  // shared into Cortex from another app. Hand it to the save sheet
+  // pre-filled instead of silently swallowing it or requiring it be typed
+  // in again by hand.
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  useEffect(() => {
+    if (!hasShareIntent) return;
+    navigation.navigate('SaveSheet', {
+      sharedImageUri: shareIntent.files?.[0]?.path,
+      sharedUrl: shareIntent.webUrl ?? undefined,
+      sharedText: shareIntent.webUrl ? undefined : shareIntent.text ?? undefined,
+    });
+    resetShareIntent();
+  }, [hasShareIntent, shareIntent, navigation, resetShareIntent]);
 
   const filtered = activeTag
     ? rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))

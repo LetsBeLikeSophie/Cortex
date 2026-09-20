@@ -60,6 +60,9 @@ export async function processIncomingItem(input: IncomingItem, userId = DEV_USER
       source: input.source,
       captureType: "link",
       rawUrl: input.url,
+      // og:image/oEmbed's thumbnail -- fetched above but previously never
+      // made it past `meta` into the stored item at all.
+      thumbnailUrl: meta.imageUrl,
       ...classification,
     });
   }

@@ -27,6 +27,7 @@ create table if not exists items (
   raw_url text,
   raw_text text,
   image_path text, -- Supabase Storage path, set when capture_type = 'screenshot'
+  thumbnail_url text, -- external og:image/oEmbed preview URL, set when capture_type = 'link' and the site published one
 
   -- enriched by the pipeline (og:tags/oEmbed for links, Claude for text/images)
   title text,

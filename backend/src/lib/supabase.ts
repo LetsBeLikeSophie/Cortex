@@ -28,6 +28,7 @@ export interface ItemRecord {
   raw_url: string | null;
   raw_text: string | null;
   image_path: string | null;
+  thumbnail_url: string | null;
   title: string | null;
   snippet: string | null;
   category: Category;
@@ -45,6 +46,7 @@ export interface NewItem {
   rawUrl?: string;
   rawText?: string;
   imagePath?: string;
+  thumbnailUrl?: string;
   title?: string;
   snippet?: string;
   category: Category;
@@ -61,6 +63,7 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
       raw_url: item.rawUrl ?? null,
       raw_text: item.rawText ?? null,
       image_path: item.imagePath ?? null,
+      thumbnail_url: item.thumbnailUrl ?? null,
       title: item.title ?? null,
       snippet: item.snippet ?? null,
       category: item.category,

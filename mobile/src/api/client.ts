@@ -10,6 +10,7 @@ export interface ApiItem {
   capture_type: 'link' | 'text' | 'screenshot';
   raw_url: string | null;
   raw_text: string | null;
+  thumbnail_url: string | null; // external preview image, set for capture_type 'link' when the site published one
   title: string | null;
   snippet: string | null;
   category: ItemCategory;

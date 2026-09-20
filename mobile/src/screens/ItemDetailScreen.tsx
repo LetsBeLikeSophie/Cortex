@@ -223,6 +223,14 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
+          {item.capture_type === 'link' && item.thumbnail_url && (
+            // Already a public URL the site published for its own link
+            // previews -- no signed-URL fetch needed, unlike screenshots.
+            <View style={[styles.imageBox, { backgroundColor: theme.soft, borderColor: theme.line }]}>
+              <Image source={{ uri: item.thumbnail_url }} style={styles.image} resizeMode="cover" />
+            </View>
+          )}
+
           {item.snippet && <Text style={[styles.body, { color: theme.sub }]}>{item.snippet}</Text>}
 
           {item.capture_type === 'text' && item.raw_text && (

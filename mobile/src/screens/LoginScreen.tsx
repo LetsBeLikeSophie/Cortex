@@ -5,8 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { signInWithKakao } from '../auth/kakaoLogin';
-import { supabase } from '../auth/supabase';
-import { seedSampleItem } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 
 // Kakao's own brand yellow (#FEE500) + near-black text/glyph -- their design
 // guidelines ask that the login button keep this exact pair regardless of
@@ -19,6 +18,7 @@ type Status = 'idle' | 'kakaoLoading' | 'guestLoading' | 'error';
 
 export default function LoginScreen() {
   const { theme } = useTheme();
+  const { signInAsGuest } = useAuth();
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
 
@@ -42,19 +42,18 @@ export default function LoginScreen() {
   // fallback was), just one with no recoverable credential. Signing out (or
   // uninstalling) loses access to it for good, which is the honest version
   // of "guest data doesn't follow you" -- it's not that nothing gets saved.
+  // signInAsGuest (AuthContext) holds the app on a loading spinner until the
+  // sample item is actually seeded, so Home's first render doesn't fetch and
+  // cache an empty list a beat before it exists.
   const onGuestPress = async () => {
     setStatus('guestLoading');
     setError('');
-    const { error: signInError } = await supabase.auth.signInAnonymously();
+    const { error: signInError } = await signInAsGuest();
     if (signInError) {
-      setError(signInError.message);
+      setError(signInError);
       setStatus('error');
       return;
     }
-    // Best-effort, same as the Kakao path's server-side seeding -- a guest
-    // starting with an empty archive isn't wrong, just an inconsistency
-    // worth smoothing over, not something worth blocking sign-in for.
-    seedSampleItem().catch(() => {});
     setStatus('idle');
   };
 

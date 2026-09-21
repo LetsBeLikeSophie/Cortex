@@ -84,19 +84,24 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
 // picker (which searches actual saved tags) has something to find. Shared
 // by both the Kakao signup path (kakaoAuth.ts) and the guest/anonymous
 // signup path (POST /auth/seed-sample) so neither one starts emptier than
-// the other. Best-effort at each call site: a seeding hiccup shouldn't
-// block signup.
+// the other. Doubles as onboarding: it's written to explain the app's own
+// share -> auto-tag -> search loop through an item that demonstrates it,
+// rather than a generic placeholder unrelated to what a first-time opener
+// actually needs to know. Best-effort at each call site: a seeding hiccup
+// shouldn't block signup.
 export async function seedSampleItem(userId: string): Promise<void> {
   await insertItem({
     userId,
     source: "instagram",
     captureType: "text",
     rawText:
-      "성수동에 새로 생긴 크로플 맛집 3곳 정리해봤어요! 카페 위치랑 시그니처 메뉴까지 한번에 볼 수 있어요.",
-    title: "성수동 크로플 맛집 3곳 총정리",
-    snippet: "카페 3곳 위치와 시그니처 메뉴 정리",
-    category: "맛집",
-    tags: ["맛집", "성수동", "디저트"],
+      "인스타 게시물이든, 유튜브 링크든, 캡처한 스크린샷이든 공유 버튼 눌러서 코르텍스만 골라주면 끝이에요. " +
+      "제목 붙이고 태그 다는 건 AI가 알아서 할게요. 나중에 뭐였는지 가물가물하면 검색창에 아무 단어나 던져보세요, " +
+      "여기서 찾아드릴게요. 이 메모는 구경만 하고 지우셔도 되고, 첫 기억으로 계속 두셔도 저는 안 서운해요.",
+    title: "저장 눌렀는데 어디로 갔지?",
+    snippet: "지금 보고 계신 게 정답이에요",
+    category: "읽을거리",
+    tags: ["가이드", "첫기억"],
   });
 }
 

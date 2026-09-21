@@ -20,48 +20,26 @@ async function compressScreenshot(bytes: Buffer): Promise<Buffer> {
 
 const SOURCES = ["instagram", "kakaotalk", "safari", "youtube", "memo", "other"] as const satisfies readonly ItemSource[];
 
-// Tags the user typed in at save time (SaveSheetScreen's space-separated
-// tag field) -- distinct from the AI-assigned `tags` classifyText/
-// classifyImage produce below, same user_tags column ItemDetailScreen's
-// add/remove tag controls read and write later.
-const userTagsField = z.array(z.string().min(1)).optional();
-
 export const IncomingItemSchema = z.discriminatedUnion("captureType", [
   z.object({
     captureType: z.literal("link"),
     source: z.enum(SOURCES),
     url: z.string().url(),
-    userTags: userTagsField,
   }),
   z.object({
     captureType: z.literal("text"),
     source: z.enum(SOURCES),
     text: z.string().min(1),
-    userTags: userTagsField,
   }),
   z.object({
     captureType: z.literal("screenshot"),
     source: z.enum(SOURCES),
     imageBase64: z.string().min(1),
     mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
-    userTags: userTagsField,
   }),
 ]);
 
 export type IncomingItem = z.infer<typeof IncomingItemSchema>;
-
-// De-dupes and drops anything that already matches an AI-assigned tag --
-// same rule ItemDetailScreen's add-tag control applies, so a user-typed tag
-// at save time can't produce a visually redundant chip either.
-function resolveUserTags(userTags: string[] | undefined, aiTags: string[]): string[] {
-  if (!userTags?.length) return [];
-  const seen = new Set<string>();
-  for (const tag of userTags) {
-    if (aiTags.includes(tag)) continue;
-    seen.add(tag);
-  }
-  return [...seen];
-}
 
 // The three-branch pipeline discussed in the product conversation:
 // link -> og:tags/oEmbed, text -> shared straight through, screenshot ->
@@ -85,7 +63,6 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
       // made it past `meta` into the stored item at all.
       thumbnailUrl: meta.imageUrl,
       ...classification,
-      userTags: resolveUserTags(input.userTags, classification.tags),
     });
   }
 
@@ -97,7 +74,6 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
       captureType: "text",
       rawText: input.text,
       ...classification,
-      userTags: resolveUserTags(input.userTags, classification.tags),
     });
   }
 
@@ -114,6 +90,5 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
     captureType: "screenshot",
     imagePath,
     ...classification,
-    userTags: resolveUserTags(input.userTags, classification.tags),
   });
 }

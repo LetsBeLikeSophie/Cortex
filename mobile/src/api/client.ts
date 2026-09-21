@@ -90,10 +90,10 @@ export function searchItems(query: string, limit = 30) {
   return request<{ items: ApiItem[] }>(`/items/search?q=${encodeURIComponent(query)}&limit=${limit}`);
 }
 
-export function saveTextItem(source: ItemSource, text: string, userTags?: string[]) {
+export function saveTextItem(source: ItemSource, text: string) {
   return request<ApiItem>('/items', {
     method: 'POST',
-    body: JSON.stringify({ captureType: 'text', source, text, userTags }),
+    body: JSON.stringify({ captureType: 'text', source, text }),
   });
 }
 
@@ -101,21 +101,21 @@ export function saveTextItem(source: ItemSource, text: string, userTags?: string
 // storing the bare URL as unstructured text -- worth using whenever we
 // actually have a clean link (e.g. the OS share sheet's webUrl), which
 // saveTextItem alone had no path to before this.
-export function saveLinkItem(source: ItemSource, url: string, userTags?: string[]) {
+export function saveLinkItem(source: ItemSource, url: string) {
   return request<ApiItem>('/items', {
     method: 'POST',
-    body: JSON.stringify({ captureType: 'link', source, url, userTags }),
+    body: JSON.stringify({ captureType: 'link', source, url }),
   });
 }
 
 // expo-image-picker's base64 output is always re-encoded as JPEG regardless
 // of the original file's format, so mediaType is always 'image/jpeg' here.
-export function saveScreenshotItem(source: ItemSource, imageBase64: string, userTags?: string[]) {
+export function saveScreenshotItem(source: ItemSource, imageBase64: string) {
   return request<ApiItem>(
     '/items',
     {
       method: 'POST',
-      body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg', userTags }),
+      body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg' }),
     },
     SCREENSHOT_TIMEOUT_MS
   );

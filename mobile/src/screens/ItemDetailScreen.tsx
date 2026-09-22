@@ -61,6 +61,7 @@ export default function ItemDetailScreen() {
   const [pinPending, setPinPending] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
+  const tagScrollRef = useRef<ScrollView>(null);
   // TextInput's onSubmitEditing fires, then setAddingTag(false) below
   // unmounts it, which fires onBlur too -- both handlers call submitNewTag
   // in the same tick, before the newTag state clear has re-rendered, so
@@ -112,6 +113,10 @@ export default function ItemDetailScreen() {
   const openTagInput = () => {
     tagSubmittedRef.current = false;
     setAddingTag(true);
+    // The input box mounts at the end of the (now horizontally scrolling)
+    // tag row -- with enough tags already in it, "+ 태그" itself might be
+    // scrolled out of view when tapped from a swiped-over position.
+    setTimeout(() => tagScrollRef.current?.scrollToEnd({ animated: true }), 50);
   };
 
   const submitNewTag = () => {
@@ -258,7 +263,17 @@ export default function ItemDetailScreen() {
             {item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)'}
           </Text>
 
-          <View style={styles.tagRow}>
+          {/* Horizontal instead of wrapping -- with enough tags, a wrapping
+              row grows tall and pushes the image/description further down
+              every time one more tag gets added. This stays a fixed height
+              and scrolls sideways instead. */}
+          <ScrollView
+            ref={tagScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tagScroll}
+            contentContainerStyle={styles.tagRow}
+          >
             <MetaChip
               icon={<SourceIcon source={item.source} size={12} color={theme.sub} strokeWidth={1.3} />}
               label={sourceLabel(item.source, tech)}
@@ -288,7 +303,7 @@ export default function ItemDetailScreen() {
             ) : (
               <TagAddChip label="+ 태그" theme={theme} onPress={openTagInput} />
             )}
-          </View>
+          </ScrollView>
           {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
 
           {item.capture_type === 'screenshot' && (
@@ -368,7 +383,8 @@ const styles = StyleSheet.create({
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   linkRow: { marginTop: 14 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16, alignItems: 'center' },
+  tagScroll: { marginTop: 16, flexGrow: 0 },
+  tagRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },

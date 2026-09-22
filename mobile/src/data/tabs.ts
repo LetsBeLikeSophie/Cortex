@@ -10,12 +10,14 @@ export const ALL_CATEGORIES = ['맛집', '여행', '레시피', '쇼핑', '읽�
 // Home tab strip: pins any tag (freeform, one per saved item's auto-assigned
 // tags array) rather than one of the fixed categories above -- picked via a
 // search-as-you-type list in TabPickerScreen. A new account's seeded sample
-// item carries '맛집' as one of its tags, so it's a reasonable single
-// default rather than leaving the strip empty on first launch.
+// item (see backend's seedSampleItem) carries '가이드' as one of its tags,
+// so it's a reasonable single default rather than leaving the strip empty
+// on first launch -- must match one of that item's actual tags, or the
+// default tab shows zero results on a brand-new account.
 export type TagTab = string;
 
 const STORAGE_KEY = 'cortex:homeTabs';
-const DEFAULT_TABS: TagTab[] = ['맛집'];
+const DEFAULT_TABS: TagTab[] = ['가이드'];
 
 export async function loadHomeTabs(): Promise<TagTab[]> {
   try {

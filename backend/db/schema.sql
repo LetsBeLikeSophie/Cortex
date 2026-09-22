@@ -38,13 +38,17 @@ create table if not exists items (
 
   shared_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
-  deleted_at timestamptz -- soft delete: set on trash, cleared on restore, row
+  deleted_at timestamptz, -- soft delete: set on trash, cleared on restore, row
                           -- only actually removed on a permanent-delete call
+  pinned_at timestamptz -- home screen's "즐겨찾기" tab: set when pinned, cleared
+                         -- on unpin, ordered by this (most recently pinned first)
+                         -- same shape as deleted_at above
 );
 
 create index if not exists items_user_id_shared_at_idx on items (user_id, shared_at desc) where deleted_at is null;
 create index if not exists items_category_idx on items (user_id, category) where deleted_at is null;
 create index if not exists items_trash_idx on items (user_id, deleted_at) where deleted_at is not null;
+create index if not exists items_pinned_idx on items (user_id, pinned_at desc) where pinned_at is not null;
 
 -- array_to_string/text[]::text are marked STABLE on this Postgres build
 -- (collation-aware output), which Postgres refuses inside an index

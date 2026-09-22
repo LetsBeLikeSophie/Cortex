@@ -22,11 +22,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, deleteItem, getScreenshotUrl, removeTag as removeTagApi } from '../api/client';
+import { addTag, deleteItem, getScreenshotUrl, pinItem, unpinItem, removeTag as removeTagApi } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip, MetaChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
-import { TrashIcon, SourceIcon } from '../components/Icons';
+import { TrashIcon, SourceIcon, StarIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -54,6 +54,11 @@ export default function ItemDetailScreen() {
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
+
+  // Optimistic, same pattern as tags below -- flips immediately, rolls back
+  // if the server call fails.
+  const [pinned, setPinned] = useState(item.pinned_at != null);
+  const [pinPending, setPinPending] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   // TextInput's onSubmitEditing fires, then setAddingTag(false) below
@@ -125,6 +130,15 @@ export default function ItemDetailScreen() {
     });
   };
 
+  const togglePin = () => {
+    const next = !pinned;
+    setPinned(next);
+    setPinPending(true);
+    (next ? pinItem(item.id) : unpinItem(item.id))
+      .catch(() => setPinned(!next))
+      .finally(() => setPinPending(false));
+  };
+
   const confirmDelete = async () => {
     setDeleteState('deleting');
     try {
@@ -175,13 +189,22 @@ export default function ItemDetailScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
         <ScrollView ref={scrollRef} style={styles.flexShrink} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.metaRow}>
+            {/* Channel used to be shown here too, but that's now the same
+                fact as the source MetaChip right below the title -- category
+                stays since it's the one piece of info this screen only ever
+                shows in this one spot. */}
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-              {sourceLabel(item.source, tech)}
+              {item.category}
             </Text>
             <View style={styles.metaRowRight}>
-              <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-                {item.category}
-              </Text>
+              <Pressable
+                onPress={togglePin}
+                disabled={pinPending}
+                hitSlop={8}
+                style={[styles.trashButton, { borderColor: theme.line }]}
+              >
+                <StarIcon size={13.5} color={pinned ? theme.accent : theme.sub} strokeWidth={1.3} filled={pinned} />
+              </Pressable>
               <Pressable
                 onPress={() => setDeleteState('confirming')}
                 hitSlop={8}

@@ -18,7 +18,7 @@ async function compressScreenshot(bytes: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
-const SOURCES = ["instagram", "kakaotalk", "safari", "youtube", "memo", "other"] as const satisfies readonly ItemSource[];
+export const SOURCES = ["instagram", "kakaotalk", "safari", "youtube", "memo", "other"] as const satisfies readonly ItemSource[];
 
 export const IncomingItemSchema = z.discriminatedUnion("captureType", [
   z.object({

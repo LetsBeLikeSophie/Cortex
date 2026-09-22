@@ -160,6 +160,19 @@ export function SourceIcon({ source, size = 18, color, strokeWidth = 1.3 }: Icon
   }
 }
 
+// Home's 즐겨찾기 (favorites) toggle -- `filled` switches between an outline
+// star (not pinned) and a solid one (pinned), same on/off pattern as
+// TagChip's active state elsewhere.
+export function StarIcon({ size = 18, color, strokeWidth = 1.3, filled = false }: IconProps & { filled?: boolean }) {
+  const path =
+    'M9 2.2l2.02 4.31 4.68.58-3.42 3.28.9 4.66L9 12.7l-4.18 2.33.9-4.66-3.42-3.28 4.68-.58z';
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d={path} fill={filled ? color : 'none'} stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function CheckIcon({ size = 24, color, strokeWidth = 1.7 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

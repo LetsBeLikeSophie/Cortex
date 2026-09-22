@@ -12,7 +12,6 @@ import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
 import SaveSheetScreen from '../screens/SaveSheetScreen';
 import ThemePickerScreen from '../screens/ThemePickerScreen';
-import TabPickerScreen from '../screens/TabPickerScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TrashScreen from '../screens/TrashScreen';
@@ -107,7 +106,6 @@ export default function RootNavigator() {
         <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'fade', animationDuration: 180 }}>
           <Stack.Screen name="SaveSheet" component={SaveSheetScreen} />
           <Stack.Screen name="ThemePicker" component={ThemePickerScreen} />
-          <Stack.Screen name="TabPicker" component={TabPickerScreen} />
           <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
         </Stack.Group>
       </Stack.Navigator>

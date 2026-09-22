@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
@@ -9,54 +9,75 @@ import { useShareIntent } from 'expo-share-intent';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
-import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchRecentItems, ApiItem } from '../api/client';
-import { toRecentItem, relativeTime } from '../api/format';
+import { fetchRecentItems, fetchItemsBySource, fetchPinnedItems, ApiItem, ItemSource } from '../api/client';
+import { toRecentItem, relativeTime, sourceLabel, SOURCE_ORDER } from '../api/format';
 import { RecentRow } from '../components/ListItems';
-import { TabChip, TabAddChip } from '../components/Chips';
+import { TabChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
-import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
+import { StatsIcon, ProfileIcon, TrashIcon, SourceIcon, StarIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
+
+// Home's tab strip is fixed, not user-picked: 즐겨찾기 (pinned items, the
+// screen's default view) plus one tab per channel (every item from that
+// source, regardless of pinned state). Search already covers "find
+// anything by tag/text" -- see api/format.ts's captureTypeLabel/sourceLabel
+// and the backend's searchItems -- so Home's own job narrowed to "what do I
+// want to get back to quickly," not a second, weaker way to filter everything.
+const FAVORITES_TAB = 'favorites' as const;
+type HomeTab = typeof FAVORITES_TAB | ItemSource;
 
 export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [customTabs, setCustomTabs] = useState<TagTab[]>([]);
-  const [activeTag, setActiveTag] = useState<TagTab | null>(null);
+  const [activeTab, setActiveTab] = useState<HomeTab>(FAVORITES_TAB);
+
+  // Hero stats (total/this-week/last-saved) always reflect the whole
+  // archive, not whatever tab is active -- a separate, unfiltered fetch
+  // from the tab-specific list below.
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [heroError, setHeroError] = useState<string | null>(null);
+
+  const [listItems, setListItems] = useState<ApiItem[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
 
-  const load = React.useCallback(() => {
-    setLoading(true);
+  const loadHero = useCallback(() => {
     fetchRecentItems()
       .then((res) => {
         setRawItems(res.items);
         setTotal(res.total);
-        setError(null);
+        setHeroError(null);
       })
       // Leave whatever was already on screen alone -- a transient failure
-      // (the backend mid-restart, a slow request timing out) shouldn't
-      // wipe real saved items out from under someone who's just browsing.
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setLoading(false));
+      // shouldn't wipe the hero card out from under someone just browsing.
+      .catch((err) => setHeroError(err instanceof Error ? err.message : String(err)));
   }, []);
 
-  // Refetch whenever Home regains focus (e.g. after saving a new item, or
-  // coming back from the tab picker) rather than just once on mount.
+  const loadList = useCallback((tab: HomeTab) => {
+    setListLoading(true);
+    const request = tab === FAVORITES_TAB ? fetchPinnedItems() : fetchItemsBySource(tab);
+    request
+      .then((res) => {
+        setListItems(res.items);
+        setListError(null);
+      })
+      .catch((err) => setListError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setListLoading(false));
+  }, []);
+
+  // Re-runs on tab switch too, not just on focus -- loadList's identity
+  // changes with `activeTab`, and useFocusEffect re-fires on a dependency
+  // change the same way a plain effect would while already focused.
   useFocusEffect(
-    React.useCallback(() => {
-      load();
-      loadHomeTabs().then((tabs) => {
-        setCustomTabs(tabs);
-        // A tab the user just removed in the picker can't stay selected.
-        setActiveTag((current) => (current && !tabs.includes(current) ? null : current));
-      });
-    }, [load])
+    useCallback(() => {
+      loadHero();
+      loadList(activeTab);
+    }, [loadHero, loadList, activeTab])
   );
 
   // Android-only for now (expo-share-intent's disableIOS: true) -- someone
@@ -74,13 +95,10 @@ export default function HomeScreen() {
     resetShareIntent();
   }, [hasShareIntent, shareIntent, navigation, resetShareIntent]);
 
-  const filtered = activeTag
-    ? rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))
-    : rawItems;
-  const items = filtered.map(toRecentItem);
+  const items = listItems.map(toRecentItem);
 
   // Always off the unfiltered list -- the hero card describes the whole
-  // archive, not whatever tag tab happens to be active.
+  // archive, not whatever tab happens to be active.
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const weekCount = rawItems.filter((it) => new Date(it.shared_at).getTime() >= weekAgo).length;
   const lastSaved = rawItems[0] ? relativeTime(rawItems[0].shared_at) : null;
@@ -194,11 +212,6 @@ export default function HomeScreen() {
         style={[
           styles.tabs,
           {
-            // Underline tabs top-align their label (padding only sits below
-            // it, for the active-state border); centering the add chip's
-            // fixed height against that box would land it a few px below
-            // the label. Pill tabs are symmetric top/bottom, so centering
-            // there is correct as-is.
             alignItems: card ? 'center' : 'flex-start',
             gap: card ? 8 : 18,
             paddingHorizontal: card ? 24 : 26,
@@ -209,28 +222,40 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <TabChip label="모두" active={activeTag === null} theme={theme} onPress={() => setActiveTag(null)} />
-        {customTabs.map((tag) => (
-          <TabChip key={tag} label={tag} active={activeTag === tag} theme={theme} onPress={() => setActiveTag(tag)} />
+        <TabChip
+          label="즐겨찾기"
+          icon={<StarIcon size={13} color={activeTab === FAVORITES_TAB ? (card ? theme.bg : theme.ink) : theme.sub} strokeWidth={1.3} filled={activeTab === FAVORITES_TAB} />}
+          active={activeTab === FAVORITES_TAB}
+          theme={theme}
+          onPress={() => setActiveTab(FAVORITES_TAB)}
+        />
+        {SOURCE_ORDER.map((source) => (
+          <TabChip
+            key={source}
+            label={sourceLabel(source, tech)}
+            icon={<SourceIcon source={source} size={13} color={activeTab === source ? (card ? theme.bg : theme.ink) : theme.sub} strokeWidth={1.3} />}
+            active={activeTab === source}
+            theme={theme}
+            onPress={() => setActiveTab(source)}
+          />
         ))}
-        <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </View>
 
-      {loading && items.length === 0 ? (
+      {listLoading && items.length === 0 ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
-      ) : items.length === 0 && error ? (
+      ) : items.length === 0 && listError ? (
         <View style={{ marginTop: 40, alignItems: 'center', paddingHorizontal: 24 }}>
           <Text style={{ color: theme.sub, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' }}>
             불러오지 못했어요.{'\n'}
-            {error}
+            {listError}
           </Text>
-          <Pressable onPress={load} style={[styles.retryButton, { borderColor: theme.line }]}>
+          <Pressable onPress={() => loadList(activeTab)} style={[styles.retryButton, { borderColor: theme.line }]}>
             <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
           </Pressable>
         </View>
       ) : items.length === 0 ? (
         <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-          아직 저장된 기억이 없어요.
+          {activeTab === FAVORITES_TAB ? '아직 즐겨찾기한 기억이 없어요.' : '아직 저장된 기억이 없어요.'}
         </Text>
       ) : (
         <FlatList
@@ -241,7 +266,7 @@ export default function HomeScreen() {
               item={item}
               theme={theme}
               tech={tech}
-              onPress={() => navigation.navigate('ItemDetail', { item: filtered[index] })}
+              onPress={() => navigation.navigate('ItemDetail', { item: listItems[index] })}
             />
           )}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}

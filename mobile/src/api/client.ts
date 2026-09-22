@@ -87,14 +87,8 @@ export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number }>(`/items?limit=${limit}`);
 }
 
-// Home's channel tabs -- every item from one source, regardless of pinned
-// state ("그 채널의 전체 아이템").
-export function fetchItemsBySource(source: ItemSource, limit = 200) {
-  return request<{ items: ApiItem[]; total: number }>(`/items?source=${source}&limit=${limit}`);
-}
-
 // Home's 즐겨찾기 tab -- its default view.
-export function fetchPinnedItems(limit = 200) {
+export function fetchPinnedItems(limit = 100) {
   return request<{ items: ApiItem[]; total: number }>(`/items?pinned=true&limit=${limit}`);
 }
 
@@ -203,6 +197,10 @@ export function removeTag(itemId: string, tag: string) {
   return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/tags/${encodeURIComponent(tag)}`, {
     method: 'DELETE',
   });
+}
+
+export function fetchTags() {
+  return request<{ tags: string[] }>('/items/tags');
 }
 
 export function pinItem(itemId: string) {

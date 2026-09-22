@@ -11,6 +11,7 @@ export type RootStackParamList = {
   // sheet (expo-share-intent) instead of the in-app "+" button.
   SaveSheet: { sharedText?: string; sharedUrl?: string; sharedImageUri?: string } | undefined;
   ThemePicker: undefined;
+  TabPicker: undefined;
   Stats: undefined;
   Profile: undefined;
   Trash: undefined;

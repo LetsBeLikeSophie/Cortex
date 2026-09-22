@@ -81,7 +81,7 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
 // One real, deletable/editable example item so a brand-new account isn't a
 // totally blank slate. Pinned too -- Home's default view is now the
 // 즐겨찾기 tab, so an unpinned sample item would be invisible until someone
-// happened to switch to the 인스타그램 channel tab, defeating the point.
+// went and picked a matching tag tab, defeating the point.
 // Shared by both the Kakao signup path (kakaoAuth.ts) and the guest/
 // anonymous signup path (POST /auth/seed-sample) so neither one starts
 // emptier than the other. Doubles as onboarding: it's written to explain
@@ -217,10 +217,7 @@ export async function removeUserTag(userId: string, itemId: string, tag: string)
 
 export interface ListItemsOptions {
   limit?: number;
-  // Home's channel tabs (all items from one source) and 즐겨찾기 tab
-  // (pinned items, most recently pinned first) -- mutually exclusive in
-  // practice, but nothing stops combining them.
-  source?: ItemSource;
+  // Home's 즐겨찾기 tab: pinned items, most recently pinned first.
   pinnedOnly?: boolean;
 }
 
@@ -231,7 +228,6 @@ export async function listItems(userId: string, options: ListItemsOptions = {}):
     .eq("user_id", userId)
     .is("deleted_at", null);
 
-  if (options.source) query = query.eq("source", options.source);
   if (options.pinnedOnly) query = query.not("pinned_at", "is", null);
 
   query = query.order(options.pinnedOnly ? "pinned_at" : "shared_at", { ascending: false }).limit(options.limit ?? 30);
@@ -239,6 +235,28 @@ export async function listItems(userId: string, options: ListItemsOptions = {}):
   const { data, error, count } = await query;
   if (error) throw new Error(`listItems failed: ${error.message}`);
   return { items: (data ?? []) as ItemRecord[], total: count ?? 0 };
+}
+
+// Distinct tags (both AI-assigned and user-added) across everything this
+// user has saved, for the home tab picker's search-as-you-type list.
+// PostgREST has no "flatten array column across rows" op, so this fetches
+// the (small, personal-archive-scale) tag arrays and flattens them in JS --
+// same tradeoff as searchItems below.
+export async function listTags(userId: string): Promise<string[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select("tags, user_tags")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .limit(2000);
+  if (error) throw new Error(`listTags failed: ${error.message}`);
+
+  const set = new Set<string>();
+  for (const row of (data ?? []) as { tags: string[]; user_tags: string[] }[]) {
+    for (const tag of row.tags) set.add(tag);
+    for (const tag of row.user_tags) set.add(tag);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, "ko"));
 }
 
 export async function pinItem(userId: string, itemId: string): Promise<ItemRecord> {

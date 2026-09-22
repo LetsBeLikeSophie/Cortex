@@ -9,75 +9,82 @@ import { useShareIntent } from 'expo-share-intent';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
-import { fetchRecentItems, fetchItemsBySource, fetchPinnedItems, ApiItem, ItemSource } from '../api/client';
-import { toRecentItem, relativeTime, sourceLabel, SOURCE_ORDER } from '../api/format';
+import { TagTab, loadHomeTabs } from '../data/tabs';
+import { fetchRecentItems, fetchPinnedItems, ApiItem } from '../api/client';
+import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
-import { TabChip } from '../components/Chips';
+import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
-import { StatsIcon, ProfileIcon, TrashIcon, SourceIcon, StarIcon } from '../components/Icons';
+import { StatsIcon, ProfileIcon, TrashIcon, StarIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
-// Home's tab strip is fixed, not user-picked: 즐겨찾기 (pinned items, the
-// screen's default view) plus one tab per channel (every item from that
-// source, regardless of pinned state). Search already covers "find
-// anything by tag/text" -- see api/format.ts's captureTypeLabel/sourceLabel
-// and the backend's searchItems -- so Home's own job narrowed to "what do I
-// want to get back to quickly," not a second, weaker way to filter everything.
+// Home's tab strip: 즐겨찾기 (pinned items, the default view -- Search
+// already covers "find anything by tag/text", so Home's own job narrowed to
+// "what do I want to get back to quickly") plus whatever tag tabs the user
+// picks in TabPickerScreen. Tried auto-generating tabs from channel
+// (source) instead, but a channel doesn't say anything about what an item
+// actually *is* -- weak grouping for "find this again" compared to a tag
+// someone chose themselves.
 const FAVORITES_TAB = 'favorites' as const;
-type HomeTab = typeof FAVORITES_TAB | ItemSource;
+type HomeTab = typeof FAVORITES_TAB | TagTab;
 
 export default function HomeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [customTabs, setCustomTabs] = useState<TagTab[]>([]);
   const [activeTab, setActiveTab] = useState<HomeTab>(FAVORITES_TAB);
 
-  // Hero stats (total/this-week/last-saved) always reflect the whole
-  // archive, not whatever tab is active -- a separate, unfiltered fetch
-  // from the tab-specific list below.
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [heroError, setHeroError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [listItems, setListItems] = useState<ApiItem[]>([]);
-  const [listLoading, setListLoading] = useState(true);
-  const [listError, setListError] = useState<string | null>(null);
+  const [pinnedItems, setPinnedItems] = useState<ApiItem[]>([]);
+  const [pinnedLoading, setPinnedLoading] = useState(true);
+  const [pinnedError, setPinnedError] = useState<string | null>(null);
 
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
 
   const loadHero = useCallback(() => {
+    setLoading(true);
     fetchRecentItems()
       .then((res) => {
         setRawItems(res.items);
         setTotal(res.total);
-        setHeroError(null);
+        setError(null);
       })
       // Leave whatever was already on screen alone -- a transient failure
-      // shouldn't wipe the hero card out from under someone just browsing.
-      .catch((err) => setHeroError(err instanceof Error ? err.message : String(err)));
+      // (the backend mid-restart, a slow request timing out) shouldn't
+      // wipe real saved items out from under someone who's just browsing.
+      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setLoading(false));
   }, []);
 
-  const loadList = useCallback((tab: HomeTab) => {
-    setListLoading(true);
-    const request = tab === FAVORITES_TAB ? fetchPinnedItems() : fetchItemsBySource(tab);
-    request
+  const loadFavorites = useCallback(() => {
+    setPinnedLoading(true);
+    fetchPinnedItems()
       .then((res) => {
-        setListItems(res.items);
-        setListError(null);
+        setPinnedItems(res.items);
+        setPinnedError(null);
       })
-      .catch((err) => setListError(err instanceof Error ? err.message : String(err)))
-      .finally(() => setListLoading(false));
+      .catch((err) => setPinnedError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setPinnedLoading(false));
   }, []);
 
-  // Re-runs on tab switch too, not just on focus -- loadList's identity
-  // changes with `activeTab`, and useFocusEffect re-fires on a dependency
-  // change the same way a plain effect would while already focused.
+  // Refetch whenever Home regains focus (e.g. after saving a new item, or
+  // coming back from the tab picker) rather than just once on mount.
   useFocusEffect(
     useCallback(() => {
       loadHero();
-      loadList(activeTab);
-    }, [loadHero, loadList, activeTab])
+      loadFavorites();
+      loadHomeTabs().then((tabs) => {
+        setCustomTabs(tabs);
+        // A tab the user just removed in the picker can't stay selected.
+        setActiveTab((current) => (current !== FAVORITES_TAB && !tabs.includes(current) ? FAVORITES_TAB : current));
+      });
+    }, [loadHero, loadFavorites])
   );
 
   // Android-only for now (expo-share-intent's disableIOS: true) -- someone
@@ -95,7 +102,14 @@ export default function HomeScreen() {
     resetShareIntent();
   }, [hasShareIntent, shareIntent, navigation, resetShareIntent]);
 
-  const items = listItems.map(toRecentItem);
+  const isFavorites = activeTab === FAVORITES_TAB;
+  const filtered = isFavorites
+    ? pinnedItems
+    : rawItems.filter((it) => it.tags.includes(activeTab) || it.user_tags.includes(activeTab));
+  const items = filtered.map(toRecentItem);
+  const listLoading = isFavorites ? pinnedLoading : loading;
+  const listError = isFavorites ? pinnedError : error;
+  const reload = isFavorites ? loadFavorites : loadHero;
 
   // Always off the unfiltered list -- the hero card describes the whole
   // archive, not whatever tab happens to be active.
@@ -224,21 +238,15 @@ export default function HomeScreen() {
       >
         <TabChip
           label="즐겨찾기"
-          icon={<StarIcon size={13} color={activeTab === FAVORITES_TAB ? (card ? theme.bg : theme.ink) : theme.sub} strokeWidth={1.3} filled={activeTab === FAVORITES_TAB} />}
-          active={activeTab === FAVORITES_TAB}
+          icon={<StarIcon size={13} color={isFavorites ? (card ? theme.bg : theme.ink) : theme.sub} strokeWidth={1.3} filled={isFavorites} />}
+          active={isFavorites}
           theme={theme}
           onPress={() => setActiveTab(FAVORITES_TAB)}
         />
-        {SOURCE_ORDER.map((source) => (
-          <TabChip
-            key={source}
-            label={sourceLabel(source, tech)}
-            icon={<SourceIcon source={source} size={13} color={activeTab === source ? (card ? theme.bg : theme.ink) : theme.sub} strokeWidth={1.3} />}
-            active={activeTab === source}
-            theme={theme}
-            onPress={() => setActiveTab(source)}
-          />
+        {customTabs.map((tag) => (
+          <TabChip key={tag} label={tag} active={activeTab === tag} theme={theme} onPress={() => setActiveTab(tag)} />
         ))}
+        <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </View>
 
       {listLoading && items.length === 0 ? (
@@ -249,13 +257,13 @@ export default function HomeScreen() {
             불러오지 못했어요.{'\n'}
             {listError}
           </Text>
-          <Pressable onPress={() => loadList(activeTab)} style={[styles.retryButton, { borderColor: theme.line }]}>
+          <Pressable onPress={reload} style={[styles.retryButton, { borderColor: theme.line }]}>
             <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
           </Pressable>
         </View>
       ) : items.length === 0 ? (
         <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-          {activeTab === FAVORITES_TAB ? '아직 즐겨찾기한 기억이 없어요.' : '아직 저장된 기억이 없어요.'}
+          {isFavorites ? '아직 즐겨찾기한 기억이 없어요.' : '아직 저장된 기억이 없어요.'}
         </Text>
       ) : (
         <FlatList
@@ -266,7 +274,7 @@ export default function HomeScreen() {
               item={item}
               theme={theme}
               tech={tech}
-              onPress={() => navigation.navigate('ItemDetail', { item: listItems[index] })}
+              onPress={() => navigation.navigate('ItemDetail', { item: filtered[index] })}
             />
           )}
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}

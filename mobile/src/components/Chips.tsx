@@ -1,11 +1,12 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../theme/themes';
+import { PlusIcon } from './Icons';
 
-// Home's tab strip: 즐겨찾기 + one per channel, fixed rather than user-picked
-// -- an underline-tab strip in the "line" list themes, a pill-tab strip in
-// the "card" list themes. `icon` renders a channel's SourceIcon at the same
-// color the label uses, so it inverts with it on the active/pill variant.
+// Home's tab strip: the fixed 즐겨찾기 tab plus user-picked tag tabs -- an
+// underline-tab strip in the "line" list themes, a pill-tab strip in the
+// "card" list themes. `icon` renders 즐겨찾기's StarIcon at the same color
+// the label uses, so it inverts with it on the active/pill variant.
 export function TabChip({
   label,
   icon,
@@ -41,6 +42,17 @@ export function TabChip({
           {label}
         </Text>
       </View>
+    </Pressable>
+  );
+}
+
+// Sits at the end of the home-screen tab strip -- tapping it opens the tab
+// picker so custom tag tabs can be added/removed, regardless of whether the
+// strip currently renders as underline tabs or pill tabs.
+export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => void }) {
+  return (
+    <Pressable onPress={onPress} style={[styles.tabAdd, { borderColor: theme.sub }]}>
+      <PlusIcon size={13} color={theme.sub} strokeWidth={1.4} />
     </Pressable>
   );
 }
@@ -116,4 +128,13 @@ const styles = StyleSheet.create({
   tag: { borderRadius: 999, paddingHorizontal: 14 },
   tagRow: { flexDirection: 'row', alignItems: 'center' },
   metaChip: { gap: 5 },
+  tabAdd: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

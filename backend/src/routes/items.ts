@@ -1,13 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
-import { IncomingItemSchema, processIncomingItem, SOURCES } from "../lib/pipeline.js";
+import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
 import {
   addUserTag,
   countItemsSince,
   getScreenshotUrl,
   getStats,
   listItems,
+  listTags,
   listTrash,
   logAnalyticsEvent,
   permanentlyDeleteItem,
@@ -20,14 +21,10 @@ import {
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
-// Home's tab strip: channel tabs (source) and the 즐겨찾기 tab (pinned) both
-// read from this one endpoint -- see listItems' ListItemsOptions.
-// A channel tab is meant to show that whole channel ("그 채널의 전체
-// 아이템"), not just a recent-N slice, so this caps well above the plain
-// recent-items default -- still bounded, just not at that smaller ceiling.
+// Home's 즐겨찾기 tab (?pinned=true) reads this; its user-picked tag tabs
+// filter the plain recent-items call client-side instead.
 const ListQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(300).optional(),
-  source: z.enum(SOURCES).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
   pinned: z.coerce.boolean().optional(),
 });
 
@@ -93,8 +90,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     return reply.code(201).send(item);
   });
 
-  // Recent items for the Home screen -- also its channel tabs (?source=)
-  // and 즐겨찾기 tab (?pinned=true).
+  // Recent items for the Home screen -- also its 즐겨찾기 tab (?pinned=true).
   app.get("/items", async (req, reply) => {
     const parsed = ListQuerySchema.safeParse(req.query);
     if (!parsed.success) {
@@ -103,7 +99,6 @@ export async function itemsRoutes(app: FastifyInstance) {
     const userId = await resolveUserId(req);
     const { items, total } = await listItems(userId, {
       limit: parsed.data.limit,
-      source: parsed.data.source,
       pinnedOnly: parsed.data.pinned,
     });
     return reply.send({ items, total });
@@ -139,6 +134,14 @@ export async function itemsRoutes(app: FastifyInstance) {
     } catch {
       return reply.code(404).send({ error: "screenshot not found" });
     }
+  });
+
+  // Distinct tags (AI-assigned + user-added) across everything this user
+  // has saved, for the home tab picker's search-as-you-type list.
+  app.get("/items/tags", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const tags = await listTags(userId);
+    return reply.send({ tags });
   });
 
   // Trashed items, most recently deleted first.

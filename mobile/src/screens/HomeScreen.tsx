@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -8,23 +8,20 @@ import { useShareIntent } from 'expo-share-intent';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { copyFor } from '../data/content';
+import { copyFor, DEFAULT_QUERY, SearchResult } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchRecentItems, fetchPinnedItems, ApiItem } from '../api/client';
-import { toRecentItem, relativeTime } from '../api/format';
-import { RecentRow } from '../components/ListItems';
+import { fetchRecentItems, fetchPinnedItems, searchItems as apiSearchItems, restoreItem, ApiItem } from '../api/client';
+import { toRecentItem, toSearchResult, relativeTime } from '../api/format';
+import { RecentRow, ResultRow } from '../components/ListItems';
 import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
-import { StatsIcon, ProfileIcon, TrashIcon, StarIcon } from '../components/Icons';
+import { ProfileIcon, TrashIcon, StarIcon, SearchIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
-// Home's tab strip: 즐겨찾기 (pinned items, the default view -- Search
-// already covers "find anything by tag/text", so Home's own job narrowed to
-// "what do I want to get back to quickly") plus whatever tag tabs the user
-// picks in TabPickerScreen. Tried auto-generating tabs from channel
-// (source) instead, but a channel doesn't say anything about what an item
-// actually *is* -- weak grouping for "find this again" compared to a tag
-// someone chose themselves.
+// Home's tab strip: 즐겨찾기 (pinned items, the default view -- typing in
+// the search box below covers "find anything by tag/text/channel", so
+// Home's own tabs narrowed to "what do I want to get back to quickly")
+// plus whatever tag tabs the user picks in TabPickerScreen.
 const FAVORITES_TAB = 'favorites' as const;
 type HomeTab = typeof FAVORITES_TAB | TagTab;
 
@@ -43,9 +40,19 @@ export default function HomeScreen() {
   const [pinnedLoading, setPinnedLoading] = useState(true);
   const [pinnedError, setPinnedError] = useState<string | null>(null);
 
+  // A persistent search box right on Home instead of a separate screen --
+  // typing here replaces the tab-filtered list below with live results,
+  // same request/debounce/restore logic the old SearchScreen had.
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchRaw, setSearchRaw] = useState<ApiItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
+  const isSearching = query.trim().length > 0;
 
   const loadHero = useCallback(() => {
     setLoading(true);
@@ -86,6 +93,41 @@ export default function HomeScreen() {
       });
     }, [loadHero, loadFavorites])
   );
+
+  // Debounced, same 300ms as the old SearchScreen -- searches everything
+  // (title/snippet/tags/channel/method), including trash (badged below).
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      setSearchRaw([]);
+      setSearchError(null);
+      return;
+    }
+    setSearching(true);
+    const timer = setTimeout(() => {
+      apiSearchItems(trimmed)
+        .then((res) => {
+          setSearchResults(res.items.map((item) => toSearchResult(item, trimmed)));
+          setSearchRaw(res.items);
+          setSearchError(null);
+        })
+        .catch((err) => {
+          setSearchResults([]);
+          setSearchRaw([]);
+          setSearchError(err instanceof Error ? err.message : String(err));
+        })
+        .finally(() => setSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const restoreSearchResult = (itemId: string) => {
+    setSearchRaw((current) => current.map((it) => (it.id === itemId ? { ...it, deleted_at: null } : it)));
+    restoreItem(itemId).catch(() => {
+      setSearchRaw((current) => current.map((it) => (it.id === itemId ? { ...it, deleted_at: new Date().toISOString() } : it)));
+    });
+  };
 
   // Android-only for now (expo-share-intent's disableIOS: true) -- someone
   // shared into Cortex from another app. Hand it to the save sheet
@@ -131,13 +173,6 @@ export default function HomeScreen() {
               hitSlop={6}
             >
               <ProfileIcon size={15} color={theme.ink} strokeWidth={1.4} />
-            </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('Stats')}
-              style={[styles.iconButton, { borderColor: theme.line }]}
-              hitSlop={6}
-            >
-              <StatsIcon size={15} color={theme.ink} strokeWidth={1.4} />
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('Trash')}
@@ -220,66 +255,166 @@ export default function HomeScreen() {
             </Text>
           </View>
         </View>
-      </View>
 
-      <View
-        style={[
-          styles.tabs,
-          {
-            alignItems: card ? 'center' : 'flex-start',
-            gap: card ? 8 : 18,
-            paddingHorizontal: card ? 24 : 26,
-            paddingTop: card ? 20 : 28,
-            paddingBottom: card ? 12 : 0,
-            borderBottomWidth: card ? 0 : 1,
-            borderBottomColor: theme.line,
-          },
-        ]}
-      >
-        <TabChip
-          label="즐겨찾기"
-          icon={<StarIcon size={13} color={isFavorites ? (card ? theme.bg : theme.ink) : theme.sub} strokeWidth={1.3} filled={isFavorites} />}
-          active={isFavorites}
-          theme={theme}
-          onPress={() => setActiveTab(FAVORITES_TAB)}
-        />
-        {customTabs.map((tag) => (
-          <TabChip key={tag} label={tag} active={activeTab === tag} theme={theme} onPress={() => setActiveTab(tag)} />
-        ))}
-        <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
-      </View>
-
-      {listLoading && items.length === 0 ? (
-        <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
-      ) : items.length === 0 && listError ? (
-        <View style={{ marginTop: 40, alignItems: 'center', paddingHorizontal: 24 }}>
-          <Text style={{ color: theme.sub, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' }}>
-            불러오지 못했어요.{'\n'}
-            {listError}
-          </Text>
-          <Pressable onPress={reload} style={[styles.retryButton, { borderColor: theme.line }]}>
-            <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
-          </Pressable>
+        <View
+          style={[
+            styles.searchBox,
+            card
+              ? {
+                  marginTop: 16,
+                  backgroundColor: theme.surface,
+                  borderRadius: 999,
+                  paddingHorizontal: 18,
+                  paddingVertical: 12,
+                  borderWidth: theme.dark ? 1 : 0,
+                  borderColor: theme.line,
+                  ...(theme.dark
+                    ? { shadowColor: theme.accent, shadowOpacity: 0.1, shadowRadius: 3, elevation: 0 }
+                    : styles.searchShadow),
+                }
+              : { marginTop: 20, borderBottomWidth: 1.5, borderBottomColor: theme.ink, paddingBottom: 10 },
+          ]}
+        >
+          <SearchIcon color={theme.accent} size={16} strokeWidth={1.4} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
+            selectionColor={theme.accent}
+            placeholder={DEFAULT_QUERY}
+            placeholderTextColor={theme.sub}
+          />
         </View>
-      ) : items.length === 0 ? (
-        <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-          {isFavorites ? '아직 즐겨찾기한 기억이 없어요.' : '아직 저장된 기억이 없어요.'}
-        </Text>
+
+        {isSearching && (
+          <View style={styles.searchMetaRow}>
+            <Text
+              style={{
+                fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
+                fontSize: tech ? 10.5 : 12.5,
+                letterSpacing: tech ? emToTracking(0.12, 10.5) : emToTracking(0.01, 12.5),
+                color: theme.sub,
+              }}
+            >
+              {searching ? '검색 중...' : txt.hits(searchResults.length)}
+            </Text>
+            <Text
+              style={{
+                fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
+                fontSize: tech ? 10.5 : 12.5,
+                letterSpacing: tech ? emToTracking(0.12, 10.5) : emToTracking(0.01, 12.5),
+                color: theme.sub,
+              }}
+            >
+              최신순
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {isSearching ? (
+        searching && searchResults.length === 0 ? (
+          <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
+        ) : searchError ? (
+          <Text
+            style={{
+              color: theme.accent,
+              textAlign: 'center',
+              marginTop: 40,
+              paddingHorizontal: 24,
+              fontFamily: 'IBMPlexSansKR_400Regular',
+            }}
+          >
+            검색 실패: {searchError}
+          </Text>
+        ) : searchResults.length === 0 ? (
+          <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+            일치하는 결과가 없어요.
+          </Text>
+        ) : (
+          <FlatList
+            data={searchResults}
+            keyExtractor={(item, i) => item.hit + item.after + i}
+            renderItem={({ item, index }) => {
+              const raw = searchRaw[index];
+              const trashed = !!raw?.deleted_at;
+              return (
+                <ResultRow
+                  item={item}
+                  theme={theme}
+                  tech={tech}
+                  trashed={trashed}
+                  onRestore={() => raw && restoreSearchResult(raw.id)}
+                  onPress={trashed ? undefined : () => navigation.navigate('ItemDetail', { item: raw })}
+                />
+              );
+            }}
+            contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
+            style={styles.list}
+          />
+        )
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item, i) => item.no + i}
-          renderItem={({ item, index }) => (
-            <RecentRow
-              item={item}
+        <>
+          <View
+            style={[
+              styles.tabs,
+              {
+                alignItems: card ? 'center' : 'flex-start',
+                gap: card ? 8 : 18,
+                paddingHorizontal: card ? 24 : 26,
+                paddingTop: card ? 20 : 28,
+                paddingBottom: card ? 12 : 0,
+                borderBottomWidth: card ? 0 : 1,
+                borderBottomColor: theme.line,
+              },
+            ]}
+          >
+            <TabChip
+              label="즐겨찾기"
+              icon={<StarIcon size={13} color={isFavorites ? (card ? theme.bg : theme.ink) : theme.sub} strokeWidth={1.3} filled={isFavorites} />}
+              active={isFavorites}
               theme={theme}
-              tech={tech}
-              onPress={() => navigation.navigate('ItemDetail', { item: filtered[index] })}
+              onPress={() => setActiveTab(FAVORITES_TAB)}
+            />
+            {customTabs.map((tag) => (
+              <TabChip key={tag} label={tag} active={activeTab === tag} theme={theme} onPress={() => setActiveTab(tag)} />
+            ))}
+            <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
+          </View>
+
+          {listLoading && items.length === 0 ? (
+            <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
+          ) : items.length === 0 && listError ? (
+            <View style={{ marginTop: 40, alignItems: 'center', paddingHorizontal: 24 }}>
+              <Text style={{ color: theme.sub, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                불러오지 못했어요.{'\n'}
+                {listError}
+              </Text>
+              <Pressable onPress={reload} style={[styles.retryButton, { borderColor: theme.line }]}>
+                <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
+              </Pressable>
+            </View>
+          ) : items.length === 0 ? (
+            <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+              {isFavorites ? '아직 즐겨찾기한 기억이 없어요.' : '아직 저장된 기억이 없어요.'}
+            </Text>
+          ) : (
+            <FlatList
+              data={items}
+              keyExtractor={(item, i) => item.no + i}
+              renderItem={({ item, index }) => (
+                <RecentRow
+                  item={item}
+                  theme={theme}
+                  tech={tech}
+                  onPress={() => navigation.navigate('ItemDetail', { item: filtered[index] })}
+                />
+              )}
+              contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
+              style={styles.list}
             />
           )}
-          contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
-          style={styles.list}
-        />
+        </>
       )}
     </SafeAreaView>
   );
@@ -305,6 +440,10 @@ const styles = StyleSheet.create({
   numRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 },
   numSuffix: { fontSize: 14, lineHeight: 21, paddingBottom: 9, fontFamily: 'IBMPlexSansKR_400Regular' },
   heroFoot: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  searchShadow: { shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  searchInput: { fontSize: 15.5, flex: 1, padding: 0 },
+  searchMetaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
   tabs: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10 },
   list: { flex: 1 },
 });

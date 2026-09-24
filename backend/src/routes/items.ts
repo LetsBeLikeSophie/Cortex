@@ -12,20 +12,15 @@ import {
   listTrash,
   logAnalyticsEvent,
   permanentlyDeleteItem,
-  pinItem,
   removeUserTag,
   restoreItem,
   searchItems,
   trashItem,
-  unpinItem,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
-// Home's 즐겨찾기 tab (?pinned=true) reads this; its user-picked tag tabs
-// filter the plain recent-items call client-side instead.
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
-  pinned: z.coerce.boolean().optional(),
 });
 
 const SearchQuerySchema = z.object({
@@ -90,17 +85,14 @@ export async function itemsRoutes(app: FastifyInstance) {
     return reply.code(201).send(item);
   });
 
-  // Recent items for the Home screen -- also its 즐겨찾기 tab (?pinned=true).
+  // Recent items for the Home screen.
   app.get("/items", async (req, reply) => {
     const parsed = ListQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
     }
     const userId = await resolveUserId(req);
-    const { items, total } = await listItems(userId, {
-      limit: parsed.data.limit,
-      pinnedOnly: parsed.data.pinned,
-    });
+    const { items, total } = await listItems(userId, { limit: parsed.data.limit });
     return reply.send({ items, total });
   });
 
@@ -184,29 +176,6 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(200).send({ ok: true });
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "delete failed" });
-    }
-  });
-
-  // Home's 즐겨찾기 tab.
-  app.post("/items/:id/pin", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    const { id } = req.params as { id: string };
-    try {
-      const item = await pinItem(userId, id);
-      return reply.send(item);
-    } catch (err) {
-      return reply.code(404).send({ error: err instanceof Error ? err.message : "pin failed" });
-    }
-  });
-
-  app.delete("/items/:id/pin", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    const { id } = req.params as { id: string };
-    try {
-      const item = await unpinItem(userId, id);
-      return reply.send(item);
-    } catch (err) {
-      return reply.code(404).send({ error: err instanceof Error ? err.message : "unpin failed" });
     }
   });
 

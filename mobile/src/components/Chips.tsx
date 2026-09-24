@@ -3,45 +3,21 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../theme/themes';
 import { PlusIcon } from './Icons';
 
-// Home's tab strip: the fixed 즐겨찾기 tab plus user-picked tag tabs -- an
-// underline-tab strip in the "line" list themes, a pill-tab strip in the
-// "card" list themes. `icon` renders 즐겨찾기's StarIcon at the same color
-// the label uses, so it inverts with it on the active/pill variant.
-export function TabChip({
-  label,
-  icon,
-  active,
-  theme,
-  onPress,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  active: boolean;
-  theme: Theme;
-  onPress: () => void;
-}) {
+// Home category tabs: an underline-tab strip in the "line" list themes,
+// a pill-tab strip in the "card" list themes.
+export function TabChip({ label, active, theme, onPress }: { label: string; active: boolean; theme: Theme; onPress: () => void }) {
   const card = theme.list === 'card';
   return (
-    <Pressable
-      onPress={onPress}
-      style={
-        card
-          ? [styles.pillTab, { borderColor: active ? theme.ink : theme.line, backgroundColor: active ? theme.ink : 'transparent' }]
-          : [styles.underlineTab, { borderBottomColor: active ? theme.ink : 'transparent' }]
-      }
-    >
-      <View style={styles.tabContent}>
-        {icon}
-        <Text
-          style={{
-            fontSize: card ? 12.5 : 13,
-            color: card ? (active ? theme.bg : theme.sub) : active ? theme.ink : theme.sub,
-            fontFamily: 'IBMPlexSansKR_400Regular',
-          }}
-        >
-          {label}
-        </Text>
-      </View>
+    <Pressable onPress={onPress} style={card ? [styles.pillTab, { borderColor: active ? theme.ink : theme.line, backgroundColor: active ? theme.ink : 'transparent' }] : [styles.underlineTab, { borderBottomColor: active ? theme.ink : 'transparent' }]}>
+      <Text
+        style={{
+          fontSize: card ? 12.5 : 13,
+          color: card ? (active ? theme.bg : theme.sub) : active ? theme.ink : theme.sub,
+          fontFamily: 'IBMPlexSansKR_400Regular',
+        }}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -124,7 +100,6 @@ export function TagAddChip({ label, theme, onPress }: { label: string; theme: Th
 const styles = StyleSheet.create({
   pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   underlineTab: { paddingBottom: 10, borderBottomWidth: 2 },
-  tabContent: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tag: { borderRadius: 999, paddingHorizontal: 14 },
   tagRow: { flexDirection: 'row', alignItems: 'center' },
   metaChip: { gap: 5 },

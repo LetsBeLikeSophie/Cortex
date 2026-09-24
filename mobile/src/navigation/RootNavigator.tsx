@@ -7,8 +7,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { ArchiveIcon, PlusIcon, StatsIcon } from '../components/Icons';
+import { ArchiveIcon, PlusIcon, SearchIcon, StatsIcon } from '../components/Icons';
 import HomeScreen from '../screens/HomeScreen';
+import SearchScreen from '../screens/SearchScreen';
 import SaveSheetScreen from '../screens/SaveSheetScreen';
 import ThemePickerScreen from '../screens/ThemePickerScreen';
 import TabPickerScreen from '../screens/TabPickerScreen';
@@ -21,13 +22,11 @@ import type { RootStackParamList, TabParamList } from './types';
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// "+" sits in the center, the way Instagram/TikTok raise their primary
-// action above the other tabs -- saving something is the one action this
-// app exists for, so it gets the visually heaviest spot rather than
-// competing evenly with 보관함/통계. It still isn't a real Tab.Screen:
-// pressing it opens the Save-confirmation sheet as a modal over whatever
-// tab is active, the way a real share-extension hand-off would land back
-// in the app.
+// "+" stays visually raised in the middle (Instagram/TikTok-style primary
+// action) even with four stops now instead of three -- it still isn't a
+// real Tab.Screen: pressing it opens the Save-confirmation sheet as a modal
+// over whatever tab is active, the way a real share-extension hand-off
+// would land back in the app.
 function TabBar({ state, navigation }: BottomTabBarProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -62,6 +61,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
       ]}
     >
       {renderItem('Home', '보관함', ArchiveIcon)}
+      {renderItem('Search', '검색', SearchIcon)}
 
       <Pressable style={styles.item} onPress={() => navigation.getParent()?.navigate('SaveSheet')} hitSlop={4}>
         <View style={[styles.addCircle, { backgroundColor: theme.accent }]}>
@@ -89,6 +89,7 @@ function Tabs() {
   return (
     <Tab.Navigator tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Stats" component={StatsScreen} />
     </Tab.Navigator>
   );

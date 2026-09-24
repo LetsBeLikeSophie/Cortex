@@ -18,7 +18,6 @@ export interface ApiItem {
   user_tags: string[]; // user-added, freely add/removable
   shared_at: string;
   deleted_at: string | null; // non-null means it's in the trash
-  pinned_at: string | null; // non-null means it's in the 즐겨찾기 tab
 }
 
 // Web preview runs on the same host as the backend (localhost during dev),
@@ -85,11 +84,6 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
 
 export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number }>(`/items?limit=${limit}`);
-}
-
-// Home's 즐겨찾기 tab -- its default view.
-export function fetchPinnedItems(limit = 100) {
-  return request<{ items: ApiItem[]; total: number }>(`/items?pinned=true&limit=${limit}`);
 }
 
 export function searchItems(query: string, limit = 30) {
@@ -201,12 +195,4 @@ export function removeTag(itemId: string, tag: string) {
 
 export function fetchTags() {
   return request<{ tags: string[] }>('/items/tags');
-}
-
-export function pinItem(itemId: string) {
-  return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/pin`, { method: 'POST' });
-}
-
-export function unpinItem(itemId: string) {
-  return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/pin`, { method: 'DELETE' });
 }

@@ -22,11 +22,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, deleteItem, getScreenshotUrl, pinItem, unpinItem, removeTag as removeTagApi } from '../api/client';
+import { addTag, deleteItem, getScreenshotUrl, removeTag as removeTagApi } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip, MetaChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
-import { TrashIcon, SourceIcon, StarIcon } from '../components/Icons';
+import { TrashIcon, SourceIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -54,11 +54,6 @@ export default function ItemDetailScreen() {
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
-
-  // Optimistic, same pattern as tags below -- flips immediately, rolls back
-  // if the server call fails.
-  const [pinned, setPinned] = useState(item.pinned_at != null);
-  const [pinPending, setPinPending] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
   const tagScrollRef = useRef<ScrollView>(null);
@@ -135,15 +130,6 @@ export default function ItemDetailScreen() {
     });
   };
 
-  const togglePin = () => {
-    const next = !pinned;
-    setPinned(next);
-    setPinPending(true);
-    (next ? pinItem(item.id) : unpinItem(item.id))
-      .catch(() => setPinned(!next))
-      .finally(() => setPinPending(false));
-  };
-
   const confirmDelete = async () => {
     setDeleteState('deleting');
     try {
@@ -201,23 +187,13 @@ export default function ItemDetailScreen() {
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
               {item.category}
             </Text>
-            <View style={styles.metaRowRight}>
-              <Pressable
-                onPress={togglePin}
-                disabled={pinPending}
-                hitSlop={8}
-                style={[styles.trashButton, { borderColor: theme.line }]}
-              >
-                <StarIcon size={13.5} color={pinned ? theme.accent : theme.sub} strokeWidth={1.3} filled={pinned} />
-              </Pressable>
-              <Pressable
-                onPress={() => setDeleteState('confirming')}
-                hitSlop={8}
-                style={[styles.trashButton, { borderColor: theme.line }]}
-              >
-                <TrashIcon size={13.5} color={theme.sub} strokeWidth={1.3} />
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => setDeleteState('confirming')}
+              hitSlop={8}
+              style={[styles.trashButton, { borderColor: theme.line }]}
+            >
+              <TrashIcon size={13.5} color={theme.sub} strokeWidth={1.3} />
+            </Pressable>
           </View>
 
           {deleteState !== 'idle' && (
@@ -377,7 +353,6 @@ const styles = StyleSheet.create({
   grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   flexShrink: { flexShrink: 1 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  metaRowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   trashButton: { width: 24, height: 24, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   imageBox: { marginTop: 16, borderRadius: 14, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', aspectRatio: 1 },

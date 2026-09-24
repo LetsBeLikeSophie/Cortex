@@ -38,7 +38,6 @@ export interface ItemRecord {
   shared_at: string;
   created_at: string;
   deleted_at: string | null;
-  pinned_at: string | null;
 }
 
 export interface NewItem {
@@ -79,18 +78,17 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
 }
 
 // One real, deletable/editable example item so a brand-new account isn't a
-// totally blank slate. Pinned too -- Home's default view is now the
-// 즐겨찾기 tab, so an unpinned sample item would be invisible until someone
-// went and picked a matching tag tab, defeating the point.
-// Shared by both the Kakao signup path (kakaoAuth.ts) and the guest/
-// anonymous signup path (POST /auth/seed-sample) so neither one starts
-// emptier than the other. Doubles as onboarding: it's written to explain
-// the app's own share -> auto-tag -> search loop through an item that
-// demonstrates it, rather than a generic placeholder unrelated to what a
-// first-time opener actually needs to know. Best-effort at each call site:
-// a seeding hiccup shouldn't block signup.
+// totally blank slate -- the home list has something to show, and the tag
+// picker (which searches actual saved tags) has something to find. Shared
+// by both the Kakao signup path (kakaoAuth.ts) and the guest/anonymous
+// signup path (POST /auth/seed-sample) so neither one starts emptier than
+// the other. Doubles as onboarding: it's written to explain the app's own
+// share -> auto-tag -> search loop through an item that demonstrates it,
+// rather than a generic placeholder unrelated to what a first-time opener
+// actually needs to know. Best-effort at each call site: a seeding hiccup
+// shouldn't block signup.
 export async function seedSampleItem(userId: string): Promise<void> {
-  const item = await insertItem({
+  await insertItem({
     userId,
     source: "instagram",
     captureType: "text",
@@ -103,7 +101,6 @@ export async function seedSampleItem(userId: string): Promise<void> {
     category: "읽을거리",
     tags: ["가이드", "첫기억"],
   });
-  await pinItem(userId, item.id);
 }
 
 // Soft delete: moves the item to the trash instead of removing it (an
@@ -217,22 +214,17 @@ export async function removeUserTag(userId: string, itemId: string, tag: string)
 
 export interface ListItemsOptions {
   limit?: number;
-  // Home's 즐겨찾기 tab: pinned items, most recently pinned first.
-  pinnedOnly?: boolean;
 }
 
 export async function listItems(userId: string, options: ListItemsOptions = {}): Promise<{ items: ItemRecord[]; total: number }> {
-  let query = getClient()
+  const { data, error, count } = await getClient()
     .from("items")
     .select("*", { count: "exact" })
     .eq("user_id", userId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .order("shared_at", { ascending: false })
+    .limit(options.limit ?? 30);
 
-  if (options.pinnedOnly) query = query.not("pinned_at", "is", null);
-
-  query = query.order(options.pinnedOnly ? "pinned_at" : "shared_at", { ascending: false }).limit(options.limit ?? 30);
-
-  const { data, error, count } = await query;
   if (error) throw new Error(`listItems failed: ${error.message}`);
   return { items: (data ?? []) as ItemRecord[], total: count ?? 0 };
 }
@@ -257,31 +249,6 @@ export async function listTags(userId: string): Promise<string[]> {
     for (const tag of row.user_tags) set.add(tag);
   }
   return [...set].sort((a, b) => a.localeCompare(b, "ko"));
-}
-
-export async function pinItem(userId: string, itemId: string): Promise<ItemRecord> {
-  const { data, error } = await getClient()
-    .from("items")
-    .update({ pinned_at: new Date().toISOString() })
-    .eq("id", itemId)
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .select()
-    .single();
-  if (error) throw new Error(`pinItem failed: ${error.message}`);
-  return data as ItemRecord;
-}
-
-export async function unpinItem(userId: string, itemId: string): Promise<ItemRecord> {
-  const { data, error } = await getClient()
-    .from("items")
-    .update({ pinned_at: null })
-    .eq("id", itemId)
-    .eq("user_id", userId)
-    .select()
-    .single();
-  if (error) throw new Error(`unpinItem failed: ${error.message}`);
-  return data as ItemRecord;
 }
 
 // PostgREST's `or=()` logic-tree parser doesn't accept a `column::cast`

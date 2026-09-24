@@ -2,8 +2,7 @@ import type { ApiItem } from '../api/client';
 
 export type TabParamList = {
   Home: undefined;
-  // Search lives inside HomeScreen itself now (a persistent search box, no
-  // separate screen) -- this is the "내 저장 습관 보기" tab instead.
+  Search: undefined;
   Stats: undefined;
 };
 

@@ -3,7 +3,6 @@ import type { ApiItem } from '../api/client';
 export type TabParamList = {
   Home: undefined;
   Search: undefined;
-  Stats: undefined;
 };
 
 export type RootStackParamList = {
@@ -13,6 +12,7 @@ export type RootStackParamList = {
   SaveSheet: { sharedText?: string; sharedUrl?: string; sharedImageUri?: string } | undefined;
   ThemePicker: undefined;
   TabPicker: undefined;
+  Stats: undefined;
   Profile: undefined;
   Trash: undefined;
   ItemDetail: { item: ApiItem };

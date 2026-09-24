@@ -15,7 +15,7 @@ import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
-import { ProfileIcon, TrashIcon } from '../components/Icons';
+import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
 export default function HomeScreen() {
@@ -99,6 +99,13 @@ export default function HomeScreen() {
               hitSlop={6}
             >
               <ProfileIcon size={15} color={theme.ink} strokeWidth={1.4} />
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('Stats')}
+              style={[styles.iconButton, { borderColor: theme.line }]}
+              hitSlop={6}
+            >
+              <StatsIcon size={15} color={theme.ink} strokeWidth={1.4} />
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('Trash')}

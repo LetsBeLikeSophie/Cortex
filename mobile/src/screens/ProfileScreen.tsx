@@ -5,11 +5,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { emToTracking } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signOut } from '../auth/kakaoLogin';
 import { deleteAccount } from '../api/client';
-import { BackIcon, ProfileIcon } from '../components/Icons';
+import { ProfileIcon } from '../components/Icons';
+import { ScreenHeader } from '../components/ScreenHeader';
 import type { RootStackParamList } from '../navigation/types';
 
 type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'deleteError';
@@ -49,22 +49,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
-      <View style={[styles.header, { paddingHorizontal: card ? 24 : 26 }]}>
-        <Pressable onPress={() => navigation.goBack()} style={[styles.backButton, { borderColor: theme.line }]} hitSlop={8}>
-          <BackIcon size={16} color={theme.ink} strokeWidth={1.5} />
-        </Pressable>
-        <Text
-          style={{
-            fontFamily: theme.headFamily,
-            fontWeight: theme.headWeight,
-            fontSize: theme.headSize - 8,
-            color: theme.ink,
-            letterSpacing: emToTracking(-0.02, theme.headSize - 8),
-          }}
-        >
-          내 계정
-        </Text>
-      </View>
+      <ScreenHeader title="내 계정" theme={theme} onBack={() => navigation.goBack()} />
 
       <View style={[styles.body, { paddingHorizontal: card ? 24 : 26 }]}>
         <View style={styles.identity}>
@@ -157,15 +142,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 20, paddingBottom: 18 },
-  backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   body: { flex: 1, justifyContent: 'space-between', paddingBottom: 32 },
   identity: { alignItems: 'center', marginTop: 40, gap: 6 },
   avatar: { width: 76, height: 76, borderRadius: 38 },

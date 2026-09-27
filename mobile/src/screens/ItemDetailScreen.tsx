@@ -1,9 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
-  Dimensions,
-  Easing,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -15,8 +12,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -27,9 +22,9 @@ import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip, MetaChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
 import { TrashIcon, SourceIcon } from '../components/Icons';
+import { ModalSheet } from '../components/ModalSheet';
+import { Heading } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
-
-const SHEET_TRAVEL = Dimensions.get('window').height;
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
 
@@ -37,8 +32,6 @@ export default function ItemDetailScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ItemDetail'>>();
-  const insets = useSafeAreaInsets();
-  const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const { item } = route.params;
 
@@ -77,20 +70,6 @@ export default function ItemDetailScreen() {
       cancelled = true;
     };
   }, [item.id, item.capture_type]);
-
-  // On web there's no native animation driver (RN Web always falls back to
-  // JS-driven Animated regardless of useNativeDriver), so a shorter duration
-  // here reads as noticeably snappier than the 360ms native apps can get
-  // away with.
-  const translateY = useRef(new Animated.Value(SHEET_TRAVEL)).current;
-  useEffect(() => {
-    Animated.timing(translateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [translateY]);
 
   const close = () => navigation.goBack();
 
@@ -142,33 +121,7 @@ export default function ItemDetailScreen() {
   };
 
   return (
-    <View style={StyleSheet.absoluteFill}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={close}>
-        <BlurView
-          intensity={18}
-          tint={theme.dark ? 'dark' : 'light'}
-          style={[StyleSheet.absoluteFill, { backgroundColor: theme.dark ? 'rgba(4,5,7,0.5)' : 'rgba(20,20,15,0.28)' }]}
-        />
-      </Pressable>
-
-      <Animated.View
-        style={[
-          styles.sheet,
-          {
-            backgroundColor: theme.bg,
-            borderTopWidth: theme.dark ? 1 : 0,
-            borderColor: theme.line,
-            borderTopLeftRadius: card ? 30 : 26,
-            borderTopRightRadius: card ? 30 : 26,
-            paddingBottom: 24 + insets.bottom,
-            maxHeight: SHEET_TRAVEL * 0.82,
-            transform: [{ translateY }],
-            shadowOpacity: theme.dark ? 0.45 : 0.14,
-          },
-        ]}
-      >
-        <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
-
+    <ModalSheet theme={theme} onClose={close} paddingBottom={24} maxHeightRatio={0.82} grabberMarginBottom={20}>
         {/* This sheet is a native-stack "transparentModal", which on Android
             react-native-screens renders inside a BottomSheetDialog -- a
             separate Dialog window that does NOT inherit the Activity's
@@ -225,19 +178,9 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          <Text
-            style={{
-              fontFamily: theme.headFamily,
-              fontWeight: theme.headWeight,
-              fontSize: theme.headSize - 4,
-              lineHeight: (theme.headSize - 4) * 1.15,
-              letterSpacing: emToTracking(-0.02, theme.headSize - 4),
-              color: theme.ink,
-              marginTop: 10,
-            }}
-          >
+          <Heading theme={theme} offset={4} style={{ marginTop: 10 }}>
             {item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)'}
-          </Text>
+          </Heading>
 
           {/* Horizontal instead of wrapping -- with enough tags, a wrapping
               row grows tall and pushes the image/description further down
@@ -332,25 +275,11 @@ export default function ItemDetailScreen() {
             <SolidButton label="닫기" theme={theme} onPress={close} />
           )}
         </View>
-      </Animated.View>
-    </View>
+    </ModalSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowRadius: 24,
-    elevation: 16,
-  },
-  grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   flexShrink: { flexShrink: 1 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   trashButton: { width: 24, height: 24, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

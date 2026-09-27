@@ -5,10 +5,11 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { emToTracking } from '../theme/themes';
 import { ApiItem, fetchTrash, permanentlyDeleteItem, restoreItem } from '../api/client';
 import { relativeTime } from '../api/format';
-import { BackIcon, RestoreIcon, TrashIcon } from '../components/Icons';
+import { RestoreIcon, TrashIcon } from '../components/Icons';
+import { AsyncStateView } from '../components/AsyncStateView';
+import { ScreenHeader } from '../components/ScreenHeader';
 import type { RootStackParamList } from '../navigation/types';
 
 type RowAction = 'idle' | 'restoring' | 'confirmingPermanent' | 'deletingPermanent';
@@ -123,40 +124,17 @@ export default function TrashScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
-      <View style={[styles.header, { paddingHorizontal: card ? 24 : 26 }]}>
-        <Pressable onPress={() => navigation.goBack()} style={[styles.backButton, { borderColor: theme.line }]} hitSlop={8}>
-          <BackIcon size={16} color={theme.ink} strokeWidth={1.5} />
-        </Pressable>
-        <Text
-          style={{
-            fontFamily: theme.headFamily,
-            fontWeight: theme.headWeight,
-            fontSize: theme.headSize - 8,
-            color: theme.ink,
-            letterSpacing: emToTracking(-0.02, theme.headSize - 8),
-          }}
-        >
-          휴지통
-        </Text>
-      </View>
+      <ScreenHeader title="휴지통" theme={theme} onBack={() => navigation.goBack()} />
 
-      {loading ? (
-        <ActivityIndicator color={theme.accent} style={{ marginTop: 60 }} />
-      ) : error ? (
-        <View style={{ marginTop: 60, alignItems: 'center', paddingHorizontal: 24 }}>
-          <Text style={{ color: theme.sub, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' }}>
-            불러오지 못했어요.{'\n'}
-            {error}
-          </Text>
-          <Pressable onPress={load} style={[styles.retryButton, { borderColor: theme.line }]}>
-            <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
-          </Pressable>
-        </View>
-      ) : items.length === 0 ? (
-        <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 60, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-          휴지통이 비어있어요.
-        </Text>
-      ) : (
+      <AsyncStateView
+        theme={theme}
+        loading={loading}
+        error={error}
+        onRetry={load}
+        empty={items.length === 0}
+        emptyText="휴지통이 비어있어요."
+        topOffset={60}
+      >
         <ScrollView
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24, gap: card ? 10 : 0 }}
         >
@@ -164,23 +142,13 @@ export default function TrashScreen() {
             <TrashRow key={item.id} item={item} theme={theme} onRemoved={removeFromList} />
           ))}
         </ScrollView>
-      )}
+      </AsyncStateView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 20, paddingBottom: 18 },
-  backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retryButton: { marginTop: 16, borderWidth: 1, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 },
   row: { gap: 6 },
   title: { fontSize: 15, lineHeight: 21, fontFamily: 'IBMPlexSansKR_500Medium' },
   meta: { fontSize: 12, fontFamily: 'IBMPlexSansKR_400Regular' },

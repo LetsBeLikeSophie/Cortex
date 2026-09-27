@@ -1,9 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Animated,
-  Dimensions,
-  Easing,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -14,8 +11,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -28,10 +23,10 @@ import { saveTextItem, saveLinkItem, saveScreenshotItem, ApiItem, ItemSource } f
 import { sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip } from '../components/Chips';
+import { Heading } from '../components/Typography';
+import { ModalSheet } from '../components/ModalSheet';
 import { GhostButton, SolidButton } from '../components/Buttons';
 import type { RootStackParamList } from '../navigation/types';
-
-const SHEET_TRAVEL = Dimensions.get('window').height;
 
 // Android's OS share sheet lands here now (expo-share-intent, see
 // HomeScreen's handler) with sharedText/sharedUrl/sharedImageUri route
@@ -59,7 +54,6 @@ export default function SaveSheetScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'SaveSheet'>>();
-  const insets = useSafeAreaInsets();
   const card = theme.list === 'card';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
@@ -93,19 +87,6 @@ export default function SaveSheetScreen() {
       cancelled = true;
     };
   }, [route.params?.sharedImageUri]);
-
-  // Shorter than it looks like it should be -- RN Web always falls back to
-  // JS-driven Animated (no native driver there), so 220ms already reads
-  // about as snappy as a native 360ms slide would.
-  const translateY = useRef(new Animated.Value(SHEET_TRAVEL)).current;
-  useEffect(() => {
-    Animated.timing(translateY, {
-      toValue: 0,
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [translateY]);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -166,33 +147,7 @@ export default function SaveSheetScreen() {
   };
 
   return (
-    <View style={StyleSheet.absoluteFill}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={close}>
-        <BlurView
-          intensity={18}
-          tint={theme.dark ? 'dark' : 'light'}
-          style={[StyleSheet.absoluteFill, { backgroundColor: theme.dark ? 'rgba(4,5,7,0.5)' : 'rgba(20,20,15,0.28)' }]}
-        />
-      </Pressable>
-
-      <Animated.View
-        style={[
-          styles.sheet,
-          {
-            backgroundColor: theme.bg,
-            borderTopWidth: theme.dark ? 1 : 0,
-            borderColor: theme.line,
-            borderTopLeftRadius: card ? 30 : 26,
-            borderTopRightRadius: card ? 30 : 26,
-            paddingBottom: 32 + insets.bottom,
-            maxHeight: SHEET_TRAVEL * 0.86,
-            transform: [{ translateY }],
-            shadowOpacity: theme.dark ? 0.45 : 0.14,
-          },
-        ]}
-      >
-        <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
-
+    <ModalSheet theme={theme} onClose={close} paddingBottom={32} maxHeightRatio={0.86}>
         {status === 'input' || status === 'saving' || status === 'error' ? (
           <>
           {/* This sheet is a native-stack "transparentModal", rendered on
@@ -202,18 +157,9 @@ export default function SaveSheetScreen() {
               here on either platform, so this has to do the work itself. */}
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
           <ScrollView ref={scrollRef} style={styles.flexShrink} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text
-              style={{
-                fontFamily: theme.headFamily,
-                fontWeight: theme.headWeight,
-                fontSize: theme.headSize - 2,
-                lineHeight: (theme.headSize - 2) * 1.15,
-                letterSpacing: emToTracking(-0.02, theme.headSize - 2),
-                color: theme.ink,
-              }}
-            >
+            <Heading theme={theme} offset={2}>
               무엇을 저장할까요?
-            </Text>
+            </Heading>
             <Text style={[styles.savedSub, { color: theme.sub }]}>
               다른 앱에서 공유하거나, 텍스트를 붙여넣거나 사진을 골라서 저장해요.
             </Text>
@@ -331,19 +277,9 @@ export default function SaveSheetScreen() {
                   >
                     {txt.savedLabel}
                   </Text>
-                  <Text
-                    style={{
-                      fontFamily: theme.headFamily,
-                      fontWeight: theme.headWeight,
-                      fontSize: theme.headSize - 2,
-                      lineHeight: (theme.headSize - 2) * 1.15,
-                      letterSpacing: emToTracking(-0.02, theme.headSize - 2),
-                      color: theme.ink,
-                      marginTop: 8,
-                    }}
-                  >
+                  <Heading theme={theme} offset={2} style={{ marginTop: 8 }}>
                     {txt.savedTitle}
-                  </Text>
+                  </Heading>
                   <Text style={[styles.savedSub, { color: theme.sub }]}>단어 하나만 적으면 다시 꺼내 드려요.</Text>
                 </View>
               </View>
@@ -399,25 +335,11 @@ export default function SaveSheetScreen() {
             </>
           )
         )}
-      </Animated.View>
-    </View>
+    </ModalSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowRadius: 24,
-    elevation: 16,
-  },
-  grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 24 },
   flexShrink: { flexShrink: 1 },
   photoButtonRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
   photoButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },

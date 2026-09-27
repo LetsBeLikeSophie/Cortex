@@ -11,6 +11,7 @@ import { searchItems as apiSearchItems, restoreItem, ApiItem } from '../api/clie
 import { toSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
 import { AsyncStateView } from '../components/AsyncStateView';
+import { Heading } from '../components/Typography';
 import { ChipQueryRow } from '../components/Chips';
 import { SearchIcon } from '../components/Icons';
 import { useChipQuery } from '../hooks/useChipQuery';
@@ -99,18 +100,7 @@ export default function SearchScreen() {
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
       <View style={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 26 : 30 }}>
-        <Text
-          style={{
-            fontFamily: theme.headFamily,
-            fontWeight: theme.headWeight,
-            fontSize: theme.headSize,
-            lineHeight: theme.headSize * 1.1,
-            letterSpacing: emToTracking(-0.02, theme.headSize),
-            color: theme.ink,
-          }}
-        >
-          {txt.searchTitle}
-        </Text>
+        <Heading theme={theme}>{txt.searchTitle}</Heading>
 
         <View
           style={[

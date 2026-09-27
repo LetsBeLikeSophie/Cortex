@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { emToTracking } from '../theme/themes';
 import { fetchStats, ItemStats } from '../api/client';
 import { sourceLabel, SOURCE_ORDER } from '../api/format';
 import { ALL_CATEGORIES } from '../data/tabs';
-import { BackIcon } from '../components/Icons';
 import { DonutChart, BarChart, HorizontalBars, Heatmap } from '../components/Charts';
 import { AsyncStateView } from '../components/AsyncStateView';
+import { ScreenHeader } from '../components/ScreenHeader';
 import type { RootStackParamList } from '../navigation/types';
 
 function Section({ title, note, children, theme }: { title: string; note?: string; children: React.ReactNode; theme: ReturnType<typeof useTheme>['theme'] }) {
@@ -65,22 +64,7 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
-      <View style={[styles.header, { paddingHorizontal: card ? 24 : 26 }]}>
-        <Pressable onPress={() => navigation.goBack()} style={[styles.backButton, { borderColor: theme.line }]} hitSlop={8}>
-          <BackIcon size={16} color={theme.ink} strokeWidth={1.5} />
-        </Pressable>
-        <Text
-          style={{
-            fontFamily: theme.headFamily,
-            fontWeight: theme.headWeight,
-            fontSize: theme.headSize - 8,
-            color: theme.ink,
-            letterSpacing: emToTracking(-0.02, theme.headSize - 8),
-          }}
-        >
-          저장 통계
-        </Text>
-      </View>
+      <ScreenHeader title="저장 통계" theme={theme} onBack={() => navigation.goBack()} />
 
       <AsyncStateView
         theme={theme}
@@ -136,15 +120,6 @@ export default function StatsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 20, paddingBottom: 18 },
-  backButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   section: { marginTop: 20 },
   sectionTitle: { fontSize: 17 },
   sectionNote: { fontSize: 12, marginTop: 3, fontFamily: 'IBMPlexSansKR_400Regular' },

@@ -40,7 +40,7 @@ export function copyFor(tone: CopyTone) {
       const base = `이번 주 +${weekCount}건`;
       return lastSaved ? `${base} · ${lastSaved} 저장됨` : base;
     },
-    searchTitle: tech ? '기억 불러오기' : '무엇을 찾고 계신가요',
+    searchTitle: tech ? '기억 불러오기' : '검색',
     hits: (n: number) => (tech ? `${n} MATCHES · 0.08s` : `결과 ${n}건`),
     savedLabel: tech ? 'SAVED TO CORTEX' : '저장 완료',
     savedTitle: tech ? '기억에 저장했어요' : '잘 보관했어요',

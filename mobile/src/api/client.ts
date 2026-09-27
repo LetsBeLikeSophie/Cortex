@@ -40,8 +40,12 @@ export const API_BASE_URL = resolveBaseUrl();
 
 // A frontend-only deploy (no backend behind it) would otherwise hang on the
 // browser's default connect timeout -- often 60s+ -- before the read/search
-// screens fall back to demo data. Fail fast instead.
-const REQUEST_TIMEOUT_MS = 8000;
+// screens fall back to demo data. Fail fast instead -- but not so fast that
+// a real-but-slow round trip (session-token refresh + a 1 OCPU box's own
+// processing time, both before the request even reaches the network) gets
+// mistaken for a dead backend; 8s was tight enough to abort ordinary loads
+// in practice.
+const REQUEST_TIMEOUT_MS = 20000;
 
 // Screenshot saves go through compression + a Claude vision call + a
 // Storage upload server-side, on a 1 OCPU box -- routinely well past 8s.

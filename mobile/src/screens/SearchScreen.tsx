@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,6 +10,7 @@ import { copyFor, DEFAULT_QUERY, SearchResult } from '../data/content';
 import { searchItems as apiSearchItems, restoreItem, ApiItem } from '../api/client';
 import { toSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
+import { AsyncStateView } from '../components/AsyncStateView';
 import { ChipQueryRow } from '../components/Chips';
 import { SearchIcon } from '../components/Icons';
 import { useChipQuery } from '../hooks/useChipQuery';
@@ -36,33 +37,37 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const runSearch = React.useCallback((include: string[], exclude: string[]) => {
+    setLoading(true);
+    apiSearchItems(include, exclude)
+      .then((res) => {
+        const next = res.items
+          .map((raw) => ({ raw, result: toSearchResult(raw, include) }))
+          .sort((a, b) => b.result.matchedCount - a.result.matchedCount);
+        setHits(next);
+        setError(null);
+      })
+      .catch((err) => {
+        setHits([]);
+        setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   useEffect(() => {
     if (chips.length === 0) {
       setHits([]);
       setError(null);
       return;
     }
-    const include = includeChips.map((c) => c.text);
-    const exclude = excludeChips.map((c) => c.text);
-    setLoading(true);
     const timer = setTimeout(() => {
-      apiSearchItems(include, exclude)
-        .then((res) => {
-          const next = res.items
-            .map((raw) => ({ raw, result: toSearchResult(raw, include) }))
-            .sort((a, b) => b.result.matchedCount - a.result.matchedCount);
-          setHits(next);
-          setError(null);
-        })
-        .catch((err) => {
-          setHits([]);
-          setError(err instanceof Error ? err.message : String(err));
-        })
-        .finally(() => setLoading(false));
+      runSearch(includeChips.map((c) => c.text), excludeChips.map((c) => c.text));
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chips]);
+
+  const retry = () => runSearch(includeChips.map((c) => c.text), excludeChips.map((c) => c.text));
 
   // Restoring a trashed hit in place -- flip its deleted_at locally instead
   // of re-running the whole search, so the row just loses its badge/button.
@@ -173,49 +178,47 @@ export default function SearchScreen() {
           <Text style={[styles.help, { color: theme.sub }]}>띄어 쓰면 단어가 하나씩 묶여요.</Text>
           <Text style={[styles.help, { color: theme.sub }]}>단어를 누르면 제외, ×를 누르면 삭제.</Text>
         </View>
-      ) : loading && hits.length === 0 ? (
-        <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
-      ) : error ? (
-        <Text
-          style={{
-            color: theme.accent,
-            textAlign: 'center',
-            marginTop: 40,
-            paddingHorizontal: 24,
-            fontFamily: 'IBMPlexSansKR_400Regular',
-          }}
-        >
-          검색 실패: {error}
-        </Text>
-      ) : hits.length === 0 ? (
-        <View style={{ marginTop: 28, paddingHorizontal: card ? 24 : 26 }}>
-          <Text style={[styles.help, { color: theme.sub }]}>결과가 없어요.</Text>
-          <Text style={[styles.help, { color: theme.sub }]}>제외한 단어를 다시 눌러 풀어 보세요.</Text>
-        </View>
       ) : (
-        <FlatList
-          data={rows}
-          keyExtractor={(row) => row.key}
-          renderItem={({ item: row }) =>
-            row.kind === 'header' ? (
-              <View style={styles.sectionHead}>
-                <Text style={[styles.sectionTitle, { color: theme.ink }]}>{row.title}</Text>
-                <Text style={[styles.sectionCount, { color: theme.sub }]}>{row.count}</Text>
-              </View>
-            ) : (
-              <ResultRow
-                item={row.hit.result}
-                theme={theme}
-                tech={tech}
-                trashed={!!row.hit.raw.deleted_at}
-                onRestore={() => restore(row.hit.raw.id)}
-                onPress={row.hit.raw.deleted_at ? undefined : () => navigation.navigate('ItemDetail', { item: row.hit.raw })}
-              />
-            )
+        <AsyncStateView
+          theme={theme}
+          loading={loading && hits.length === 0}
+          error={error}
+          onRetry={retry}
+          empty={hits.length === 0}
+          topOffset={28}
+          emptyText={
+            <View style={{ marginTop: 28, paddingHorizontal: card ? 24 : 26 }}>
+              <Text style={[styles.help, { color: theme.sub }]}>결과가 없어요.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>제외한 단어를 다시 눌러 풀어 보세요.</Text>
+            </View>
           }
-          contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
-          style={styles.list}
-        />
+        >
+          <FlatList
+            data={rows}
+            keyExtractor={(row) => row.key}
+            renderItem={({ item: row }) =>
+              row.kind === 'header' ? (
+                <View style={styles.sectionHead}>
+                  <Text style={[styles.sectionTitle, { color: theme.ink }]}>{row.title}</Text>
+                  <Text style={[styles.sectionCount, { color: theme.sub }]}>{row.count}</Text>
+                </View>
+              ) : (
+                <ResultRow
+                  item={row.hit.result}
+                  theme={theme}
+                  tech={tech}
+                  trashed={!!row.hit.raw.deleted_at}
+                  onRestore={() => restore(row.hit.raw.id)}
+                  onPress={
+                    row.hit.raw.deleted_at ? undefined : () => navigation.navigate('ItemDetail', { item: row.hit.raw })
+                  }
+                />
+              )
+            }
+            contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
+            style={styles.list}
+          />
+        </AsyncStateView>
       )}
     </SafeAreaView>
   );

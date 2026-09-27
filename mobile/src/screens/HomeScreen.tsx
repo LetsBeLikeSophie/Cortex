@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import { TagTab, loadHomeTabs } from '../data/tabs';
 import { fetchRecentItems, ApiItem } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
+import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
 import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
@@ -216,23 +217,14 @@ export default function HomeScreen() {
         <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </View>
 
-      {loading && items.length === 0 ? (
-        <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
-      ) : items.length === 0 && error ? (
-        <View style={{ marginTop: 40, alignItems: 'center', paddingHorizontal: 24 }}>
-          <Text style={{ color: theme.sub, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' }}>
-            불러오지 못했어요.{'\n'}
-            {error}
-          </Text>
-          <Pressable onPress={load} style={[styles.retryButton, { borderColor: theme.line }]}>
-            <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
-          </Pressable>
-        </View>
-      ) : items.length === 0 ? (
-        <Text style={{ color: theme.sub, textAlign: 'center', marginTop: 40, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-          아직 저장된 기억이 없어요.
-        </Text>
-      ) : (
+      <AsyncStateView
+        theme={theme}
+        loading={loading && items.length === 0}
+        error={items.length === 0 ? error : null}
+        onRetry={load}
+        empty={items.length === 0}
+        emptyText="아직 저장된 기억이 없어요."
+      >
         <FlatList
           data={items}
           keyExtractor={(item, i) => item.no + i}
@@ -247,7 +239,7 @@ export default function HomeScreen() {
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
           style={styles.list}
         />
-      )}
+      </AsyncStateView>
     </SafeAreaView>
   );
 }
@@ -255,7 +247,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   headPad: {},
-  retryButton: { marginTop: 16, borderWidth: 1, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: {

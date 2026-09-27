@@ -24,9 +24,16 @@ const ListQuerySchema = z.object({
 });
 
 const SearchQuerySchema = z.object({
-  q: z.string().min(1),
+  // Comma-separated tag/word lists -- the search screen's chips split into
+  // "include" (AND'd together) and "exclude" (NOT'd) before calling this.
+  include: z.string().optional(),
+  exclude: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
+
+function splitTerms(raw: string | undefined): string[] {
+  return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}
 
 const AddTagSchema = z.object({
   tag: z.string().min(1).max(30),
@@ -102,8 +109,13 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
     }
+    const include = splitTerms(parsed.data.include);
+    const exclude = splitTerms(parsed.data.exclude);
+    if (include.length === 0 && exclude.length === 0) {
+      return reply.code(400).send({ error: "include or exclude required" });
+    }
     const userId = await resolveUserId(req);
-    const items = await searchItems(userId, parsed.data.q, parsed.data.limit);
+    const items = await searchItems(userId, include, exclude, parsed.data.limit);
     return reply.send({ items });
   });
 

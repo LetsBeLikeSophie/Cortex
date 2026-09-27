@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../theme/themes';
 import { PlusIcon } from './Icons';
+import type { QueryChip } from '../hooks/useChipQuery';
 
 // Home category tabs: an underline-tab strip in the "line" list themes,
 // a pill-tab strip in the "card" list themes.
@@ -89,6 +90,75 @@ export function MetaChip({ icon, label, theme }: { icon?: React.ReactNode; label
   );
 }
 
+// A search-box tag chip: tapping the text toggles include/exclude (excluded
+// reads with a strike-through), the × removes it from the query entirely.
+export function SearchChip({
+  label,
+  excluded,
+  theme,
+  onToggle,
+  onRemove,
+}: {
+  label: string;
+  excluded: boolean;
+  theme: Theme;
+  onToggle: () => void;
+  onRemove: () => void;
+}) {
+  const card = theme.list === 'card';
+  const color = excluded ? theme.sub : card ? theme.accent : theme.ink;
+  return (
+    <View
+      style={[
+        styles.searchChip,
+        card
+          ? { backgroundColor: excluded ? theme.bg : theme.accent + '1f', borderWidth: excluded ? 1 : 0, borderColor: theme.line }
+          : { borderWidth: 1, borderColor: excluded ? theme.sub : theme.ink },
+      ]}
+    >
+      <Pressable onPress={onToggle} hitSlop={4} style={styles.searchChipText}>
+        <Text style={{ fontSize: 13.5, color, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: excluded ? 'line-through' : 'none' }}>
+          {label}
+        </Text>
+      </Pressable>
+      <Pressable onPress={onRemove} hitSlop={8} style={styles.searchChipX}>
+        <Text style={{ fontSize: 15, color, opacity: 0.55 }}>×</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// The whole wrapping row of chips for a useChipQuery() input -- pulled out
+// of SearchScreen so the "type a word, toggle it, × removes it" input reads
+// as one reusable unit rather than screen-specific wiring.
+export function ChipQueryRow({
+  chips,
+  theme,
+  onToggle,
+  onRemove,
+}: {
+  chips: QueryChip[];
+  theme: Theme;
+  onToggle: (id: number) => void;
+  onRemove: (id: number) => void;
+}) {
+  if (chips.length === 0) return null;
+  return (
+    <View style={styles.chipQueryRow}>
+      {chips.map((chip) => (
+        <SearchChip
+          key={chip.id}
+          label={chip.text}
+          excluded={chip.excluded}
+          theme={theme}
+          onToggle={() => onToggle(chip.id)}
+          onRemove={() => onRemove(chip.id)}
+        />
+      ))}
+    </View>
+  );
+}
+
 export function TagAddChip({ label, theme, onPress }: { label: string; theme: Theme; onPress?: () => void }) {
   return (
     <Pressable onPress={onPress} style={[styles.tag, { borderWidth: 1, borderStyle: 'dashed', borderColor: theme.sub, paddingVertical: 6 }]}>
@@ -103,6 +173,10 @@ const styles = StyleSheet.create({
   tag: { borderRadius: 999, paddingHorizontal: 14 },
   tagRow: { flexDirection: 'row', alignItems: 'center' },
   metaChip: { gap: 5 },
+  searchChip: { flexDirection: 'row', alignItems: 'center', height: 34, borderRadius: 999, paddingLeft: 13, paddingRight: 4 },
+  searchChipText: { paddingVertical: 4 },
+  searchChipX: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  chipQueryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
   tabAdd: {
     width: 26,
     height: 26,

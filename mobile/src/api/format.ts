@@ -46,18 +46,32 @@ export function toRecentItem(item: ApiItem, index: number): RecentItem {
   };
 }
 
-// Highlights the query wherever it appears in the title (case-insensitive).
-// If the title itself doesn't contain it -- the match came from the
-// snippet/tags instead -- the whole title renders unhighlighted.
-export function toSearchResult(item: ApiItem, query: string): SearchResult {
-  const title = item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)';
-  const idx = query ? title.toLowerCase().indexOf(query.toLowerCase()) : -1;
+// Whether an include term actually matched this item -- mirrors the
+// backend's own matchesTerm (searchItems already filtered by this, but the
+// client needs to know *which* terms hit, per item, to group 모두 포함/일부
+//포함 and to know what's missing for the "OO 없음" badge).
+function fieldMatches(item: ApiItem, needle: string): boolean {
+  const n = needle.toLowerCase();
+  if (item.title?.toLowerCase().includes(n)) return true;
+  if (item.snippet?.toLowerCase().includes(n)) return true;
+  if (item.raw_text?.toLowerCase().includes(n)) return true;
+  if (item.tags.some((t) => t.toLowerCase().includes(n))) return true;
+  if (item.user_tags.some((t) => t.toLowerCase().includes(n))) return true;
+  if (sourceLabel(item.source, false).toLowerCase().includes(n)) return true;
+  if (sourceLabel(item.source, true).toLowerCase().includes(n)) return true;
+  if (captureTypeLabel(item.capture_type, false).toLowerCase().includes(n)) return true;
+  if (captureTypeLabel(item.capture_type, true).toLowerCase().includes(n)) return true;
+  return false;
+}
 
+export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
+  const got = include.filter((w) => fieldMatches(item, w));
   return {
-    before: idx >= 0 ? title.slice(0, idx) : title,
-    hit: idx >= 0 ? title.slice(idx, idx + query.length) : '',
-    after: idx >= 0 ? title.slice(idx + query.length) : '',
+    title: item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)',
     snippet: item.snippet ?? item.raw_text ?? '',
+    terms: include,
+    matchedCount: got.length,
+    missingTerms: include.filter((w) => !got.includes(w)),
     source: item.source,
     captureType: item.capture_type,
     timeLabel: relativeTime(item.shared_at),

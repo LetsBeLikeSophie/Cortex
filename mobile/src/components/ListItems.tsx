@@ -129,17 +129,29 @@ export function ResultRow({
         </View>
       )}
       <HighlightText
-        before={item.before}
-        hit={item.hit}
-        after={item.after}
+        text={item.title}
+        terms={item.terms}
         accent={theme.accent}
         hitStyle={theme.hitStyle}
         baseStyle={[styles.title, { color: theme.ink, opacity: trashed ? 0.6 : 1 }]}
       />
-      <Text style={[styles.snippet, { color: theme.sub, opacity: trashed ? 0.6 : 1 }]}>{item.snippet}</Text>
+      <HighlightText
+        text={item.snippet}
+        terms={item.terms}
+        accent={theme.accent}
+        hitStyle={theme.hitStyle}
+        baseStyle={[styles.snippet, { color: theme.sub, opacity: trashed ? 0.6 : 1 }]}
+      />
       <View style={styles.resultFooter}>
-        <View style={{ opacity: trashed ? 0.6 : 1 }}>
+        <View style={[styles.resultFooterLeft, { opacity: trashed ? 0.6 : 1 }]}>
           <MetaLine item={item} theme={theme} tech={tech} />
+          {item.missingTerms.length > 0 && (
+            <View style={[styles.missingBadge, { borderColor: theme.sub }]}>
+              <Text style={{ fontSize: 11.5, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                {item.missingTerms.join(', ')} 없음
+              </Text>
+            </View>
+          )}
         </View>
         {trashed && (
           <Pressable onPress={onRestore} hitSlop={8} style={[styles.restoreButton, { borderColor: theme.line }]}>
@@ -159,5 +171,7 @@ const styles = StyleSheet.create({
   snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: 'IBMPlexSansKR_400Regular' },
   trashBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginBottom: 8 },
   resultFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 },
+  resultFooterLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  missingBadge: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
   restoreButton: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
 });

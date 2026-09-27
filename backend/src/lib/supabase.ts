@@ -263,7 +263,31 @@ export async function listTags(userId: string): Promise<string[]> {
 // alternative (silently excluding it) reads as "search is broken" rather
 // than "working as designed." The route marks matches by their deleted_at
 // so the client can badge/offer-restore instead of opening them normally.
-export async function searchItems(userId: string, query: string, limit = 30): Promise<ItemRecord[]> {
+function matchesTerm(item: ItemRecord, needle: string): boolean {
+  if (item.title?.toLowerCase().includes(needle)) return true;
+  if (item.snippet?.toLowerCase().includes(needle)) return true;
+  if (item.raw_text?.toLowerCase().includes(needle)) return true;
+  if (item.tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
+  if (item.user_tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
+  // The channel/method chips shown in the app aren't stored as tags, but
+  // they're presented like tags there -- searching "유튜브" or "링크"
+  // should find everything tagged with that channel/method too.
+  const source = SOURCE_CATALOG[item.source];
+  if (source.label.toLowerCase().includes(needle) || source.labelEn.includes(needle)) return true;
+  const captureType = CAPTURE_TYPE_CATALOG[item.capture_type];
+  if (captureType.label.toLowerCase().includes(needle) || captureType.labelEn.includes(needle)) return true;
+  return false;
+}
+
+// `include` terms are AND'd together (an item must match every one),
+// `exclude` terms are NOT'd (an item matching any one is dropped) -- the
+// search screen's tag chips map straight onto these two lists.
+export async function searchItems(
+  userId: string,
+  include: string[],
+  exclude: string[],
+  limit = 30
+): Promise<ItemRecord[]> {
   const { data, error } = await getClient()
     .from("items")
     .select()
@@ -273,21 +297,12 @@ export async function searchItems(userId: string, query: string, limit = 30): Pr
 
   if (error) throw new Error(`searchItems failed: ${error.message}`);
 
-  const needle = query.toLowerCase();
+  const inc = include.map((w) => w.toLowerCase()).filter(Boolean);
+  const exc = exclude.map((w) => w.toLowerCase()).filter(Boolean);
+
   const matches = (data ?? []).filter((item: ItemRecord) => {
-    if (item.title?.toLowerCase().includes(needle)) return true;
-    if (item.snippet?.toLowerCase().includes(needle)) return true;
-    if (item.raw_text?.toLowerCase().includes(needle)) return true;
-    if (item.tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
-    if (item.user_tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
-    // The channel/method chips shown in the app aren't stored as tags, but
-    // they're presented like tags there -- searching "유튜브" or "링크"
-    // should find everything tagged with that channel/method too.
-    const source = SOURCE_CATALOG[item.source];
-    if (source.label.toLowerCase().includes(needle) || source.labelEn.includes(needle)) return true;
-    const captureType = CAPTURE_TYPE_CATALOG[item.capture_type];
-    if (captureType.label.toLowerCase().includes(needle) || captureType.labelEn.includes(needle)) return true;
-    return false;
+    if (exc.some((needle) => matchesTerm(item, needle))) return false;
+    return inc.every((needle) => matchesTerm(item, needle));
   });
 
   return matches.slice(0, limit) as ItemRecord[];

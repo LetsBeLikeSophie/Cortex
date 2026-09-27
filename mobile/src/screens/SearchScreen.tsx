@@ -10,8 +10,17 @@ import { copyFor, DEFAULT_QUERY, SearchResult } from '../data/content';
 import { searchItems as apiSearchItems, restoreItem, ApiItem } from '../api/client';
 import { toSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
+import { ChipQueryRow } from '../components/Chips';
 import { SearchIcon } from '../components/Icons';
+import { useChipQuery } from '../hooks/useChipQuery';
 import type { RootStackParamList } from '../navigation/types';
+
+interface Hit {
+  result: SearchResult;
+  raw: ApiItem;
+}
+
+type Row = { kind: 'header'; key: string; title: string; count: number } | { kind: 'item'; key: string; hit: Hit };
 
 export default function SearchScreen() {
   const { theme } = useTheme();
@@ -20,48 +29,67 @@ export default function SearchScreen() {
   const tech = theme.copy === 'tech';
   const mono = tech;
   const txt = copyFor(theme.copy);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  // Kept alongside `results` (same order, same indices) so tapping a row
-  // can open the detail sheet with the full item.
-  const [rawResults, setRawResults] = useState<ApiItem[]>([]);
+
+  const { chips, draft, includeChips, excludeChips, onChangeText, commitDraft, onKeyPress, toggleChip, removeChip } =
+    useChipQuery();
+  const [hits, setHits] = useState<Hit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const trimmed = query.trim();
-    if (!trimmed) {
-      setResults([]);
-      setRawResults([]);
+    if (chips.length === 0) {
+      setHits([]);
       setError(null);
       return;
     }
+    const include = includeChips.map((c) => c.text);
+    const exclude = excludeChips.map((c) => c.text);
     setLoading(true);
     const timer = setTimeout(() => {
-      apiSearchItems(trimmed)
+      apiSearchItems(include, exclude)
         .then((res) => {
-          setResults(res.items.map((item) => toSearchResult(item, trimmed)));
-          setRawResults(res.items);
+          const next = res.items
+            .map((raw) => ({ raw, result: toSearchResult(raw, include) }))
+            .sort((a, b) => b.result.matchedCount - a.result.matchedCount);
+          setHits(next);
           setError(null);
         })
         .catch((err) => {
-          setResults([]);
-          setRawResults([]);
+          setHits([]);
           setError(err instanceof Error ? err.message : String(err));
         })
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chips]);
 
   // Restoring a trashed hit in place -- flip its deleted_at locally instead
   // of re-running the whole search, so the row just loses its badge/button.
   const restore = (itemId: string) => {
-    setRawResults((current) => current.map((it) => (it.id === itemId ? { ...it, deleted_at: null } : it)));
+    setHits((current) => current.map((h) => (h.raw.id === itemId ? { ...h, raw: { ...h.raw, deleted_at: null } } : h)));
     restoreItem(itemId).catch(() => {
-      setRawResults((current) => current.map((it) => (it.id === itemId ? { ...it, deleted_at: new Date().toISOString() } : it)));
+      setHits((current) =>
+        current.map((h) => (h.raw.id === itemId ? { ...h, raw: { ...h.raw, deleted_at: new Date().toISOString() } } : h))
+      );
     });
   };
+
+  const rows: Row[] = [];
+  if (includeChips.length > 1) {
+    const all = hits.filter((h) => h.result.matchedCount === includeChips.length);
+    const some = hits.filter((h) => h.result.matchedCount < includeChips.length);
+    if (all.length) {
+      rows.push({ kind: 'header', key: 'h-all', title: '모두 포함', count: all.length });
+      all.forEach((hit, i) => rows.push({ kind: 'item', key: 'all' + i, hit }));
+    }
+    if (some.length) {
+      rows.push({ kind: 'header', key: 'h-some', title: '일부 포함', count: some.length });
+      some.forEach((hit, i) => rows.push({ kind: 'item', key: 'some' + i, hit }));
+    }
+  } else {
+    hits.forEach((hit, i) => rows.push({ kind: 'item', key: 'row' + i, hit }));
+  }
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -100,16 +128,21 @@ export default function SearchScreen() {
         >
           <SearchIcon color={theme.accent} size={18} strokeWidth={1.4} />
           <TextInput
-            value={query}
-            onChangeText={setQuery}
+            value={draft}
+            onChangeText={onChangeText}
+            onSubmitEditing={commitDraft}
+            onKeyPress={onKeyPress}
+            blurOnSubmit={false}
             style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
             selectionColor={theme.accent}
-            placeholder={DEFAULT_QUERY}
+            placeholder={chips.length > 0 ? '' : DEFAULT_QUERY}
             placeholderTextColor={theme.sub}
           />
         </View>
 
-        {query.trim().length > 0 && (
+        <ChipQueryRow chips={chips} theme={theme} onToggle={toggleChip} onRemove={removeChip} />
+
+        {chips.length > 0 && (
           <View style={[styles.metaRow, { paddingBottom: card ? 4 : 0 }]}>
             <Text
               style={{
@@ -119,7 +152,7 @@ export default function SearchScreen() {
                 color: theme.sub,
               }}
             >
-              {loading ? '검색 중...' : txt.hits(results.length)}
+              {loading ? '검색 중...' : txt.hits(hits.length)}
             </Text>
             <Text
               style={{
@@ -129,13 +162,18 @@ export default function SearchScreen() {
                 color: theme.sub,
               }}
             >
-              최신순
+              관련순
             </Text>
           </View>
         )}
       </View>
 
-      {query.trim().length === 0 ? null : loading && results.length === 0 ? (
+      {chips.length === 0 ? (
+        <View style={{ marginTop: 28, paddingHorizontal: card ? 24 : 26 }}>
+          <Text style={[styles.help, { color: theme.sub }]}>띄어 쓰면 단어가 하나씩 묶여요.</Text>
+          <Text style={[styles.help, { color: theme.sub }]}>단어를 누르면 제외, ×를 누르면 삭제.</Text>
+        </View>
+      ) : loading && hits.length === 0 ? (
         <ActivityIndicator color={theme.accent} style={{ marginTop: 40 }} />
       ) : error ? (
         <Text
@@ -149,24 +187,32 @@ export default function SearchScreen() {
         >
           검색 실패: {error}
         </Text>
+      ) : hits.length === 0 ? (
+        <View style={{ marginTop: 28, paddingHorizontal: card ? 24 : 26 }}>
+          <Text style={[styles.help, { color: theme.sub }]}>결과가 없어요.</Text>
+          <Text style={[styles.help, { color: theme.sub }]}>제외한 단어를 다시 눌러 풀어 보세요.</Text>
+        </View>
       ) : (
         <FlatList
-          data={results}
-          keyExtractor={(item, i) => item.hit + item.after + i}
-          renderItem={({ item, index }) => {
-            const raw = rawResults[index];
-            const trashed = !!raw?.deleted_at;
-            return (
+          data={rows}
+          keyExtractor={(row) => row.key}
+          renderItem={({ item: row }) =>
+            row.kind === 'header' ? (
+              <View style={styles.sectionHead}>
+                <Text style={[styles.sectionTitle, { color: theme.ink }]}>{row.title}</Text>
+                <Text style={[styles.sectionCount, { color: theme.sub }]}>{row.count}</Text>
+              </View>
+            ) : (
               <ResultRow
-                item={item}
+                item={row.hit.result}
                 theme={theme}
                 tech={tech}
-                trashed={trashed}
-                onRestore={() => raw && restore(raw.id)}
-                onPress={trashed ? undefined : () => navigation.navigate('ItemDetail', { item: raw })}
+                trashed={!!row.hit.raw.deleted_at}
+                onRestore={() => restore(row.hit.raw.id)}
+                onPress={row.hit.raw.deleted_at ? undefined : () => navigation.navigate('ItemDetail', { item: row.hit.raw })}
               />
-            );
-          }}
+            )
+          }
           contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
           style={styles.list}
         />
@@ -181,5 +227,9 @@ const styles = StyleSheet.create({
   searchShadow: { shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   searchInput: { fontSize: 17, flex: 1, padding: 0 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
+  help: { fontSize: 13.5, lineHeight: 22, fontFamily: 'IBMPlexSansKR_400Regular' },
+  sectionHead: { flexDirection: 'row', alignItems: 'baseline', gap: 6, paddingTop: 18, paddingBottom: 8 },
+  sectionTitle: { fontSize: 12.5, fontWeight: '500', fontFamily: 'IBMPlexSansKR_500Medium' },
+  sectionCount: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   list: { flex: 1 },
 });

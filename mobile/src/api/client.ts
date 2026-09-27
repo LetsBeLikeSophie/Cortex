@@ -86,8 +86,15 @@ export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number }>(`/items?limit=${limit}`);
 }
 
-export function searchItems(query: string, limit = 30) {
-  return request<{ items: ApiItem[] }>(`/items/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+// `include` terms are AND'd together, `exclude` terms are NOT'd -- see the
+// search screen's tag-chip input (space/enter turns a word into a chip,
+// tapping it toggles include/exclude, × removes it).
+export function searchItems(include: string[], exclude: string[], limit = 30) {
+  const params = new URLSearchParams();
+  if (include.length) params.set('include', include.join(','));
+  if (exclude.length) params.set('exclude', exclude.join(','));
+  params.set('limit', String(limit));
+  return request<{ items: ApiItem[] }>(`/items/search?${params.toString()}`);
 }
 
 export function saveTextItem(source: ItemSource, text: string) {

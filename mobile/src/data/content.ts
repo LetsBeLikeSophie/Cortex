@@ -10,10 +10,15 @@ export interface RecentItem {
 }
 
 export interface SearchResult {
-  before: string;
-  hit: string;
-  after: string;
+  title: string;
   snippet: string;
+  // Include terms to highlight wherever they literally appear in title/snippet.
+  terms: string[];
+  // How many of the search's include terms this item actually matched (across
+  // title/snippet/raw text/tags/channel/method, not just the visible text) --
+  // drives the 모두 포함/일부 포함 grouping and the sort order.
+  matchedCount: number;
+  missingTerms: string[];
   source: ItemSource;
   captureType: ApiItem['capture_type'];
   timeLabel: string;

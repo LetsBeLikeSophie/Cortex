@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
+import { Asset } from 'expo-media-library';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -26,6 +27,7 @@ import { TagChip } from '../components/Chips';
 import { Heading } from '../components/Typography';
 import { ModalSheet } from '../components/ModalSheet';
 import { GhostButton, SolidButton } from '../components/Buttons';
+import { useRecentScreenshots } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
 
 // Android's OS share sheet lands here now (expo-share-intent, see
@@ -64,6 +66,14 @@ export default function SaveSheetScreen() {
   const [status, setStatus] = useState<Status>('input');
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
+
+  // Only set when the image came from the "최근 스크린샷" quick-pick row below
+  // (not the library/camera pickers) -- that's the one case where there's a
+  // real device-photo-library asset behind it left to offer deleting once
+  // the save succeeds.
+  const [pickedScreenshotId, setPickedScreenshotId] = useState<string | null>(null);
+  const [deleteOriginalState, setDeleteOriginalState] = useState<'idle' | 'deleting' | 'done' | 'error'>('idle');
+  const recentScreenshots = useRecentScreenshots();
 
   // The share sheet only ever hands us a content:// / file:// URI for an
   // image, never the bytes directly -- read it into base64 once, here,
@@ -106,6 +116,7 @@ export default function SaveSheetScreen() {
     if (!asset?.base64) return;
     setText('');
     setLinkUrl(null);
+    setPickedScreenshotId(null);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
   };
@@ -122,8 +133,37 @@ export default function SaveSheetScreen() {
     if (!asset?.base64) return;
     setText('');
     setLinkUrl(null);
+    setPickedScreenshotId(null);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
+  };
+
+  // The "최근 스크린샷" quick-pick row -- one tap instead of leaving the sheet
+  // for the OS library picker. Keeps the asset id around so a successful
+  // save can offer deleting the original (see the "done" branch below).
+  const pickScreenshot = async (screenshot: { id: string; uri: string }) => {
+    try {
+      const base64 = await new File(screenshot.uri).base64();
+      setText('');
+      setLinkUrl(null);
+      setPickedScreenshotId(screenshot.id);
+      setStatus('input');
+      setImage({ base64, previewUri: screenshot.uri });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setStatus('error');
+    }
+  };
+
+  const deleteOriginalScreenshot = async () => {
+    if (!pickedScreenshotId) return;
+    setDeleteOriginalState('deleting');
+    try {
+      await new Asset(pickedScreenshotId).delete();
+      setDeleteOriginalState('done');
+    } catch (err) {
+      setDeleteOriginalState('error');
+    }
   };
 
   const submit = () => {
@@ -226,6 +266,19 @@ export default function SaveSheetScreen() {
                     </Text>
                   </Pressable>
                 </View>
+
+                {recentScreenshots.length > 0 && (
+                  <View style={styles.screenshotSection}>
+                    <Text style={[styles.screenshotLabel, { color: theme.sub }]}>최근 스크린샷</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.screenshotRow}>
+                      {recentScreenshots.map((shot) => (
+                        <Pressable key={shot.id} onPress={() => pickScreenshot(shot)} disabled={status === 'saving'}>
+                          <Image source={{ uri: shot.uri }} style={[styles.screenshotThumb, { borderColor: theme.line }]} />
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
               </>
             )}
 
@@ -329,6 +382,22 @@ export default function SaveSheetScreen() {
                 ))}
               </View>
 
+              {pickedScreenshotId && (
+                <View style={styles.deleteOriginalRow}>
+                  {deleteOriginalState === 'done' ? (
+                    <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>원본 스크린샷을 삭제했어요.</Text>
+                  ) : deleteOriginalState === 'deleting' ? (
+                    <ActivityIndicator color={theme.sub} size="small" />
+                  ) : (
+                    <Pressable onPress={deleteOriginalScreenshot}>
+                      <Text style={[styles.deleteOriginalText, styles.deleteOriginalLink, { color: theme.accent }]}>
+                        {deleteOriginalState === 'error' ? '삭제 실패, 다시 시도' : '원본 스크린샷 삭제할까요?'}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
               <View style={styles.buttonRow}>
                 <SolidButton label="확인" theme={theme} onPress={close} />
               </View>
@@ -367,4 +436,11 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   savingButton: { flex: 1, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
+  screenshotSection: { marginTop: 18 },
+  screenshotLabel: { fontSize: 12.5, marginBottom: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
+  screenshotRow: { flexDirection: 'row', gap: 8 },
+  screenshotThumb: { width: 64, height: 64, borderRadius: 10, borderWidth: 1 },
+  deleteOriginalRow: { marginTop: 14, alignItems: 'center' },
+  deleteOriginalText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  deleteOriginalLink: { textDecorationLine: 'underline' },
 });

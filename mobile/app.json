@@ -35,6 +35,13 @@
         }
       ],
       [
+        "expo-media-library",
+        {
+          "photosPermission": "최근 스크린샷을 바로 불러와 저장할 수 있도록 사진첩 접근을 허용해주세요.",
+          "savePhotosPermission": false
+        }
+      ],
+      [
         "expo-share-intent",
         {
           "androidIntentFilters": ["text/*", "image/*"],

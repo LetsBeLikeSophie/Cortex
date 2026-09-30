@@ -27,7 +27,7 @@ import { TagChip } from '../components/Chips';
 import { Heading } from '../components/Typography';
 import { ModalSheet } from '../components/ModalSheet';
 import { GhostButton, SolidButton } from '../components/Buttons';
-import { useRecentScreenshots } from '../hooks/useRecentScreenshots';
+import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
 
 // Android's OS share sheet lands here now (expo-share-intent, see
@@ -67,11 +67,14 @@ export default function SaveSheetScreen() {
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
 
-  // Only set when the image came from the "최근 스크린샷" quick-pick row below
-  // (not the library/camera pickers) -- that's the one case where there's a
-  // real device-photo-library asset behind it left to offer deleting once
-  // the save succeeds.
-  const [pickedScreenshotId, setPickedScreenshotId] = useState<string | null>(null);
+  // Picking any screenshot from the "최근 스크린샷" row below switches this
+  // sheet into a dedicated multi-select mode (mutually exclusive with the
+  // text/link/single-image flow above it) -- tapping thumbnails toggles
+  // them, and submit saves every selected one. One tile behaves the same as
+  // many; there's no separate "just one" path to keep in sync.
+  const [selectedScreenshots, setSelectedScreenshots] = useState<RecentScreenshot[]>([]);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const [savedBulk, setSavedBulk] = useState<{ items: ApiItem[]; failed: number } | null>(null);
   const [deleteOriginalState, setDeleteOriginalState] = useState<'idle' | 'deleting' | 'done' | 'error'>('idle');
   const recentScreenshots = useRecentScreenshots();
 
@@ -103,7 +106,7 @@ export default function SaveSheetScreen() {
   const close = () => navigation.goBack();
 
   // Picking a photo and typing a memo are mutually exclusive in this sheet
-  // -- picking one clears the other rather than trying to send both.
+  // -- picking one clears the others rather than trying to send several.
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -116,7 +119,7 @@ export default function SaveSheetScreen() {
     if (!asset?.base64) return;
     setText('');
     setLinkUrl(null);
-    setPickedScreenshotId(null);
+    setSelectedScreenshots([]);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
   };
@@ -133,40 +136,67 @@ export default function SaveSheetScreen() {
     if (!asset?.base64) return;
     setText('');
     setLinkUrl(null);
-    setPickedScreenshotId(null);
+    setSelectedScreenshots([]);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
   };
 
-  // The "최근 스크린샷" quick-pick row -- one tap instead of leaving the sheet
-  // for the OS library picker. Keeps the asset id around so a successful
-  // save can offer deleting the original (see the "done" branch below).
-  const pickScreenshot = async (screenshot: { id: string; uri: string }) => {
-    try {
-      const base64 = await new File(screenshot.uri).base64();
-      setText('');
-      setLinkUrl(null);
-      setPickedScreenshotId(screenshot.id);
-      setStatus('input');
-      setImage({ base64, previewUri: screenshot.uri });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setStatus('error');
-    }
+  // Tapping a "최근 스크린샷" thumbnail toggles it in/out of the batch --
+  // selecting the first one is what switches the sheet into bulk mode.
+  const toggleScreenshot = (shot: RecentScreenshot) => {
+    setText('');
+    setLinkUrl(null);
+    setImage(null);
+    setSelectedScreenshots((current) =>
+      current.some((s) => s.id === shot.id) ? current.filter((s) => s.id !== shot.id) : [...current, shot]
+    );
   };
 
-  const deleteOriginalScreenshot = async () => {
-    if (!pickedScreenshotId || !MediaLibrary) return;
+  const deleteOriginalScreenshots = async () => {
+    if (selectedScreenshots.length === 0 || !MediaLibrary) return;
     setDeleteOriginalState('deleting');
     try {
-      await new MediaLibrary.Asset(pickedScreenshotId).delete();
+      await MediaLibrary.Asset.delete(selectedScreenshots.map((s) => new MediaLibrary!.Asset(s.id)));
       setDeleteOriginalState('done');
     } catch (err) {
       setDeleteOriginalState('error');
     }
   };
 
+  // Sequential on purpose -- these all go through the same Claude
+  // classification call server-side, and firing a dozen at once would just
+  // pile onto the daily-save rate limit and a 1 OCPU box's own queue at the
+  // same moment instead of finishing any faster.
+  const submitBulk = async () => {
+    setStatus('saving');
+    setError('');
+    const items: ApiItem[] = [];
+    let failed = 0;
+    for (let i = 0; i < selectedScreenshots.length; i++) {
+      setBulkProgress({ done: i, total: selectedScreenshots.length });
+      try {
+        const base64 = await new File(selectedScreenshots[i].uri).base64();
+        const item = await saveScreenshotItem('other', base64);
+        items.push(item);
+      } catch {
+        failed += 1;
+      }
+    }
+    setBulkProgress({ done: selectedScreenshots.length, total: selectedScreenshots.length });
+    if (items.length === 0) {
+      setError('전부 저장하지 못했어요');
+      setStatus('error');
+      return;
+    }
+    setSavedBulk({ items, failed });
+    setStatus('done');
+  };
+
   const submit = () => {
+    if (selectedScreenshots.length > 0) {
+      submitBulk();
+      return;
+    }
     if (!image && !linkUrl && !text.trim()) return;
     setStatus('saving');
     setError('');
@@ -186,6 +216,27 @@ export default function SaveSheetScreen() {
       });
   };
 
+  const screenshotGrid = (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.screenshotRow}>
+      {recentScreenshots.map((shot) => {
+        const selected = selectedScreenshots.some((s) => s.id === shot.id);
+        return (
+          <Pressable key={shot.id} onPress={() => toggleScreenshot(shot)} disabled={status === 'saving'}>
+            <Image
+              source={{ uri: shot.uri }}
+              style={[styles.screenshotThumb, { borderColor: selected ? theme.accent : theme.line, borderWidth: selected ? 2 : 1 }]}
+            />
+            {selected && (
+              <View style={[styles.screenshotCheck, { backgroundColor: theme.accent }]}>
+                <CheckIcon size={11} color="#fff" strokeWidth={2.2} />
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+
   return (
     <ModalSheet theme={theme} onClose={close} paddingBottom={32} maxHeightRatio={0.86}>
         {status === 'input' || status === 'saving' || status === 'error' ? (
@@ -204,7 +255,24 @@ export default function SaveSheetScreen() {
               다른 앱에서 공유하거나, 텍스트를 붙여넣거나 사진을 골라서 저장해요.
             </Text>
 
-            {image ? (
+            {selectedScreenshots.length > 0 ? (
+              <View style={styles.screenshotSection}>
+                <View style={styles.bulkHeader}>
+                  <Text style={[styles.screenshotLabel, { color: theme.sub, marginBottom: 0 }]}>
+                    {selectedScreenshots.length}장 선택됨
+                  </Text>
+                  <Pressable onPress={() => setSelectedScreenshots([])} disabled={status === 'saving'}>
+                    <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 12.5 }}>선택 취소</Text>
+                  </Pressable>
+                </View>
+                {screenshotGrid}
+                {status === 'saving' && bulkProgress && (
+                  <Text style={[styles.screenshotLabel, { color: theme.sub, marginTop: 10 }]}>
+                    {bulkProgress.done}/{bulkProgress.total}장 저장 중...
+                  </Text>
+                )}
+              </View>
+            ) : image ? (
               <View style={styles.imagePreviewWrap}>
                 <Image source={{ uri: image.previewUri }} style={[styles.imagePreview, { borderColor: theme.line }]} />
                 <Pressable onPress={() => setImage(null)} disabled={status === 'saving'}>
@@ -269,14 +337,8 @@ export default function SaveSheetScreen() {
 
                 {recentScreenshots.length > 0 && (
                   <View style={styles.screenshotSection}>
-                    <Text style={[styles.screenshotLabel, { color: theme.sub }]}>최근 스크린샷</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.screenshotRow}>
-                      {recentScreenshots.map((shot) => (
-                        <Pressable key={shot.id} onPress={() => pickScreenshot(shot)} disabled={status === 'saving'}>
-                          <Image source={{ uri: shot.uri }} style={[styles.screenshotThumb, { borderColor: theme.line }]} />
-                        </Pressable>
-                      ))}
-                    </ScrollView>
+                    <Text style={[styles.screenshotLabel, { color: theme.sub }]}>최근 스크린샷 · 여러 장 선택 가능</Text>
+                    {screenshotGrid}
                   </View>
                 )}
               </>
@@ -297,8 +359,90 @@ export default function SaveSheetScreen() {
                   <ActivityIndicator color={theme.accent} />
                 </View>
               ) : (
-                <SolidButton label="저장하기" theme={theme} onPress={submit} />
+                <SolidButton
+                  label={selectedScreenshots.length > 1 ? `${selectedScreenshots.length}장 저장하기` : '저장하기'}
+                  theme={theme}
+                  onPress={submit}
+                />
               )}
+            </View>
+          </>
+        ) : savedBulk ? (
+          <>
+            <View style={styles.savedHead}>
+              <View
+                style={[
+                  styles.savedMark,
+                  {
+                    width: card ? 54 : 40,
+                    height: card ? 54 : 40,
+                    backgroundColor: card ? theme.accent + '26' : 'transparent',
+                    borderWidth: card ? 0 : 1,
+                    borderColor: theme.accent,
+                  },
+                ]}
+              >
+                <CheckIcon size={card ? 24 : 18} color={theme.accent} strokeWidth={1.7} />
+              </View>
+              <View style={styles.savedHeadBody}>
+                <Text
+                  style={{
+                    fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
+                    fontSize: tech ? 10.5 : 12.5,
+                    letterSpacing: tech ? emToTracking(0.22, 10.5) : emToTracking(0.02, 12.5),
+                    color: theme.accent,
+                  }}
+                >
+                  {txt.savedLabel}
+                </Text>
+                <Heading theme={theme} offset={2} style={{ marginTop: 8 }}>
+                  {savedBulk.items.length}개 저장했어요
+                </Heading>
+                {savedBulk.failed > 0 && (
+                  <Text style={[styles.savedSub, { color: theme.accent }]}>{savedBulk.failed}개는 저장하지 못했어요.</Text>
+                )}
+              </View>
+            </View>
+
+            <ScrollView style={styles.bulkResultList} showsVerticalScrollIndicator={false}>
+              {savedBulk.items.map((item) => (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.bulkResultRow,
+                    card
+                      ? { backgroundColor: theme.surface, borderRadius: theme.cardRadius }
+                      : { borderBottomWidth: 1, borderColor: theme.line },
+                  ]}
+                >
+                  <Text style={[styles.bulkResultTitle, { color: theme.ink }]} numberOfLines={1}>
+                    {item.title ?? item.raw_text ?? '(제목 없음)'}
+                  </Text>
+                  <Text style={{ fontFamily: MONO, fontSize: 10, color: theme.sub }}>{item.category}</Text>
+                </View>
+              ))}
+            </ScrollView>
+
+            {selectedScreenshots.length > 0 && (
+              <View style={styles.deleteOriginalRow}>
+                {deleteOriginalState === 'done' ? (
+                  <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>원본 스크린샷을 삭제했어요.</Text>
+                ) : deleteOriginalState === 'deleting' ? (
+                  <ActivityIndicator color={theme.sub} size="small" />
+                ) : (
+                  <Pressable onPress={deleteOriginalScreenshots}>
+                    <Text style={[styles.deleteOriginalText, styles.deleteOriginalLink, { color: theme.accent }]}>
+                      {deleteOriginalState === 'error'
+                        ? '삭제 실패, 다시 시도'
+                        : `원본 스크린샷 ${selectedScreenshots.length}장 모두 삭제할까요?`}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            <View style={styles.buttonRow}>
+              <SolidButton label="확인" theme={theme} onPress={close} />
             </View>
           </>
         ) : (
@@ -382,22 +526,6 @@ export default function SaveSheetScreen() {
                 ))}
               </View>
 
-              {pickedScreenshotId && (
-                <View style={styles.deleteOriginalRow}>
-                  {deleteOriginalState === 'done' ? (
-                    <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>원본 스크린샷을 삭제했어요.</Text>
-                  ) : deleteOriginalState === 'deleting' ? (
-                    <ActivityIndicator color={theme.sub} size="small" />
-                  ) : (
-                    <Pressable onPress={deleteOriginalScreenshot}>
-                      <Text style={[styles.deleteOriginalText, styles.deleteOriginalLink, { color: theme.accent }]}>
-                        {deleteOriginalState === 'error' ? '삭제 실패, 다시 시도' : '원본 스크린샷 삭제할까요?'}
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-              )}
-
               <View style={styles.buttonRow}>
                 <SolidButton label="확인" theme={theme} onPress={close} />
               </View>
@@ -437,9 +565,23 @@ const styles = StyleSheet.create({
   },
   savingButton: { flex: 1, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
   screenshotSection: { marginTop: 18 },
+  bulkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   screenshotLabel: { fontSize: 12.5, marginBottom: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   screenshotRow: { flexDirection: 'row', gap: 8 },
   screenshotThumb: { width: 64, height: 64, borderRadius: 10, borderWidth: 1 },
+  screenshotCheck: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bulkResultList: { marginTop: 18, maxHeight: 220 },
+  bulkResultRow: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+  bulkResultTitle: { flex: 1, fontSize: 13.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   deleteOriginalRow: { marginTop: 14, alignItems: 'center' },
   deleteOriginalText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   deleteOriginalLink: { textDecorationLine: 'underline' },

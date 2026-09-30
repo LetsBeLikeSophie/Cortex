@@ -166,9 +166,6 @@ export async function listTrash(userId: string): Promise<ItemRecord[]> {
   return (data ?? []) as ItemRecord[];
 }
 
-// user_tags only -- the AI-assigned `tags` column has no API path that can
-// touch it, so there's no way to accidentally (or even deliberately, short
-// of direct DB access) remove an auto-assigned tag through the app.
 async function getUserTags(userId: string, itemId: string): Promise<string[]> {
   const { data, error } = await getClient()
     .from("items")
@@ -209,6 +206,39 @@ export async function removeUserTag(userId: string, itemId: string, tag: string)
     .select()
     .single();
   if (error) throw new Error(`removeUserTag failed: ${error.message}`);
+  return data as ItemRecord;
+}
+
+async function getAiTags(userId: string, itemId: string): Promise<string[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select("tags")
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw new Error(`getAiTags failed: ${error.message}`);
+  if (!data) throw new Error("item not found");
+  return data.tags as string[];
+}
+
+// The one write path onto the AI-assigned `tags` column -- removal only.
+// Adding a *new* tag still always goes through user_tags (that's what
+// keeps "Cortex guessed this" and "I added this" distinguishable); this
+// just lets a wrong auto-classification be corrected instead of being
+// stuck on the item forever.
+export async function removeAiTag(userId: string, itemId: string, tag: string): Promise<ItemRecord> {
+  const current = await getAiTags(userId, itemId);
+  const next = current.filter((t) => t !== tag);
+
+  const { data, error } = await getClient()
+    .from("items")
+    .update({ tags: next })
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) throw new Error(`removeAiTag failed: ${error.message}`);
   return data as ItemRecord;
 }
 

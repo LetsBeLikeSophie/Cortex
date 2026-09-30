@@ -34,11 +34,26 @@ export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => vo
   );
 }
 
-// `onRemove` turns this into a tap-to-remove control (used in the item
-// detail sheet to edit auto-assigned tags) -- omit it for the plain
-// read-only display used elsewhere (e.g. SaveSheetScreen's post-save view).
-export function TagChip({ label, theme, onRemove }: { label: string; theme: Theme; onRemove?: () => void }) {
+// `onRemove` turns this into a tap-to-remove control -- omit it for the
+// plain read-only display used elsewhere (e.g. SaveSheetScreen's post-save
+// view). `tone: 'auto'` is the muted styling for an AI-assigned tag, kept
+// visually distinct from a user-added one (same theme.sub language
+// MetaChip already uses for "not something you typed") even though both
+// are removable the same way.
+export function TagChip({
+  label,
+  theme,
+  onRemove,
+  tone = 'default',
+}: {
+  label: string;
+  theme: Theme;
+  onRemove?: () => void;
+  tone?: 'default' | 'auto';
+}) {
   const card = theme.list === 'card';
+  const auto = tone === 'auto';
+  const textColor = auto ? theme.sub : card ? theme.accent : theme.ink;
   return (
     <Pressable
       onPress={onRemove}
@@ -48,18 +63,14 @@ export function TagChip({ label, theme, onRemove }: { label: string; theme: Them
         styles.tagRow,
         {
           paddingVertical: card ? 7 : 6,
-          backgroundColor: card ? theme.accent + '1f' : 'transparent',
+          backgroundColor: card ? (auto ? theme.soft : theme.accent + '1f') : 'transparent',
           borderWidth: card ? 0 : 1,
-          borderColor: theme.ink,
+          borderColor: auto ? theme.sub : theme.ink,
         },
       ]}
     >
-      <Text style={{ fontSize: 13, color: card ? theme.accent : theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-        {label}
-      </Text>
-      {onRemove && (
-        <Text style={{ fontSize: 13, color: card ? theme.accent : theme.ink, marginLeft: 6, opacity: 0.6 }}>×</Text>
-      )}
+      <Text style={{ fontSize: 13, color: textColor, fontFamily: 'IBMPlexSansKR_400Regular' }}>{label}</Text>
+      {onRemove && <Text style={{ fontSize: 13, color: textColor, marginLeft: 6, opacity: 0.6 }}>×</Text>}
     </Pressable>
   );
 }

@@ -12,6 +12,7 @@ import {
   listTrash,
   logAnalyticsEvent,
   permanentlyDeleteItem,
+  removeAiTag,
   removeUserTag,
   restoreItem,
   searchItems,
@@ -213,6 +214,20 @@ export async function itemsRoutes(app: FastifyInstance) {
     const { id, tag } = req.params as { id: string; tag: string };
     try {
       const item = await removeUserTag(userId, id, tag);
+      return reply.send(item);
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });
+    }
+  });
+
+  // Removes one AI-assigned tag -- the one write path onto `tags` (see
+  // removeAiTag). A distinct path from the user_tags route above rather
+  // than one route guessing which column a tag came from.
+  app.delete("/items/:id/tags/ai/:tag", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id, tag } = req.params as { id: string; tag: string };
+    try {
+      const item = await removeAiTag(userId, id, tag);
       return reply.send(item);
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });

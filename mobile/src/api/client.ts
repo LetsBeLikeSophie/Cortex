@@ -189,8 +189,9 @@ export function permanentlyDeleteItem(itemId: string) {
   return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/permanent`, { method: 'DELETE' });
 }
 
-// Both only ever touch user_tags -- there's no route that can change the
-// AI-assigned tags.
+// Both only ever touch user_tags -- adding a *new* tag always goes through
+// here, never the AI-assigned column, so "Cortex guessed this" and "I
+// added this" stay distinguishable.
 export function addTag(itemId: string, tag: string) {
   return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/tags`, {
     method: 'POST',
@@ -200,6 +201,14 @@ export function addTag(itemId: string, tag: string) {
 
 export function removeTag(itemId: string, tag: string) {
   return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/tags/${encodeURIComponent(tag)}`, {
+    method: 'DELETE',
+  });
+}
+
+// The one write path onto the AI-assigned tags -- removal only, for
+// correcting a wrong auto-classification.
+export function removeAiTag(itemId: string, tag: string) {
+  return request<ApiItem>(`/items/${encodeURIComponent(itemId)}/tags/ai/${encodeURIComponent(tag)}`, {
     method: 'DELETE',
   });
 }

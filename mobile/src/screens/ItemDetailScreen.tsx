@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, deleteItem, getScreenshotUrl, removeTag as removeTagApi } from '../api/client';
+import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip, MetaChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
@@ -38,8 +38,7 @@ export default function ItemDetailScreen() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
 
-  // item.tags (AI-assigned) never changes here -- there's no API path that
-  // can touch it. Only user_tags is locally editable.
+  const [aiTags, setAiTags] = useState(item.tags);
   const [userTags, setUserTags] = useState(item.user_tags);
   const [tagError, setTagError] = useState('');
   const [addingTag, setAddingTag] = useState(false);
@@ -84,6 +83,15 @@ export default function ItemDetailScreen() {
     });
   };
 
+  const removeAiTag = (tag: string) => {
+    setAiTags((current) => current.filter((t) => t !== tag));
+    setTagError('');
+    removeAiTagApi(item.id, tag).catch((err) => {
+      setAiTags((current) => [...current, tag]);
+      setTagError(err instanceof Error ? err.message : String(err));
+    });
+  };
+
   const openTagInput = () => {
     tagSubmittedRef.current = false;
     setAddingTag(true);
@@ -100,7 +108,7 @@ export default function ItemDetailScreen() {
     const trimmed = newTag.trim();
     setAddingTag(false);
     setNewTag('');
-    if (!trimmed || item.tags.includes(trimmed) || userTags.includes(trimmed)) return;
+    if (!trimmed || aiTags.includes(trimmed) || userTags.includes(trimmed)) return;
     setUserTags((current) => [...current, trimmed]);
     setTagError('');
     addTag(item.id, trimmed).catch((err) => {
@@ -199,8 +207,8 @@ export default function ItemDetailScreen() {
               theme={theme}
             />
             <MetaChip label={captureTypeLabel(item.capture_type, tech)} theme={theme} />
-            {item.tags.map((tag) => (
-              <TagChip key={tag} label={tag} theme={theme} />
+            {aiTags.map((tag) => (
+              <TagChip key={tag} label={tag} theme={theme} tone="auto" onRemove={() => removeAiTag(tag)} />
             ))}
             {userTags.map((tag) => (
               <TagChip key={tag} label={tag} theme={theme} onRemove={() => removeTag(tag)} />

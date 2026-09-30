@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
+import * as Clipboard from 'expo-clipboard';
 import MediaLibrary from '../native/mediaLibrary';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -139,6 +140,30 @@ export default function SaveSheetScreen() {
     setSelectedScreenshots([]);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
+  };
+
+  // Deliberately behind a tap, never read automatically on open -- iOS 16+
+  // shows its own "Allow Paste" prompt the moment an app reads the
+  // clipboard, and doing that without the user having just asked for it
+  // reads as exactly the clipboard-sniffing behavior that prompt exists to
+  // catch.
+  const pasteFromClipboard = async () => {
+    const value = await Clipboard.getStringAsync();
+    if (!value.trim()) return;
+    setSelectedScreenshots([]);
+    setImage(null);
+    try {
+      const url = new URL(value.trim());
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        setLinkUrl(value.trim());
+        setText('');
+        return;
+      }
+    } catch {
+      // Not a URL -- fall through to plain text.
+    }
+    setText(value);
+    setLinkUrl(null);
   };
 
   // Tapping a "최근 스크린샷" thumbnail toggles it in/out of the batch --
@@ -315,6 +340,15 @@ export default function SaveSheetScreen() {
                 />
 
                 <View style={styles.photoButtonRow}>
+                  <Pressable
+                    onPress={pasteFromClipboard}
+                    disabled={status === 'saving'}
+                    style={[styles.photoButton, { borderColor: theme.line }]}
+                  >
+                    <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
+                      붙여넣기
+                    </Text>
+                  </Pressable>
                   <Pressable
                     onPress={pickFromLibrary}
                     disabled={status === 'saving'}

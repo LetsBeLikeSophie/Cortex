@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -51,45 +62,47 @@ export default function TabPickerScreen() {
       paddingHorizontal={20}
       grabberMarginBottom={18}
     >
-      <Heading theme={theme} size={20} style={styles.heading}>
-        홈 화면 탭
-      </Heading>
-      <Text style={[styles.sub, { color: theme.sub }]}>보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.</Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Heading theme={theme} size={20} style={styles.heading}>
+          홈 화면 탭
+        </Heading>
+        <Text style={[styles.sub, { color: theme.sub }]}>보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.</Text>
 
-      <View style={[styles.searchBox, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
-        <SearchIcon color={theme.sub} size={15} strokeWidth={1.4} />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="태그 검색"
-          placeholderTextColor={theme.sub}
-          style={{ flex: 1, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 14.5, padding: 0, outlineWidth: 0 }}
-        />
-      </View>
+        <View style={[styles.searchBox, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
+          <SearchIcon color={theme.sub} size={15} strokeWidth={1.4} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="태그 검색"
+            placeholderTextColor={theme.sub}
+            style={{ flex: 1, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 14.5, padding: 0, outlineWidth: 0 }}
+          />
+        </View>
 
-      {loading ? (
-        <ActivityIndicator color={theme.accent} style={{ marginTop: 24 }} />
-      ) : allTags.length === 0 ? (
-        <Text style={[styles.emptyText, { color: theme.sub }]}>아직 저장된 태그가 없어요.</Text>
-      ) : visible.length === 0 ? (
-        <Text style={[styles.emptyText, { color: theme.sub }]}>일치하는 태그가 없어요.</Text>
-      ) : (
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-          {visible.map((tag) => {
-            const active = selected.includes(tag);
-            return (
-              <Pressable
-                key={tag}
-                onPress={() => toggle(tag)}
-                style={[styles.row, { borderColor: active ? theme.ink : theme.line, backgroundColor: active ? theme.soft : 'transparent' }]}
-              >
-                <Text style={[styles.rowLabel, { color: theme.ink }]}>{tag}</Text>
-                {active && <CheckIcon size={18} color={theme.ink} strokeWidth={1.7} />}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      )}
+        {loading ? (
+          <ActivityIndicator color={theme.accent} style={{ marginTop: 24 }} />
+        ) : allTags.length === 0 ? (
+          <Text style={[styles.emptyText, { color: theme.sub }]}>아직 저장된 태그가 없어요.</Text>
+        ) : visible.length === 0 ? (
+          <Text style={[styles.emptyText, { color: theme.sub }]}>일치하는 태그가 없어요.</Text>
+        ) : (
+          <ScrollView style={styles.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            {visible.map((tag) => {
+              const active = selected.includes(tag);
+              return (
+                <Pressable
+                  key={tag}
+                  onPress={() => toggle(tag)}
+                  style={[styles.row, { borderColor: active ? theme.ink : theme.line, backgroundColor: active ? theme.soft : 'transparent' }]}
+                >
+                  <Text style={[styles.rowLabel, { color: theme.ink }]}>{tag}</Text>
+                  {active && <CheckIcon size={18} color={theme.ink} strokeWidth={1.7} />}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </KeyboardAvoidingView>
     </ModalSheet>
   );
 }

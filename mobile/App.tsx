@@ -3,10 +3,19 @@ import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useFonts, InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif';
-import { SchibstedGrotesk_600SemiBold, SchibstedGrotesk_700Bold } from '@expo-google-fonts/schibsted-grotesk';
-import { IBMPlexSansKR_400Regular, IBMPlexSansKR_500Medium } from '@expo-google-fonts/ibm-plex-sans-kr';
-import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
+// Deep per-weight imports, not the package's own root index -- that root
+// file does an unconditional require() of every weight's .ttf (so Metro's
+// web bundler ships the whole family, sibling weights included, no matter
+// which named export is actually read). This is the same trick as the
+// weight-only useFonts() call below, just needed one layer earlier: without
+// it, this file was pulling ~19MB of unused IBM Plex Sans KR weights alone.
+import { useFonts } from 'expo-font';
+import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif/400Regular';
+import { SchibstedGrotesk_600SemiBold } from '@expo-google-fonts/schibsted-grotesk/600SemiBold';
+import { SchibstedGrotesk_700Bold } from '@expo-google-fonts/schibsted-grotesk/700Bold';
+import { IBMPlexSansKR_400Regular } from '@expo-google-fonts/ibm-plex-sans-kr/400Regular';
+import { IBMPlexSansKR_500Medium } from '@expo-google-fonts/ibm-plex-sans-kr/500Medium';
+import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono/400Regular';
 
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -105,6 +105,23 @@ export default function LoginScreen() {
         <Text style={[styles.guestNote, { color: theme.sub }]}>
           게스트는 이 기기에서 로그아웃하면 다시 못 봐요.
         </Text>
+        <Text style={[styles.policyNote, { color: theme.sub }]}>
+          계속하면{' '}
+          <Text
+            style={styles.policyLink}
+            onPress={() => Linking.openURL('https://itssophie.dev/cortex/legal/terms.html')}
+          >
+            이용약관
+          </Text>{' '}
+          및{' '}
+          <Text
+            style={styles.policyLink}
+            onPress={() => Linking.openURL('https://itssophie.dev/cortex/legal/privacy.html')}
+          >
+            개인정보처리방침
+          </Text>
+          에 동의하는 것으로 간주돼요.
+        </Text>
       </View>
     </SafeAreaView>
   );
@@ -134,4 +151,6 @@ const styles = StyleSheet.create({
   },
   guestButtonText: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
   guestNote: { fontSize: 12.5, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' },
+  policyNote: { fontSize: 11.5, textAlign: 'center', marginTop: 4, lineHeight: 17, fontFamily: 'IBMPlexSansKR_400Regular' },
+  policyLink: { textDecorationLine: 'underline' },
 });

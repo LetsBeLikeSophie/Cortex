@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -133,6 +133,16 @@ export default function ProfileScreen() {
                 <Text style={[styles.deleteLinkLabel, { color: theme.sub }]}>{isGuest ? '게스트 데이터 삭제' : '회원 탈퇴'}</Text>
               </Pressable>
             </View>
+
+            <View style={styles.policyRow}>
+              <Pressable onPress={() => Linking.openURL('https://itssophie.dev/cortex/legal/terms.html')}>
+                <Text style={[styles.policyLabel, { color: theme.sub }]}>이용약관</Text>
+              </Pressable>
+              <Text style={[styles.policyDivider, { color: theme.line }]}>·</Text>
+              <Pressable onPress={() => Linking.openURL('https://itssophie.dev/cortex/legal/privacy.html')}>
+                <Text style={[styles.policyLabel, { color: theme.sub }]}>개인정보처리방침</Text>
+              </Pressable>
+            </View>
           </View>
         )}
       </View>
@@ -161,6 +171,9 @@ const styles = StyleSheet.create({
   themeDot: { width: 8, height: 8, borderRadius: 4 },
   deleteLinkButton: { alignItems: 'center', paddingVertical: 6 },
   deleteLinkLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  policyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  policyLabel: { fontSize: 12, fontFamily: 'IBMPlexSansKR_400Regular', textDecorationLine: 'underline' },
+  policyDivider: { fontSize: 12 },
   confirmCard: { borderWidth: 1, borderRadius: 16, padding: 18, gap: 6 },
   confirmTitle: { fontSize: 15.5, fontFamily: 'IBMPlexSansKR_500Medium' },
   confirmBody: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },

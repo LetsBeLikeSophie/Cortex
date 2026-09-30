@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
-import { Album, AssetField, Query, getPermissionsAsync, requestPermissionsAsync } from 'expo-media-library';
+import MediaLibrary from '../native/mediaLibrary';
 
 export interface RecentScreenshot {
   id: string;
@@ -21,26 +20,27 @@ export function useRecentScreenshots(limit = 12) {
   const [screenshots, setScreenshots] = useState<RecentScreenshot[]>([]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (!MediaLibrary) return;
+    const lib = MediaLibrary;
     let cancelled = false;
 
     (async () => {
-      let perm = await getPermissionsAsync();
+      let perm = await lib.getPermissionsAsync();
       if (!perm.granted && perm.canAskAgain) {
-        perm = await requestPermissionsAsync();
+        perm = await lib.requestPermissionsAsync();
       }
       if (!perm.granted || cancelled) return;
 
-      let album: Album | null = null;
+      let album: InstanceType<typeof lib.Album> | null = null;
       for (const title of ALBUM_TITLES) {
-        album = await Album.get(title).catch(() => null);
+        album = await lib.Album.get(title).catch(() => null);
         if (album) break;
       }
       if (!album || cancelled) return;
 
-      const assets = await new Query()
+      const assets = await new lib.Query()
         .album(album)
-        .orderBy({ key: AssetField.CREATION_TIME, ascending: false })
+        .orderBy({ key: lib.AssetField.CREATION_TIME, ascending: false })
         .limit(limit)
         .exe()
         .catch(() => []);

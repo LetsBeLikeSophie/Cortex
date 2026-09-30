@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
-import { Asset } from 'expo-media-library';
+import MediaLibrary from '../native/mediaLibrary';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -156,10 +156,10 @@ export default function SaveSheetScreen() {
   };
 
   const deleteOriginalScreenshot = async () => {
-    if (!pickedScreenshotId) return;
+    if (!pickedScreenshotId || !MediaLibrary) return;
     setDeleteOriginalState('deleting');
     try {
-      await new Asset(pickedScreenshotId).delete();
+      await new MediaLibrary.Asset(pickedScreenshotId).delete();
       setDeleteOriginalState('done');
     } catch (err) {
       setDeleteOriginalState('error');

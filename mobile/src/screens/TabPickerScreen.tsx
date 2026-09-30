@@ -61,8 +61,9 @@ export default function TabPickerScreen() {
       paddingBottom={24}
       paddingHorizontal={20}
       grabberMarginBottom={18}
+      maxHeightRatio={0.8}
     >
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
         <Heading theme={theme} size={20} style={styles.heading}>
           홈 화면 탭
         </Heading>
@@ -108,6 +109,7 @@ export default function TabPickerScreen() {
 }
 
 const styles = StyleSheet.create({
+  flexShrink: { flexShrink: 1 },
   heading: { marginBottom: 6, paddingHorizontal: 4 },
   sub: { fontSize: 13, marginBottom: 16, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular', lineHeight: 19 },
   searchBox: {

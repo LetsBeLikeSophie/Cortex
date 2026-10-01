@@ -29,10 +29,19 @@ them again later by searching.
 For each item, produce:
 - title: a short, plain title for a list row (Korean, no hashtags, no quotes)
 - snippet: one short line describing what it actually is/says (Korean)
-- category: exactly one of the fixed categories provided -- pick "기타" only
-  when nothing else genuinely fits
-- tags: up to 5 short freeform Korean keyword tags (place names, topics,
-  dish names, etc.) -- these are separate from category and can be specific
+- category: exactly one of the fixed categories provided. These are
+  intent-based ("why would someone save this"), not topic-based -- pick by
+  what the person would likely use it for later, regardless of subject
+  matter:
+  - 가볼 곳: a place (restaurant, venue, destination, store)
+  - 살 것: a product or something to purchase
+  - 배울 것: a how-to, recipe, tutorial, or skill/technique
+  - 볼 것: an article, video, or post to read/watch later
+  - 기억할 것: a fact, decision, schedule, or note-to-self worth keeping
+  - 기타: only when nothing above genuinely fits
+- tags: up to 5 short freeform Korean keyword tags (the actual subject --
+  place names, a fandom/group name, topics, dish names, etc.) -- this is
+  where specificity goes, separate from the category above
 
 Never invent facts not present in the given content. If the content is too
 thin to summarize confidently, keep title/snippet minimal and honest rather

@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { supabase } from '../auth/supabase';
 
 export type ItemSource = 'instagram' | 'kakaotalk' | 'safari' | 'youtube' | 'memo' | 'other';
-export type ItemCategory = '맛집' | '여행' | '레시피' | '쇼핑' | '읽을거리' | '기타';
+export type ItemCategory = '가볼 곳' | '살 것' | '배울 것' | '볼 것' | '기억할 것' | '기타';
 
 export interface ApiItem {
   id: string;

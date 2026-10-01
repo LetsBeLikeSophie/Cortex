@@ -3,10 +3,14 @@
 
 create extension if not exists pgcrypto;
 
--- Fixed top-level categories the LLM classifies into. "기타" is the
--- deliberate catch-all discussed for v1 -- revisit this list once real
--- usage data shows what people actually share.
-create type item_category as enum ('맛집', '여행', '레시피', '쇼핑', '읽을거리', '기타');
+-- Fixed top-level categories the LLM classifies into -- intent-based ("why
+-- save this") rather than topic-based, so any subject (food, fandom,
+-- wedding planning, whatever) sorts into one of these regardless of what
+-- it's about; the subject itself lives in tags instead. "기타" is the
+-- deliberate catch-all. (This replaced an earlier topic-based list --
+-- 맛집/여행/레시피/쇼핑/읽을거리/기타 -- see the migration note near the end of
+-- this file for how existing rows were moved over.)
+create type item_category as enum ('가볼 곳', '살 것', '배울 것', '볼 것', '기억할 것', '기타');
 
 create type item_source as enum ('instagram', 'kakaotalk', 'safari', 'youtube', 'memo', 'other');
 
@@ -128,3 +132,35 @@ create table if not exists kakao_users (
 create index if not exists kakao_users_user_id_idx on kakao_users (user_id);
 
 alter table kakao_users enable row level security;
+
+-- Migration (2026-10-01): topic-based categories -> intent-based.
+-- Postgres won't let an enum value be removed without recreating the type,
+-- so the old five stay as orphaned, unused members rather than forcing a
+-- disruptive rebuild -- same tradeoff as the unused `pinned_at` column
+-- above. Run each ALTER TYPE as its own statement (a value just added
+-- can't be referenced in the same transaction/statement batch on some PG
+-- versions), then the UPDATE.
+--
+-- alter type item_category add value if not exists '가고 싶은 곳';
+-- alter type item_category add value if not exists '사고 싶은 것';
+-- alter type item_category add value if not exists '배우고 싶은 것';
+-- alter type item_category add value if not exists '나중에 볼 것';
+-- alter type item_category add value if not exists '기억해둘 것';
+--
+-- update items set category = '가고 싶은 곳' where category in ('맛집', '여행');
+-- update items set category = '배우고 싶은 것' where category = '레시피';
+-- update items set category = '사고 싶은 것' where category = '쇼핑';
+-- update items set category = '나중에 볼 것' where category = '읽을거리';
+-- ('기타' needed no remapping -- it's unchanged in the new list.)
+
+-- Migration (2026-10-01, same day): the five new values above read too
+-- long in a small/mono-spaced UI spot -- shortened to the same intent,
+-- fewer syllables. A rename (not add+remap) since Postgres enum values
+-- are stored by OID, not by label -- every existing row just follows the
+-- new spelling automatically, no UPDATE needed.
+--
+-- alter type item_category rename value '가고 싶은 곳' to '가볼 곳';
+-- alter type item_category rename value '사고 싶은 것' to '살 것';
+-- alter type item_category rename value '배우고 싶은 것' to '배울 것';
+-- alter type item_category rename value '나중에 볼 것' to '볼 것';
+-- alter type item_category rename value '기억해둘 것' to '기억할 것';

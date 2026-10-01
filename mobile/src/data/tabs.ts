@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // db/schema.sql). Used for things keyed off that single classification --
 // e.g. the stats screen's category breakdown -- separate from the home tab
 // strip below, which pins arbitrary tags instead.
-export const ALL_CATEGORIES = ['맛집', '여행', '레시피', '쇼핑', '읽을거리', '기타'] as const;
+export const ALL_CATEGORIES = ['가볼 곳', '살 것', '배울 것', '볼 것', '기억할 것', '기타'] as const;
 
 // Home tab strip: 즐겨찾기 (fixed, pinned items) plus any tag the user picks
 // (freeform, one per saved item's auto-assigned or user-added tags) via a

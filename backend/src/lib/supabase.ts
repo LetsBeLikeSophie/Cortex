@@ -98,7 +98,7 @@ export async function seedSampleItem(userId: string): Promise<void> {
       "여기서 찾아드릴게요. 이 메모는 구경만 하고 지우셔도 되고, 첫 기억으로 계속 두셔도 저는 안 서운해요.",
     title: "저장 눌렀는데 어디로 갔지?",
     snippet: "지금 보고 계신 게 정답이에요",
-    category: "읽을거리",
+    category: "볼 것",
     tags: ["가이드", "첫기억"],
   });
 }

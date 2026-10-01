@@ -188,26 +188,38 @@ export default function SaveSheetScreen() {
     }
   };
 
-  // Sequential on purpose -- these all go through the same Claude
-  // classification call server-side, and firing a dozen at once would just
-  // pile onto the daily-save rate limit and a 1 OCPU box's own queue at the
-  // same moment instead of finishing any faster.
+  // A handful at a time, not all at once or strictly one-by-one -- each
+  // still goes through the same Claude classification call server-side, so
+  // too much concurrency just trips Anthropic's per-minute rate limit
+  // (a 429, not a bigger bill) instead of finishing any faster.
+  const BULK_CONCURRENCY = 3;
+
   const submitBulk = async () => {
     setStatus('saving');
     setError('');
-    const items: ApiItem[] = [];
-    let failed = 0;
-    for (let i = 0; i < selectedScreenshots.length; i++) {
-      setBulkProgress({ done: i, total: selectedScreenshots.length });
-      try {
-        const base64 = await new File(selectedScreenshots[i].uri).base64();
-        const item = await saveScreenshotItem('other', base64);
-        items.push(item);
-      } catch {
-        failed += 1;
-      }
+    const results: (ApiItem | null)[] = new Array(selectedScreenshots.length).fill(null);
+    let completed = 0;
+    setBulkProgress({ done: 0, total: selectedScreenshots.length });
+
+    for (let start = 0; start < selectedScreenshots.length; start += BULK_CONCURRENCY) {
+      const batch = selectedScreenshots.slice(start, start + BULK_CONCURRENCY);
+      await Promise.all(
+        batch.map(async (shot, offset) => {
+          try {
+            const base64 = await new File(shot.uri).base64();
+            results[start + offset] = await saveScreenshotItem('other', base64);
+          } catch {
+            // left as null -- counted as a failure below
+          } finally {
+            completed += 1;
+            setBulkProgress({ done: completed, total: selectedScreenshots.length });
+          }
+        })
+      );
     }
-    setBulkProgress({ done: selectedScreenshots.length, total: selectedScreenshots.length });
+
+    const items = results.filter((item): item is ApiItem => item !== null);
+    const failed = results.length - items.length;
     if (items.length === 0) {
       setError('전부 저장하지 못했어요');
       setStatus('error');

@@ -93,6 +93,8 @@ export async function signInWithKakao(): Promise<void> {
   await exchangeCodeForSession(code, redirectUri);
 }
 
+// Real (Kakao) accounts only -- see AuthContext's pauseGuest for why a guest
+// session is never actually signed out of Supabase.
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
 }

@@ -78,12 +78,17 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
   }
 
   const compressed = await compressScreenshot(Buffer.from(input.imageBase64, "base64"));
-  const imagePath = await uploadScreenshot(userId, compressed, "image/jpeg");
-  const classification = await classifyImage({
-    source: input.source,
-    imageBase64: compressed.toString("base64"),
-    mediaType: "image/jpeg",
-  });
+  // Independent round trips (one to Storage, one to Claude) that were
+  // previously awaited back-to-back for no reason -- running them together
+  // halves the wall-clock wait without changing what either one costs.
+  const [imagePath, classification] = await Promise.all([
+    uploadScreenshot(userId, compressed, "image/jpeg"),
+    classifyImage({
+      source: input.source,
+      imageBase64: compressed.toString("base64"),
+      mediaType: "image/jpeg",
+    }),
+  ]);
   return insertItem({
     userId,
     source: input.source,

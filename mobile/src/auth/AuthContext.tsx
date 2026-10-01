@@ -8,12 +8,14 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   signInAsGuest: () => Promise<{ error: string | null }>;
+  pauseGuest: () => void;
 }
 
 const AuthContext = createContext<AuthState>({
   session: null,
   loading: true,
   signInAsGuest: async () => ({ error: null }),
+  pauseGuest: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -48,6 +50,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     suppressNextAuthEvent.current = true;
     try {
+      // "로그아웃" as a guest never actually signs out of Supabase (see
+      // pauseGuest below) -- it only hides the session from this screen --
+      // so the same anonymous account is usually still sitting right here,
+      // still valid, ready to resume with no network call at all.
+      const { data: existing } = await supabase.auth.getSession();
+      if (existing.session?.user.is_anonymous) {
+        setSession(existing.session);
+        return { error: null };
+      }
+
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) return { error: error.message };
       // Best-effort: a seeding hiccup shouldn't strand a real, working
@@ -61,7 +73,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  return <AuthContext.Provider value={{ session, loading, signInAsGuest }}>{children}</AuthContext.Provider>;
+  // A guest has no credential besides this one session -- actually signing
+  // it out (any scope) revokes that sole session server-side for good, so
+  // "로그아웃" for a guest can only mean hiding it from the UI, never ending
+  // it. Real accounts keep using the real signOut() in kakaoLogin.ts.
+  const pauseGuest = () => {
+    setSession(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ session, loading, signInAsGuest, pauseGuest }}>{children}</AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

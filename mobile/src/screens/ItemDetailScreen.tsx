@@ -19,7 +19,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
-import { TagChip, TagAddChip, MetaChip } from '../components/Chips';
+import { TagChip, TagAddChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
 import { TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
@@ -37,6 +37,10 @@ export default function ItemDetailScreen() {
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+
+  const sourceText = sourceLabel(item.source, tech);
+  const captureTypeText = captureTypeLabel(item.capture_type, tech);
+  const channelMetaLabel = captureTypeText === sourceText ? sourceText : `${sourceText} · ${captureTypeText}`;
 
   const [aiTags, setAiTags] = useState(item.tags);
   const [userTags, setUserTags] = useState(item.user_tags);
@@ -141,10 +145,9 @@ export default function ItemDetailScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
         <ScrollView ref={scrollRef} style={styles.flexShrink} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.metaRow}>
-            {/* Channel used to be shown here too, but that's now the same
-                fact as the source MetaChip right below the title -- category
-                stays since it's the one piece of info this screen only ever
-                shows in this one spot. */}
+            {/* Category is the one piece of info this screen only ever shows
+                in this one spot -- source/capture type moved to the footer
+                near the timestamp, see below. */}
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
               {item.category}
             </Text>
@@ -201,12 +204,6 @@ export default function ItemDetailScreen() {
             style={styles.tagScroll}
             contentContainerStyle={styles.tagRow}
           >
-            <MetaChip
-              icon={<SourceIcon source={item.source} size={12} color={theme.sub} strokeWidth={1.3} />}
-              label={sourceLabel(item.source, tech)}
-              theme={theme}
-            />
-            <MetaChip label={captureTypeLabel(item.capture_type, tech)} theme={theme} />
             {aiTags.map((tag) => (
               <TagChip key={tag} label={tag} theme={theme} tone="auto" onRemove={() => removeAiTag(tag)} />
             ))}
@@ -269,7 +266,19 @@ export default function ItemDetailScreen() {
             </Pressable>
           )}
 
-          <Text style={[styles.timestamp, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
+          {/* Source + capture type moved out of the tag row above -- this is
+              the same "channel · how" fact the list row's MetaLine already
+              shows, just phrased here as metadata next to the timestamp
+              instead of as a removable-looking chip competing with tags.
+              The two labels happen to coincide for a hand-typed memo (source
+              'memo', capture type 'text' -- both read "메모" in Korean), so
+              skip the repeat rather than show the same word twice. */}
+          <View style={styles.footerMeta}>
+            <SourceIcon source={item.source} size={11} color={theme.sub} strokeWidth={1.3} />
+            <Text style={[styles.timestamp, styles.footerMetaText, { color: theme.sub }]}>
+              {channelMetaLabel} · {relativeTime(item.shared_at)} 저장됨
+            </Text>
+          </View>
         </ScrollView>
         </KeyboardAvoidingView>
 
@@ -300,6 +309,8 @@ const styles = StyleSheet.create({
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  footerMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  footerMetaText: { marginTop: 0 },
   deleteConfirmCard: { borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 14 },
   deleteConfirmText: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_500Medium' },
   deleteConfirmButtons: { flexDirection: 'row', gap: 10, marginTop: 12 },

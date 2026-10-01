@@ -16,7 +16,7 @@ type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'de
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
-  const { session } = useAuth();
+  const { session, pauseGuest } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [state, setState] = useState<FooterState>('idle');
   const [error, setError] = useState('');
@@ -29,6 +29,14 @@ export default function ProfileScreen() {
 
   const onSignOut = async () => {
     setState('signingOut');
+    if (isGuest) {
+      // A guest has no credential besides this one session -- actually
+      // signing it out would revoke it for good, so logging out here only
+      // hides it; the same account (and data) is still there to resume
+      // next time "게스트로 체험하기" is tapped.
+      pauseGuest();
+      return;
+    }
     await signOut();
     // No need to reset state/navigate on success -- AuthContext's session
     // flips to null and App.tsx swaps this whole stack for LoginScreen.
@@ -40,7 +48,7 @@ export default function ProfileScreen() {
     setState('deleting');
     try {
       await deleteAccount();
-      await signOut(); // clears the now-pointless local session -> LoginScreen
+      await signOut(); // the account is actually gone now -- clear the local session -> LoginScreen
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setState('deleteError');

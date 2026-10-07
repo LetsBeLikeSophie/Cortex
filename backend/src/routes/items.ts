@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
+import { tagFromText } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -10,7 +11,6 @@ import {
   listItems,
   listTags,
   listTrash,
-  logAnalyticsEvent,
   permanentlyDeleteItem,
   removeAiTag,
   removeUserTag,
@@ -38,6 +38,10 @@ function splitTerms(raw: string | undefined): string[] {
 
 const AddTagSchema = z.object({
   tag: z.string().min(1).max(30),
+});
+
+const TagFromVoiceSchema = z.object({
+  text: z.string().min(1).max(500),
 });
 
 export async function itemsRoutes(app: FastifyInstance) {
@@ -88,8 +92,11 @@ export async function itemsRoutes(app: FastifyInstance) {
       }
     }
 
+    // item_saved is logged from inside processIncomingItem's background
+    // task now, with the real category once classification resolves --
+    // logging it here would only ever see the 'pending' placeholder
+    // category, which isn't what analytics is supposed to be counting.
     const item = await processIncomingItem(parsed.data, userId);
-    await logAnalyticsEvent({ eventType: "item_saved", userId, category: item.category, source: item.source });
     return reply.code(201).send(item);
   });
 
@@ -194,6 +201,22 @@ export async function itemsRoutes(app: FastifyInstance) {
 
   // Adds one user tag. The AI-assigned `tags` column has no route that can
   // touch it at all -- this only ever reads/writes user_tags.
+  // Turns one spoken sentence (already transcribed client-side) into a
+  // single clean tag via a small Claude call -- not tied to a specific
+  // item, since the cleanup itself doesn't need one; the client adds the
+  // returned tag onto whichever item it's actually editing via the
+  // existing POST /items/:id/tags above. Calls Claude, so it's rate
+  // limited the same way POST /items is.
+  app.post("/items/tags/from-voice", { config: { rateLimit: {} } }, async (req, reply) => {
+    const parsed = TagFromVoiceSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
+    }
+    await resolveUserId(req); // auth-gated like every other route here, even though the result isn't scoped to a user
+    const tag = await tagFromText(parsed.data.text);
+    return reply.send({ tag });
+  });
+
   app.post("/items/:id/tags", async (req, reply) => {
     const parsed = AddTagSchema.safeParse(req.body);
     if (!parsed.success) {

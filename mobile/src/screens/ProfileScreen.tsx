@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
+import { LAYOUTS, PALETTES } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signOut } from '../auth/kakaoLogin';
 import { deleteAccount } from '../api/client';
@@ -15,7 +16,7 @@ import type { RootStackParamList } from '../navigation/types';
 type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'deleteError';
 
 export default function ProfileScreen() {
-  const { theme } = useTheme();
+  const { theme, layoutKey, paletteKey } = useTheme();
   const { session, pauseGuest } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [state, setState] = useState<FooterState>('idle');
@@ -122,7 +123,9 @@ export default function ProfileScreen() {
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>테마</Text>
               <View style={styles.themeRowRight}>
                 <View style={[styles.themeDot, { backgroundColor: theme.accent }]} />
-                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{theme.label}</Text>
+                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                  {PALETTES[paletteKey].label} · {LAYOUTS[layoutKey].label}
+                </Text>
               </View>
             </Pressable>
             <View style={{ gap: 14 }}>

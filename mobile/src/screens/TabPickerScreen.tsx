@@ -56,7 +56,6 @@ export default function TabPickerScreen() {
     <ModalSheet
       theme={theme}
       onClose={() => navigation.goBack()}
-      animated={false}
       bordered={false}
       paddingBottom={24}
       paddingHorizontal={20}
@@ -80,29 +79,36 @@ export default function TabPickerScreen() {
           />
         </View>
 
-        {loading ? (
-          <ActivityIndicator color={theme.accent} style={{ marginTop: 24 }} />
-        ) : allTags.length === 0 ? (
-          <Text style={[styles.emptyText, { color: theme.sub }]}>아직 저장된 태그가 없어요.</Text>
-        ) : visible.length === 0 ? (
-          <Text style={[styles.emptyText, { color: theme.sub }]}>일치하는 태그가 없어요.</Text>
-        ) : (
-          <ScrollView style={styles.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {visible.map((tag) => {
-              const active = selected.includes(tag);
-              return (
-                <Pressable
-                  key={tag}
-                  onPress={() => toggle(tag)}
-                  style={[styles.row, { borderColor: active ? theme.ink : theme.line, backgroundColor: active ? theme.soft : 'transparent' }]}
-                >
-                  <Text style={[styles.rowLabel, { color: theme.ink }]}>{tag}</Text>
-                  {active && <CheckIcon size={18} color={theme.ink} strokeWidth={1.7} />}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        )}
+        {/* Fixed height regardless of result count -- typing a query that
+            narrows the match list used to shrink this box (and the sheet
+            around it) down to fit, which read as the whole window jumping
+            around while typing. Fewer matches now just leaves blank space
+            below instead of resizing anything. */}
+        <View style={styles.resultsBox}>
+          {loading ? (
+            <ActivityIndicator color={theme.accent} style={{ marginTop: 24 }} />
+          ) : allTags.length === 0 ? (
+            <Text style={[styles.emptyText, { color: theme.sub }]}>아직 저장된 태그가 없어요.</Text>
+          ) : visible.length === 0 ? (
+            <Text style={[styles.emptyText, { color: theme.sub }]}>일치하는 태그가 없어요.</Text>
+          ) : (
+            <ScrollView style={styles.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {visible.map((tag) => {
+                const active = selected.includes(tag);
+                return (
+                  <Pressable
+                    key={tag}
+                    onPress={() => toggle(tag)}
+                    style={[styles.row, { borderColor: active ? theme.ink : theme.line, backgroundColor: active ? theme.soft : 'transparent' }]}
+                  >
+                    <Text style={[styles.rowLabel, { color: theme.ink }]}>{tag}</Text>
+                    {active && <CheckIcon size={18} color={theme.ink} strokeWidth={1.7} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
       </KeyboardAvoidingView>
     </ModalSheet>
   );
@@ -123,7 +129,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   emptyText: { fontSize: 13.5, textAlign: 'center', paddingVertical: 20, fontFamily: 'IBMPlexSansKR_400Regular' },
-  list: { maxHeight: Dimensions.get('window').height * 0.45 },
+  resultsBox: { height: Dimensions.get('window').height * 0.45 },
+  list: { flex: 1 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

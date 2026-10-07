@@ -7,17 +7,20 @@ interface ButtonProps {
   onPress?: () => void;
   theme: Theme;
   flex?: number;
+  disabled?: boolean;
 }
 
-export function GhostButton({ label, onPress, theme, flex = 1 }: ButtonProps) {
+export function GhostButton({ label, onPress, theme, flex = 1, disabled = false }: ButtonProps) {
   const cardVariant = theme.list === 'card';
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={[
         styles.base,
         {
           flex,
+          opacity: disabled ? 0.5 : 1,
           borderRadius: theme.btnRadius,
           borderWidth: 1,
           borderColor: cardVariant ? theme.line : theme.ink,
@@ -30,11 +33,12 @@ export function GhostButton({ label, onPress, theme, flex = 1 }: ButtonProps) {
   );
 }
 
-export function SolidButton({ label, onPress, theme, flex = 1.1 }: ButtonProps) {
+export function SolidButton({ label, onPress, theme, flex = 1.1, disabled = false }: ButtonProps) {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.base, { flex, borderRadius: theme.btnRadius, backgroundColor: theme.ink }]}
+      disabled={disabled}
+      style={[styles.base, { flex, opacity: disabled ? 0.5 : 1, borderRadius: theme.btnRadius, backgroundColor: theme.ink }]}
     >
       <Text style={[styles.label, { color: theme.bg, fontFamily: 'IBMPlexSansKR_500Medium', fontWeight: '500' }]}>
         {label}

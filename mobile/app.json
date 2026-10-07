@@ -48,6 +48,13 @@
           "disableIOS": true
         }
       ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Cortex가 음성을 듣고 글로 바꿀 수 있도록 마이크 접근을 허용해주세요.",
+          "speechRecognitionPermission": "Cortex가 말한 내용을 인식할 수 있도록 음성 인식 접근을 허용해주세요."
+        }
+      ],
       "./plugins/withDisableAndroidBackup"
     ]
   }

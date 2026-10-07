@@ -1,6 +1,7 @@
 import React from 'react';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 import type { ItemSource } from '../api/client';
+import type { LayoutKey } from '../theme/themes';
 
 interface IconProps {
   size?: number;
@@ -32,6 +33,14 @@ export function PlusIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
       <Path d="M9 3v12M3 9h12" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function CloseIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M4 4l10 10M14 4 4 14" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -158,6 +167,89 @@ export function SourceIcon({ source, size = 18, color, strokeWidth = 1.3 }: Icon
     default:
       return <OtherIcon size={size} color={color} strokeWidth={strokeWidth} />;
   }
+}
+
+// Each layout icon draws the one visual trait that actually tells that
+// layout apart from the rest, ported 1:1 from the design-preview artifact
+// (cortex-style-preview.html) rather than invented fresh here -- a bare
+// line, a line plus a color tick, a bordered box, two stacked boxes, two
+// stacked boxes with a speck + grid pattern.
+interface LayoutIconProps extends IconProps {
+  accent?: string;
+  surface?: string;
+}
+
+export function LayoutLineIcon({ size = 20, color, strokeWidth = 2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Line x1={5} y1={12} x2={19} y2={12} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function LayoutLineToneIcon({ size = 20, color, accent, strokeWidth = 1.6 }: LayoutIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Line x1={5} y1={9} x2={19} y2={9} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Line x1={5} y1={15.5} x2={10.5} y2={15.5} stroke={accent ?? color} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function LayoutThinBorderIcon({ size = 20, color, strokeWidth = 1.6 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={4} y={6} width={16} height={12} rx={3.5} stroke={color} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}
+
+export function LayoutLayeredIcon({ size = 20, color, accent, surface, strokeWidth = 1.4 }: LayoutIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Rect x={7} y={8} width={13} height={10} rx={3} fill={accent ?? color} opacity={0.55} />
+      <Rect x={4} y={5} width={13} height={10} rx={3} fill={surface ?? 'none'} stroke={color} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}
+
+export function LayoutLayeredVintageIcon({ size = 20, color, accent, surface, strokeWidth = 1.4 }: LayoutIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Line x1={1} y1={21} x2={4.5} y2={17.5} stroke={color} strokeWidth={1} opacity={0.35} />
+      <Line x1={1} y1={24} x2={6.5} y2={18.5} stroke={color} strokeWidth={1} opacity={0.35} />
+      <Line x1={4} y1={24} x2={8.5} y2={19.5} stroke={color} strokeWidth={1} opacity={0.35} />
+      <Rect x={7} y={8} width={13} height={10} rx={3} fill={accent ?? color} opacity={0.55} />
+      <Circle cx={12} cy={13} r={0.9} fill={color} opacity={0.55} />
+      <Circle cx={16} cy={13} r={0.9} fill={color} opacity={0.55} />
+      <Rect x={4} y={5} width={13} height={10} rx={3} fill={surface ?? 'none'} stroke={color} strokeWidth={strokeWidth} />
+    </Svg>
+  );
+}
+
+export function LayoutIcon({ layoutKey, ...props }: LayoutIconProps & { layoutKey: LayoutKey }) {
+  switch (layoutKey) {
+    case 'line':
+      return <LayoutLineIcon {...props} />;
+    case 'lineTone':
+      return <LayoutLineToneIcon {...props} />;
+    case 'thinBorder':
+      return <LayoutThinBorderIcon {...props} />;
+    case 'layered':
+      return <LayoutLayeredIcon {...props} />;
+    case 'layeredVintage':
+      return <LayoutLayeredVintageIcon {...props} />;
+  }
+}
+
+export function MicIcon({ size = 18, color, strokeWidth = 1.4 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Rect x={6.5} y={1.5} width={5} height={9} rx={2.5} stroke={color} strokeWidth={strokeWidth} />
+      <Path d="M3.5 8.5a5.5 5.5 0 0 0 11 0" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M9 14v2.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
 }
 
 export function CheckIcon({ size = 24, color, strokeWidth = 1.7 }: IconProps) {

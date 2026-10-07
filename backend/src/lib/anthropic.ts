@@ -113,3 +113,33 @@ function requireParsed(response: { parsed_output: Classification | null }): Clas
   }
   return response.parsed_output;
 }
+
+const TagFromTextSchema = z.object({
+  tag: z.string().max(20).describe("A single short freeform keyword tag, in Korean"),
+});
+
+const TAG_SYSTEM_PROMPT = `You turn one spoken sentence into a single short keyword
+tag for a personal archive app. The input is a speech-to-text transcript, so it may
+run on, include filler words, or be a full sentence explaining what something is --
+extract just the core keyword/phrase someone would want as a tag (a place, subject,
+product, person, or category), stripped of filler ("이건", "그거 있잖아", "~인 것 같아")
+and verb endings. Keep it short (2-10 characters is typical). If the transcript is
+already basically just a bare word or phrase, return it close to as-is.`;
+
+// Used for voice-to-tag: the raw transcript almost never reads as a clean tag
+// on its own (it's spoken, not typed), so this is a second, much smaller
+// classification call purely to clean that up -- same model tier as
+// classifyText/classifyImage since it's just as bounded a task.
+export async function tagFromText(spokenText: string): Promise<string> {
+  const response = await client.messages.parse({
+    model: MODEL,
+    max_tokens: 256,
+    system: TAG_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: spokenText }],
+    output_config: { format: zodOutputFormat(TagFromTextSchema) },
+  });
+  if (!response.parsed_output) {
+    throw new Error("Claude response did not parse against the tag schema");
+  }
+  return response.parsed_output.tag;
+}

@@ -4,6 +4,12 @@ import { supabase } from '../auth/supabase';
 export type ItemSource = 'instagram' | 'kakaotalk' | 'safari' | 'youtube' | 'memo' | 'other';
 export type ItemCategory = '가볼 곳' | '살 것' | '배울 것' | '볼 것' | '기억할 것' | '기타';
 
+// 'pending' -> just saved, classification still running server-side (title/
+// category/tags below are a placeholder, not the real result yet).
+// 'done' -> classification finished normally. 'failed' -> it errored out;
+// the placeholder stays, but nothing further will update it on its own.
+export type ClassificationStatus = 'pending' | 'done' | 'failed';
+
 export interface ApiItem {
   id: string;
   source: ItemSource;
@@ -16,6 +22,8 @@ export interface ApiItem {
   category: ItemCategory;
   tags: string[]; // AI-assigned, read-only
   user_tags: string[]; // user-added, freely add/removable
+  user_note: string | null; // optional "why I saved this", set at save time
+  classification_status: ClassificationStatus;
   shared_at: string;
   deleted_at: string | null; // non-null means it's in the trash
 }
@@ -47,11 +55,12 @@ export const API_BASE_URL = resolveBaseUrl();
 // in practice.
 const REQUEST_TIMEOUT_MS = 20000;
 
-// Screenshot saves go through compression + a Claude vision call + a
-// Storage upload server-side, on a 1 OCPU box -- routinely well past 8s.
-// The short default above exists to fail fast when there's no backend at
-// all, which doesn't apply here.
-const SCREENSHOT_TIMEOUT_MS = 45000;
+// Screenshot saves go through compression + a Storage upload server-side,
+// on a 1 OCPU box -- the Claude vision call used to be in this same
+// request too (routinely well past 8s on its own), but classification now
+// runs in the background after the row's already saved, so this only
+// needs to cover compress+upload.
+const SCREENSHOT_TIMEOUT_MS = 15000;
 
 async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
@@ -101,10 +110,13 @@ export function searchItems(include: string[], exclude: string[], limit = 30) {
   return request<{ items: ApiItem[] }>(`/items/search?${params.toString()}`);
 }
 
-export function saveTextItem(source: ItemSource, text: string) {
+// `note` is the optional one-line "why I saved this" memo -- stored as-is
+// (user_note), separate from the AI-assigned title/snippet/tags, and fed
+// into search the same way a tag is.
+export function saveTextItem(source: ItemSource, text: string, note?: string) {
   return request<ApiItem>('/items', {
     method: 'POST',
-    body: JSON.stringify({ captureType: 'text', source, text }),
+    body: JSON.stringify({ captureType: 'text', source, text, note }),
   });
 }
 
@@ -112,21 +124,21 @@ export function saveTextItem(source: ItemSource, text: string) {
 // storing the bare URL as unstructured text -- worth using whenever we
 // actually have a clean link (e.g. the OS share sheet's webUrl), which
 // saveTextItem alone had no path to before this.
-export function saveLinkItem(source: ItemSource, url: string) {
+export function saveLinkItem(source: ItemSource, url: string, note?: string) {
   return request<ApiItem>('/items', {
     method: 'POST',
-    body: JSON.stringify({ captureType: 'link', source, url }),
+    body: JSON.stringify({ captureType: 'link', source, url, note }),
   });
 }
 
 // expo-image-picker's base64 output is always re-encoded as JPEG regardless
 // of the original file's format, so mediaType is always 'image/jpeg' here.
-export function saveScreenshotItem(source: ItemSource, imageBase64: string) {
+export function saveScreenshotItem(source: ItemSource, imageBase64: string, note?: string) {
   return request<ApiItem>(
     '/items',
     {
       method: 'POST',
-      body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg' }),
+      body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg', note }),
     },
     SCREENSHOT_TIMEOUT_MS
   );
@@ -187,6 +199,17 @@ export function restoreItem(itemId: string) {
 
 export function permanentlyDeleteItem(itemId: string) {
   return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/permanent`, { method: 'DELETE' });
+}
+
+// Cleans up one spoken sentence (already transcribed on-device) into a
+// single short tag via a small Claude call server-side -- a raw transcript
+// almost never reads as a clean tag on its own. Returns just the cleaned
+// tag string; call addTag with it separately to actually attach it.
+export function tagFromVoice(text: string) {
+  return request<{ tag: string }>('/items/tags/from-voice', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
 }
 
 // Both only ever touch user_tags -- adding a *new* tag always goes through

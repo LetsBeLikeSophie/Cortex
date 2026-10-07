@@ -12,12 +12,22 @@ export interface RecentScreenshot {
 // each known title before giving up.
 const ALBUM_TITLES = ['Screenshots', '스크린샷'];
 
+export interface RecentScreenshotsState {
+  screenshots: RecentScreenshot[];
+  // True once we've actually checked and the answer is no -- lets the save
+  // sheet show *why* the quick-pick row is empty instead of just quietly
+  // rendering nothing, which otherwise looks identical to "no screenshots
+  // exist" and leaves no way to tell the two apart.
+  permissionDenied: boolean;
+}
+
 // Native-only (no photo library on web) and read-only by design: never
 // requests write access, and never asks for permission more than once --
-// if the user said no, this just quietly renders nothing rather than
-// nagging every time the save sheet opens.
-export function useRecentScreenshots(limit = 12) {
+// if the user said no, this never nags again every time the save sheet
+// opens (see permissionDenied above for how that gets surfaced instead).
+export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
   const [screenshots, setScreenshots] = useState<RecentScreenshot[]>([]);
+  const [permissionDenied, setPermissionDenied] = useState(false);
 
   useEffect(() => {
     if (!MediaLibrary) return;
@@ -29,7 +39,11 @@ export function useRecentScreenshots(limit = 12) {
       if (!perm.granted && perm.canAskAgain) {
         perm = await lib.requestPermissionsAsync();
       }
-      if (!perm.granted || cancelled) return;
+      if (cancelled) return;
+      if (!perm.granted) {
+        setPermissionDenied(true);
+        return;
+      }
 
       let album: InstanceType<typeof lib.Album> | null = null;
       for (const title of ALBUM_TITLES) {
@@ -59,5 +73,5 @@ export function useRecentScreenshots(limit = 12) {
     };
   }, [limit]);
 
-  return screenshots;
+  return { screenshots, permissionDenied };
 }

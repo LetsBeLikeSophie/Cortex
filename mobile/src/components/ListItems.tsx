@@ -4,7 +4,7 @@ import { Theme, emToTracking, MONO } from '../theme/themes';
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
-import { SourceIcon } from './Icons';
+import { SourceIcon, CheckIcon } from './Icons';
 
 // e.g. "▶ 링크 · 3분전" -- the channel reads as its icon (a text label per
 // source would crowd this line), the method and time stay as text.
@@ -34,22 +34,61 @@ function MetaLine({
   );
 }
 
+// No shadow/elevation anywhere in here -- 'card' (retired) is what caused
+// the Android "shadow rounded, content square" rendering bug, by pairing
+// elevation with overflow:hidden. 'bordered' is a plain 1px border, which
+// never needed elevation in the first place. 'layered' only returns the
+// FRONT card's fill; the second, offset back card is a sibling View added
+// in RecentRow/ResultRow themselves (layeredBackStyle below), since a
+// single ViewStyle object can't describe two stacked Views.
 function cardShellStyle(theme: Theme): ViewStyle {
-  const card = theme.list === 'card';
-  if (!card) {
-    return { borderBottomWidth: 1, borderBottomColor: theme.soft, paddingVertical: 20 };
+  switch (theme.list) {
+    case 'line':
+      return { borderBottomWidth: 1, borderBottomColor: theme.soft, paddingVertical: 20 };
+    case 'bordered':
+      return {
+        backgroundColor: theme.surface,
+        borderWidth: 1,
+        borderColor: theme.line,
+        borderRadius: theme.cardRadius,
+        padding: 15,
+        paddingHorizontal: 17,
+        marginBottom: 9,
+      };
+    case 'layered':
+      return {
+        backgroundColor: theme.cardBg,
+        borderRadius: theme.cardRadius,
+        padding: 15,
+        paddingHorizontal: 17,
+      };
+    case 'card':
+      return {
+        backgroundColor: theme.surface,
+        borderWidth: theme.surfaceEdge ? 1 : 0,
+        borderColor: theme.surfaceEdge ?? undefined,
+        borderRadius: theme.cardRadius,
+        padding: 15,
+        paddingHorizontal: 17,
+        marginBottom: 10,
+      };
   }
+}
+
+// The layered list's back card -- same radius as the front, offset 6px
+// down-right, rendered as an earlier sibling (not a ::before/z-index
+// trick) so it paints behind the front card purely through JSX order, the
+// same two-plain-Views approach verified safe in the design-preview
+// artifact.
+function layeredBackStyle(theme: Theme): ViewStyle {
   return {
-    backgroundColor: theme.surface,
-    borderWidth: theme.surfaceEdge ? 1 : 0,
-    borderColor: theme.surfaceEdge ?? undefined,
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: -6,
+    bottom: -6,
+    backgroundColor: theme.cardStack,
     borderRadius: theme.cardRadius,
-    padding: 15,
-    paddingHorizontal: 17,
-    marginBottom: 10,
-    ...(theme.dark
-      ? null
-      : { shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 1 }),
   };
 }
 
@@ -58,42 +97,75 @@ export function RecentRow({
   theme,
   tech,
   onPress,
+  selectMode = false,
+  selected = false,
 }: {
   item: RecentItem;
   theme: Theme;
   tech: boolean;
   onPress?: () => void;
+  // Tag-filtered multi-select (bulk tag add/remove) -- a checkbox in front
+  // of the row number instead of changing what tapping the row does, so the
+  // row keeps reading the same way whether or not selection is active.
+  selectMode?: boolean;
+  selected?: boolean;
 }) {
-  const card = theme.list === 'card';
-  return (
+  const boxed = theme.list !== 'line';
+  const layered = theme.list === 'layered';
+  const row = (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       style={({ pressed }) => [
         styles.row,
-        { alignItems: card ? 'center' : 'baseline', opacity: pressed ? 0.6 : 1 },
+        { alignItems: boxed ? 'center' : 'baseline', opacity: pressed ? 0.6 : 1 },
         cardShellStyle(theme),
       ]}
     >
+      {selectMode && (
+        <View
+          style={[
+            styles.selectCircle,
+            { borderColor: selected ? theme.accent : theme.line, backgroundColor: selected ? theme.accent : 'transparent' },
+          ]}
+        >
+          {selected && <CheckIcon size={10} color="#fff" strokeWidth={2.4} />}
+        </View>
+      )}
+      {/* key forces a full remount when the font family switches (line's
+          italic serif vs every boxed layout's upright mono) -- Android can
+          otherwise leave a custom-font Text blank after an in-place
+          fontFamily change instead of repainting it. */}
       <Text
+        key={boxed ? 'mono' : theme.headFamily}
         style={{
-          fontFamily: card ? MONO : theme.headFamily,
-          fontStyle: card ? 'normal' : 'italic',
-          fontSize: card ? 11 : 17,
+          fontFamily: boxed ? MONO : theme.headFamily,
+          fontStyle: boxed ? 'normal' : 'italic',
+          fontSize: boxed ? 11 : 17,
           color: theme.accent,
           minWidth: 24,
-          paddingTop: card ? 2 : 0,
+          paddingTop: boxed ? 2 : 0,
         }}
       >
         {item.no}
       </Text>
       <View style={styles.rowBody}>
-        <Text style={[styles.title, { color: theme.ink }]}>{item.title}</Text>
+        <Text style={[styles.title, { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal' }]}>
+          {item.title}
+        </Text>
         <View style={{ marginTop: 7 }}>
           <MetaLine item={item} theme={theme} tech={tech} />
         </View>
       </View>
     </Pressable>
+  );
+
+  if (!layered) return row;
+  return (
+    <View style={styles.layeredWrap}>
+      <View style={layeredBackStyle(theme)} />
+      {row}
+    </View>
   );
 }
 
@@ -117,7 +189,7 @@ export function ResultRow({
   trashed?: boolean;
   onRestore?: () => void;
 }) {
-  return (
+  const result = (
     <Pressable
       onPress={trashed ? undefined : onPress}
       disabled={trashed || !onPress}
@@ -133,7 +205,10 @@ export function ResultRow({
         terms={item.terms}
         accent={theme.accent}
         hitStyle={theme.hitStyle}
-        baseStyle={[styles.title, { color: theme.ink, opacity: trashed ? 0.6 : 1 }]}
+        baseStyle={[
+          styles.title,
+          { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal', opacity: trashed ? 0.6 : 1 },
+        ]}
       />
       <HighlightText
         text={item.snippet}
@@ -161,10 +236,27 @@ export function ResultRow({
       </View>
     </Pressable>
   );
+
+  if (theme.list !== 'layered') return result;
+  return (
+    <View style={styles.layeredWrap}>
+      <View style={layeredBackStyle(theme)} />
+      {result}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  layeredWrap: { position: 'relative', marginBottom: 16 },
   row: { flexDirection: 'row', gap: 13 },
+  selectCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   rowBody: { flex: 1, minWidth: 0 },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: 'IBMPlexSansKR_400Regular' },

@@ -20,6 +20,12 @@ export function getClient(): SupabaseClient {
 
 export type ItemSource = "instagram" | "kakaotalk" | "safari" | "youtube" | "memo" | "other";
 export type ItemCaptureType = "link" | "text" | "screenshot";
+// 'pending' -> inserted, classification still running in the background.
+// 'done' -> title/snippet/category/tags are the real classification result.
+// 'failed' -> classification errored out; the row keeps its placeholder
+// title/category/tags rather than disappearing, so it still shows up and
+// can be opened/retagged by hand.
+export type ClassificationStatus = "pending" | "done" | "failed";
 
 export interface ItemRecord {
   id: string;
@@ -35,6 +41,8 @@ export interface ItemRecord {
   category: Category;
   tags: string[]; // AI-assigned, read-only from the client
   user_tags: string[]; // user-added, freely add/removable
+  user_note: string | null; // optional "why I saved this", set at save time
+  classification_status: ClassificationStatus;
   shared_at: string;
   created_at: string;
   deleted_at: string | null;
@@ -52,6 +60,12 @@ export interface NewItem {
   snippet?: string;
   category: Category;
   tags: string[];
+  userNote?: string;
+  // Required (not defaulted) so every call site has to say explicitly
+  // whether it's inserting a placeholder awaiting classification or a
+  // fully-classified row (e.g. seedSampleItem, which never goes through
+  // the async pipeline at all).
+  classificationStatus: ClassificationStatus;
 }
 
 export async function insertItem(item: NewItem): Promise<ItemRecord> {
@@ -69,12 +83,52 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
       snippet: item.snippet ?? null,
       category: item.category,
       tags: item.tags,
+      user_note: item.userNote ?? null,
+      classification_status: item.classificationStatus,
     })
     .select()
     .single();
 
   if (error) throw new Error(`insertItem failed: ${error.message}`);
   return data as ItemRecord;
+}
+
+// Called once the background classification call resolves (pipeline.ts) --
+// fills in the real title/snippet/category/tags and flips the row to
+// 'done'. Scoped to (id, user_id) like every other per-item write here,
+// even though this only ever runs with an id this same request just
+// created, for the same defense-in-depth reason the rest of this file
+// does it.
+export async function completeClassification(
+  itemId: string,
+  userId: string,
+  classification: { title: string; snippet: string; category: Category; tags: string[] },
+  // Links only -- fetched by the same background metadata call that feeds
+  // classifyText, so it lands here rather than as a separate write.
+  thumbnailUrl?: string
+): Promise<void> {
+  const { error } = await getClient()
+    .from("items")
+    .update({
+      ...classification,
+      ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : null),
+      classification_status: "done" satisfies ClassificationStatus,
+    })
+    .eq("id", itemId)
+    .eq("user_id", userId);
+  if (error) throw new Error(`completeClassification failed: ${error.message}`);
+}
+
+// Classification threw (Claude error, timeout, etc.) -- leave the
+// placeholder title/category/tags in place (still a real, openable item)
+// and just flip the status so the client stops showing "분석 중".
+export async function failClassification(itemId: string, userId: string): Promise<void> {
+  const { error } = await getClient()
+    .from("items")
+    .update({ classification_status: "failed" satisfies ClassificationStatus })
+    .eq("id", itemId)
+    .eq("user_id", userId);
+  if (error) throw new Error(`failClassification failed: ${error.message}`);
 }
 
 // One real, deletable/editable example item so a brand-new account isn't a
@@ -100,6 +154,7 @@ export async function seedSampleItem(userId: string): Promise<void> {
     snippet: "지금 보고 계신 게 정답이에요",
     category: "볼 것",
     tags: ["가이드", "첫기억"],
+    classificationStatus: "done",
   });
 }
 
@@ -297,6 +352,9 @@ function matchesTerm(item: ItemRecord, needle: string): boolean {
   if (item.title?.toLowerCase().includes(needle)) return true;
   if (item.snippet?.toLowerCase().includes(needle)) return true;
   if (item.raw_text?.toLowerCase().includes(needle)) return true;
+  // The user's own "why I saved this" note -- a stronger search clue than
+  // an AI tag since it's in their own words, so it's checked the same way.
+  if (item.user_note?.toLowerCase().includes(needle)) return true;
   if (item.tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
   if (item.user_tags.some((tag) => tag.toLowerCase().includes(needle))) return true;
   // The channel/method chips shown in the app aren't stored as tags, but

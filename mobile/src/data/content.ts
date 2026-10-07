@@ -7,6 +7,10 @@ export interface RecentItem {
   source: ItemSource;
   captureType: ApiItem['capture_type'];
   timeLabel: string;
+  // Classification is still running server-side -- title above already
+  // reads as "분석 중" in this case (see toRecentItem), this just lets
+  // RecentRow show that as a muted/distinct style rather than a plain title.
+  pending?: boolean;
 }
 
 export interface SearchResult {
@@ -22,6 +26,7 @@ export interface SearchResult {
   source: ItemSource;
   captureType: ApiItem['capture_type'];
   timeLabel: string;
+  pending?: boolean;
 }
 
 export const DEFAULT_QUERY = '제주도 맛집';

@@ -103,7 +103,7 @@ export default function LoginScreen() {
           )}
         </Pressable>
         <Text style={[styles.guestNote, { color: theme.sub }]}>
-          게스트는 이 기기에서 로그아웃하면 다시 못 봐요.
+          게스트 기록은 이 기기에만 저장돼요. 다른 기기에서는 볼 수 없어요.
         </Text>
         <Text style={[styles.policyNote, { color: theme.sub }]}>
           계속하면{' '}

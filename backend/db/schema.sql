@@ -164,3 +164,20 @@ alter table kakao_users enable row level security;
 -- alter type item_category rename value '배우고 싶은 것' to '배울 것';
 -- alter type item_category rename value '나중에 볼 것' to '볼 것';
 -- alter type item_category rename value '기억해둘 것' to '기억할 것';
+
+-- Migration (2026-10-07): save completes immediately, classification runs
+-- in the background. `text` + a check constraint, not a new enum -- the
+-- category enum's rename/add limitations above are exactly the friction an
+-- enum would add here for no real benefit. Every row saved before this
+-- migration went through the old synchronous pipeline, so it was always
+-- already fully classified -- backfill them all to 'done' right after
+-- adding the column (which defaults new rows to 'pending'); only rows
+-- inserted after this ships actually start pending.
+alter table items add column if not exists classification_status text not null default 'pending'
+  check (classification_status in ('pending', 'done', 'failed'));
+update items set classification_status = 'done';
+
+-- Optional one-line "why I saved this" note, set at save time -- a
+-- stronger search clue than an AI-assigned tag since it's the user's own
+-- words. Included in search matching (see matchesTerm in src/lib/supabase.ts).
+alter table items add column if not exists user_note text;

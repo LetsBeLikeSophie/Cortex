@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Easing, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, Easing, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { Theme } from '../theme/themes';
@@ -49,6 +49,34 @@ export function ModalSheet({
     }).start();
   }, [animated, translateY]);
 
+  // Drag the grabber down to dismiss -- it only ever looked draggable
+  // before (a static bar), nothing actually responded to touch. Scoped to
+  // the grabber's own hit area rather than the whole sheet so it doesn't
+  // fight an inner ScrollView's own vertical pan (SaveSheet/ItemDetail both
+  // scroll their content).
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_evt, gesture) => Math.abs(gesture.dy) > 4,
+      onPanResponderMove: (_evt, gesture) => {
+        if (gesture.dy > 0) translateY.setValue(gesture.dy);
+      },
+      onPanResponderRelease: (_evt, gesture) => {
+        const pastThreshold = gesture.dy > 100 || gesture.vy > 0.8;
+        if (pastThreshold) {
+          Animated.timing(translateY, {
+            toValue: SHEET_TRAVEL,
+            duration: 200,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }).start(onClose);
+        } else {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+        }
+      },
+    })
+  ).current;
+
   return (
     <View style={StyleSheet.absoluteFill}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
@@ -76,7 +104,9 @@ export function ModalSheet({
           },
         ]}
       >
-        <View style={[styles.grabber, { backgroundColor: theme.sub, marginBottom: grabberMarginBottom }]} />
+        <View style={[styles.grabberHitArea, { marginBottom: grabberMarginBottom }]} {...panResponder.panHandlers}>
+          <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
+        </View>
         {children}
       </Animated.View>
     </View>
@@ -95,5 +125,6 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 16,
   },
-  grabber: { width: 40, height: 4, borderRadius: 2, alignSelf: 'center' },
+  grabberHitArea: { alignSelf: 'stretch', alignItems: 'center', paddingVertical: 10, marginTop: -10 },
+  grabber: { width: 40, height: 4, borderRadius: 2 },
 });

@@ -17,12 +17,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi } from '../api/client';
+import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { GhostButton, SolidButton } from '../components/Buttons';
 import { TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
+import { ImageViewer } from '../components/ImageViewer';
+import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -37,6 +39,7 @@ export default function ItemDetailScreen() {
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
 
   const sourceText = sourceLabel(item.source, tech);
   const captureTypeText = captureTypeLabel(item.capture_type, tech);
@@ -47,6 +50,7 @@ export default function ItemDetailScreen() {
   const [tagError, setTagError] = useState('');
   const [addingTag, setAddingTag] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [voiceTagLoading, setVoiceTagLoading] = useState(false);
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
@@ -121,6 +125,31 @@ export default function ItemDetailScreen() {
     });
   };
 
+  // A spoken sentence ("이건 엄마 생신 선물 후보야") almost never reads as a
+  // clean tag on its own, so this goes through tagFromVoice's small cleanup
+  // call first, then adds the result the same optimistic way submitNewTag
+  // does. Only called with the *final* transcript, not every partial one.
+  const submitVoiceTag = async (spokenText: string) => {
+    const trimmedSpoken = spokenText.trim();
+    if (!trimmedSpoken) return;
+    setVoiceTagLoading(true);
+    setTagError('');
+    try {
+      const { tag } = await tagFromVoice(trimmedSpoken);
+      const trimmed = tag.trim();
+      if (!trimmed || aiTags.includes(trimmed) || userTags.includes(trimmed)) return;
+      setUserTags((current) => [...current, trimmed]);
+      addTag(item.id, trimmed).catch((err) => {
+        setUserTags((current) => current.filter((t) => t !== trimmed));
+        setTagError(err instanceof Error ? err.message : String(err));
+      });
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setVoiceTagLoading(false);
+    }
+  };
+
   const confirmDelete = async () => {
     setDeleteState('deleting');
     try {
@@ -133,6 +162,7 @@ export default function ItemDetailScreen() {
   };
 
   return (
+    <>
     <ModalSheet theme={theme} onClose={close} paddingBottom={24} maxHeightRatio={0.82} grabberMarginBottom={20}>
         {/* This sheet is a native-stack "transparentModal", which on Android
             react-native-screens renders inside a BottomSheetDialog -- a
@@ -190,7 +220,7 @@ export default function ItemDetailScreen() {
           )}
 
           <Heading theme={theme} offset={4} style={{ marginTop: 10 }}>
-            {item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)'}
+            {item.title ?? item.raw_text?.slice(0, 40) ?? (item.classification_status === 'pending' ? '분석 중...' : '(제목 없음)')}
           </Heading>
 
           {/* Horizontal instead of wrapping -- with enough tags, a wrapping
@@ -227,6 +257,14 @@ export default function ItemDetailScreen() {
             ) : (
               <TagAddChip label="+ 태그" theme={theme} onPress={openTagInput} />
             )}
+            <VoiceInputButton
+              theme={theme}
+              size={14}
+              onResult={(text, isFinal) => {
+                if (isFinal) submitVoiceTag(text);
+              }}
+            />
+            {voiceTagLoading && <ActivityIndicator size="small" color={theme.accent} style={styles.voiceTagSpinner} />}
           </ScrollView>
           {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
 
@@ -237,7 +275,14 @@ export default function ItemDetailScreen() {
                   이미지를 불러오지 못했어요.
                 </Text>
               ) : imageUrl ? (
-                <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+                // The box below crops to a square ("cover") so the list of
+                // saves stays tidy, which on a typically tall phone
+                // screenshot cuts off real content -- tapping through to
+                // the full-screen viewer (resizeMode "contain") is the only
+                // place the whole image is actually visible.
+                <Pressable onPress={() => setViewerUri(imageUrl)}>
+                  <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+                </Pressable>
               ) : (
                 <ActivityIndicator color={theme.accent} style={{ padding: 40 }} />
               )}
@@ -248,11 +293,22 @@ export default function ItemDetailScreen() {
             // Already a public URL the site published for its own link
             // previews -- no signed-URL fetch needed, unlike screenshots.
             <View style={[styles.imageBox, { backgroundColor: theme.soft, borderColor: theme.line }]}>
-              <Image source={{ uri: item.thumbnail_url }} style={styles.image} resizeMode="cover" />
+              <Pressable onPress={() => setViewerUri(item.thumbnail_url)}>
+                <Image source={{ uri: item.thumbnail_url }} style={styles.image} resizeMode="cover" />
+              </Pressable>
             </View>
           )}
 
           {item.snippet && <Text style={[styles.body, { color: theme.sub }]}>{item.snippet}</Text>}
+
+          {/* The user's own "why I saved this" -- kept visually distinct
+              (italic, accent-colored) from the AI snippet above it, since
+              it's their words, not a generated summary. */}
+          {item.user_note && (
+            <Text style={[styles.body, { color: theme.accent, fontStyle: 'italic', marginTop: item.snippet ? 4 : 0 }]}>
+              "{item.user_note}"
+            </Text>
+          )}
 
           {item.capture_type === 'text' && item.raw_text && (
             <Text style={[styles.body, { color: theme.ink }]}>{item.raw_text}</Text>
@@ -293,6 +349,8 @@ export default function ItemDetailScreen() {
           )}
         </View>
     </ModalSheet>
+    <ImageViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
+    </>
   );
 }
 
@@ -308,6 +366,7 @@ const styles = StyleSheet.create({
   tagRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
+  voiceTagSpinner: { marginLeft: 2 },
   timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   footerMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerMetaText: { marginTop: 0 },

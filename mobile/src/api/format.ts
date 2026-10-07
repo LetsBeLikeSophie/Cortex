@@ -37,12 +37,14 @@ export function relativeTime(iso: string): string {
 }
 
 export function toRecentItem(item: ApiItem, index: number): RecentItem {
+  const pending = item.classification_status === 'pending';
   return {
     no: String(index + 1).padStart(2, '0'),
-    title: item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)',
+    title: item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)'),
     source: item.source,
     captureType: item.capture_type,
     timeLabel: relativeTime(item.shared_at),
+    pending,
   };
 }
 
@@ -55,6 +57,7 @@ function fieldMatches(item: ApiItem, needle: string): boolean {
   if (item.title?.toLowerCase().includes(n)) return true;
   if (item.snippet?.toLowerCase().includes(n)) return true;
   if (item.raw_text?.toLowerCase().includes(n)) return true;
+  if (item.user_note?.toLowerCase().includes(n)) return true;
   if (item.tags.some((t) => t.toLowerCase().includes(n))) return true;
   if (item.user_tags.some((t) => t.toLowerCase().includes(n))) return true;
   if (sourceLabel(item.source, false).toLowerCase().includes(n)) return true;
@@ -66,8 +69,9 @@ function fieldMatches(item: ApiItem, needle: string): boolean {
 
 export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
   const got = include.filter((w) => fieldMatches(item, w));
+  const pending = item.classification_status === 'pending';
   return {
-    title: item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)',
+    title: item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)'),
     snippet: item.snippet ?? item.raw_text ?? '',
     terms: include,
     matchedCount: got.length,
@@ -75,5 +79,6 @@ export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
     source: item.source,
     captureType: item.capture_type,
     timeLabel: relativeTime(item.shared_at),
+    pending,
   };
 }

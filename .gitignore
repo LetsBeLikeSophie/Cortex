@@ -2,3 +2,7 @@
 # transcripts) -- kept locally for reference, not part of the shipped repo.
 /project/
 /chats/
+
+# Local build output and Claude Code session config -- not part of the repo.
+mobile/build_log*.txt
+/.claude/

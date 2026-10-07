@@ -55,18 +55,29 @@ export default function SearchScreen() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Searches the word still being typed too, not just chips already
+  // committed by a space/Enter -- same include/exclude ("-word") parsing
+  // useChipQuery's commit step uses, just applied live. Backend search is
+  // already substring matching (see searchItems' matchesTerm), so a partial
+  // word like "성수" finds "성수동" the same way a committed one would.
+  const draftTerm = draft.trim();
+  const draftExcluded = draftTerm.startsWith('-') && draftTerm.length > 1;
+  const draftText = draftExcluded ? draftTerm.slice(1) : draftTerm;
+
   useEffect(() => {
-    if (chips.length === 0) {
+    if (chips.length === 0 && !draftText) {
       setHits([]);
       setError(null);
       return;
     }
     const timer = setTimeout(() => {
-      runSearch(includeChips.map((c) => c.text), excludeChips.map((c) => c.text));
+      const include = includeChips.map((c) => c.text).concat(!draftExcluded && draftText ? [draftText] : []);
+      const exclude = excludeChips.map((c) => c.text).concat(draftExcluded && draftText ? [draftText] : []);
+      runSearch(include, exclude);
     }, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chips]);
+  }, [chips, draftText, draftExcluded]);
 
   const retry = () => runSearch(includeChips.map((c) => c.text), excludeChips.map((c) => c.text));
 
@@ -114,9 +125,6 @@ export default function SearchScreen() {
                   paddingVertical: 14,
                   borderWidth: theme.dark ? 1 : 0,
                   borderColor: theme.line,
-                  ...(theme.dark
-                    ? { shadowColor: theme.accent, shadowOpacity: 0.1, shadowRadius: 3, elevation: 0 }
-                    : styles.searchShadow),
                 }
               : { marginTop: 24, borderBottomWidth: 1.5, borderBottomColor: theme.ink, paddingBottom: 12 },
           ]}
@@ -217,7 +225,6 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  searchShadow: { shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
   searchInput: { fontSize: 17, flex: 1, padding: 0 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
   help: { fontSize: 13.5, lineHeight: 22, fontFamily: 'IBMPlexSansKR_400Regular' },

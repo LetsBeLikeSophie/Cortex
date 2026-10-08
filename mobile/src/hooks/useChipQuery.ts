@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react';
 import { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
+import { looksLikeSentenceWord } from '../data/sentenceDetect';
+
+export type QueryMode = 'keyword' | 'sentence';
 
 export interface QueryChip {
   id: number;
@@ -18,6 +21,13 @@ export function useChipQuery() {
   const [chips, setChips] = useState<QueryChip[]>([]);
   const [draft, setDraft] = useState('');
   const nextId = useRef(1);
+  // 'sentence' stops the space-to-chip split so a whole half-remembered
+  // sentence can be typed and sent to the LLM search instead. Switched on
+  // automatically (see looksLikeSentenceWord) or by hand; once the user
+  // switches back to keywords by hand, auto-detection stays off until the
+  // box is cleared, so it doesn't keep flipping against their choice.
+  const [mode, setMode] = useState<QueryMode>('keyword');
+  const keywordPinned = useRef(false);
 
   const addTokens = (tokens: string[]) => {
     setChips((current) => {
@@ -39,17 +49,54 @@ export function useChipQuery() {
   // A space (or Enter, below) is what turns whatever was just typed into a
   // chip -- the text itself stays plain until that moment.
   const onChangeText = (text: string) => {
+    if (mode === 'sentence') {
+      setDraft(text);
+      if (!text.trim() && chips.length === 0) {
+        setMode('keyword');
+        keywordPinned.current = false;
+      }
+      return;
+    }
+    if (!text && chips.length === 0) keywordPinned.current = false;
     if (!/\s/.test(text)) {
       setDraft(text);
       return;
     }
     const parts = text.split(/\s+/);
     const rest = parts.pop() ?? '';
-    addTokens(parts.filter(Boolean));
+    const tokens = parts.filter(Boolean);
+    // Any committed word reading as sentence-ish ("지난달", "인스타에서",
+    // "봤던") flips the whole query -- chips typed before it included --
+    // back into one plain sentence.
+    if (!keywordPinned.current && tokens.some(looksLikeSentenceWord)) {
+      const before = chips.map((c) => c.text).join(' ');
+      setChips([]);
+      setDraft(before ? `${before} ${text}` : text);
+      setMode('sentence');
+      return;
+    }
+    addTokens(tokens);
     setDraft(rest);
   };
 
+  const toSentenceMode = () => {
+    const joined = [...chips.map((c) => c.text), draft.trim()].filter(Boolean).join(' ');
+    setChips([]);
+    setDraft(joined);
+    setMode('sentence');
+    keywordPinned.current = false;
+  };
+
+  const toKeywordMode = () => {
+    const tokens = draft.split(/\s+/).filter(Boolean);
+    setDraft('');
+    addTokens(tokens);
+    setMode('keyword');
+    keywordPinned.current = true;
+  };
+
   const commitDraft = () => {
+    if (mode === 'sentence') return;
     const v = draft.trim();
     if (!v) return;
     addTokens([v]);
@@ -57,7 +104,7 @@ export function useChipQuery() {
   };
 
   const onKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-    if (e.nativeEvent.key === 'Backspace' && draft === '' && chips.length > 0) {
+    if (mode === 'keyword' && e.nativeEvent.key === 'Backspace' && draft === '' && chips.length > 0) {
       setChips((current) => current.slice(0, -1));
     }
   };
@@ -73,6 +120,9 @@ export function useChipQuery() {
   const excludeChips = chips.filter((c) => c.excluded);
 
   return {
+    mode,
+    toSentenceMode,
+    toKeywordMode,
     chips,
     draft,
     includeChips,

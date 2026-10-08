@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
-import { tagFromText } from "../lib/anthropic.js";
+import { interpretSearch, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -16,6 +16,7 @@ import {
   removeUserTag,
   restoreItem,
   searchItems,
+  searchItemsSmart,
   trashItem,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
@@ -34,6 +35,20 @@ const SearchQuerySchema = z.object({
 
 function splitTerms(raw: string | undefined): string[] {
   return (raw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+const AskSearchSchema = z.object({
+  query: z.string().trim().min(1).max(200),
+});
+
+const SmartSearchSchema = z.object({
+  interpretation: SearchInterpretationSchema,
+});
+
+// Korea-time calendar date (YYYY-MM-DD) -- what "지난달"/"어제" in a search
+// sentence are relative to, regardless of the server's own timezone.
+function todayInKorea(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 const AddTagSchema = z.object({
@@ -125,6 +140,36 @@ export async function itemsRoutes(app: FastifyInstance) {
     const userId = await resolveUserId(req);
     const items = await searchItems(userId, include, exclude, parsed.data.limit);
     return reply.send({ items });
+  });
+
+  // Natural-language search: one Claude call turns the sentence into
+  // filters + keywords, then searchItemsSmart runs it. The interpretation
+  // goes back with the results so the client can show it as editable chips.
+  app.post(
+    "/items/search/ask",
+    { config: { rateLimit: { max: config.searchRateLimitMax } } },
+    async (req, reply) => {
+      const parsed = AskSearchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
+      }
+      const userId = await resolveUserId(req);
+      const interpretation = await interpretSearch(parsed.data.query, todayInKorea());
+      const result = await searchItemsSmart(userId, interpretation);
+      return reply.send({ interpretation, ...result });
+    }
+  );
+
+  // Re-runs an (edited) interpretation without calling Claude again -- what
+  // removing/toggling one of the interpreted chips hits.
+  app.post("/items/search/smart", async (req, reply) => {
+    const parsed = SmartSearchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
+    }
+    const userId = await resolveUserId(req);
+    const result = await searchItemsSmart(userId, parsed.data.interpretation);
+    return reply.send(result);
   });
 
   // Aggregate counts for the Stats screen (category/source/month/heatmap).

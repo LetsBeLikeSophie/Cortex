@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { config, required } from "../config.js";
 import { Category } from "./categories.js";
+import type { SearchInterpretation } from "./anthropic.js";
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG } from "./sourceCatalog.js";
 
 const SCREENSHOTS_BUCKET = "item-screenshots";
@@ -394,6 +395,64 @@ export async function searchItems(
   });
 
   return matches.slice(0, limit) as ItemRecord[];
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export interface SmartSearchResult {
+  items: (ItemRecord & { matched_count: number })[];
+  // Only set when the filters left nothing: how many items the same
+  // keywords find with every filter dropped, so the client can say
+  // "조건을 빼면 N건" instead of a dead-end "결과 없음".
+  relaxed_count: number | null;
+}
+
+// The natural-language search's query runner -- also called directly
+// (no LLM) when the user edits the interpreted chips. Filters narrow in the
+// DB query itself; keywords are OR'd within a group (term + synonyms) and
+// only rank across groups: an item matching 1 of 3 remembered keywords
+// still shows, just below one matching all 3, since half-remembering is
+// the whole premise here (unlike searchItems' strict AND for typed chips).
+export async function searchItemsSmart(
+  userId: string,
+  q: SearchInterpretation,
+  limit = 30
+): Promise<SmartSearchResult> {
+  const groups = q.keywords
+    .map((k) => [k.term, ...k.synonyms].map((w) => w.toLowerCase().trim()).filter(Boolean))
+    .filter((g) => g.length > 0);
+  const exc = q.exclude.map((w) => w.toLowerCase().trim()).filter(Boolean);
+  const hasFilter = !!(q.source || q.captureType || q.category || q.dateFrom || q.dateTo);
+
+  const run = async (withFilters: boolean) => {
+    let query = getClient().from("items").select().eq("user_id", userId);
+    if (withFilters) {
+      if (q.source) query = query.eq("source", q.source);
+      if (q.captureType) query = query.eq("capture_type", q.captureType);
+      if (q.category) query = query.eq("category", q.category);
+      // Dates come in as Korea-time calendar days; shared_at is UTC.
+      if (q.dateFrom && DATE_RE.test(q.dateFrom)) query = query.gte("shared_at", `${q.dateFrom}T00:00:00+09:00`);
+      if (q.dateTo && DATE_RE.test(q.dateTo)) query = query.lte("shared_at", `${q.dateTo}T23:59:59.999+09:00`);
+    }
+    const { data, error } = await query.order("shared_at", { ascending: false }).limit(500);
+    if (error) throw new Error(`searchItemsSmart failed: ${error.message}`);
+
+    return ((data ?? []) as ItemRecord[])
+      .filter((item) => !exc.some((needle) => matchesTerm(item, needle)))
+      .map((item) => ({
+        ...item,
+        matched_count: groups.filter((g) => g.some((needle) => matchesTerm(item, needle))).length,
+      }))
+      // No keywords at all ("지난달 인스타에서 저장한 거") means the filters
+      // alone are the query -- everything they let through counts.
+      .filter((item) => groups.length === 0 || item.matched_count > 0)
+      // Stable sort, so equal scores keep the query's newest-first order.
+      .sort((a, b) => b.matched_count - a.matched_count);
+  };
+
+  const items = await run(true);
+  const relaxed_count = items.length === 0 && hasFilter && groups.length > 0 ? (await run(false)).length : null;
+  return { items: items.slice(0, limit), relaxed_count };
 }
 
 // Uploads a screenshot capture to Supabase Storage and returns its storage

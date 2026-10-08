@@ -110,6 +110,46 @@ export function searchItems(include: string[], exclude: string[], limit = 30) {
   return request<{ items: ApiItem[] }>(`/items/search?${params.toString()}`);
 }
 
+// What the server's LLM made of a search sentence (mirrors
+// SearchInterpretationSchema in backend/src/lib/anthropic.ts). Filters
+// narrow hard; keywords (each with synonyms) only rank. Shown back to the
+// user as chips, and re-sent as-is through smartSearch when they edit one.
+export interface SearchInterpretation {
+  keywords: { term: string; synonyms: string[] }[];
+  exclude: string[];
+  source: ItemSource | null;
+  captureType: ApiItem['capture_type'] | null;
+  category: ItemCategory | null;
+  dateFrom: string | null; // YYYY-MM-DD, Korea time
+  dateTo: string | null;
+}
+
+export type SmartHit = ApiItem & { matched_count: number };
+
+export interface SmartSearchResponse {
+  items: SmartHit[];
+  // Set only when filters left nothing -- how many the same keywords find
+  // with every filter dropped.
+  relaxed_count: number | null;
+}
+
+// Sentence search -- one Claude call server-side, so it's rate limited
+// there (no monthly quota).
+export function askSearch(query: string) {
+  return request<SmartSearchResponse & { interpretation: SearchInterpretation }>('/items/search/ask', {
+    method: 'POST',
+    body: JSON.stringify({ query }),
+  });
+}
+
+// Re-runs an edited interpretation -- no Claude call.
+export function smartSearch(interpretation: SearchInterpretation) {
+  return request<SmartSearchResponse>('/items/search/smart', {
+    method: 'POST',
+    body: JSON.stringify({ interpretation }),
+  });
+}
+
 // `note` is the optional one-line "why I saved this" memo -- stored as-is
 // (user_note), separate from the AI-assigned title/snippet/tags, and fed
 // into search the same way a tag is.

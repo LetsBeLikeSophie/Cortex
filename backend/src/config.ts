@@ -20,6 +20,10 @@ export const config = {
   dailyItemLimit: Number(optional("DAILY_ITEM_LIMIT") ?? 50),
   rateLimitMax: Number(optional("RATE_LIMIT_MAX") ?? 30),
   rateLimitWindowMs: Number(optional("RATE_LIMIT_WINDOW_MS") ?? 15 * 60 * 1000),
+  // Natural-language search calls Claude too, but people search far more
+  // often than they save, so it gets its own (looser) burst limit in the
+  // same window instead of sharing rateLimitMax. No monthly quota on it.
+  searchRateLimitMax: Number(optional("SEARCH_RATE_LIMIT_MAX") ?? 60),
   maxImageBytes: Number(optional("MAX_IMAGE_BYTES") ?? 8 * 1024 * 1024),
 
   // Anthropic SDK reads ANTHROPIC_API_KEY itself; kept here only so routes

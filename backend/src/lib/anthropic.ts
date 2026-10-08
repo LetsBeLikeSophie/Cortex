@@ -143,3 +143,73 @@ export async function tagFromText(spokenText: string): Promise<string> {
   }
   return response.parsed_output.tag;
 }
+
+// Natural-language search: turns a half-remembered sentence ("지난달
+// 인스타에서 본 제주 카페 같은 거") into the structured query
+// searchItemsSmart runs. Filters (date/source/captureType/category) are the
+// parts people tend to remember accurately, so they narrow hard; keywords
+// are the fuzzy part, so each one carries synonyms and only affects ranking
+// (see searchItemsSmart in supabase.ts). Every field stays editable on the
+// client as a chip, so a misread here is one tap to undo -- which is why
+// the prompt leans toward leaving a filter null over guessing one.
+export const SearchInterpretationSchema = z.object({
+  keywords: z
+    .array(
+      z.object({
+        term: z.string().max(20).describe("The core keyword, in Korean, as the user would expect it to appear"),
+        synonyms: z
+          .array(z.string().max(20))
+          .max(4)
+          .describe("Close alternatives the same saved item might use instead (Korean/English spellings, near-synonyms)"),
+      })
+    )
+    .max(5),
+  exclude: z.array(z.string().max(20)).max(3).describe("Only words the user explicitly ruled out (~말고, ~빼고, ~아닌)"),
+  source: z.enum(["instagram", "kakaotalk", "safari", "youtube", "memo", "other"]).nullable(),
+  captureType: z.enum(["link", "text", "screenshot"]).nullable(),
+  category: z.enum(CATEGORIES).nullable(),
+  dateFrom: z.string().nullable().describe("Inclusive start date, YYYY-MM-DD, Korea time"),
+  dateTo: z.string().nullable().describe("Inclusive end date, YYYY-MM-DD, Korea time"),
+});
+
+export type SearchInterpretation = z.infer<typeof SearchInterpretationSchema>;
+
+const SEARCH_SYSTEM_PROMPT = `You turn a search sentence into a structured query for "Cortex",
+a personal archive app. People save things from Instagram/KakaoTalk/a browser/YouTube
+and later search for them -- usually with a vague, half-remembered description, not
+exact words. Your job is to extract what they actually remember.
+
+Fields:
+- keywords: the subject words to look for (place, food, product, topic, person...).
+  One entry per separate concept -- "제주 카페" is two keywords (제주, 카페), never
+  one combined term, since a saved item rarely contains the exact phrase. For each,
+  add up to 4 synonyms the saved item might use instead (e.g. 카페 -> 커피, 디저트;
+  숙소 -> 호텔, 펜션, 에어비앤비). Drop filler (그거, 뭐더라, 저장한, 봤던, 같은 거) --
+  it is not a keyword. Words that map onto a filter below (인스타, 지난달, 사진...) are
+  NOT keywords either. Empty list is fine if nothing but filters was said.
+- exclude: only things explicitly ruled out ("카페 말고" -> 카페). Usually empty.
+- source: where it was saved FROM -- instagram (인스타), kakaotalk (카톡), safari
+  (사파리/인터넷/웹/브라우저), youtube (유튜브), memo (직접 쓴 메모). null unless stated.
+- captureType: screenshot (캡처/스크린샷/사진), link (링크), text (글/텍스트). null unless stated.
+- category: one of 가볼 곳 (a place to go), 살 것 (to buy), 배울 것 (how-to/recipe),
+  볼 것 (to read/watch), 기억할 것 (fact/note to keep), 기타. Only set it when the
+  sentence clearly implies the intent ("가보려고", "사려고"); otherwise null --
+  a wrong category hides the item entirely.
+- dateFrom/dateTo: when it was saved, resolved against today's date given below.
+  "지난달" = the whole previous calendar month, "최근/요즘" = last 14 days,
+  "작년" = previous calendar year, "어제" = yesterday only. Be generous with vague
+  ranges -- people misremember timing. null if no time was mentioned.`;
+
+export async function interpretSearch(query: string, today: string): Promise<SearchInterpretation> {
+  const response = await client.messages.parse({
+    model: MODEL,
+    max_tokens: 512,
+    system: SEARCH_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: `Today (Korea time): ${today}\nSearch: ${query}` }],
+    output_config: { format: zodOutputFormat(SearchInterpretationSchema) },
+  });
+  if (!response.parsed_output) {
+    throw new Error("Claude response did not parse against the search schema");
+  }
+  return response.parsed_output;
+}

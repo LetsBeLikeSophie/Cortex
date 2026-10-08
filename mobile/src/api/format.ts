@@ -1,4 +1,4 @@
-import type { ApiItem, ItemSource } from './client';
+import type { ApiItem, ItemSource, SearchInterpretation, SmartHit } from './client';
 import type { RecentItem, SearchResult } from '../data/content';
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG, SOURCE_ORDER } from '../data/sourceCatalog';
 
@@ -65,6 +65,25 @@ function fieldMatches(item: ApiItem, needle: string): boolean {
   if (captureTypeLabel(item.capture_type, false).toLowerCase().includes(n)) return true;
   if (captureTypeLabel(item.capture_type, true).toLowerCase().includes(n)) return true;
   return false;
+}
+
+// Sentence-search counterpart of toSearchResult -- a keyword "matches" if
+// its term or any synonym does (same group rule as the server's
+// searchItemsSmart), and every term+synonym is highlighted.
+export function toSmartSearchResult(item: SmartHit, keywords: SearchInterpretation['keywords']): SearchResult {
+  const pending = item.classification_status === 'pending';
+  const missing = keywords.filter((k) => ![k.term, ...k.synonyms].some((w) => fieldMatches(item, w)));
+  return {
+    title: item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)'),
+    snippet: item.snippet ?? item.raw_text ?? '',
+    terms: keywords.flatMap((k) => [k.term, ...k.synonyms]),
+    matchedCount: keywords.length - missing.length,
+    missingTerms: missing.map((k) => k.term),
+    source: item.source,
+    captureType: item.capture_type,
+    timeLabel: relativeTime(item.shared_at),
+    pending,
+  };
 }
 
 export function toSearchResult(item: ApiItem, include: string[]): SearchResult {

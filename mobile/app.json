@@ -31,7 +31,7 @@
         {
           "photosPermission": "Cortex가 저장할 사진을 선택할 수 있도록 앨범 접근을 허용해주세요.",
           "cameraPermission": "Cortex로 촬영한 사진을 저장할 수 있도록 카메라 접근을 허용해주세요.",
-          "microphonePermission": false
+          "microphonePermission": "Cortex가 음성을 듣고 글로 바꿀 수 있도록 마이크 접근을 허용해주세요."
         }
       ],
       [

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -56,6 +56,21 @@ export function VoiceInputButton({
     const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!perm.granted) {
       setStarting(false);
+      // Silently doing nothing read as "the mic button is broken" -- say
+      // why, and once Android stops showing the prompt (denied twice /
+      // "don't ask again"), point at the app's settings page instead.
+      Alert.alert(
+        '마이크 권한이 필요해요',
+        perm.canAskAgain
+          ? '음성으로 입력하려면 마이크와 음성 인식 권한을 허용해 주세요.'
+          : '설정 > 권한에서 마이크를 허용하면 음성으로 입력할 수 있어요.',
+        perm.canAskAgain
+          ? [{ text: '확인' }]
+          : [
+              { text: '닫기', style: 'cancel' },
+              { text: '설정 열기', onPress: () => Linking.openSettings() },
+            ]
+      );
       return;
     }
     ExpoSpeechRecognitionModule.start({ lang, interimResults: true, continuous: false });

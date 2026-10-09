@@ -11,7 +11,11 @@ const client = new Anthropic();
 // small (title/snippet/category/≤5 tags via a Zod schema, no open-ended
 // reasoning), so this defaults to Haiku instead. Override via CLASSIFY_MODEL
 // if quality ever demands stepping back up for a specific deployment.
-const MODEL = process.env.CLASSIFY_MODEL ?? "claude-haiku-4-5-20251001";
+// Claude Haiku 5.5 at effort "low": measured on a real phone screenshot it
+// was faster than Haiku 4.5 (~1.9s vs ~2.9s), read Korean text correctly
+// where 4.5 garbled it, and costs ~1/10 per token. It thinks by default --
+// "low" keeps that short, and max_tokens leaves room for it.
+const MODEL = process.env.CLASSIFY_MODEL ?? "claude-haiku-5-5";
 
 const ClassificationSchema = z.object({
   title: z.string().max(120).describe("Short list-item title, in Korean, plain wording"),
@@ -66,10 +70,10 @@ export async function classifyText(input: ClassifyTextInput): Promise<Classifica
 
   const response = await client.messages.parse({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: lines.join("\n") }],
-    output_config: { format: zodOutputFormat(ClassificationSchema) },
+    output_config: { effort: "low", format: zodOutputFormat(ClassificationSchema) },
   });
 
   return requireParsed(response);
@@ -84,7 +88,7 @@ export interface ClassifyImageInput {
 export async function classifyImage(input: ClassifyImageInput): Promise<Classification> {
   const response = await client.messages.parse({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -101,7 +105,7 @@ export async function classifyImage(input: ClassifyImageInput): Promise<Classifi
         ],
       },
     ],
-    output_config: { format: zodOutputFormat(ClassificationSchema) },
+    output_config: { effort: "low", format: zodOutputFormat(ClassificationSchema) },
   });
 
   return requireParsed(response);
@@ -133,10 +137,11 @@ already basically just a bare word or phrase, return it close to as-is.`;
 export async function tagFromText(spokenText: string): Promise<string> {
   const response = await client.messages.parse({
     model: MODEL,
-    max_tokens: 256,
+    // Room for Haiku 5.5's (short, at "low") thinking before the tag itself.
+    max_tokens: 1024,
     system: TAG_SYSTEM_PROMPT,
     messages: [{ role: "user", content: spokenText }],
-    output_config: { format: zodOutputFormat(TagFromTextSchema) },
+    output_config: { effort: "low", format: zodOutputFormat(TagFromTextSchema) },
   });
   if (!response.parsed_output) {
     throw new Error("Claude response did not parse against the tag schema");

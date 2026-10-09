@@ -83,6 +83,17 @@ function cardShellStyle(theme: Theme): ViewStyle {
 // artifact.
 const LAYERED_BACK_OFFSET: ViewStyle = { position: 'absolute', top: 6, left: 6, right: -6, bottom: -6 };
 
+// Pressed feedback. Fading the row (opacity) works for every flat layout,
+// but on 'layered' it turns the front card see-through and the back card
+// shows through it like a ghost -- so there the front card instead sinks
+// halfway toward the back one, a "pressed into the stack" cue that keeps
+// both layers opaque.
+export function pressedStyle(theme: Theme, pressed: boolean): ViewStyle {
+  if (!pressed) return {};
+  if (theme.list === 'layered') return { transform: [{ translateX: 3 }, { translateY: 3 }] };
+  return { opacity: 0.6 };
+}
+
 export function RecentRow({
   item,
   theme,
@@ -109,8 +120,9 @@ export function RecentRow({
       disabled={!onPress}
       style={({ pressed }) => [
         styles.row,
-        { alignItems: boxed ? 'center' : 'baseline', opacity: pressed ? 0.6 : 1 },
+        { alignItems: boxed ? 'center' : 'baseline' },
         cardShellStyle(theme),
+        pressedStyle(theme, pressed),
       ]}
     >
       {selectMode && (
@@ -184,7 +196,7 @@ export function ResultRow({
     <Pressable
       onPress={trashed ? undefined : onPress}
       disabled={trashed || !onPress}
-      style={({ pressed }) => [cardShellStyle(theme), { opacity: pressed && !trashed ? 0.6 : 1 }]}
+      style={({ pressed }) => [cardShellStyle(theme), pressedStyle(theme, pressed && !trashed)]}
     >
       {trashed && (
         <View style={[styles.trashBadge, { backgroundColor: theme.soft }]}>

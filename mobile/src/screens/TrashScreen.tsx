@@ -10,6 +10,7 @@ import { relativeTime } from '../api/format';
 import { RestoreIcon, TrashIcon } from '../components/Icons';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
 
 type RowAction = 'idle' | 'restoring' | 'confirmingPermanent' | 'deletingPermanent';
@@ -124,6 +125,7 @@ export default function TrashScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
+      <VintageWallpaper theme={theme} />
       <ScreenHeader title="휴지통" theme={theme} onBack={() => navigation.goBack()} />
 
       <AsyncStateView

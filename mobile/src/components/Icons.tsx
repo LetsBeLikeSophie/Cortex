@@ -265,3 +265,27 @@ export function CheckIcon({ size = 24, color, strokeWidth = 1.7 }: IconProps) {
     </Svg>
   );
 }
+
+// Sentence-search mode marker -- a four-point sparkle, the usual shorthand
+// for "AI reads what you typed" without spelling out "AI".
+export function SparkleIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path
+        d="M9 1.8c.5 3.6 2.2 5.4 7.2 7.2-5 1.8-6.7 3.6-7.2 7.2-.5-3.6-2.2-5.4-7.2-7.2 5-1.8 6.7-3.6 7.2-7.2Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+// Tag-search mode marker.
+export function HashIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M7 2.5 5.5 15.5M12.5 2.5 11 15.5M2.8 6.5h13M2.2 11.5h13" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}

@@ -5,6 +5,7 @@ import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
 import { SourceIcon, CheckIcon } from './Icons';
+import { LayeredBack } from './Decor';
 
 // e.g. "▶ 링크 · 3분전" -- the channel reads as its icon (a text label per
 // source would crowd this line), the method and time stay as text.
@@ -39,7 +40,7 @@ function MetaLine({
 // elevation with overflow:hidden. 'bordered' is a plain 1px border, which
 // never needed elevation in the first place. 'layered' only returns the
 // FRONT card's fill; the second, offset back card is a sibling View added
-// in RecentRow/ResultRow themselves (layeredBackStyle below), since a
+// in RecentRow/ResultRow themselves (LayeredBack in Decor.tsx), since a
 // single ViewStyle object can't describe two stacked Views.
 function cardShellStyle(theme: Theme): ViewStyle {
   switch (theme.list) {
@@ -80,17 +81,7 @@ function cardShellStyle(theme: Theme): ViewStyle {
 // trick) so it paints behind the front card purely through JSX order, the
 // same two-plain-Views approach verified safe in the design-preview
 // artifact.
-function layeredBackStyle(theme: Theme): ViewStyle {
-  return {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    right: -6,
-    bottom: -6,
-    backgroundColor: theme.cardStack,
-    borderRadius: theme.cardRadius,
-  };
-}
+const LAYERED_BACK_OFFSET: ViewStyle = { position: 'absolute', top: 6, left: 6, right: -6, bottom: -6 };
 
 export function RecentRow({
   item,
@@ -163,7 +154,7 @@ export function RecentRow({
   if (!layered) return row;
   return (
     <View style={styles.layeredWrap}>
-      <View style={layeredBackStyle(theme)} />
+      <LayeredBack theme={theme} radius={theme.cardRadius} style={LAYERED_BACK_OFFSET} />
       {row}
     </View>
   );
@@ -240,7 +231,7 @@ export function ResultRow({
   if (theme.list !== 'layered') return result;
   return (
     <View style={styles.layeredWrap}>
-      <View style={layeredBackStyle(theme)} />
+      <LayeredBack theme={theme} radius={theme.cardRadius} style={LAYERED_BACK_OFFSET} />
       {result}
     </View>
   );

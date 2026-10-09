@@ -38,6 +38,10 @@ export interface Layout {
   hitStyle: HitStyle;
   copy: CopyTone;
   pulse: boolean;
+  // Extra decoration on top of the list style -- 'vintage' adds the faint
+  // diagonal crosshatch wallpaper behind each screen and the quatrefoil
+  // pattern on layered back cards (see components/Decor.tsx).
+  decor: 'none' | 'vintage';
 }
 
 export interface Palette {
@@ -91,11 +95,9 @@ export const BODY_KR_MEDIUM = 'IBMPlexSansKR_500Medium';
 // render for real (cardShellStyle in ListItems.tsx, the hero box in
 // HomeScreen.tsx) -- plain border or two-plain-Views-offset, no elevation
 // either way. layered and layeredVintage share list: 'layered' (same safe
-// stacking mechanism); layeredVintage's own extra decoration (the
+// stacking mechanism); layeredVintage adds decor: 'vintage' on top (the
 // quatrefoil pattern on the back card, the faint grid wallpaper behind
-// everything) isn't ported yet, so the two currently render identically
-// apart from their LAYOUT_LIST note -- a deliberate next step, not an
-// oversight. lineTone's underline tabs + per-tag analogous color are still
+// everything -- components/Decor.tsx). lineTone's underline tabs + per-tag analogous color are still
 // pending too: the artifact's 3-fixed-category mockup doesn't map onto the
 // real app's free-form user tags, so that one needs a tag-to-color scheme
 // decided before it's worth wiring in.
@@ -105,35 +107,35 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     note: '지금 라이브로 떠 있는 스타일. 구분선만 쓰고 카드 배경·테두리·그림자 전부 없어요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
     cardRadius: 0, btnRadius: 999, list: 'line',
-    hitStyle: 'marker', copy: 'plain', pulse: false,
+    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   lineTone: {
     label: '라인 (컬러)',
     note: '라인과 같은 구분선 구조에, 숫자는 세리프 대신 산세리프로, 검색 하이라이트는 마커 대신 밑줄로 바꿔요.',
     headFamily: BODY_KR_MEDIUM, headWeight: '500', headSize: 38, numSize: 70, numTrackEm: 0,
     cardRadius: 0, btnRadius: 999, list: 'line',
-    hitStyle: 'underline', copy: 'plain', pulse: false,
+    hitStyle: 'underline', copy: 'plain', pulse: false, decor: 'none',
   },
   thinBorder: {
     label: '얇은 테두리',
     note: '둥근 모서리에 얇은 테두리를 두르는 카드 스타일이에요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 16, btnRadius: 999, list: 'bordered',
-    hitStyle: 'marker', copy: 'plain', pulse: false,
+    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   layered: {
     label: '레이어 카드',
     note: '테두리 없이, 카드 뒤에 진한 색 카드를 한 장 더 깔아 우하단으로 살짝 밀어내는 스타일이에요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 20, btnRadius: 999, list: 'layered',
-    hitStyle: 'marker', copy: 'plain', pulse: false,
+    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   layeredVintage: {
     label: '레이어 카드 (빈티지)',
     note: '레이어 카드와 같은 구조에, 뒤 카드엔 무늬를 얹고 화면 바탕엔 옅은 격자무늬를 깔아요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 20, btnRadius: 999, list: 'layered',
-    hitStyle: 'marker', copy: 'plain', pulse: false,
+    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'vintage',
   },
 };
 

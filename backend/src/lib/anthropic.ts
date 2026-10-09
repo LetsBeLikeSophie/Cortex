@@ -200,13 +200,20 @@ Fields:
   "작년" = previous calendar year, "어제" = yesterday only. Be generous with vague
   ranges -- people misremember timing. null if no time was mentioned.`;
 
+// Search runs far more often than saves and is a small, bounded parse, so
+// it gets the cheapest current model on its own setting (separate from
+// CLASSIFY_MODEL): Claude Haiku 5.5 is ~10x cheaper per token than Haiku
+// 4.5. It thinks by default -- effort "low" keeps that minimal (latency +
+// output tokens), and max_tokens leaves room for any thinking it does do.
+const SEARCH_MODEL = process.env.SEARCH_MODEL ?? "claude-haiku-5-5";
+
 export async function interpretSearch(query: string, today: string): Promise<SearchInterpretation> {
   const response = await client.messages.parse({
-    model: MODEL,
-    max_tokens: 512,
+    model: SEARCH_MODEL,
+    max_tokens: 2048,
     system: SEARCH_SYSTEM_PROMPT,
     messages: [{ role: "user", content: `Today (Korea time): ${today}\nSearch: ${query}` }],
-    output_config: { format: zodOutputFormat(SearchInterpretationSchema) },
+    output_config: { effort: "low", format: zodOutputFormat(SearchInterpretationSchema) },
   });
   if (!response.parsed_output) {
     throw new Error("Claude response did not parse against the search schema");

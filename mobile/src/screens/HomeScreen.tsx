@@ -13,6 +13,7 @@ import { TagTab, loadHomeTabs } from '../data/tabs';
 import { fetchRecentItems, addTag, removeTag, ApiItem } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
+import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
@@ -193,6 +194,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
+      <VintageWallpaper theme={theme} />
       <View style={[styles.headPad, { paddingHorizontal: boxed ? 24 : 26, paddingTop: boxed ? 26 : 30 }]}>
         <View style={styles.brandRow}>
           <Text style={{ fontFamily: MONO, fontSize: 11, letterSpacing: emToTracking(0.26, 11), color: theme.accent }}>
@@ -237,9 +239,7 @@ export default function HomeScreen() {
             the same Android stale-native-view class of bug. */}
         <View key={`${layoutKey}-${paletteKey}`} style={[styles.heroWrap, { marginTop: boxed ? 20 : 22 }]}>
           {theme.list === 'layered' && (
-            <View
-              style={[styles.heroBack, { backgroundColor: theme.cardStack, borderRadius: theme.cardRadius + 6 }]}
-            />
+            <LayeredBack theme={theme} radius={theme.cardRadius + 6} style={styles.heroBack} />
           )}
           <View style={[styles.heroBox, heroShellStyle(theme)]}>
             {theme.pulse && (

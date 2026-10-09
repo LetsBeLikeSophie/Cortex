@@ -11,6 +11,7 @@ import { ALL_CATEGORIES } from '../data/tabs';
 import { DonutChart, BarChart, HorizontalBars, Heatmap } from '../components/Charts';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
 
 function Section({ title, note, children, theme }: { title: string; note?: string; children: React.ReactNode; theme: ReturnType<typeof useTheme>['theme'] }) {
@@ -64,6 +65,7 @@ export default function StatsScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
+      <VintageWallpaper theme={theme} />
       <ScreenHeader title="저장 통계" theme={theme} onBack={() => navigation.goBack()} />
 
       <AsyncStateView

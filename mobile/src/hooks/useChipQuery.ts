@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { looksLikeSentenceWord } from '../data/sentenceDetect';
 
-export type QueryMode = 'keyword' | 'sentence';
+export type QueryMode = 'sentence' | 'tag';
 
 export interface QueryChip {
   id: number;
@@ -10,101 +11,65 @@ export interface QueryChip {
   excluded: boolean;
 }
 
-// Drives the search screen's tag-chip input: a space or Enter turns whatever
-// was just typed into a chip, tapping a chip's text toggles it between
-// "must include" and "must exclude", and its × removes it outright. Kept as
-// its own hook (rather than inline screen state) since the space/enter
-// commit + "-word" exclude-prefix parsing is a self-contained interaction,
-// not search-specific plumbing -- anywhere else that wants the same
-// "type a word, it becomes a removable/toggleable tag" input can reuse it.
+const MODE_KEY = 'cortex.searchMode';
+
+// Drives the search box. Two explicit modes, switched only by the user
+// (the toggle, or accepting the "문장처럼 보여요" suggestion) -- never
+// flipped automatically mid-typing:
+// - 'sentence' (default): free text, sent whole to the LLM search on Enter.
+// - 'tag': Enter turns what was typed into a chip (spaces stay inside it,
+//   so "성수동 팝업" is one tag); tapping a chip toggles include/exclude,
+//   its × removes it, "-word" creates an excluded chip directly.
+// The last-used mode is remembered across visits.
 export function useChipQuery() {
   const [chips, setChips] = useState<QueryChip[]>([]);
   const [draft, setDraft] = useState('');
+  const [mode, setModeState] = useState<QueryMode>('sentence');
   const nextId = useRef(1);
-  // 'sentence' stops the space-to-chip split so a whole half-remembered
-  // sentence can be typed and sent to the LLM search instead. Switched on
-  // automatically (see looksLikeSentenceWord) or by hand; once the user
-  // switches back to keywords by hand, auto-detection stays off until the
-  // box is cleared, so it doesn't keep flipping against their choice.
-  const [mode, setMode] = useState<QueryMode>('keyword');
-  const keywordPinned = useRef(false);
+  const touched = useRef(false);
 
-  const addTokens = (tokens: string[]) => {
-    setChips((current) => {
-      const seen = new Set(current.map((c) => c.text));
-      const added: QueryChip[] = [];
-      tokens.forEach((tok) => {
-        // Typing "-word" creates an excluded chip directly, same as tapping
-        // one to exclude it after the fact.
-        const excluded = tok.startsWith('-') && tok.length > 1;
-        const text = excluded ? tok.slice(1) : tok;
-        if (!text || seen.has(text)) return;
-        seen.add(text);
-        added.push({ id: nextId.current++, text, excluded });
-      });
-      return added.length ? [...current, ...added] : current;
-    });
+  useEffect(() => {
+    AsyncStorage.getItem(MODE_KEY)
+      .then((saved) => {
+        if (!touched.current && (saved === 'sentence' || saved === 'tag')) setModeState(saved);
+      })
+      .catch(() => {});
+  }, []);
+
+  const addChip = (raw: string) => {
+    const tok = raw.trim();
+    const excluded = tok.startsWith('-') && tok.length > 1;
+    const text = (excluded ? tok.slice(1) : tok).trim();
+    if (!text) return;
+    setChips((current) => (current.some((c) => c.text === text) ? current : [...current, { id: nextId.current++, text, excluded }]));
   };
 
-  // A space (or Enter, below) is what turns whatever was just typed into a
-  // chip -- the text itself stays plain until that moment.
-  const onChangeText = (text: string) => {
-    if (mode === 'sentence') {
-      setDraft(text);
-      if (!text.trim() && chips.length === 0) {
-        setMode('keyword');
-        keywordPinned.current = false;
-      }
-      return;
-    }
-    if (!text && chips.length === 0) keywordPinned.current = false;
-    if (!/\s/.test(text)) {
-      setDraft(text);
-      return;
-    }
-    const parts = text.split(/\s+/);
-    const rest = parts.pop() ?? '';
-    const tokens = parts.filter(Boolean);
-    // Any committed word reading as sentence-ish ("지난달", "인스타에서",
-    // "봤던") flips the whole query -- chips typed before it included --
-    // back into one plain sentence.
-    if (!keywordPinned.current && tokens.some(looksLikeSentenceWord)) {
-      const before = chips.map((c) => c.text).join(' ');
+  // Tags carry over into the sentence (joined), since that's the
+  // "문장으로 찾기" suggestion's whole point. The other way a sentence is
+  // almost never a usable tag as-is, so tag mode just starts empty.
+  const setMode = (next: QueryMode) => {
+    touched.current = true;
+    if (next === mode) return;
+    if (next === 'sentence') {
+      setDraft([...chips.map((c) => c.text), draft.trim()].filter(Boolean).join(' '));
       setChips([]);
-      setDraft(before ? `${before} ${text}` : text);
-      setMode('sentence');
-      return;
+    } else {
+      setDraft('');
     }
-    addTokens(tokens);
-    setDraft(rest);
+    setModeState(next);
+    AsyncStorage.setItem(MODE_KEY, next).catch(() => {});
   };
 
-  const toSentenceMode = () => {
-    const joined = [...chips.map((c) => c.text), draft.trim()].filter(Boolean).join(' ');
-    setChips([]);
-    setDraft(joined);
-    setMode('sentence');
-    keywordPinned.current = false;
-  };
-
-  const toKeywordMode = () => {
-    const tokens = draft.split(/\s+/).filter(Boolean);
-    setDraft('');
-    addTokens(tokens);
-    setMode('keyword');
-    keywordPinned.current = true;
-  };
+  const onChangeText = (text: string) => setDraft(text);
 
   const commitDraft = () => {
-    if (mode === 'sentence') return;
-    const v = draft.trim();
-    if (!v) return;
-    addTokens([v]);
+    if (mode !== 'tag') return;
+    addChip(draft);
     setDraft('');
   };
 
   const onKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-    if (mode === 'keyword' && e.nativeEvent.key === 'Backspace' && draft === '' && chips.length > 0) {
+    if (mode === 'tag' && e.nativeEvent.key === 'Backspace' && draft === '' && chips.length > 0) {
       setChips((current) => current.slice(0, -1));
     }
   };
@@ -116,17 +81,22 @@ export function useChipQuery() {
     setChips((current) => current.filter((c) => c.id !== id));
   };
 
+  // Tag mode only: the typed text reads like a sentence ("지난달에", "봤던")
+  // -- surfaced as a one-tap suggestion to switch, not acted on.
+  const suggestSentence = mode === 'tag' && draft.split(/\s+/).some(looksLikeSentenceWord);
+
   const includeChips = chips.filter((c) => !c.excluded);
   const excludeChips = chips.filter((c) => c.excluded);
 
   return {
     mode,
-    toSentenceMode,
-    toKeywordMode,
+    setMode,
+    suggestSentence,
     chips,
     draft,
     includeChips,
     excludeChips,
+    addChip,
     onChangeText,
     commitDraft,
     onKeyPress,

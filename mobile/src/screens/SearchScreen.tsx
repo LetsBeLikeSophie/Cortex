@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, Theme, emToTracking } from '../theme/themes';
-import { copyFor, DEFAULT_QUERY, SearchResult } from '../data/content';
+import { copyFor, SearchResult } from '../data/content';
 import {
   askSearch,
+  fetchTags,
   restoreItem,
   searchItems as apiSearchItems,
   smartSearch,
@@ -21,7 +22,9 @@ import { ResultRow } from '../components/ListItems';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Heading } from '../components/Typography';
 import { ChipQueryRow, SearchChip } from '../components/Chips';
-import { SearchIcon } from '../components/Icons';
+import { HashIcon, SparkleIcon } from '../components/Icons';
+import { SegmentedToggle } from '../components/SegmentedToggle';
+import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { useChipQuery } from '../hooks/useChipQuery';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -125,24 +128,45 @@ function InterpretationRow({
   );
 }
 
+// The search bar's own shell, per layout -- the same family as Home's hero
+// box (heroShellStyle): an underline for the line layouts, a bordered box
+// for thinBorder, and for layered/vintage an opaque front box that sits on
+// a LayeredBack sliver (rendered as a sibling in the JSX below).
+function searchShellStyle(theme: Theme): ViewStyle {
+  const box = { borderRadius: theme.cardRadius, paddingHorizontal: 12, paddingVertical: 10 };
+  switch (theme.list) {
+    case 'line':
+      return { borderBottomWidth: 1.5, borderBottomColor: theme.ink, paddingBottom: 12 };
+    case 'layered':
+      return { ...box, backgroundColor: theme.cardBg };
+    case 'bordered':
+    case 'card':
+      return { ...box, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.line };
+  }
+}
+
+const LAYERED_BACK_OFFSET: ViewStyle = { position: 'absolute', top: 6, left: 6, right: -6, bottom: -6 };
+
 const NO_FILTERS = { source: null, captureType: null, category: null, dateFrom: null, dateTo: null } as const;
 
 export default function SearchScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const card = theme.list === 'card';
+  // Any boxed-away-from-the-edge layout -- same outer spacing rule Home uses.
+  const boxed = theme.list !== 'line';
   const tech = theme.copy === 'tech';
   const mono = tech;
   const txt = copyFor(theme.copy);
 
   const {
     mode,
-    toSentenceMode,
-    toKeywordMode,
+    setMode,
+    suggestSentence,
     chips,
     draft,
     includeChips,
     excludeChips,
+    addChip,
     onChangeText,
     commitDraft,
     onKeyPress,
@@ -158,6 +182,16 @@ export default function SearchScreen() {
   const [interpretation, setInterpretation] = useState<SearchInterpretation | null>(null);
   const [relaxedCount, setRelaxedCount] = useState<number | null>(null);
   const [asking, setAsking] = useState(false);
+  // Every tag actually saved, for tag-mode autocomplete -- refreshed on
+  // focus so tags added elsewhere show up without a restart.
+  const [allTags, setAllTags] = useState<string[]>([]);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTags()
+        .then((res) => setAllTags(res.tags))
+        .catch(() => {});
+    }, []),
+  );
 
   const runSearch = React.useCallback((include: string[], exclude: string[]) => {
     setLoading(true);
@@ -221,7 +255,7 @@ export default function SearchScreen() {
   // useChipQuery's commit step uses, just applied live. Backend search is
   // already substring matching (see searchItems' matchesTerm), so a partial
   // word like "성수" finds "성수동" the same way a committed one would.
-  // Keyword mode only -- a sentence costs an LLM call, so it waits for Enter.
+  // Tag mode only -- a sentence costs an LLM call, so it waits for Enter.
   const draftTerm = draft.trim();
   const draftExcluded = draftTerm.startsWith('-') && draftTerm.length > 1;
   const draftText = draftExcluded ? draftTerm.slice(1) : draftTerm;
@@ -295,7 +329,19 @@ export default function SearchScreen() {
   }
 
   const hasQuery = sentence ? !!interpretation || asking : chips.length > 0;
-  const showModeToggle = sentence || chips.length > 0 || !!draftTerm;
+
+  // Tag-mode autocomplete: saved tags containing what's being typed, minus
+  // ones already chipped. A "-" prefix carries over, so picking a
+  // suggestion while typing "-카페" adds it as an excluded chip.
+  const needle = draftText.toLowerCase();
+  const suggestions =
+    !sentence && needle
+      ? allTags.filter((t) => t.toLowerCase().includes(needle) && !chips.some((c) => c.text === t)).slice(0, 8)
+      : [];
+  const pickSuggestion = (tag: string) => {
+    addChip(draftExcluded ? `-${tag}` : tag);
+    onChangeText('');
+  };
   const metaStyle = {
     fontFamily: mono ? MONO : 'IBMPlexSansKR_400Regular',
     fontSize: mono ? 10.5 : 12.5,
@@ -305,60 +351,39 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
-      <View style={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 26 : 30 }}>
+      <VintageWallpaper theme={theme} />
+      <View style={{ paddingHorizontal: boxed ? 24 : 26, paddingTop: boxed ? 26 : 30 }}>
         <Heading theme={theme}>{txt.searchTitle}</Heading>
 
-        <View
-          style={[
-            styles.searchBox,
-            card
-              ? {
-                  marginTop: 16,
-                  backgroundColor: theme.surface,
-                  borderRadius: 999,
-                  paddingHorizontal: 20,
-                  paddingVertical: 14,
-                  borderWidth: theme.dark ? 1 : 0,
-                  borderColor: theme.line,
-                }
-              : { marginTop: 24, borderBottomWidth: 1.5, borderBottomColor: theme.ink, paddingBottom: 12 },
-          ]}
-        >
-          <SearchIcon color={theme.accent} size={18} strokeWidth={1.4} />
-          <TextInput
-            value={draft}
-            onChangeText={onChangeText}
-            onSubmitEditing={sentence ? ask : commitDraft}
-            onKeyPress={onKeyPress}
-            blurOnSubmit={false}
-            returnKeyType={sentence ? 'search' : 'done'}
-            style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
-            selectionColor={theme.accent}
-            placeholder={chips.length > 0 ? '' : DEFAULT_QUERY}
-            placeholderTextColor={theme.sub}
-          />
-          {showModeToggle && (
-            <Pressable
-              onPress={sentence ? toKeywordMode : toSentenceMode}
-              hitSlop={8}
-              style={[
-                styles.modePill,
-                sentence
-                  ? { backgroundColor: theme.accent + '1f', borderColor: theme.accent }
-                  : { borderColor: theme.line },
+        <View style={{ marginTop: boxed ? 20 : 24 }}>
+          {theme.list === 'layered' && <LayeredBack theme={theme} radius={theme.cardRadius} style={LAYERED_BACK_OFFSET} />}
+          <View style={[styles.searchBox, searchShellStyle(theme)]}>
+            {/* The mode switch is the bar's own leading icon -- same spot the
+              search icon used to be, so it reads as "what kind of search
+              this box is" rather than a separate control to deal with. */}
+            <SegmentedToggle
+              compact
+              theme={theme}
+              value={mode}
+              onChange={setMode}
+              options={[
+                { key: 'sentence', label: '문장으로 찾기', icon: (c) => <SparkleIcon color={c} size={14} strokeWidth={1.4} /> },
+                { key: 'tag', label: '태그로 찾기', icon: (c) => <HashIcon color={c} size={14} strokeWidth={1.4} /> },
               ]}
-            >
-              <Text
-                style={{
-                  fontSize: 11.5,
-                  fontFamily: 'IBMPlexSansKR_500Medium',
-                  color: sentence ? theme.accent : theme.sub,
-                }}
-              >
-                {sentence ? '문장 검색' : '문장으로'}
-              </Text>
-            </Pressable>
-          )}
+            />
+            <TextInput
+              value={draft}
+              onChangeText={onChangeText}
+              onSubmitEditing={sentence ? ask : commitDraft}
+              onKeyPress={onKeyPress}
+              blurOnSubmit={false}
+              returnKeyType={sentence ? 'search' : 'done'}
+              style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
+              selectionColor={theme.accent}
+              placeholder={sentence ? '지난달 인스타에서 본 카페' : chips.length > 0 ? '' : '태그 입력 후 Enter'}
+              placeholderTextColor={theme.sub}
+            />
+          </View>
         </View>
 
         {sentence ? (
@@ -367,8 +392,27 @@ export default function SearchScreen() {
           <ChipQueryRow chips={chips} theme={theme} onToggle={toggleChip} onRemove={removeChip} />
         )}
 
+        {suggestSentence && (
+          <Pressable onPress={() => setMode('sentence')} hitSlop={6} style={styles.suggestLine}>
+            <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
+            <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+              문장처럼 보여요 → <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>문장으로 찾기</Text>
+            </Text>
+          </Pressable>
+        )}
+
+        {suggestions.length > 0 && (
+          <View style={styles.suggestRow}>
+            {suggestions.map((tag) => (
+              <Pressable key={tag} onPress={() => pickSuggestion(tag)} style={[styles.suggestTag, { borderColor: theme.line }]}>
+                <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>#{tag}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
         {hasQuery && (
-          <View style={[styles.metaRow, { paddingBottom: card ? 4 : 0 }]}>
+          <View style={[styles.metaRow, { paddingBottom: boxed ? 4 : 0 }]}>
             <Text style={metaStyle}>{asking ? '문장 뜻 푸는 중...' : loading ? '검색 중...' : txt.hits(hits.length)}</Text>
             <Text style={metaStyle}>관련순</Text>
           </View>
@@ -376,19 +420,16 @@ export default function SearchScreen() {
       </View>
 
       {!hasQuery ? (
-        <View style={{ marginTop: 28, paddingHorizontal: card ? 24 : 26 }}>
+        <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
           {sentence ? (
             <>
-              <Text style={[styles.help, { color: theme.sub }]}>문장으로 찾고 있어요.</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>다 쓰고 검색(Enter)을 누르면 뜻을 풀어서 찾아요.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>기억나는 대로 문장으로 써 보세요.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>검색(Enter)을 누르면 기간·출처·키워드로 풀어서 찾아요.</Text>
             </>
           ) : (
             <>
-              <Text style={[styles.help, { color: theme.sub }]}>띄어 쓰면 단어가 하나씩 묶여요.</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>단어를 누르면 제외, ×를 누르면 삭제.</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>
-                기억이 흐릿하면 문장으로 써도 돼요. 예) 지난달 인스타에서 본 카페
-              </Text>
+              <Text style={[styles.help, { color: theme.sub }]}>태그를 쓰고 Enter를 누르면 하나씩 추가돼요.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>태그를 누르면 제외, ×를 누르면 삭제.</Text>
             </>
           )}
         </View>
@@ -401,7 +442,7 @@ export default function SearchScreen() {
           empty={hits.length === 0}
           topOffset={28}
           emptyText={
-            <View style={{ marginTop: 28, paddingHorizontal: card ? 24 : 26 }}>
+            <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
               <Text style={[styles.help, { color: theme.sub }]}>결과가 없어요.</Text>
               {sentence && interpretation && relaxedCount ? (
                 <Pressable onPress={() => reSearch({ ...interpretation, ...NO_FILTERS })} hitSlop={6}>
@@ -433,13 +474,11 @@ export default function SearchScreen() {
                   tech={tech}
                   trashed={!!row.hit.raw.deleted_at}
                   onRestore={() => restore(row.hit.raw.id)}
-                  onPress={
-                    row.hit.raw.deleted_at ? undefined : () => navigation.navigate('ItemDetail', { item: row.hit.raw })
-                  }
+                  onPress={row.hit.raw.deleted_at ? undefined : () => navigation.navigate('ItemDetail', { item: row.hit.raw })}
                 />
               )
             }
-            contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24 }}
+            contentContainerStyle={{ paddingHorizontal: boxed ? 24 : 26, paddingTop: boxed ? 12 : 0, paddingBottom: 24 }}
             style={styles.list}
           />
         </AsyncStateView>
@@ -452,7 +491,9 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   searchInput: { fontSize: 17, flex: 1, padding: 0 },
-  modePill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 },
+  suggestLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  suggestTag: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
   help: { fontSize: 13.5, lineHeight: 22, fontFamily: 'IBMPlexSansKR_400Regular' },

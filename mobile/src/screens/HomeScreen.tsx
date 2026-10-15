@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, Theme, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
+import { isOnboarded, markOnboarded } from '../data/onboarding';
 import { fetchRecentItems, addTag, removeTag, ApiItem } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
@@ -90,6 +91,22 @@ export default function HomeScreen() {
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
 
+  // First-run use-case picker: checked once per app session, after the
+  // first successful load. Only a basically-empty account (the seeded guide
+  // item at most) gets it; anyone already saving is marked done silently.
+  const onboardingChecked = React.useRef(false);
+  const maybeOnboard = (count: number) => {
+    if (onboardingChecked.current) return;
+    onboardingChecked.current = true;
+    if (count > 1) {
+      markOnboarded();
+      return;
+    }
+    isOnboarded().then((done) => {
+      if (!done) navigation.navigate('Onboarding');
+    });
+  };
+
   const load = React.useCallback(() => {
     setLoading(true);
     fetchRecentItems()
@@ -97,6 +114,7 @@ export default function HomeScreen() {
         setRawItems(res.items);
         setTotal(res.total);
         setError(null);
+        maybeOnboard(res.total);
       })
       // Leave whatever was already on screen alone -- a transient failure
       // (the backend mid-restart, a slow request timing out) shouldn't

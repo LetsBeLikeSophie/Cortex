@@ -16,4 +16,5 @@ export type RootStackParamList = {
   Profile: undefined;
   Trash: undefined;
   ItemDetail: { item: ApiItem };
+  Onboarding: undefined;
 };

@@ -289,3 +289,12 @@ export function HashIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
     </Svg>
   );
 }
+
+export function DownloadIcon({ size = 18, color, strokeWidth = 1.4 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M9 2.5v9M5.2 7.8 9 11.6l3.8-3.8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M3 12.5v1.8c0 .7.5 1.2 1.2 1.2h9.6c.7 0 1.2-.5 1.2-1.2v-1.8" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}

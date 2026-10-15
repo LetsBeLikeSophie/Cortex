@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 import { MicIcon } from './Icons';
 import { Theme } from '../theme/themes';
+import { permissionToast } from '../native/toast';
 
 // One mic button shared by every place that can take spoken input instead
 // of typing (save-sheet memo, tag correction, search). Speech recognition
@@ -22,11 +23,15 @@ import { Theme } from '../theme/themes';
 export function VoiceInputButton({
   theme,
   onResult,
+  onStart,
   lang = 'ko-KR',
   size = 18,
 }: {
   theme: Theme;
   onResult: (text: string, isFinal: boolean) => void;
+  // Fires once a recording actually begins -- lets a caller snapshot
+  // what's already in its input so the transcript appends instead of replacing.
+  onStart?: () => void;
   lang?: string;
   size?: number;
 }) {
@@ -36,6 +41,7 @@ export function VoiceInputButton({
   useSpeechRecognitionEvent('start', () => {
     setStarting(false);
     setRecording(true);
+    onStart?.();
   });
   useSpeechRecognitionEvent('end', () => setRecording(false));
   useSpeechRecognitionEvent('error', () => {
@@ -56,21 +62,10 @@ export function VoiceInputButton({
     const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!perm.granted) {
       setStarting(false);
-      // Silently doing nothing read as "the mic button is broken" -- say
-      // why, and once Android stops showing the prompt (denied twice /
-      // "don't ask again"), point at the app's settings page instead.
-      Alert.alert(
-        '마이크 권한이 필요해요',
-        perm.canAskAgain
-          ? '음성으로 입력하려면 마이크와 음성 인식 권한을 허용해 주세요.'
-          : '설정 > 권한에서 마이크를 허용하면 음성으로 입력할 수 있어요.',
-        perm.canAskAgain
-          ? [{ text: '확인' }]
-          : [
-              { text: '닫기', style: 'cancel' },
-              { text: '설정 열기', onPress: () => Linking.openSettings() },
-            ]
-      );
+      // Silently doing nothing read as "the mic button is broken" -- a
+      // short toast says why (tapping again re-prompts while Android still
+      // allows it).
+      permissionToast('마이크', perm.canAskAgain);
       return;
     }
     ExpoSpeechRecognitionModule.start({ lang, interimResults: true, continuous: false });

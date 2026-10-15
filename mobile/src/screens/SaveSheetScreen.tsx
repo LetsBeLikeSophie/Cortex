@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
-import * as Clipboard from 'expo-clipboard';
 import MediaLibrary from '../native/mediaLibrary';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,6 +29,7 @@ import { Heading } from '../components/Typography';
 import { ModalSheet } from '../components/ModalSheet';
 import { GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
+import { permissionToast } from '../native/toast';
 import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -43,6 +43,19 @@ type Status = 'input' | 'saving' | 'done' | 'error';
 // No reliable way to know which app a share came from (Android's generic
 // ACTION_SEND doesn't carry the sender's identity), but a link's own domain
 // is a good enough guess to avoid dumping every URL into 'other'.
+// The whole memo is exactly one http(s) link (whitespace aside) -- the
+// case worth saving as a link item instead of a plain-text memo.
+function asBareUrl(raw: string): string | null {
+  const value = raw.trim();
+  if (!value || /\s/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 function guessSourceFromUrl(url: string): ItemSource {
   let host = '';
   try {
@@ -114,6 +127,9 @@ export default function SaveSheetScreen() {
   }, [route.params?.sharedImageUri]);
 
   const scrollRef = useRef<ScrollView>(null);
+  // Text already in the memo when a voice dictation starts -- live partial
+  // transcripts get appended to it instead of overwriting it.
+  const voiceBase = useRef('');
 
   const close = () => navigation.goBack();
 
@@ -128,8 +144,7 @@ export default function SaveSheetScreen() {
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      setError('사진 접근 권한이 필요해요');
-      setStatus('error');
+      permissionToast('사진 접근', perm.canAskAgain);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -167,8 +182,7 @@ export default function SaveSheetScreen() {
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      setError('카메라 권한이 필요해요');
-      setStatus('error');
+      permissionToast('카메라', perm.canAskAgain);
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.8 });
@@ -182,33 +196,6 @@ export default function SaveSheetScreen() {
     setAddingBulkTag(false);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
-  };
-
-  // Deliberately behind a tap, never read automatically on open -- iOS 16+
-  // shows its own "Allow Paste" prompt the moment an app reads the
-  // clipboard, and doing that without the user having just asked for it
-  // reads as exactly the clipboard-sniffing behavior that prompt exists to
-  // catch.
-  const pasteFromClipboard = async () => {
-    const value = await Clipboard.getStringAsync();
-    if (!value.trim()) return;
-    setSelectedScreenshots([]);
-    setBulkTag('');
-    setAddingBulkTag(false);
-    setImage(null);
-    setNote('');
-    try {
-      const url = new URL(value.trim());
-      if (url.protocol === 'http:' || url.protocol === 'https:') {
-        setLinkUrl(value.trim());
-        setText('');
-        return;
-      }
-    } catch {
-      // Not a URL -- fall through to plain text.
-    }
-    setText(value);
-    setLinkUrl(null);
   };
 
   // Tapping a "최근 스크린샷" thumbnail toggles it in/out of the batch --
@@ -298,10 +285,15 @@ export default function SaveSheetScreen() {
     setStatus('saving');
     setError('');
     const trimmedNote = note.trim() || undefined;
+    // A memo that's nothing but one link (pasted with the phone's own paste)
+    // is saved as a link, so it still gets a title/thumbnail -- what the
+    // old in-sheet 붙여넣기 button used to do, without needing the button.
+    const typedUrl = !image && !linkUrl ? asBareUrl(text) : null;
+    const url = linkUrl ?? typedUrl;
     const request = image
       ? saveScreenshotItem('other', image.base64, trimmedNote)
-      : linkUrl
-        ? saveLinkItem(guessSourceFromUrl(linkUrl), linkUrl, trimmedNote)
+      : url
+        ? saveLinkItem(guessSourceFromUrl(url), url, trimmedNote)
         : saveTextItem('memo', text.trim());
     request
       .then((item) => {
@@ -375,6 +367,7 @@ export default function SaveSheetScreen() {
               </View>
             ) : (
               <>
+                <View style={styles.memoRow}>
                 <TextInput
                   value={text}
                   onChangeText={setText}
@@ -386,6 +379,7 @@ export default function SaveSheetScreen() {
                   style={[
                     styles.input,
                     {
+                      flex: 1,
                       color: theme.ink,
                       borderColor: theme.line,
                       backgroundColor: card ? theme.surface : 'transparent',
@@ -394,21 +388,22 @@ export default function SaveSheetScreen() {
                     },
                   ]}
                 />
+                {/* Speaking adds onto whatever's already typed rather than
+                    replacing it -- this is the main memo, not a one-liner. */}
+                <VoiceInputButton
+                  theme={theme}
+                  onStart={() => {
+                    voiceBase.current = text.trim() ? `${text.trimEnd()} ` : '';
+                  }}
+                  onResult={(spoken) => setText(voiceBase.current + spoken)}
+                />
+                </View>
 
                 {/* Same pill shape + border convention as GhostButton (the
                     bottom 취소/저장 row) -- just not the component itself,
                     since GhostButton's full size/label scale was built for
-                    two buttons in a row, not three this tight. */}
+                    a primary action, not a pair of small pickers. */}
                 <View style={styles.photoButtonRow}>
-                  <Pressable
-                    onPress={pasteFromClipboard}
-                    disabled={status === 'saving'}
-                    style={[styles.photoButton, { borderColor: card ? theme.line : theme.ink, backgroundColor: card ? theme.surface : 'transparent', borderRadius: theme.btnRadius }]}
-                  >
-                    <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
-                      붙여넣기
-                    </Text>
-                  </Pressable>
                   <Pressable
                     onPress={pickFromLibrary}
                     disabled={status === 'saving'}
@@ -528,21 +523,10 @@ export default function SaveSheetScreen() {
               </View>
             )}
 
-            {status === 'error' && error.endsWith('권한이 필요해요') ? (
-              <View style={{ marginTop: 10 }}>
-                <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_400Regular' }}>{error}</Text>
-                <Pressable onPress={() => Linking.openSettings()}>
-                  <Text style={[styles.permissionHintText, styles.permissionHintLink, { color: theme.accent }]}>
-                    설정에서 권한 허용하기
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              status === 'error' && (
-                <Text style={{ color: theme.accent, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-                  저장 실패: {error}
-                </Text>
-              )
+            {status === 'error' && (
+              <Text style={{ color: theme.accent, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                저장 실패: {error}
+              </Text>
             )}
           </ScrollView>
           </KeyboardAvoidingView>
@@ -794,6 +778,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  memoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   noteInput: { marginTop: 0, minHeight: 0, paddingVertical: 12, fontSize: 13.5 },
   analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   savingButton: { flex: 1, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
@@ -803,7 +788,6 @@ const styles = StyleSheet.create({
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, alignSelf: 'flex-start' },
   screenshotLabel: { fontSize: 12.5, marginBottom: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   permissionHintText: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
-  permissionHintLink: { fontFamily: 'IBMPlexSansKR_500Medium', marginTop: 6, textDecorationLine: 'underline' },
   screenshotRow: { flexDirection: 'row', gap: 8 },
   screenshotThumb: { width: 64, height: 64, borderRadius: 10, borderWidth: 1 },
   screenshotCheck: {

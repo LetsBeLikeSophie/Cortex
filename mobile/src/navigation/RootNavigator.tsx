@@ -17,6 +17,7 @@ import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TrashScreen from '../screens/TrashScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -109,6 +110,7 @@ export default function RootNavigator() {
           <Stack.Screen name="ThemePicker" component={ThemePickerScreen} />
           <Stack.Screen name="TabPicker" component={TabPickerScreen} />
           <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         </Stack.Group>
       </Stack.Navigator>
     </NavigationContainer>

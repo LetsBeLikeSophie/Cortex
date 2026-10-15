@@ -27,9 +27,10 @@ import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { Heading } from '../components/Typography';
 import { ModalSheet } from '../components/ModalSheet';
-import { GhostButton, SolidButton } from '../components/Buttons';
+import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast } from '../native/toast';
+import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -378,11 +379,11 @@ export default function SaveSheetScreen() {
                   placeholderTextColor={theme.sub}
                   style={[
                     styles.input,
+                    fieldStyle(theme),
                     {
                       flex: 1,
+                      marginTop: 0,
                       color: theme.ink,
-                      borderColor: theme.line,
-                      backgroundColor: card ? theme.surface : 'transparent',
                       fontFamily: 'IBMPlexSansKR_400Regular',
                       outlineWidth: 0,
                     },
@@ -407,18 +408,18 @@ export default function SaveSheetScreen() {
                   <Pressable
                     onPress={pickFromLibrary}
                     disabled={status === 'saving'}
-                    style={[styles.photoButton, { borderColor: card ? theme.line : theme.ink, backgroundColor: card ? theme.surface : 'transparent', borderRadius: theme.btnRadius }]}
+                    style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
                   >
-                    <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
+                    <Text style={pickTextStyle(theme)}>
                       앨범에서 선택
                     </Text>
                   </Pressable>
                   <Pressable
                     onPress={takePhoto}
                     disabled={status === 'saving'}
-                    style={[styles.photoButton, { borderColor: card ? theme.line : theme.ink, backgroundColor: card ? theme.surface : 'transparent', borderRadius: theme.btnRadius }]}
+                    style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
                   >
-                    <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
+                    <Text style={pickTextStyle(theme)}>
                       카메라로 촬영
                     </Text>
                   </Pressable>
@@ -509,11 +510,10 @@ export default function SaveSheetScreen() {
                   style={[
                     styles.input,
                     styles.noteInput,
+                    fieldStyle(theme),
                     {
                       flex: 1,
                       color: theme.ink,
-                      borderColor: theme.line,
-                      backgroundColor: card ? theme.surface : 'transparent',
                       fontFamily: 'IBMPlexSansKR_400Regular',
                       outlineWidth: 0,
                     },
@@ -531,7 +531,7 @@ export default function SaveSheetScreen() {
           </ScrollView>
           </KeyboardAvoidingView>
 
-            <View style={styles.buttonRow}>
+            <ButtonRow theme={theme} style={styles.buttonRow}>
               <GhostButton label="취소" theme={theme} onPress={close} />
               {status === 'saving' ? (
                 <View style={[styles.savingButton, { borderColor: theme.line }]}>
@@ -544,7 +544,7 @@ export default function SaveSheetScreen() {
                   onPress={submit}
                 />
               )}
-            </View>
+            </ButtonRow>
           </>
         ) : savedBulk ? (
           <>
@@ -627,9 +627,9 @@ export default function SaveSheetScreen() {
               </View>
             )}
 
-            <View style={styles.buttonRow}>
+            <ButtonRow theme={theme} style={styles.buttonRow}>
               <SolidButton label="확인" theme={theme} onPress={close} />
-            </View>
+            </ButtonRow>
           </>
         ) : (
           saved && (
@@ -741,9 +741,9 @@ export default function SaveSheetScreen() {
                 </>
               )}
 
-              <View style={styles.buttonRow}>
+              <ButtonRow theme={theme} style={styles.buttonRow}>
                 <SolidButton label="확인" theme={theme} onPress={close} />
-              </View>
+              </ButtonRow>
             </>
           )
         )}
@@ -767,7 +767,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: 'IBMPlexSansKR_400Regular' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  buttonRow: { flexDirection: 'row', gap: 10, marginTop: 26 },
+  buttonRow: { marginTop: 26 },
   input: {
     marginTop: 18,
     minHeight: 90,
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
-  memoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  memoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 18 },
   noteInput: { marginTop: 0, minHeight: 0, paddingVertical: 12, fontSize: 13.5 },
   analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   savingButton: { flex: 1, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },

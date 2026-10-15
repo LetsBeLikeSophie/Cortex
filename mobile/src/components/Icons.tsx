@@ -187,15 +187,6 @@ export function LayoutLineIcon({ size = 20, color, strokeWidth = 2 }: IconProps)
   );
 }
 
-export function LayoutLineToneIcon({ size = 20, color, accent, strokeWidth = 1.6 }: LayoutIconProps) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Line x1={5} y1={9} x2={19} y2={9} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
-      <Line x1={5} y1={15.5} x2={10.5} y2={15.5} stroke={accent ?? color} strokeWidth={2.2} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
 export function LayoutThinBorderIcon({ size = 20, color, strokeWidth = 1.6 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -231,8 +222,6 @@ export function LayoutIcon({ layoutKey, ...props }: LayoutIconProps & { layoutKe
   switch (layoutKey) {
     case 'line':
       return <LayoutLineIcon {...props} />;
-    case 'lineTone':
-      return <LayoutLineToneIcon {...props} />;
     case 'thinBorder':
       return <LayoutThinBorderIcon {...props} />;
     case 'layered':

@@ -10,7 +10,7 @@ import { USE_CASE_OPTIONS, UseCaseKey, markOnboarded } from '../data/onboarding'
 import { CheckIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
-import { GhostButton, SolidButton } from '../components/Buttons';
+import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -102,7 +102,7 @@ export default function OnboardingScreen() {
         </Text>
       </ScrollView>
 
-      <View style={styles.buttons}>
+      <ButtonRow theme={theme} style={styles.buttons}>
         <GhostButton label="건너뛰기" theme={theme} onPress={skip} disabled={busy} />
         {busy ? (
           <View style={[styles.busy, { borderColor: theme.line, borderRadius: theme.btnRadius }]}>
@@ -116,7 +116,7 @@ export default function OnboardingScreen() {
             disabled={picked.length === 0}
           />
         )}
-      </View>
+      </ButtonRow>
     </ModalSheet>
   );
 }
@@ -132,6 +132,6 @@ const styles = StyleSheet.create({
   optionTabs: { fontSize: 12, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   footnote: { fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 6, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
-  buttons: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  buttons: { marginTop: 14 },
   busy: { flex: 1.1, borderWidth: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
 });

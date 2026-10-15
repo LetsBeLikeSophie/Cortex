@@ -84,3 +84,30 @@ export function LayeredBack({
     </View>
   );
 }
+
+// A dashed horizontal rule -- the vintage "perforation" above a sheet's
+// buttons and under its tab bar. SVG rather than a dashed View border:
+// Android doesn't reliably draw dashes on a single side.
+export function DashedRule({ color, style }: { color: string; style?: StyleProp<ViewStyle> }) {
+  return (
+    <Svg height={2} width="100%" style={style} pointerEvents="none">
+      <Line x1={0} y1={1} x2="100%" y2={1} stroke={color} strokeWidth={1.5} strokeDasharray="5 4" />
+    </Svg>
+  );
+}
+
+// Index-card ruling behind a vintage sheet's content: faint accent lines
+// every 26px, starting below the card's header band.
+export function RuledLines({ theme, top = 64 }: { theme: Theme; top?: number }) {
+  const id = idFor('ruled', theme.accent);
+  return (
+    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <Pattern id={id} patternUnits="userSpaceOnUse" width={26} height={26} y={top}>
+          <Line x1={0} y1={25.5} x2={26} y2={25.5} stroke={rgba(theme.accent, 0.16)} strokeWidth={1} />
+        </Pattern>
+      </Defs>
+      <Rect x={0} y={top} width="100%" height="100%" fill={`url(#${id})`} />
+    </Svg>
+  );
+}

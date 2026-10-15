@@ -16,7 +16,7 @@ export type ListStyle = 'line' | 'card' | 'bordered' | 'layered';
 export type HitStyle = 'marker' | 'underline' | 'chip';
 export type CopyTone = 'plain' | 'tech';
 
-export type LayoutKey = 'line' | 'lineTone' | 'thinBorder' | 'layered' | 'layeredVintage';
+export type LayoutKey = 'line' | 'thinBorder' | 'layered' | 'layeredVintage';
 export type PaletteKey = 'paper' | 'ink' | 'neural' | 'sage' | 'blush';
 
 export interface Layout {
@@ -90,56 +90,60 @@ export const BODY_KR_MEDIUM = 'IBMPlexSansKR_500Medium';
 // corners) is gone for good -- Android's elevation shadow never rendered it
 // reliably (shadow clipped round, content fill square; a
 // transparent-background palette paired with it made that even worse)
-// across several attempted fixes. These five replace it, worked out in a
+// across several attempted fixes. These four concepts replace it, worked out in a
 // design-preview artifact first. thinBorder and layered/layeredVintage now
 // render for real (cardShellStyle in ListItems.tsx, the hero box in
 // HomeScreen.tsx) -- plain border or two-plain-Views-offset, no elevation
 // either way. layered and layeredVintage share list: 'layered' (same safe
 // stacking mechanism); layeredVintage adds decor: 'vintage' on top (the
 // quatrefoil pattern on the back card, the faint grid wallpaper behind
-// everything -- components/Decor.tsx). lineTone's underline tabs + per-tag analogous color are still
-// pending too: the artifact's 3-fixed-category mockup doesn't map onto the
-// real app's free-form user tags, so that one needs a tag-to-color scheme
-// decided before it's worth wiring in.
+// everything -- components/Decor.tsx). lineTone was folded into line: the
+// two read the same on screen and its per-tag color scheme never landed.
 export const LAYOUTS: Record<LayoutKey, Layout> = {
   line: {
     label: '라인',
-    note: '지금 라이브로 떠 있는 스타일. 구분선만 쓰고 카드 배경·테두리·그림자 전부 없어요.',
+    note: '잡지처럼. 가는 선과 세리프 제목, 시트도 각진 윗변에 실선 한 줄이에요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
     cardRadius: 0, btnRadius: 999, list: 'line',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
-  lineTone: {
-    label: '라인 (컬러)',
-    note: '라인과 같은 구분선 구조에, 숫자는 세리프 대신 산세리프로, 검색 하이라이트는 마커 대신 밑줄로 바꿔요.',
-    headFamily: BODY_KR_MEDIUM, headWeight: '500', headSize: 38, numSize: 70, numTrackEm: 0,
-    cardRadius: 0, btnRadius: 999, list: 'line',
-    hitStyle: 'underline', copy: 'plain', pulse: false, decor: 'none',
-  },
   thinBorder: {
-    label: '얇은 테두리',
-    note: '둥근 모서리에 얇은 테두리를 두르는 카드 스타일이에요.',
+    label: '테두리',
+    note: '미니멀 노트처럼. 카드·시트·버튼 모두 둥근 모서리에 1px 테두리예요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 16, btnRadius: 999, list: 'bordered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   layered: {
-    label: '레이어 카드',
-    note: '테두리 없이, 카드 뒤에 진한 색 카드를 한 장 더 깔아 우하단으로 살짝 밀어내는 스타일이에요.',
+    label: '레이어',
+    note: '겹쳐 놓은 종이처럼. 카드·시트·버튼 뒤로 진한 종이가 한 장씩 삐져나와요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 20, btnRadius: 999, list: 'layered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   layeredVintage: {
-    label: '레이어 카드 (빈티지)',
-    note: '레이어 카드와 같은 구조에, 뒤 카드엔 무늬를 얹고 화면 바탕엔 옅은 격자무늬를 깔아요.',
+    label: '빈티지',
+    note: '도서관 카드 목록처럼. 줄 쳐진 색인카드, 타자기체 라벨, 바탕엔 옅은 격자무늬예요.',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
-    cardRadius: 20, btnRadius: 999, list: 'layered',
+    cardRadius: 6, btnRadius: 4, list: 'layered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'vintage',
   },
 };
 
-export const LAYOUT_ORDER: LayoutKey[] = ['line', 'lineTone', 'thinBorder', 'layered', 'layeredVintage'];
+export const LAYOUT_ORDER: LayoutKey[] = ['line', 'thinBorder', 'layered', 'layeredVintage'];
+
+// The four design concepts, as one value every component can switch on --
+// list style alone can't tell layered from vintage (both stack cards), and
+// sheets/buttons/inputs/tabs all change per concept, not just list rows.
+// 'card' (retired) folds into 'border', its closest living relative.
+export type Concept = 'line' | 'border' | 'layer' | 'vintage';
+
+export function conceptOf(theme: Theme): Concept {
+  if (theme.decor === 'vintage') return 'vintage';
+  if (theme.list === 'layered') return 'layer';
+  if (theme.list === 'bordered' || theme.list === 'card') return 'border';
+  return 'line';
+}
 
 export const PALETTES: Record<PaletteKey, Palette> = {
   paper: {

@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { Theme } from '../theme/themes';
+import { Theme, conceptOf } from '../theme/themes';
+import { RuledLines } from './Decor';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
 
@@ -36,7 +37,7 @@ export function ModalSheet({
   children: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
-  const card = theme.list === 'card';
+  const concept = conceptOf(theme);
   const translateY = useRef(new Animated.Value(animated ? SHEET_TRAVEL : 0)).current;
 
   useEffect(() => {
@@ -87,44 +88,95 @@ export function ModalSheet({
         />
       </Pressable>
 
-      <Animated.View
-        style={[
-          styles.sheet,
-          {
-            paddingHorizontal,
-            backgroundColor: theme.bg,
-            borderTopWidth: bordered && theme.dark ? 1 : 0,
-            borderColor: theme.line,
-            borderTopLeftRadius: card ? 30 : 26,
-            borderTopRightRadius: card ? 30 : 26,
-            paddingBottom: paddingBottom + insets.bottom,
-            ...(maxHeightRatio !== undefined ? { maxHeight: SHEET_TRAVEL * maxHeightRatio } : null),
-            transform: [{ translateY }],
-            shadowOpacity: theme.dark ? 0.45 : 0.14,
-          },
-        ]}
-      >
-        <View style={[styles.grabberHitArea, { marginBottom: grabberMarginBottom }]} {...panResponder.panHandlers}>
-          <View style={[styles.grabber, { backgroundColor: theme.sub }]} />
+      {/* Each concept dresses the sheet its own way (see SHEET below):
+          line = square top edge + ink rule, border = rounded + 1px outline,
+          layer = a darker sheet peeking out behind (a sibling View, not a
+          shadow -- same no-elevation stacking as the list cards), vintage =
+          a ruled index card with an accent band and a punch hole for a handle. */}
+      <Animated.View style={[styles.sheetWrap, { transform: [{ translateY }] }]}>
+        {concept === 'layer' && (
+          <View
+            pointerEvents="none"
+            style={[styles.backSheet, { backgroundColor: theme.cardStack, borderTopLeftRadius: SHEET[concept].radius, borderTopRightRadius: SHEET[concept].radius }]}
+          />
+        )}
+        <View
+          style={[
+            styles.sheet,
+            {
+              paddingHorizontal,
+              backgroundColor: SHEET[concept].bg(theme),
+              borderTopLeftRadius: SHEET[concept].radius,
+              borderTopRightRadius: SHEET[concept].radius,
+              paddingBottom: paddingBottom + insets.bottom,
+              ...(maxHeightRatio !== undefined ? { maxHeight: SHEET_TRAVEL * maxHeightRatio } : null),
+              ...SHEET[concept].edge(theme, bordered),
+            },
+          ]}
+        >
+          {concept === 'vintage' && <RuledLines theme={theme} top={72} />}
+          <View style={[styles.grabberHitArea, { marginBottom: grabberMarginBottom }]} {...panResponder.panHandlers}>
+            {concept === 'vintage' ? (
+              <View style={[styles.punchHole, { backgroundColor: theme.bg, borderColor: theme.line }]} />
+            ) : (
+              <View style={[styles.grabber, SHEET[concept].grabber(theme)]} />
+            )}
+          </View>
+          {children}
         </View>
-        {children}
       </Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -6 },
-    shadowRadius: 24,
-    elevation: 16,
+const SHEET: Record<
+  ReturnType<typeof conceptOf>,
+  {
+    radius: number;
+    bg: (t: Theme) => string;
+    edge: (t: Theme, bordered: boolean) => object;
+    grabber: (t: Theme) => object;
+  }
+> = {
+  line: {
+    radius: 0,
+    bg: (t) => t.bg,
+    edge: (t) => ({ borderTopWidth: 1, borderColor: t.ink }),
+    grabber: (t) => ({ width: 22, height: 1.5, borderRadius: 0, backgroundColor: t.ink }),
   },
+  border: {
+    radius: 24,
+    bg: (t) => t.surface,
+    edge: (t) => ({ borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: t.line, ...SHADOW }),
+    grabber: (t) => ({ backgroundColor: t.line }),
+  },
+  layer: {
+    radius: 22,
+    bg: (t) => t.cardBg,
+    edge: () => ({}),
+    grabber: (t) => ({ backgroundColor: t.cardStack }),
+  },
+  vintage: {
+    radius: 6,
+    bg: (t) => t.cardBg,
+    edge: (t) => ({ borderTopWidth: 3, borderColor: t.accent, overflow: 'hidden' }),
+    grabber: () => ({}),
+  },
+};
+
+const SHADOW = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: -6 },
+  shadowOpacity: 0.12,
+  shadowRadius: 24,
+  elevation: 16,
+};
+
+const styles = StyleSheet.create({
+  sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
+  sheet: { paddingTop: 20 },
+  backSheet: { position: 'absolute', top: -8, left: 14, right: -14, height: 80 },
+  punchHole: { width: 12, height: 12, borderRadius: 6, borderWidth: 1 },
   grabberHitArea: { alignSelf: 'stretch', alignItems: 'center', paddingVertical: 10, marginTop: -10 },
   grabber: { width: 40, height: 4, borderRadius: 2 },
 });

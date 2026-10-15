@@ -20,7 +20,8 @@ import { MONO, emToTracking } from '../theme/themes';
 import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
-import { GhostButton, SolidButton } from '../components/Buttons';
+import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
+import { pickStyle, pickTextStyle } from '../components/Fields';
 import { TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ImageViewer } from '../components/ImageViewer';
@@ -200,9 +201,9 @@ export default function ItemDetailScreen() {
                 <Pressable
                   onPress={() => setDeleteState('idle')}
                   disabled={deleteState === 'deleting'}
-                  style={[styles.smallGhostButton, { borderColor: theme.line }]}
+                  style={[styles.smallGhostButton, pickStyle(theme)]}
                 >
-                  <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>취소</Text>
+                  <Text style={pickTextStyle(theme)}>취소</Text>
                 </Pressable>
                 <Pressable
                   onPress={confirmDelete}
@@ -338,7 +339,7 @@ export default function ItemDetailScreen() {
         </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={styles.buttonRow}>
+        <ButtonRow theme={theme} style={styles.buttonRow}>
           {item.raw_url ? (
             <>
               <GhostButton label="닫기" theme={theme} onPress={close} />
@@ -347,7 +348,7 @@ export default function ItemDetailScreen() {
           ) : (
             <SolidButton label="닫기" theme={theme} onPress={close} />
           )}
-        </View>
+        </ButtonRow>
     </ModalSheet>
     <ImageViewer uri={viewerUri} onClose={() => setViewerUri(null)} />
     </>
@@ -375,5 +376,5 @@ const styles = StyleSheet.create({
   deleteConfirmButtons: { flexDirection: 'row', gap: 10, marginTop: 12 },
   smallGhostButton: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 10, alignItems: 'center' },
   smallDeleteButton: { flex: 1, backgroundColor: '#c0392b', borderRadius: 999, paddingVertical: 10, alignItems: 'center' },
-  buttonRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  buttonRow: { marginTop: 16 },
 });

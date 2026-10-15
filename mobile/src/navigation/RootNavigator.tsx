@@ -6,7 +6,8 @@ import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/b
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, emToTracking } from '../theme/themes';
+import { MONO, conceptOf, emToTracking } from '../theme/themes';
+import { DashedRule, VintageWallpaper } from '../components/Decor';
 import { ArchiveIcon, PlusIcon, SearchIcon } from '../components/Icons';
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
@@ -29,7 +30,11 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 function TabBar({ state, navigation }: BottomTabBarProps) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const tech = theme.copy === 'tech';
+  // Vintage's wallpaper runs on behind the tab bar too (instead of stopping
+  // at its top edge), with a dashed perforation in place of the hairline
+  // and the typewriter face for labels.
+  const vintage = conceptOf(theme) === 'vintage';
+  const tech = theme.copy === 'tech' || vintage;
 
   const items: { key: string; route: keyof TabParamList; label: string; Icon: typeof ArchiveIcon }[] = [
     { key: 'Home', route: 'Home', label: '보관함', Icon: ArchiveIcon },
@@ -42,9 +47,11 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
     <View
       style={[
         styles.bar,
-        { borderTopColor: theme.line, backgroundColor: theme.bg, paddingBottom: 16 + insets.bottom },
+        { borderTopColor: theme.line, borderTopWidth: vintage ? 0 : 1, backgroundColor: theme.bg, paddingBottom: 16 + insets.bottom },
       ]}
     >
+      {vintage && <VintageWallpaper theme={theme} />}
+      {vintage && <DashedRule color={theme.line} style={styles.perforation} />}
       {items.map((item) => {
         const on = activeRouteName === item.route;
         return (
@@ -120,4 +127,5 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   bar: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', borderTopWidth: 1, paddingTop: 16 },
   item: { minWidth: 54, minHeight: 44, alignItems: 'center', justifyContent: 'center', gap: 7 },
+  perforation: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

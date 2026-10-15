@@ -19,6 +19,7 @@ import { TagTab, loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import { fetchTags } from '../api/client';
 import { CheckIcon, SearchIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
+import { fieldStyle } from '../components/Fields';
 import { Heading } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -68,7 +69,7 @@ export default function TabPickerScreen() {
         </Heading>
         <Text style={[styles.sub, { color: theme.sub }]}>보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.</Text>
 
-        <View style={[styles.searchBox, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
+        <View style={[styles.searchBox, fieldStyle(theme)]}>
           <SearchIcon color={theme.sub} size={15} strokeWidth={1.4} />
           <TextInput
             value={query}

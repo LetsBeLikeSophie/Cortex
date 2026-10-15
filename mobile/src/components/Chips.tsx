@@ -1,26 +1,55 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Theme } from '../theme/themes';
+import { MONO, Theme, conceptOf } from '../theme/themes';
 import { PlusIcon } from './Icons';
 import type { QueryChip } from '../hooks/useChipQuery';
 
-// Home category tabs: an underline-tab strip in the "line" list themes,
-// a pill-tab strip in the "card" list themes.
+// Home tag tabs, per concept: line = underline tabs; border = outlined
+// pills; layer = filled paper pills (active one inked); vintage = underline
+// tabs in the typewriter face.
 export function TabChip({ label, active, theme, onPress }: { label: string; active: boolean; theme: Theme; onPress: () => void }) {
-  const card = theme.list === 'card';
+  const concept = conceptOf(theme);
+  const pill = concept === 'border' || concept === 'layer';
+  const shell = pill
+    ? concept === 'border'
+      ? [styles.pillTab, { borderColor: active ? theme.ink : theme.line, backgroundColor: 'transparent' }]
+      : [styles.pillTab, { borderWidth: 0, backgroundColor: active ? theme.ink : theme.cardBg }]
+    : [styles.underlineTab, { borderBottomColor: active ? theme.ink : 'transparent' }];
+  const color = concept === 'layer' ? (active ? theme.bg : theme.sub) : active ? theme.ink : theme.sub;
   return (
-    <Pressable onPress={onPress} style={card ? [styles.pillTab, { borderColor: active ? theme.ink : theme.line, backgroundColor: active ? theme.ink : 'transparent' }] : [styles.underlineTab, { borderBottomColor: active ? theme.ink : 'transparent' }]}>
+    <Pressable onPress={onPress} style={shell}>
       <Text
         style={{
-          fontSize: card ? 12.5 : 13,
-          color: card ? (active ? theme.bg : theme.sub) : active ? theme.ink : theme.sub,
-          fontFamily: 'IBMPlexSansKR_400Regular',
+          fontSize: concept === 'vintage' ? 12.5 : pill ? 12.5 : 13,
+          color,
+          fontFamily: concept === 'vintage' ? MONO : 'IBMPlexSansKR_400Regular',
         }}
       >
         {label}
       </Text>
     </Pressable>
   );
+}
+
+// Shared shell for tag-like chips (TagChip / MetaChip / SearchChip): layer
+// fills them like little paper slips, every other concept outlines them --
+// vintage with near-square corners, like a typed label.
+function chipShell(theme: Theme, muted: boolean, tint: boolean) {
+  const concept = conceptOf(theme);
+  if (concept === 'layer') {
+    return { borderWidth: 0, paddingVertical: 7, backgroundColor: tint && !muted ? theme.accent + '1f' : theme.cardBg };
+  }
+  return {
+    borderWidth: 1,
+    paddingVertical: 6,
+    backgroundColor: 'transparent',
+    borderColor: muted ? theme.sub : concept === 'border' ? theme.line : theme.ink,
+    ...(concept === 'vintage' ? { borderRadius: 3 } : null),
+  };
+}
+
+function chipFont(theme: Theme) {
+  return conceptOf(theme) === 'vintage' ? MONO : 'IBMPlexSansKR_400Regular';
 }
 
 // Sits at the end of the home-screen tab strip -- tapping it opens the tab
@@ -51,9 +80,8 @@ export function TagChip({
   onRemove?: () => void;
   tone?: 'default' | 'auto';
 }) {
-  const card = theme.list === 'card';
   const auto = tone === 'auto';
-  const textColor = auto ? theme.sub : card ? theme.accent : theme.ink;
+  const textColor = auto ? theme.sub : conceptOf(theme) === 'layer' ? theme.accent : theme.ink;
   return (
     <Pressable
       onPress={onRemove}
@@ -61,15 +89,10 @@ export function TagChip({
       style={[
         styles.tag,
         styles.tagRow,
-        {
-          paddingVertical: card ? 7 : 6,
-          backgroundColor: card ? (auto ? theme.soft : theme.accent + '1f') : 'transparent',
-          borderWidth: card ? 0 : 1,
-          borderColor: auto ? theme.sub : theme.ink,
-        },
+        chipShell(theme, auto, true),
       ]}
     >
-      <Text style={{ fontSize: 13, color: textColor, fontFamily: 'IBMPlexSansKR_400Regular' }}>{label}</Text>
+      <Text style={{ fontSize: 13, color: textColor, fontFamily: chipFont(theme) }}>{label}</Text>
       {onRemove && <Text style={{ fontSize: 13, color: textColor, marginLeft: 6, opacity: 0.6 }}>×</Text>}
     </Pressable>
   );
@@ -80,23 +103,10 @@ export function TagChip({
 // it isn't a tag at all: it's derived straight from source/capture_type,
 // which no route can change.
 export function MetaChip({ icon, label, theme }: { icon?: React.ReactNode; label: string; theme: Theme }) {
-  const card = theme.list === 'card';
   return (
-    <View
-      style={[
-        styles.tag,
-        styles.tagRow,
-        styles.metaChip,
-        {
-          paddingVertical: card ? 7 : 6,
-          backgroundColor: card ? theme.soft : 'transparent',
-          borderWidth: card ? 0 : 1,
-          borderColor: theme.sub,
-        },
-      ]}
-    >
+    <View style={[styles.tag, styles.tagRow, styles.metaChip, chipShell(theme, true, false)]}>
       {icon}
-      <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{label}</Text>
+      <Text style={{ fontSize: 13, color: theme.sub, fontFamily: chipFont(theme) }}>{label}</Text>
     </View>
   );
 }
@@ -116,19 +126,19 @@ export function SearchChip({
   onToggle: () => void;
   onRemove: () => void;
 }) {
-  const card = theme.list === 'card';
-  const color = excluded ? theme.sub : card ? theme.accent : theme.ink;
+  const layer = conceptOf(theme) === 'layer';
+  const color = excluded ? theme.sub : layer ? theme.accent : theme.ink;
   return (
-    <View
-      style={[
-        styles.searchChip,
-        card
-          ? { backgroundColor: excluded ? theme.bg : theme.accent + '1f', borderWidth: excluded ? 1 : 0, borderColor: theme.line }
-          : { borderWidth: 1, borderColor: excluded ? theme.sub : theme.ink },
-      ]}
-    >
+    <View style={[styles.searchChip, chipShell(theme, excluded, true), { paddingVertical: 0 }]}>
       <Pressable onPress={onToggle} hitSlop={4} style={styles.searchChipText}>
-        <Text style={{ fontSize: 13.5, color, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: excluded ? 'line-through' : 'none' }}>
+        <Text
+          style={{
+            fontSize: 13.5,
+            color,
+            fontFamily: conceptOf(theme) === 'vintage' ? MONO : 'IBMPlexSansKR_500Medium',
+            textDecorationLine: excluded ? 'line-through' : 'none',
+          }}
+        >
           {label}
         </Text>
       </Pressable>

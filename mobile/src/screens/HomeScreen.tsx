@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, Theme, emToTracking } from '../theme/themes';
+import { MONO, Theme, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { isOnboarded, markOnboarded } from '../data/onboarding';
@@ -46,6 +46,8 @@ function heroShellStyle(theme: Theme): ViewStyle {
         padding: 22,
         paddingTop: 24,
         paddingBottom: 20,
+        // Vintage: the index card's colored header band.
+        ...(conceptOf(theme) === 'vintage' ? { borderTopWidth: 3, borderTopColor: theme.accent } : null),
       };
     case 'card':
       return {
@@ -83,11 +85,9 @@ export default function HomeScreen() {
   // background/border/stack rendering is more specific, see heroShellStyle
   // below.
   const boxed = theme.list !== 'line';
-  // TabChip/TagChip/etc. (Chips.tsx) still gate pill-vs-underline on the
-  // literal 'card' value only -- thinBorder/layered/layeredVintage don't
-  // have a pill-tab look wired up yet, so the tab row has to keep matching
-  // whatever Chips.tsx actually renders instead of following `boxed`.
-  const pillTabs = theme.list === 'card';
+  // Matches TabChip (Chips.tsx): border/layer render pill tabs, line and
+  // vintage render underline tabs -- the tab row's own spacing follows that.
+  const pillTabs = ['border', 'layer'].includes(conceptOf(theme));
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
 

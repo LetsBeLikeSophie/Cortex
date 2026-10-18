@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { MONO, Theme, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, conceptOf } from '../theme/themes';
 import { DashedRule } from './Decor';
 
 interface ButtonProps {
@@ -89,10 +89,10 @@ export function ButtonRow({ theme, style, children }: { theme: Theme; style?: Vi
 }
 
 const GHOST: Record<ReturnType<typeof conceptOf>, (t: Theme) => ViewStyle> = {
-  line: (t) => ({ borderTopWidth: 1, borderColor: t.line, alignItems: 'flex-start', justifyContent: 'flex-end', paddingBottom: 6 }),
-  border: (t) => ({ borderWidth: 1, borderColor: t.line, borderRadius: 999, backgroundColor: t.surface }),
+  line: (t) => ({ borderTopWidth: OUTLINE, borderColor: t.line, alignItems: 'flex-start', justifyContent: 'flex-end', paddingBottom: 6 }),
+  border: (t) => ({ borderWidth: OUTLINE, borderColor: t.line, borderRadius: 999, backgroundColor: t.surface }),
   layer: (t) => ({ backgroundColor: t.bg, borderRadius: 14 }),
-  vintage: (t) => ({ borderWidth: 1, borderColor: t.ink, borderRadius: 3, backgroundColor: t.bg }),
+  vintage: (t) => ({ borderWidth: OUTLINE, borderColor: t.ink, borderRadius: 3, backgroundColor: t.bg }),
 };
 
 const SOLID: Record<ReturnType<typeof conceptOf>, (t: Theme) => ViewStyle> = {

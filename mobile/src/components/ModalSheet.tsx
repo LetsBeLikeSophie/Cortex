@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { Theme, conceptOf } from '../theme/themes';
+import { OUTLINE, Theme, conceptOf } from '../theme/themes';
 import { RuledLines } from './Decor';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -90,16 +90,11 @@ export function ModalSheet({
 
       {/* Each concept dresses the sheet its own way (see SHEET below):
           line = square top edge + ink rule, border = rounded + 1px outline,
-          layer = a darker sheet peeking out behind (a sibling View, not a
-          shadow -- same no-elevation stacking as the list cards), vintage =
+          layer = the cards' paper tone (its stacked "back sheet" depth only
+          ever sits bottom-right, on cards and the primary button -- never
+          above the sheet's top edge), vintage =
           a ruled index card with an accent band and a punch hole for a handle. */}
       <Animated.View style={[styles.sheetWrap, { transform: [{ translateY }] }]}>
-        {concept === 'layer' && (
-          <View
-            pointerEvents="none"
-            style={[styles.backSheet, { backgroundColor: theme.cardStack, borderTopLeftRadius: SHEET[concept].radius, borderTopRightRadius: SHEET[concept].radius }]}
-          />
-        )}
         <View
           style={[
             styles.sheet,
@@ -141,13 +136,13 @@ const SHEET: Record<
   line: {
     radius: 0,
     bg: (t) => t.bg,
-    edge: (t) => ({ borderTopWidth: 1, borderColor: t.ink }),
+    edge: (t) => ({ borderTopWidth: OUTLINE, borderColor: t.ink }),
     grabber: (t) => ({ width: 22, height: 1.5, borderRadius: 0, backgroundColor: t.ink }),
   },
   border: {
     radius: 24,
     bg: (t) => t.surface,
-    edge: (t) => ({ borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: t.line, ...SHADOW }),
+    edge: (t) => ({ borderTopWidth: OUTLINE, borderLeftWidth: OUTLINE, borderRightWidth: OUTLINE, borderColor: t.line, ...SHADOW }),
     grabber: (t) => ({ backgroundColor: t.line }),
   },
   layer: {
@@ -175,7 +170,6 @@ const SHADOW = {
 const styles = StyleSheet.create({
   sheetWrap: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   sheet: { paddingTop: 20 },
-  backSheet: { position: 'absolute', top: -8, left: 14, right: -14, height: 80 },
   punchHole: { width: 12, height: 12, borderRadius: 6, borderWidth: 1 },
   grabberHitArea: { alignSelf: 'stretch', alignItems: 'center', paddingVertical: 10, marginTop: -10 },
   grabber: { width: 40, height: 4, borderRadius: 2 },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MONO, Theme, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, conceptOf } from '../theme/themes';
 import { PlusIcon } from './Icons';
 import type { QueryChip } from '../hooks/useChipQuery';
 
@@ -37,10 +37,12 @@ export function TabChip({ label, active, theme, onPress }: { label: string; acti
 function chipShell(theme: Theme, muted: boolean, tint: boolean) {
   const concept = conceptOf(theme);
   if (concept === 'layer') {
-    return { borderWidth: 0, paddingVertical: 7, backgroundColor: tint && !muted ? theme.accent + '1f' : theme.cardBg };
+    // theme.bg, not cardBg: these chips mostly sit on layer sheets, which
+    // are cardBg themselves -- a cardBg chip there has no visible fill.
+    return { borderWidth: 0, paddingVertical: 7, backgroundColor: tint && !muted ? theme.accent + '1f' : theme.bg };
   }
   return {
-    borderWidth: 1,
+    borderWidth: OUTLINE,
     paddingVertical: 6,
     backgroundColor: 'transparent',
     borderColor: muted ? theme.sub : concept === 'border' ? theme.line : theme.ink,
@@ -189,7 +191,7 @@ export function TagAddChip({ label, theme, onPress }: { label: string; theme: Th
 }
 
 const styles = StyleSheet.create({
-  pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
+  pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, borderWidth: OUTLINE },
   underlineTab: { paddingBottom: 10, borderBottomWidth: 2 },
   tag: { borderRadius: 999, paddingHorizontal: 14 },
   tagRow: { flexDirection: 'row', alignItems: 'center' },

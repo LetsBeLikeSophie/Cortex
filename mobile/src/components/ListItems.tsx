@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { Theme, emToTracking, MONO } from '../theme/themes';
+import { Theme, emToTracking, MONO, OUTLINE } from '../theme/themes';
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
@@ -49,7 +49,7 @@ function cardShellStyle(theme: Theme): ViewStyle {
     case 'bordered':
       return {
         backgroundColor: theme.surface,
-        borderWidth: 1,
+        borderWidth: OUTLINE,
         borderColor: theme.line,
         borderRadius: theme.cardRadius,
         padding: 15,

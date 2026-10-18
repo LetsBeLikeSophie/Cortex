@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, Theme, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, Theme, emToTracking } from '../theme/themes';
 import { copyFor, SearchResult } from '../data/content';
 import {
   askSearch,
@@ -141,7 +141,7 @@ function searchShellStyle(theme: Theme): ViewStyle {
       return { ...box, backgroundColor: theme.cardBg };
     case 'bordered':
     case 'card':
-      return { ...box, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.line };
+      return { ...box, backgroundColor: theme.surface, borderWidth: OUTLINE, borderColor: theme.line };
   }
 }
 

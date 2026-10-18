@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, Theme, conceptOf, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, Theme, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { isOnboarded, markOnboarded } from '../data/onboarding';
@@ -32,7 +32,7 @@ function heroShellStyle(theme: Theme): ViewStyle {
     case 'bordered':
       return {
         backgroundColor: theme.surface,
-        borderWidth: 1,
+        borderWidth: OUTLINE,
         borderColor: theme.line,
         borderRadius: theme.cardRadius + 6,
         padding: 22,

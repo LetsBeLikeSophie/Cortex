@@ -138,6 +138,12 @@ export const LAYOUT_ORDER: LayoutKey[] = ['line', 'thinBorder', 'layered', 'laye
 // 'card' (retired) folds into 'border', its closest living relative.
 export type Concept = 'line' | 'border' | 'layer' | 'vintage';
 
+// Outline width for bordered surfaces (cards, pills, chips, fields, sheet
+// edges). Not a plain 1: on Android a 1dp edge that lands on a fractional
+// pixel row gets blended away -- the bottom edge of a pill or card would
+// visibly vanish on some rows. 1.3dp always covers at least one full pixel.
+export const OUTLINE = 1.3;
+
 export function conceptOf(theme: Theme): Concept {
   if (theme.decor === 'vintage') return 'vintage';
   if (theme.list === 'layered') return 'layer';

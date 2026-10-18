@@ -119,7 +119,21 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
   let thumbnailUrl: string | undefined;
   if (item.capture_type === "link" && item.raw_url) {
     const meta = await fetchLinkMetadata(item.raw_url);
-    classification = { ...(await classifyText({ source: item.source, url: item.raw_url, title: meta.title, description: meta.description })), keyText: undefined };
+    classification = {
+      ...(await classifyText({
+        source: item.source,
+        url: item.raw_url,
+        title: meta.title,
+        description: meta.description,
+        siteName: meta.siteName,
+        creatorTags: meta.tags,
+        durationSec: meta.durationSec,
+        // Only where the thumbnail tends to carry the content's words
+        // (YouTube); a generic og:image is usually just a logo.
+        imageUrl: meta.analyzeImage ? meta.imageUrl : undefined,
+      })),
+      keyText: undefined,
+    };
     // og:image/oEmbed's thumbnail -- fetched alongside the classification
     // since both depend on the same metadata call.
     thumbnailUrl = meta.imageUrl;

@@ -40,6 +40,10 @@ export const config = {
   // can check readiness before making a call.
   hasAnthropicKey: !!optional("ANTHROPIC_API_KEY"),
 
+  // YouTube Data API v3 key (Google Cloud console, free quota). Optional:
+  // without it YouTube links fall back to oEmbed (title + channel only).
+  youtubeApiKey: optional("YOUTUBE_API_KEY"),
+
   supabaseUrl: optional("SUPABASE_URL"),
   supabaseServiceRoleKey: optional("SUPABASE_SERVICE_ROLE_KEY"),
 

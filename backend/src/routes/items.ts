@@ -3,7 +3,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem } from "../lib/pipeline.js";
 import { getEntitlement, recordUsage, remaining } from "../lib/plans.js";
-import { interpretSearch, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
+import { clipInterpretation, interpretSearch, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -194,7 +194,7 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
     }
     const userId = await resolveUserId(req);
-    const result = await searchItemsSmart(userId, parsed.data.interpretation);
+    const result = await searchItemsSmart(userId, clipInterpretation(parsed.data.interpretation));
     return reply.send(result);
   });
 

@@ -102,7 +102,24 @@ export function asQuotaError(err: unknown): QuotaError | null {
   return null;
 }
 
-async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
+// A 401 usually just means the access token went stale -- refresh once and
+// retry. Only when the refresh itself is rejected by the auth server (4xx:
+// the account no longer exists, e.g. deleted elsewhere) is the session
+// dropped, which sends the app back to the login screen instead of leaving
+// it stuck on "invalid or expired access token". A network failure during
+// the refresh (no status) never signs anyone out -- for a guest that
+// session is the only way back into their data.
+async function recoverFrom401(): Promise<boolean> {
+  const { error } = await supabase.auth.refreshSession();
+  if (!error) return true;
+  const status = (error as { status?: number }).status;
+  if (status !== undefined && status >= 400 && status < 500) {
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+  }
+  return false;
+}
+
+async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS, retried = false): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -125,6 +142,9 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
       signal: controller.signal,
       ...init,
     });
+    if (res.status === 401 && token && !retried && (await recoverFrom401())) {
+      return request<T>(path, init, timeoutMs, true);
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       let parsed: unknown = null;

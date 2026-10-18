@@ -4,6 +4,10 @@ import MediaLibrary from '../native/mediaLibrary';
 export interface RecentScreenshot {
   id: string;
   uri: string;
+  // Already-read image data, when the picker handed it over (the "앨범에서
+  // 선택" multi-pick path). Bulk save uses it as-is instead of re-reading
+  // the file -- re-reading via expo-file-system doesn't work on web.
+  base64?: string;
 }
 
 // iOS and Android both localize the "Screenshots" smart album's display

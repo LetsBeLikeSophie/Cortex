@@ -164,7 +164,7 @@ export default function SaveSheetScreen() {
       setBulkTag('');
       setAddingBulkTag(false);
       setStatus('input');
-      setSelectedScreenshots(result.assets.map((a) => ({ id: a.assetId ?? a.uri, uri: a.uri })));
+      setSelectedScreenshots(result.assets.map((a) => ({ id: a.assetId ?? a.uri, uri: a.uri, base64: a.base64 ?? undefined })));
       return;
     }
 
@@ -250,7 +250,7 @@ export default function SaveSheetScreen() {
       await Promise.all(
         batch.map(async (shot, offset) => {
           try {
-            const base64 = await new File(shot.uri).base64();
+            const base64 = shot.base64 ?? (await new File(shot.uri).base64());
             const item = await saveScreenshotItem('other', base64);
             results[start + offset] = item;
             // Best-effort -- a failed shared-tag add shouldn't undo an

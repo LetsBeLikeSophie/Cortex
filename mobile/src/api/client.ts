@@ -258,16 +258,6 @@ export function deleteAccount() {
 // Kakao signup gets a sample item server-side (kakaoAuth.ts); guest signup
 // happens entirely client-side via supabase.auth.signInAnonymously(), so
 // LoginScreen calls this right after to get the same starting point.
-// First-run use-case picker: seeds example items for the picked use cases
-// (fresh accounts only -- `seeded` says whether it did) and returns the
-// tags to pin as home tabs.
-export function completeOnboarding(useCases: string[]) {
-  return request<{ tabs: string[]; seeded: boolean }>('/auth/onboarding', {
-    method: 'POST',
-    body: JSON.stringify({ useCases }),
-  });
-}
-
 export function seedSampleItem() {
   return request<{ ok: true }>('/auth/seed-sample', { method: 'POST' });
 }

@@ -18,7 +18,6 @@ import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TrashScreen from '../screens/TrashScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
-import OnboardingScreen from '../screens/OnboardingScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
@@ -118,7 +117,6 @@ export default function RootNavigator() {
           <Stack.Screen name="ThemePicker" component={ThemePickerScreen} />
           <Stack.Screen name="TabPicker" component={TabPickerScreen} />
           <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
           <Stack.Screen name="Paywall" component={PaywallScreen} />
         </Stack.Group>
       </Stack.Navigator>

@@ -3,7 +3,6 @@ import { z } from "zod";
 import { deleteAccount, loginWithKakaoCode } from "../lib/kakaoAuth.js";
 import { verifyAccessToken } from "../lib/auth.js";
 import { countItemsSince, seedSampleItem } from "../lib/supabase.js";
-import { seedUseCases, tabsFor, USE_CASE_KEYS, UseCaseKey } from "../lib/onboarding.js";
 
 const KakaoLoginSchema = z.object({
   code: z.string().min(1),
@@ -58,32 +57,6 @@ export async function authRoutes(app: FastifyInstance) {
   // signInAnonymously() succeeds. Guarded by an item-count check rather than
   // trusting "only ever called once" -- a retry after a dropped response
   // shouldn't leave someone with two sample items.
-  // First-run use-case picker (덕질/맛집·여행/쇼핑/공부·레시피): seeds each
-  // picked use case's example items and returns the tags to pin as home
-  // tabs. Only seeds into a fresh account (the guide item at most) -- a
-  // retry, or someone who's already saving for real, gets the tabs back
-  // without a second batch of examples landing in their archive.
-  app.post("/auth/onboarding", async (req, reply) => {
-    const userId = await requireVerifiedUserId(req);
-    if (!userId) {
-      return reply.code(401).send({ error: "인증이 필요해요" });
-    }
-    const raw = (req.body as { useCases?: unknown } | undefined)?.useCases;
-    const keys = (Array.isArray(raw) ? raw : []).filter(
-      (k): k is UseCaseKey => typeof k === "string" && (USE_CASE_KEYS as string[]).includes(k)
-    );
-
-    try {
-      const existing = await countItemsSince(userId, new Date(0).toISOString());
-      const fresh = existing <= 1;
-      const tabs = fresh ? await seedUseCases(userId, keys) : tabsFor(keys);
-      return reply.code(200).send({ tabs, seeded: fresh });
-    } catch (err) {
-      req.log.error(err);
-      return reply.code(500).send({ error: err instanceof Error ? err.message : "onboarding failed" });
-    }
-  });
-
   app.post("/auth/seed-sample", async (req, reply) => {
     const userId = await requireVerifiedUserId(req);
     if (!userId) {

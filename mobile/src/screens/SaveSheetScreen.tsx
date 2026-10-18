@@ -692,6 +692,11 @@ export default function SaveSheetScreen() {
                     </Text>
                   )}
                 </View>
+                {/* The photo that was just saved -- without it a screenshot
+                    save reads like a text memo (title/tags only). */}
+                {saved.capture_type === 'screenshot' && image && (
+                  <Image source={{ uri: image.previewUri }} style={[styles.savedImage, { borderColor: theme.line }]} resizeMode="cover" />
+                )}
                 {/* Classification now runs in the background -- right after
                     saving, title/snippet/tags are still the 'pending'
                     placeholder (null/empty), not the real result, so this
@@ -769,6 +774,7 @@ const styles = StyleSheet.create({
   photoButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
   imagePreviewWrap: { marginTop: 18, alignItems: 'center' },
   imagePreview: { width: '100%', aspectRatio: 1, borderRadius: 14, borderWidth: 1 },
+  savedImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
   linkPreview: { marginTop: 18, borderWidth: 1, borderRadius: 14, padding: 16 },
   savedHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   savedMark: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },

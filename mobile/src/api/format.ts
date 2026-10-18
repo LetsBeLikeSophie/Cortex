@@ -36,11 +36,23 @@ export function relativeTime(iso: string): string {
   return `${Math.floor(days / 365)}년 전`;
 }
 
-export function toRecentItem(item: ApiItem, index: number): RecentItem {
+// An item saved past the month's AI quota has no title -- it reads as
+// "정리 대기" plus whatever little there is to recognize it by, so a pile of
+// these looks visibly unsorted next to classified rows (the upgrade nudge).
+export function itemTitle(item: ApiItem): string {
+  if (item.classification_status === 'unclassified') {
+    const hint = item.user_note ?? item.raw_text?.slice(0, 28) ?? item.raw_url ?? (item.capture_type === 'screenshot' ? '사진' : null);
+    return hint ? `정리 대기 · ${hint}` : '정리 대기';
+  }
   const pending = item.classification_status === 'pending';
+  return item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)');
+}
+
+export function toRecentItem(item: ApiItem, index: number): RecentItem {
+  const pending = item.classification_status === 'pending' || item.classification_status === 'unclassified';
   return {
     no: String(index + 1).padStart(2, '0'),
-    title: item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)'),
+    title: itemTitle(item),
     source: item.source,
     captureType: item.capture_type,
     timeLabel: relativeTime(item.shared_at),
@@ -74,7 +86,7 @@ export function toSmartSearchResult(item: SmartHit, keywords: SearchInterpretati
   const pending = item.classification_status === 'pending';
   const missing = keywords.filter((k) => ![k.term, ...k.synonyms].some((w) => fieldMatches(item, w)));
   return {
-    title: item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)'),
+    title: itemTitle(item),
     snippet: item.snippet ?? item.raw_text ?? '',
     terms: keywords.flatMap((k) => [k.term, ...k.synonyms]),
     matchedCount: keywords.length - missing.length,
@@ -90,7 +102,7 @@ export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
   const got = include.filter((w) => fieldMatches(item, w));
   const pending = item.classification_status === 'pending';
   return {
-    title: item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)'),
+    title: itemTitle(item),
     snippet: item.snippet ?? item.raw_text ?? '',
     terms: include,
     matchedCount: got.length,

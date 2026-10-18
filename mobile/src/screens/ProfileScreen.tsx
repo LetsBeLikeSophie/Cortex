@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { LAYOUTS, PALETTES } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signOut } from '../auth/kakaoLogin';
-import { deleteAccount } from '../api/client';
+import { deleteAccount, fetchPlan, Plan } from '../api/client';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
 import type { RootStackParamList } from '../navigation/types';
@@ -21,6 +21,22 @@ export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [state, setState] = useState<FooterState>('idle');
   const [error, setError] = useState('');
+  const [plan, setPlan] = useState<Plan | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPlan()
+        .then(setPlan)
+        .catch(() => {});
+    }, [])
+  );
+  const planLabel =
+    plan?.tier === 'pro'
+      ? 'Pro'
+      : plan?.tier === 'trial'
+        ? `무료 체험 · ${Math.max(0, Math.ceil((new Date(plan.trialEndsAt).getTime() - Date.now()) / 86400000))}일 남음`
+        : plan
+          ? `무료 · AI 정리 ${plan.classify.used}/${plan.classify.limit}`
+          : '';
   const card = theme.list === 'card';
 
   const isGuest = session?.user.is_anonymous ?? false;
@@ -116,6 +132,13 @@ export default function ProfileScreen() {
           // matching borders on adjacent buttons with only a small gap
           // read as one connected control and invited mis-taps.
           <View style={{ gap: 28 }}>
+            <Pressable
+              onPress={() => navigation.navigate('Paywall')}
+              style={[styles.signOutButton, styles.themeRow, { borderColor: theme.line }]}
+            >
+              <Text style={[styles.signOutLabel, { color: theme.ink }]}>플랜</Text>
+              <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{planLabel}</Text>
+            </Pressable>
             <Pressable
               onPress={() => navigation.navigate('ThemePicker')}
               style={[styles.signOutButton, styles.themeRow, { borderColor: theme.line }]}

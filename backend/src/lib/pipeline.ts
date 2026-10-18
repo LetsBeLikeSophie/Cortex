@@ -2,8 +2,13 @@ import { z } from "zod";
 import sharp from "sharp";
 import { fetchLinkMetadata } from "./metadata.js";
 import { classifyText, classifyImage } from "./anthropic.js";
+import { getEntitlement, recordUsage, remaining } from "./plans.js";
 import {
+  ClassificationStatus,
   completeClassification,
+  downloadScreenshot,
+  listUnclassifiedItems,
+  markClassificationPending,
   failClassification,
   insertItem,
   logAnalyticsEvent,
@@ -63,82 +68,92 @@ const PENDING_CATEGORY = "기타" as const;
 // link -> og:tags/oEmbed, text -> shared straight through, screenshot ->
 // Claude vision -- all three converge on the same classifyText/classifyImage
 // call so every item ends up with a title/snippet/category/tags. Each
-// branch now returns as soon as the row exists (no classification, and for
-// links no metadata fetch either -- both are slow network/LLM calls), and
-// keeps classifying in the background after that -- see runInBackground.
+// branch returns as soon as the row exists and classifies in the background
+// (see runInBackground) -- unless the month's AI classification quota is
+// used up: then the item still saves, as 'unclassified', with no Claude call
+// at all, and waits in the app's 미분류함 (see classifyBacklog).
 export async function processIncomingItem(input: IncomingItem, userId: string): Promise<ItemRecord> {
+  // Fails open: if the quota lookup itself breaks (e.g. the plan tables
+  // aren't migrated yet), saving must still work -- it classifies as before.
+  const classifyNow = await getEntitlement(userId)
+    .then((ent) => remaining(ent, "classify") > 0)
+    .catch((err) => {
+      console.error("quota lookup failed, classifying anyway:", err);
+      return true;
+    });
+  const status: ClassificationStatus = classifyNow ? "pending" : "unclassified";
+  const base = { userId, source: input.source, userNote: input.note, category: PENDING_CATEGORY, tags: [], classificationStatus: status };
+
+  let item: ItemRecord;
+  let imageBase64: string | undefined;
   if (input.captureType === "link") {
-    const item = await insertItem({
-      userId,
-      source: input.source,
-      captureType: "link",
-      rawUrl: input.url,
-      userNote: input.note,
-      category: PENDING_CATEGORY,
-      tags: [],
-      classificationStatus: "pending",
-    });
-    runInBackground(item.id, userId, async () => {
-      const meta = await fetchLinkMetadata(input.url);
-      const classification = await classifyText({
-        source: input.source,
-        url: input.url,
-        title: meta.title,
-        description: meta.description,
-      });
-      // og:image/oEmbed's thumbnail -- fetched here alongside the
-      // classification since both depend on the same metadata call.
-      await completeClassification(item.id, userId, classification, meta.imageUrl);
-      await logAnalyticsEvent({ eventType: "item_saved", userId, category: classification.category, source: input.source });
-    });
-    return item;
+    item = await insertItem({ ...base, captureType: "link", rawUrl: input.url });
+  } else if (input.captureType === "text") {
+    item = await insertItem({ ...base, captureType: "text", rawText: input.text });
+  } else {
+    // The Storage upload stays synchronous -- it's a plain file write (fast),
+    // and image_path has to exist for the row to show a thumbnail at all.
+    // Only the Claude vision call (the slow part) moves to the background.
+    const compressed = await compressScreenshot(Buffer.from(input.imageBase64, "base64"));
+    const imagePath = await uploadScreenshot(userId, compressed, "image/jpeg");
+    item = await insertItem({ ...base, captureType: "screenshot", imagePath });
+    imageBase64 = compressed.toString("base64");
   }
 
-  if (input.captureType === "text") {
-    const item = await insertItem({
-      userId,
-      source: input.source,
-      captureType: "text",
-      rawText: input.text,
-      userNote: input.note,
-      category: PENDING_CATEGORY,
-      tags: [],
-      classificationStatus: "pending",
-    });
+  if (classifyNow) {
     runInBackground(item.id, userId, async () => {
-      const classification = await classifyText({ source: input.source, rawText: input.text });
-      await completeClassification(item.id, userId, classification);
-      await logAnalyticsEvent({ eventType: "item_saved", userId, category: classification.category, source: input.source });
+      const category = await classifyAndComplete(item, imageBase64);
+      await logAnalyticsEvent({ eventType: "item_saved", userId, category, source: input.source });
     });
-    return item;
+  } else {
+    await logAnalyticsEvent({ eventType: "item_saved", userId, source: input.source });
   }
-
-  // The Storage upload stays synchronous -- it's a plain file write (fast),
-  // and image_path has to exist for the placeholder row to show a
-  // thumbnail at all. Only the Claude vision call (the slow part) moves to
-  // the background.
-  const compressed = await compressScreenshot(Buffer.from(input.imageBase64, "base64"));
-  const imagePath = await uploadScreenshot(userId, compressed, "image/jpeg");
-  const item = await insertItem({
-    userId,
-    source: input.source,
-    captureType: "screenshot",
-    imagePath,
-    userNote: input.note,
-    category: PENDING_CATEGORY,
-    tags: [],
-    classificationStatus: "pending",
-  });
-  runInBackground(item.id, userId, async () => {
-    const classification = await classifyImage({
-      source: input.source,
-      imageBase64: compressed.toString("base64"),
-      mediaType: "image/jpeg",
-    });
-    await completeClassification(item.id, userId, classification);
-    await logAnalyticsEvent({ eventType: "item_saved", userId, category: classification.category, source: input.source });
-  });
   return item;
+}
+
+// Runs the classification for one stored row and records the quota use.
+// Works for a fresh save (imageBase64 already in hand) and for a deferred
+// 미분류함 item (re-reads link metadata / the stored screenshot).
+async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
+  let classification;
+  let thumbnailUrl: string | undefined;
+  if (item.capture_type === "link" && item.raw_url) {
+    const meta = await fetchLinkMetadata(item.raw_url);
+    classification = { ...(await classifyText({ source: item.source, url: item.raw_url, title: meta.title, description: meta.description })), keyText: undefined };
+    // og:image/oEmbed's thumbnail -- fetched alongside the classification
+    // since both depend on the same metadata call.
+    thumbnailUrl = meta.imageUrl;
+  } else if (item.capture_type === "screenshot" && item.image_path) {
+    const b64 = imageBase64 ?? (await downloadScreenshot(item.image_path)).toString("base64");
+    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg" });
+  } else {
+    // keyText is a screenshot-only field -- dropped here so a text memo's
+    // own raw_text can never be overwritten by it.
+    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "" })), keyText: undefined };
+  }
+  await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
+  // The item is classified at this point -- a failed usage write must not
+  // flip it to 'failed' (runSafely would), so it's only logged.
+  await recordUsage(item.user_id, "classify").catch((err) => console.error("recordUsage(classify) failed:", err));
+  return classification.category;
+}
+
+// "AI로 정리": classifies as much of the 미분류함 backlog as this month's
+// quota allows, oldest first. Rows flip to 'pending' up front (so the app
+// shows them as 분석 중 right away); the Claude calls then run one after
+// another in the background rather than all at once.
+export async function classifyBacklog(userId: string): Promise<{ started: number; left: number }> {
+  const ent = await getEntitlement(userId);
+  const budget = remaining(ent, "classify");
+  if (budget === 0) return { started: 0, left: ent.unclassifiedCount };
+  const items = await listUnclassifiedItems(userId, budget);
+  for (const item of items) await markClassificationPending(item.id, userId);
+  void (async () => {
+    for (const item of items) {
+      await runSafely(item.id, userId, () => classifyAndComplete(item).then(() => undefined));
+    }
+  })();
+  return { started: items.length, left: ent.unclassifiedCount - items.length };
 }
 
 // Fire-and-forget, but never an unhandled rejection: the route has already
@@ -146,12 +161,18 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
 // by flipping the row to 'failed' (and logging) -- there's no request left
 // to send it back on.
 function runInBackground(itemId: string, userId: string, task: () => Promise<void>): void {
-  task().catch(async (err) => {
+  void runSafely(itemId, userId, task);
+}
+
+async function runSafely(itemId: string, userId: string, task: () => Promise<void>): Promise<void> {
+  try {
+    await task();
+  } catch (err) {
     console.error(`classification failed for item ${itemId}:`, err);
     try {
       await failClassification(itemId, userId);
     } catch (updateErr) {
       console.error(`failClassification itself failed for item ${itemId}:`, updateErr);
     }
-  });
+  }
 }

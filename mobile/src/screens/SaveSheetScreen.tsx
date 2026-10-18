@@ -686,7 +686,7 @@ export default function SaveSheetScreen() {
                   <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
                     {sourceLabel(saved.source, true)}
                   </Text>
-                  {saved.classification_status !== 'pending' && (
+                  {saved.classification_status !== 'pending' && saved.classification_status !== 'unclassified' && (
                     <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
                       {saved.category}
                     </Text>
@@ -712,6 +712,15 @@ export default function SaveSheetScreen() {
                       </Text>
                     </View>
                   </>
+                ) : saved.classification_status === 'unclassified' ? (
+                  // Saved past this month's AI quota: kept, but not sorted --
+                  // it went to 미분류함. Said plainly, with the way out.
+                  <>
+                    {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]}>{saved.raw_text}</Text>}
+                    <Text style={[styles.snippet, { color: theme.sub }]}>
+                      이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요. 저장은 됐어요.
+                    </Text>
+                  </>
                 ) : (
                   <>
                     <Text style={[styles.title, { color: theme.ink }]}>{saved.title ?? saved.raw_text}</Text>
@@ -720,7 +729,7 @@ export default function SaveSheetScreen() {
                 )}
               </View>
 
-              {saved.classification_status !== 'pending' && (
+              {saved.classification_status !== 'pending' && saved.classification_status !== 'unclassified' && (
                 <>
                   <Text
                     style={{
@@ -742,6 +751,9 @@ export default function SaveSheetScreen() {
               )}
 
               <ButtonRow theme={theme} style={styles.buttonRow}>
+                {saved.classification_status === 'unclassified' && (
+                  <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+                )}
                 <SolidButton label="확인" theme={theme} onPress={close} />
               </ButtonRow>
             </>

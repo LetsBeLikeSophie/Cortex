@@ -21,7 +21,14 @@ const ClassificationSchema = z.object({
   title: z.string().max(120).describe("Short list-item title, in Korean, plain wording"),
   snippet: z.string().max(200).describe("One-line summary of what this is, in Korean"),
   category: z.enum(CATEGORIES),
-  tags: z.array(z.string().max(20)).max(5).describe("Freeform short keyword tags, in Korean"),
+  tags: z
+    .array(z.string().max(20))
+    .max(8)
+    .describe("Short keyword tags someone would later type to find this, in Korean (keep proper nouns as written)"),
+  keyText: z
+    .string()
+    .max(400)
+    .describe("Screenshots only: the key words actually visible in the image (names, places, prices, dates, product/menu names); empty string otherwise"),
 });
 
 export type Classification = z.infer<typeof ClassificationSchema>;
@@ -43,9 +50,23 @@ For each item, produce:
   - 볼 것: an article, video, or post to read/watch later
   - 기억할 것: a fact, decision, schedule, or note-to-self worth keeping
   - 기타: only when nothing above genuinely fits
-- tags: up to 5 short freeform Korean keyword tags (the actual subject --
-  place names, a fandom/group name, topics, dish names, etc.) -- this is
-  where specificity goes, separate from the category above
+- tags: 4-8 short tags chosen for how the person will SEARCH for this later,
+  months from now, half-remembering it. Mix three kinds:
+  - the specific names in it: place/store, brand, product, person, group,
+    dish, app -- as written, plus the other common spelling when there is
+    one (Korean/English, e.g. 블루보틀 + Blue Bottle)
+  - the broader word they'd reach for when the name escapes them
+    (a café's name -> 카페; a sneaker model -> 운동화)
+  - where it is / what it's for when stated (성수, 제주, 선물, 다이어트)
+  No filler tags (정보, 추천, 꿀팁) unless that is genuinely the subject.
+- keyText: for screenshots only, the important words visible in the image,
+  copied as they appear (names, addresses, prices, dates, menu or product
+  names) -- this is what lets someone find the screenshot by a word that was
+  in it. Not a description; empty string for anything that isn't an image.
+
+Title and snippet should carry the findable specifics too (the place or
+product name, the area, the price or date if given) rather than generic
+wording like "맛집 정보" or "좋은 글".
 
 Never invent facts not present in the given content. If the content is too
 thin to summarize confidently, keep title/snippet minimal and honest rather

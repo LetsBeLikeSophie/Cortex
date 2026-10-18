@@ -26,7 +26,10 @@ export type ItemCaptureType = "link" | "text" | "screenshot";
 // 'failed' -> classification errored out; the row keeps its placeholder
 // title/category/tags rather than disappearing, so it still shows up and
 // can be opened/retagged by hand.
-export type ClassificationStatus = "pending" | "done" | "failed";
+// 'unclassified' -> saved past the month's AI classification quota: no
+// Claude call was made; it waits in the app's 미분류함 until it's
+// classified later (see classifyStoredItem in pipeline.ts).
+export type ClassificationStatus = "pending" | "done" | "failed" | "unclassified";
 
 export interface ItemRecord {
   id: string;
@@ -103,16 +106,25 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
 export async function completeClassification(
   itemId: string,
   userId: string,
-  classification: { title: string; snippet: string; category: Category; tags: string[] },
+  classification: { title: string; snippet: string; category: Category; tags: string[]; keyText?: string },
   // Links only -- fetched by the same background metadata call that feeds
   // classifyText, so it lands here rather than as a separate write.
   thumbnailUrl?: string
 ): Promise<void> {
+  const { title, snippet, category, tags, keyText } = classification;
   const { error } = await getClient()
     .from("items")
     .update({
-      ...classification,
+      title,
+      snippet,
+      category,
+      tags,
       ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : null),
+      // A screenshot has no raw_text of its own; the words Claude read off
+      // it go there so search (matchesTerm checks raw_text) can find the
+      // image by a word that was in it. The app only renders raw_text as
+      // the body for text items, so this stays invisible otherwise.
+      ...(keyText?.trim() ? { raw_text: keyText.trim() } : null),
       classification_status: "done" satisfies ClassificationStatus,
     })
     .eq("id", itemId)
@@ -130,6 +142,45 @@ export async function failClassification(itemId: string, userId: string): Promis
     .eq("id", itemId)
     .eq("user_id", userId);
   if (error) throw new Error(`failClassification failed: ${error.message}`);
+}
+
+// Flips a row to 'pending' just before a deferred (미분류함) classification
+// starts, so the app shows it as "분석 중" like a fresh save.
+export async function markClassificationPending(itemId: string, userId: string): Promise<void> {
+  const { error } = await getClient()
+    .from("items")
+    .update({ classification_status: "pending" satisfies ClassificationStatus })
+    .eq("id", itemId)
+    .eq("user_id", userId);
+  if (error) throw new Error(`markClassificationPending failed: ${error.message}`);
+}
+
+export async function getItemForUser(userId: string, itemId: string): Promise<ItemRecord | null> {
+  const { data, error } = await getClient().from("items").select().eq("id", itemId).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(`getItemForUser failed: ${error.message}`);
+  return (data as ItemRecord | null) ?? null;
+}
+
+// Oldest first, so "AI로 정리" clears the backlog in the order it piled up.
+export async function listUnclassifiedItems(userId: string, limit: number): Promise<ItemRecord[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select()
+    .eq("user_id", userId)
+    .eq("classification_status", "unclassified")
+    .is("deleted_at", null)
+    .order("shared_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`listUnclassifiedItems failed: ${error.message}`);
+  return (data ?? []) as ItemRecord[];
+}
+
+// Reads a stored screenshot back -- needed to classify one that was saved
+// unclassified (the original upload bytes are long gone by then).
+export async function downloadScreenshot(imagePath: string): Promise<Buffer> {
+  const { data, error } = await getClient().storage.from(SCREENSHOTS_BUCKET).download(imagePath);
+  if (error || !data) throw new Error(`downloadScreenshot failed: ${error?.message}`);
+  return Buffer.from(await data.arrayBuffer());
 }
 
 // One real, deletable/editable example item so a brand-new account isn't a
@@ -605,6 +656,11 @@ export async function deleteUserAccount(userId: string): Promise<void> {
 
   const { error: itemsError } = await client.from("items").delete().eq("user_id", userId);
   if (itemsError) throw new Error(`failed to delete items: ${itemsError.message}`);
+
+  const { error: planError } = await client.from("user_plans").delete().eq("user_id", userId);
+  if (planError) throw new Error(`failed to delete plan: ${planError.message}`);
+  const { error: usageError } = await client.from("ai_usage").delete().eq("user_id", userId);
+  if (usageError) throw new Error(`failed to delete usage log: ${usageError.message}`);
 
   const { error: mappingError } = await client.from("kakao_users").delete().eq("user_id", userId);
   if (mappingError) throw new Error(`failed to delete kakao_users mapping: ${mappingError.message}`);

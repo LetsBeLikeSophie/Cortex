@@ -9,6 +9,8 @@ import { MONO, OUTLINE, Theme, emToTracking } from '../theme/themes';
 import { copyFor, SearchResult } from '../data/content';
 import {
   askSearch,
+  asQuotaError,
+  QuotaError,
   fetchTags,
   restoreItem,
   searchItems as apiSearchItems,
@@ -182,6 +184,8 @@ export default function SearchScreen() {
   const [interpretation, setInterpretation] = useState<SearchInterpretation | null>(null);
   const [relaxedCount, setRelaxedCount] = useState<number | null>(null);
   const [asking, setAsking] = useState(false);
+  // This month's sentence searches are used up (402 from /items/search/ask).
+  const [quotaHit, setQuotaHit] = useState<QuotaError | null>(null);
   // Every tag actually saved, for tag-mode autocomplete -- refreshed on
   // focus so tags added elsewhere show up without a restart.
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -222,6 +226,7 @@ export default function SearchScreen() {
     if (!query) return;
     setAsking(true);
     setLoading(true);
+    setQuotaHit(null);
     askSearch(query)
       .then((res) => {
         setInterpretation(res.interpretation);
@@ -230,7 +235,9 @@ export default function SearchScreen() {
       .catch((err) => {
         setHits([]);
         setInterpretation(null);
-        setError(err instanceof Error ? err.message : String(err));
+        const quota = asQuotaError(err);
+        if (quota) setQuotaHit(quota);
+        else setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
         setAsking(false);
@@ -421,7 +428,20 @@ export default function SearchScreen() {
 
       {!hasQuery ? (
         <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
-          {sentence ? (
+          {sentence && quotaHit ? (
+            <>
+              <Text style={[styles.quotaTitle, { color: theme.ink }]}>이번 달 문장 검색 {quotaHit.limit}회를 다 썼어요</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>태그로 찾기는 계속 쓸 수 있어요. 문장 검색은 다음 달에 다시 생겨요.</Text>
+              <View style={styles.quotaActions}>
+                <Pressable onPress={() => setMode('tag')} hitSlop={6}>
+                  <Text style={[styles.quotaLink, { color: theme.sub }]}>태그로 찾기</Text>
+                </Pressable>
+                <Pressable onPress={() => navigation.navigate('Paywall', { reason: 'search' })} hitSlop={6}>
+                  <Text style={[styles.quotaLink, { color: theme.accent }]}>Pro 보기</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : sentence ? (
             <>
               <Text style={[styles.help, { color: theme.sub }]}>기억나는 대로 문장으로 써 보세요.</Text>
               <Text style={[styles.help, { color: theme.sub }]}>검색(Enter)을 누르면 기간·출처·키워드로 풀어서 찾아요.</Text>
@@ -497,6 +517,9 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
   help: { fontSize: 13.5, lineHeight: 22, fontFamily: 'IBMPlexSansKR_400Regular' },
+  quotaTitle: { fontSize: 15, marginBottom: 6, fontFamily: 'IBMPlexSansKR_500Medium' },
+  quotaActions: { flexDirection: 'row', gap: 20, marginTop: 12 },
+  quotaLink: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', gap: 6, paddingTop: 18, paddingBottom: 8 },
   sectionTitle: { fontSize: 12.5, fontWeight: '500', fontFamily: 'IBMPlexSansKR_500Medium' },
   sectionCount: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },

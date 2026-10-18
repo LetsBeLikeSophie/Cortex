@@ -8,7 +8,22 @@ export type ItemCategory = '가볼 곳' | '살 것' | '배울 것' | '볼 것' |
 // category/tags below are a placeholder, not the real result yet).
 // 'done' -> classification finished normally. 'failed' -> it errored out;
 // the placeholder stays, but nothing further will update it on its own.
-export type ClassificationStatus = 'pending' | 'done' | 'failed';
+// 'unclassified' -> saved past this month's AI classification quota; no
+// AI ran. It waits in 미분류함 until classified (classifyBacklog).
+export type ClassificationStatus = 'pending' | 'done' | 'failed' | 'unclassified';
+
+export type Tier = 'free' | 'trial' | 'pro';
+
+// GET /me/plan -- mirrors Entitlement in backend/src/lib/plans.ts.
+export interface Plan {
+  tier: Tier;
+  trialEndsAt: string;
+  proUntil: string | null;
+  classify: { used: number; limit: number };
+  search: { used: number; limit: number };
+  resetsAt: string;
+  unclassifiedCount: number;
+}
 
 export interface ApiItem {
   id: string;
@@ -62,6 +77,31 @@ const REQUEST_TIMEOUT_MS = 20000;
 // needs to cover compress+upload.
 const SCREENSHOT_TIMEOUT_MS = 15000;
 
+// Carries the HTTP status and parsed JSON body alongside the same message
+// callers already show, so a screen can tell e.g. a 402 quota response
+// apart from a real failure.
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly body: unknown) {
+    super(message);
+  }
+}
+
+// What a 402 from a metered route says (see POST /items/search/ask).
+export interface QuotaError {
+  error: 'quota';
+  kind: 'classify' | 'search';
+  limit: number;
+  tier: Tier;
+  resetsAt: string;
+}
+
+export function asQuotaError(err: unknown): QuotaError | null {
+  if (err instanceof ApiError && err.status === 402 && (err.body as QuotaError | null)?.error === 'quota') {
+    return err.body as QuotaError;
+  }
+  return null;
+}
+
 async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -87,12 +127,27 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      throw new Error(`${init?.method ?? 'GET'} ${path} failed (${res.status}): ${body}`);
+      let parsed: unknown = null;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        // not JSON -- keep the raw text in the message only
+      }
+      throw new ApiError(`${init?.method ?? 'GET'} ${path} failed (${res.status}): ${body}`, res.status, parsed);
     }
     return (await res.json()) as T;
   } finally {
     clearTimeout(timer);
   }
+}
+
+export function fetchPlan() {
+  return request<Plan>('/me/plan');
+}
+
+// "AI로 정리": classifies as much of 미분류함 as this month's quota allows.
+export function classifyBacklog() {
+  return request<{ started: number; left: number }>('/items/classify-backlog', { method: 'POST' });
 }
 
 export function fetchRecentItems(limit = 50) {

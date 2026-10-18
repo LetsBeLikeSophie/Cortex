@@ -11,7 +11,7 @@ import { MONO, OUTLINE, Theme, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { isOnboarded, markOnboarded } from '../data/onboarding';
-import { fetchRecentItems, addTag, removeTag, ApiItem } from '../api/client';
+import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeTag, ApiItem, Plan } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -68,6 +68,8 @@ export default function HomeScreen() {
   const [customTabs, setCustomTabs] = useState<TagTab[]>([]);
   const [activeTag, setActiveTag] = useState<TagTab | null>(null);
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const [sorting, setSorting] = useState(false);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +111,11 @@ export default function HomeScreen() {
 
   const load = React.useCallback(() => {
     setLoading(true);
+    // Quota + 미분류함 count ride along with every refresh; a failure here
+    // just leaves the last known plan on screen.
+    fetchPlan()
+      .then(setPlan)
+      .catch(() => {});
     fetchRecentItems()
       .then((res) => {
         setRawItems(res.items);
@@ -131,7 +138,7 @@ export default function HomeScreen() {
       loadHomeTabs().then((tabs) => {
         setCustomTabs(tabs);
         // A tab the user just removed in the picker can't stay selected.
-        setActiveTag((current) => (current && !tabs.includes(current) ? null : current));
+        setActiveTag((current) => (current && current !== UNCLASSIFIED && !tabs.includes(current) ? null : current));
       });
     }, [load])
   );
@@ -199,9 +206,30 @@ export default function HomeScreen() {
     load();
   };
 
-  const filtered = activeTag
-    ? rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))
-    : rawItems;
+  const filtered =
+    activeTag === UNCLASSIFIED
+      ? rawItems.filter((it) => it.classification_status === 'unclassified')
+      : activeTag
+        ? rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))
+        : rawItems;
+  const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;
+  const classifyLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : 0;
+
+  // "AI로 정리" in the 미분류함 tab: classify as much of the backlog as this
+  // month's quota covers; with nothing left, it's the upgrade prompt.
+  const sortBacklog = async () => {
+    if (classifyLeft === 0) {
+      navigation.navigate('Paywall', { reason: 'classify' });
+      return;
+    }
+    setSorting(true);
+    try {
+      await classifyBacklog();
+    } finally {
+      setSorting(false);
+      load();
+    }
+  };
   const items = filtered.map(toRecentItem);
 
   // Always off the unfiltered list -- the hero card describes the whole
@@ -351,13 +379,47 @@ export default function HomeScreen() {
         ]}
       >
         <TabChip label="모두" active={activeTag === null} theme={theme} onPress={() => changeTag(null)} />
+        {/* Fixed, not removable: the pile of saves the month's AI quota
+            didn't cover. Its growing count is the point -- see Paywall. */}
+        {unclassifiedCount > 0 && (
+          <TabChip
+            label={`미분류 · ${unclassifiedCount}`}
+            active={activeTag === UNCLASSIFIED}
+            theme={theme}
+            onPress={() => changeTag(UNCLASSIFIED)}
+          />
+        )}
         {customTabs.map((tag) => (
           <TabChip key={tag} label={tag} active={activeTag === tag} theme={theme} onPress={() => changeTag(tag)} />
         ))}
         <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </ScrollView>
 
-      {activeTag && items.length > 0 && (
+      {activeTag === UNCLASSIFIED && (
+        <View style={[styles.backlog, { paddingHorizontal: boxed ? 24 : 26 }]}>
+          <Text style={[styles.backlogTitle, { color: theme.ink }]}>{unclassifiedCount}건이 정리를 기다리고 있어요</Text>
+          <Text style={[styles.backlogSub, { color: theme.sub }]}>
+            {classifyLeft > 0
+              ? `이번 달 AI 정리가 ${classifyLeft}건 남았어요. 오래된 것부터 정리해요.`
+              : `이번 달 AI 정리 ${plan?.classify.limit ?? ''}건을 다 썼어요. ${resetLabel(plan?.resetsAt)}에 다시 생겨요. 직접 태그를 달아도 돼요.`}
+          </Text>
+          <Pressable
+            onPress={sortBacklog}
+            disabled={sorting}
+            style={({ pressed }) => [styles.backlogButton, { backgroundColor: theme.ink, borderRadius: theme.btnRadius, opacity: pressed || sorting ? 0.7 : 1 }]}
+          >
+            {sorting ? (
+              <ActivityIndicator color={theme.bg} />
+            ) : (
+              <Text style={[styles.backlogButtonText, { color: theme.bg }]}>
+                {classifyLeft > 0 ? `AI로 정리하기 (${Math.min(classifyLeft, unclassifiedCount)}건)` : 'Pro로 바로 정리하기'}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      )}
+
+      {activeTag && activeTag !== UNCLASSIFIED && items.length > 0 && (
         <View style={[styles.bulkBar, { paddingHorizontal: boxed ? 24 : 26 }]}>
           {selectMode ? (
             <>
@@ -452,8 +514,24 @@ export default function HomeScreen() {
   );
 }
 
+// Tab key for the 미분류함 filter -- can't collide with a real tag (tags
+// never start with "__").
+const UNCLASSIFIED = '__unclassified__';
+
+// "다음 달 1일" style label for when the monthly quota resets.
+function resetLabel(iso?: string): string {
+  if (!iso) return '다음 달 1일';
+  const d = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000); // Korea time
+  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  backlog: { paddingTop: 16, paddingBottom: 6, gap: 6 },
+  backlogTitle: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
+  backlogSub: { fontSize: 12.5, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
+  backlogButton: { marginTop: 8, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  backlogButtonText: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
   headPad: {},
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },

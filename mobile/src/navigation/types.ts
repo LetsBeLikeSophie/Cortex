@@ -17,4 +17,6 @@ export type RootStackParamList = {
   Trash: undefined;
   ItemDetail: { item: ApiItem };
   Onboarding: undefined;
+  // Why it opened -- picks the headline; omitted = opened from the profile.
+  Paywall: { reason?: 'classify' | 'search' } | undefined;
 };

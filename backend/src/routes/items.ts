@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
-import { IncomingItemSchema, processIncomingItem } from "../lib/pipeline.js";
+import { IncomingItemSchema, classifyBacklog, processIncomingItem } from "../lib/pipeline.js";
+import { getEntitlement, recordUsage, remaining } from "../lib/plans.js";
 import { interpretSearch, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
@@ -154,11 +155,36 @@ export async function itemsRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
       }
       const userId = await resolveUserId(req);
+      // Metered monthly (tag/keyword search stays free). 402 carries what
+      // the app needs to say why and when it comes back.
+      // Fails open like saving does (see processIncomingItem).
+      const ent = await getEntitlement(userId).catch((err) => {
+        req.log.error(err);
+        return null;
+      });
+      if (ent && remaining(ent, "search") === 0) {
+        return reply.code(402).send({ error: "quota", kind: "search", limit: ent.search.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+      }
       const interpretation = await interpretSearch(parsed.data.query, todayInKorea());
+      await recordUsage(userId, "search").catch((err) => req.log.error(err));
       const result = await searchItemsSmart(userId, interpretation);
       return reply.send({ interpretation, ...result });
     }
   );
+
+  // Plan + this month's AI usage, for the app's quota/미분류함 UI.
+  app.get("/me/plan", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    return reply.send(await getEntitlement(userId));
+  });
+
+  // "AI로 정리": classify as much of the 미분류함 backlog as the quota
+  // allows. Calls Claude, so rate limited like POST /items.
+  app.post("/items/classify-backlog", { config: { rateLimit: {} } }, async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const result = await classifyBacklog(userId);
+    return reply.send(result);
+  });
 
   // Re-runs an (edited) interpretation without calling Claude again -- what
   // removing/toggling one of the interpreted chips hits.

@@ -85,10 +85,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
     const userId = await resolveUserId(req);
 
-    // Every branch ends up calling Claude (text classification or, for
-    // screenshots, the pricier vision call), so this is the one place that
-    // caps real per-request cost. Rolling 24h rather than calendar-day to
-    // dodge timezone-boundary edge cases.
+    // Abuse ceiling only -- saving is unlimited by plan, and Claude cost is
+    // capped by the monthly classification quota instead (see plans.ts).
+    // Rolling 24h rather than calendar-day to dodge timezone edge cases.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const usedToday = await countItemsSince(userId, since);
     if (usedToday >= config.dailyItemLimit) {

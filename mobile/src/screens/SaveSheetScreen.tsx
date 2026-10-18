@@ -148,10 +148,16 @@ export default function SaveSheetScreen() {
       permissionToast('사진 접근', perm.canAskAgain);
       return;
     }
+    // No base64 / re-encode on native: asking the picker for both made it
+    // decode and re-compress every selected photo before returning, so a
+    // 30-photo pick sat on the picker for a long while. The file is read
+    // only when it's actually saved (and the server compresses it anyway).
+    // Web can't read the file later (expo-file-system), so it still asks.
+    const onWeb = Platform.OS === 'web';
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      base64: true,
-      quality: 0.8,
+      base64: onWeb,
+      quality: onWeb ? 0.8 : 1,
       allowsMultipleSelection: true,
     });
     if (result.canceled || result.assets.length === 0) return;
@@ -169,7 +175,9 @@ export default function SaveSheetScreen() {
     }
 
     const asset = result.assets[0];
-    if (!asset?.base64) return;
+    if (!asset) return;
+    const base64 = asset.base64 ?? (await new File(asset.uri).base64().catch(() => null));
+    if (!base64) return;
     setText('');
     setLinkUrl(null);
     setNote('');
@@ -177,7 +185,7 @@ export default function SaveSheetScreen() {
     setBulkTag('');
     setAddingBulkTag(false);
     setStatus('input');
-    setImage({ base64: asset.base64, previewUri: asset.uri });
+    setImage({ base64, previewUri: asset.uri });
   };
 
   const takePhoto = async () => {

@@ -2,14 +2,16 @@ import { z } from "zod";
 import sharp from "sharp";
 import { fetchLinkMetadata } from "./metadata.js";
 import { classifyText, classifyImage } from "./anthropic.js";
-import { getEntitlement, recordUsage, remaining } from "./plans.js";
+import type { Category } from "./categories.js";
+import { getEntitlement, refundUsage, remaining, reserveUsage } from "./plans.js";
 import {
   ClassificationStatus,
   completeClassification,
   downloadScreenshot,
   listUnclassifiedItems,
   markClassificationPending,
-  failClassification,
+  listPendingItems,
+  markUnclassified,
   insertItem,
   logAnalyticsEvent,
   uploadScreenshot,
@@ -69,18 +71,24 @@ const PENDING_CATEGORY = "기타" as const;
 // Claude vision -- all three converge on the same classifyText/classifyImage
 // call so every item ends up with a title/snippet/category/tags. Each
 // branch returns as soon as the row exists and classifies in the background
-// (see runInBackground) -- unless the month's AI classification quota is
+// (see the queue below) -- unless the month's AI classification quota is
 // used up: then the item still saves, as 'unclassified', with no Claude call
 // at all, and waits in the app's 미분류함 (see classifyBacklog).
 export async function processIncomingItem(input: IncomingItem, userId: string): Promise<ItemRecord> {
-  // Fails open: if the quota lookup itself breaks (e.g. the plan tables
-  // aren't migrated yet), saving must still work -- it classifies as before.
-  const classifyNow = await getEntitlement(userId)
-    .then((ent) => remaining(ent, "classify") > 0)
-    .catch((err) => {
-      console.error("quota lookup failed, classifying anyway:", err);
-      return true;
-    });
+  // The quota is reserved here, the moment the save is accepted -- not when
+  // the classification finishes -- so a 30-photo batch counts as 30 right
+  // away. Parallel uploads can each see one slot left and overshoot by a
+  // couple; acceptable for a soft monthly quota. Fails open: if the quota
+  // lookup itself breaks, saving still works and classifies as before.
+  let classifyNow = true;
+  let reservation: number | null = null;
+  try {
+    const ent = await getEntitlement(userId);
+    classifyNow = remaining(ent, "classify") > 0;
+    if (classifyNow) reservation = await reserveUsage(userId, "classify");
+  } catch (err) {
+    console.error("quota lookup failed, classifying anyway:", err);
+  }
   const status: ClassificationStatus = classifyNow ? "pending" : "unclassified";
   const base = { userId, source: input.source, userNote: input.note, category: PENDING_CATEGORY, tags: [], classificationStatus: status };
 
@@ -101,9 +109,11 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
   }
 
   if (classifyNow) {
-    runInBackground(item.id, userId, async () => {
-      const category = await classifyAndComplete(item, imageBase64);
-      await logAnalyticsEvent({ eventType: "item_saved", userId, category, source: input.source });
+    enqueueClassification({
+      item,
+      imageBase64,
+      reservation,
+      onDone: (category) => logAnalyticsEvent({ eventType: "item_saved", userId, category, source: input.source }),
     });
   } else {
     await logAnalyticsEvent({ eventType: "item_saved", userId, source: input.source });
@@ -111,9 +121,9 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
   return item;
 }
 
-// Runs the classification for one stored row and records the quota use.
-// Works for a fresh save (imageBase64 already in hand) and for a deferred
-// 미분류함 item (re-reads link metadata / the stored screenshot).
+// Runs the classification for one stored row. Works for a fresh save
+// (imageBase64 already in hand) and for a deferred 미분류함 item (re-reads
+// link metadata / the stored screenshot). Quota is handled by the caller.
 async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
   let classification;
   let thumbnailUrl: string | undefined;
@@ -146,47 +156,91 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
     classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "" })), keyText: undefined };
   }
   await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
-  // The item is classified at this point -- a failed usage write must not
-  // flip it to 'failed' (runSafely would), so it's only logged.
-  await recordUsage(item.user_id, "classify").catch((err) => console.error("recordUsage(classify) failed:", err));
   return classification.category;
 }
 
 // "AI로 정리": classifies as much of the 미분류함 backlog as this month's
-// quota allows, oldest first. Rows flip to 'pending' up front (so the app
-// shows them as 분석 중 right away); the Claude calls then run one after
-// another in the background rather than all at once.
+// quota allows, oldest first. Quota is reserved and rows flip to 'pending'
+// up front (the app shows them as 분석 중 and the count right away); the
+// Claude calls then go through the same queue as fresh saves.
 export async function classifyBacklog(userId: string): Promise<{ started: number; left: number }> {
   const ent = await getEntitlement(userId);
   const budget = remaining(ent, "classify");
   if (budget === 0) return { started: 0, left: ent.unclassifiedCount };
   const items = await listUnclassifiedItems(userId, budget);
-  for (const item of items) await markClassificationPending(item.id, userId);
-  void (async () => {
-    for (const item of items) {
-      await runSafely(item.id, userId, () => classifyAndComplete(item).then(() => undefined));
-    }
-  })();
+  for (const item of items) {
+    const reservation = await reserveUsage(userId, "classify");
+    await markClassificationPending(item.id, userId);
+    enqueueClassification({ item, reservation });
+  }
   return { started: items.length, left: ent.unclassifiedCount - items.length };
 }
 
-// Fire-and-forget, but never an unhandled rejection: the route has already
-// responded by the time this runs, so any error here can only be reported
-// by flipping the row to 'failed' (and logging) -- there's no request left
-// to send it back on.
-function runInBackground(itemId: string, userId: string, task: () => Promise<void>): void {
-  void runSafely(itemId, userId, task);
+// ---- Classification queue -------------------------------------------------
+// A burst (30 photos at once) used to fire 30 Claude calls in parallel on a
+// 1 OCPU box. Now at most MAX_CONCURRENT run at a time; the rest wait their
+// turn. A failed call is retried (transient API/network errors are the usual
+// cause); only after every attempt fails is the reserved quota handed back
+// and the item parked in 미분류함, where "AI로 정리" can pick it up later.
+const MAX_CONCURRENT = 3;
+const RETRY_DELAYS_MS = [3_000, 15_000];
+
+interface ClassificationJob {
+  item: ItemRecord;
+  imageBase64?: string;
+  reservation: number | null;
+  onDone?: (category: Category) => Promise<void>;
 }
 
-async function runSafely(itemId: string, userId: string, task: () => Promise<void>): Promise<void> {
+let active = 0;
+const waiting: (() => void)[] = [];
+
+async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (active >= MAX_CONCURRENT) await new Promise<void>((resolve) => waiting.push(resolve));
+  active++;
   try {
-    await task();
-  } catch (err) {
-    console.error(`classification failed for item ${itemId}:`, err);
+    return await fn();
+  } finally {
+    active--;
+    waiting.shift()?.();
+  }
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function enqueueClassification(job: ClassificationJob): void {
+  void runJob(job);
+}
+
+async function runJob(job: ClassificationJob): Promise<void> {
+  const { item } = job;
+  for (let attempt = 0; ; attempt++) {
     try {
-      await failClassification(itemId, userId);
-    } catch (updateErr) {
-      console.error(`failClassification itself failed for item ${itemId}:`, updateErr);
+      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64));
+      await job.onDone?.(category).catch((err) => console.error("classification onDone failed:", err));
+      return;
+    } catch (err) {
+      if (attempt < RETRY_DELAYS_MS.length) {
+        console.warn(`classification attempt ${attempt + 1} failed for item ${item.id}, retrying:`, err);
+        await sleep(RETRY_DELAYS_MS[attempt]);
+        continue;
+      }
+      console.error(`classification failed for item ${item.id} after ${attempt + 1} attempts:`, err);
+      if (job.reservation !== null) {
+        await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
+      }
+      await markUnclassified(item.id, item.user_id).catch((e) => console.error("markUnclassified failed:", e));
+      return;
     }
   }
+}
+
+// Queued jobs live in memory, so a server restart would strand their items
+// at 'pending' ("분석 중") forever. Called once at startup: re-queues
+// whatever is still pending. Their quota was already reserved when they were
+// saved, so no new reservation (and no refund to give back if they fail).
+export async function resumePendingClassifications(): Promise<number> {
+  const items = await listPendingItems(500);
+  for (const item of items) enqueueClassification({ item, reservation: null });
+  return items.length;
 }

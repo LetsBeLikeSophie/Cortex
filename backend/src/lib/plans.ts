@@ -104,6 +104,20 @@ export function remaining(ent: Entitlement, kind: UsageKind): number {
 }
 
 export async function recordUsage(userId: string, kind: UsageKind): Promise<void> {
-  const { error } = await getClient().from("ai_usage").insert({ user_id: userId, kind });
-  if (error) throw new Error(`recordUsage failed: ${error.message}`);
+  await reserveUsage(userId, kind);
+}
+
+// Counts the use up front -- the moment a save is accepted for AI
+// classification, not when the classification eventually finishes -- so a
+// 30-photo batch shows as 30 used right away. Returns the row id so a job
+// that ultimately fails can hand it back (refundUsage).
+export async function reserveUsage(userId: string, kind: UsageKind): Promise<number> {
+  const { data, error } = await getClient().from("ai_usage").insert({ user_id: userId, kind }).select("id").single();
+  if (error) throw new Error(`reserveUsage failed: ${error.message}`);
+  return data.id as number;
+}
+
+export async function refundUsage(id: number): Promise<void> {
+  const { error } = await getClient().from("ai_usage").delete().eq("id", id);
+  if (error) throw new Error(`refundUsage failed: ${error.message}`);
 }

@@ -155,6 +155,29 @@ export async function markClassificationPending(itemId: string, userId: string):
   if (error) throw new Error(`markClassificationPending failed: ${error.message}`);
 }
 
+// Classification gave up after every retry: park the item in 미분류함
+// (still a real, openable item) so "AI로 정리" can try it again later.
+export async function markUnclassified(itemId: string, userId: string): Promise<void> {
+  const { error } = await getClient()
+    .from("items")
+    .update({ classification_status: "unclassified" satisfies ClassificationStatus })
+    .eq("id", itemId)
+    .eq("user_id", userId);
+  if (error) throw new Error(`markUnclassified failed: ${error.message}`);
+}
+
+// Every user's items still at 'pending' -- for re-queueing at startup.
+export async function listPendingItems(limit: number): Promise<ItemRecord[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select()
+    .eq("classification_status", "pending")
+    .order("shared_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(`listPendingItems failed: ${error.message}`);
+  return (data ?? []) as ItemRecord[];
+}
+
 export async function getItemForUser(userId: string, itemId: string): Promise<ItemRecord | null> {
   const { data, error } = await getClient().from("items").select().eq("id", itemId).eq("user_id", userId).maybeSingle();
   if (error) throw new Error(`getItemForUser failed: ${error.message}`);

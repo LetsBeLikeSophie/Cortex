@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { itemsRoutes } from "./routes/items.js";
 import { authRoutes } from "./routes/auth.js";
 import { webhookRoutes } from "./routes/webhooks.js";
+import { resumePendingClassifications } from "./lib/pipeline.js";
 
 // Base64 inflates bytes by ~33%, so give Fastify's own body-size cap enough
 // headroom above maxImageBytes that our friendlier "image too large" check
@@ -44,7 +45,17 @@ await app.register(itemsRoutes);
 await app.register(authRoutes);
 await app.register(webhookRoutes);
 
-app.listen({ port: config.port, host: "0.0.0.0" }).catch((err) => {
-  app.log.error(err);
-  process.exit(1);
-});
+app.listen({ port: config.port, host: "0.0.0.0" })
+  .then(() => {
+    // Classification jobs live in memory; re-queue anything a restart left
+    // at "분석 중". Best-effort -- never blocks or fails startup.
+    if (config.hasSupabase && config.hasAnthropicKey) {
+      resumePendingClassifications()
+        .then((n) => n > 0 && app.log.info(`re-queued ${n} pending classification(s)`))
+        .catch((err) => app.log.error(err, "resumePendingClassifications failed"));
+    }
+  })
+  .catch((err) => {
+    app.log.error(err);
+    process.exit(1);
+  });

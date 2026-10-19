@@ -178,6 +178,27 @@ export async function listPendingItems(limit: number): Promise<ItemRecord[]> {
   return (data ?? []) as ItemRecord[];
 }
 
+// The person's own edits from the detail screen. null clears a field.
+export async function updateItemText(
+  userId: string,
+  itemId: string,
+  patch: { title?: string | null; snippet?: string | null; rawText?: string | null }
+): Promise<ItemRecord> {
+  const { data, error } = await getClient()
+    .from("items")
+    .update({
+      ...(patch.title !== undefined ? { title: patch.title } : null),
+      ...(patch.snippet !== undefined ? { snippet: patch.snippet } : null),
+      ...(patch.rawText !== undefined ? { raw_text: patch.rawText } : null),
+    })
+    .eq("id", itemId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+  if (error) throw new Error(`updateItemText failed: ${error.message}`);
+  return data as ItemRecord;
+}
+
 export async function getItemForUser(userId: string, itemId: string): Promise<ItemRecord | null> {
   const { data, error } = await getClient().from("items").select().eq("id", itemId).eq("user_id", userId).maybeSingle();
   if (error) throw new Error(`getItemForUser failed: ${error.message}`);

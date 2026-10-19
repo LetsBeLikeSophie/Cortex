@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
-import { IncomingItemSchema, classifyBacklog, processIncomingItem } from "../lib/pipeline.js";
+import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
 import { getEntitlement, recordUsage, remaining } from "../lib/plans.js";
 import { clipInterpretation, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
@@ -17,10 +17,21 @@ import {
   removeUserTag,
   restoreItem,
   searchItems,
+  getItemForUser,
+  updateItemText,
   searchItemsSmart,
   trashItem,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
+
+// Edits from the detail screen. Empty string clears the field (stored null).
+// raw_text only for text items -- a screenshot's raw_text is the hidden
+// search text Claude read off the image, not something shown to edit.
+const UpdateItemSchema = z.object({
+  title: z.string().max(200).optional(),
+  snippet: z.string().max(1000).optional(),
+  rawText: z.string().max(20000).optional(),
+});
 
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -238,6 +249,52 @@ export async function itemsRoutes(app: FastifyInstance) {
     const userId = await resolveUserId(req);
     const items = await listTrash(userId);
     return reply.send({ items });
+  });
+
+  // One item, for refreshing the detail screen (e.g. while a re-organize runs).
+  app.get("/items/:id", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    const item = await getItemForUser(userId, id);
+    if (!item) return reply.code(404).send({ error: "not found" });
+    return reply.send(item);
+  });
+
+  app.patch("/items/:id", async (req, reply) => {
+    const parsed = UpdateItemSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
+    }
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    const item = await getItemForUser(userId, id);
+    if (!item) return reply.code(404).send({ error: "not found" });
+    const blankToNull = (v?: string) => (v === undefined ? undefined : v.trim() === "" ? null : v.trim());
+    if (parsed.data.rawText !== undefined && item.capture_type !== "text") {
+      return reply.code(400).send({ error: "rawText is editable only on text items" });
+    }
+    const updated = await updateItemText(userId, id, {
+      title: blankToNull(parsed.data.title),
+      snippet: blankToNull(parsed.data.snippet),
+      rawText: blankToNull(parsed.data.rawText),
+    });
+    return reply.send(updated);
+  });
+
+  // "AI로 다시 정리": re-run classification on one item with the person's
+  // current title/memo as a hint. Uses one from the monthly quota.
+  app.post("/items/:id/reorganize", { config: { rateLimit: {} } }, async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    const item = await getItemForUser(userId, id);
+    if (!item) return reply.code(404).send({ error: "not found" });
+    if (item.classification_status === "pending") return reply.code(409).send({ error: "already organizing" });
+    const started = await reorganizeItem(userId, item);
+    if (!started) {
+      const ent = await getEntitlement(userId);
+      return reply.code(402).send({ error: "quota", kind: "classify", limit: ent.classify.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+    }
+    return reply.code(202).send({ ok: true });
   });
 
   // Soft delete -- moves the item to the trash rather than removing it.

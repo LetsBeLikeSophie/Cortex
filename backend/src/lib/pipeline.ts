@@ -124,7 +124,20 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
 // Runs the classification for one stored row. Works for a fresh save
 // (imageBase64 already in hand) and for a deferred 미분류함 item (re-reads
 // link metadata / the stored screenshot). Quota is handled by the caller.
-async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
+// What the person has written about an item themselves: their save note,
+// and -- on an explicit re-organize -- the title/memo as they left them
+// (possibly edited or cleared; cleared means "no hint").
+function hintFor(item: ItemRecord, includeText: boolean): string | undefined {
+  const parts = [
+    includeText && item.title ? `제목: ${item.title}` : null,
+    includeText && item.snippet ? `메모: ${item.snippet}` : null,
+    item.user_note ? `저장할 때 남긴 말: ${item.user_note}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join("\n") : undefined;
+}
+
+async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEditsAsHint = false) {
+  const hint = hintFor(item, useEditsAsHint);
   let classification;
   let thumbnailUrl: string | undefined;
   if (item.capture_type === "link" && item.raw_url) {
@@ -141,6 +154,7 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
         // Only where the thumbnail tends to carry the content's words
         // (YouTube); a generic og:image is usually just a logo.
         imageUrl: meta.analyzeImage ? meta.imageUrl : undefined,
+        hint,
         userId: item.user_id,
       })),
       keyText: undefined,
@@ -150,11 +164,11 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
     thumbnailUrl = meta.imageUrl;
   } else if (item.capture_type === "screenshot" && item.image_path) {
     const b64 = imageBase64 ?? (await downloadScreenshot(item.image_path)).toString("base64");
-    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg", userId: item.user_id });
+    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg", hint, userId: item.user_id });
   } else {
     // keyText is a screenshot-only field -- dropped here so a text memo's
     // own raw_text can never be overwritten by it.
-    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", userId: item.user_id })), keyText: undefined };
+    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, userId: item.user_id })), keyText: undefined };
   }
   await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
   return classification.category;
@@ -177,6 +191,18 @@ export async function classifyBacklog(userId: string): Promise<{ started: number
   return { started: items.length, left: ent.unclassifiedCount - items.length };
 }
 
+// "AI로 다시 정리" on one item: uses one classification from the quota and
+// re-runs it with the person's current title/memo as a hint. Returns false
+// when the quota is used up (the route answers 402).
+export async function reorganizeItem(userId: string, item: ItemRecord): Promise<boolean> {
+  const ent = await getEntitlement(userId);
+  if (remaining(ent, "classify") === 0) return false;
+  const reservation = await reserveUsage(userId, "classify");
+  await markClassificationPending(item.id, userId);
+  enqueueClassification({ item, reservation, useEditsAsHint: true });
+  return true;
+}
+
 // ---- Classification queue -------------------------------------------------
 // A burst (30 photos at once) used to fire 30 Claude calls in parallel on a
 // 1 OCPU box. Now at most MAX_CONCURRENT run at a time; the rest wait their
@@ -189,6 +215,8 @@ const RETRY_DELAYS_MS = [3_000, 15_000];
 interface ClassificationJob {
   item: ItemRecord;
   imageBase64?: string;
+  // Re-organize request: the item's current title/memo go in as a hint.
+  useEditsAsHint?: boolean;
   reservation: number | null;
   onDone?: (category: Category) => Promise<void>;
 }
@@ -217,7 +245,7 @@ async function runJob(job: ClassificationJob): Promise<void> {
   const { item } = job;
   for (let attempt = 0; ; attempt++) {
     try {
-      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64));
+      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64, job.useEditsAsHint));
       await job.onDone?.(category).catch((err) => console.error("classification onDone failed:", err));
       return;
     } catch (err) {

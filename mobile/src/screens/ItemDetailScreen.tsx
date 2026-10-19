@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice, friendlyError } from '../api/client';
+import { addTag, asQuotaError, deleteItem, fetchItem, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
@@ -30,6 +30,9 @@ import { Heading } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
+type EditField = 'title' | 'snippet' | 'rawText';
+
+const REORGANIZE_POLL_MS = 2000;
 
 export default function ItemDetailScreen() {
   const { theme } = useTheme();
@@ -52,6 +55,19 @@ export default function ItemDetailScreen() {
   const [addingTag, setAddingTag] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [voiceTagLoading, setVoiceTagLoading] = useState(false);
+
+  // Title / memo / body are editable in place: tap the text, it becomes an
+  // input, leaving it (blur or done) saves. For screenshots and links the
+  // body is the AI memo (snippet); for a text memo it's the text itself.
+  const [title, setTitle] = useState(item.title ?? '');
+  const [snippet, setSnippet] = useState(item.snippet ?? '');
+  const [rawText, setRawText] = useState(item.raw_text ?? '');
+  const [category, setCategory] = useState(item.category);
+  const [editing, setEditing] = useState<EditField | null>(null);
+  const [draft, setDraft] = useState('');
+  const [editError, setEditError] = useState('');
+  const editSubmittedRef = useRef(false);
+  const [organizing, setOrganizing] = useState(item.classification_status === 'pending');
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
@@ -80,6 +96,89 @@ export default function ItemDetailScreen() {
   }, [item.id, item.capture_type]);
 
   const close = () => navigation.goBack();
+
+  // While a re-organize runs on the server, check back until it lands, then
+  // show the new title/memo/tags.
+  useEffect(() => {
+    if (!organizing) return;
+    let cancelled = false;
+    const timer = setInterval(() => {
+      fetchItem(item.id)
+        .then((fresh) => {
+          if (cancelled || fresh.classification_status === 'pending') return;
+          setOrganizing(false);
+          setTitle(fresh.title ?? '');
+          setSnippet(fresh.snippet ?? '');
+          setRawText(fresh.raw_text ?? '');
+          setCategory(fresh.category);
+          setAiTags(fresh.tags);
+          setUserTags(fresh.user_tags);
+          if (fresh.classification_status === 'unclassified') setEditError('AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+        })
+        .catch(() => {});
+    }, REORGANIZE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [organizing, item.id]);
+
+  const valueOf = (field: EditField) => (field === 'title' ? title : field === 'snippet' ? snippet : rawText);
+  const setterOf = (field: EditField) => (field === 'title' ? setTitle : field === 'snippet' ? setSnippet : setRawText);
+
+  const startEdit = (field: EditField) => {
+    if (organizing) return;
+    editSubmittedRef.current = false;
+    setEditError('');
+    setDraft(valueOf(field));
+    setEditing(field);
+  };
+
+  // Same double-fire guard as submitNewTag (submit, then blur on unmount).
+  const commitEdit = () => {
+    if (editSubmittedRef.current || !editing) return;
+    editSubmittedRef.current = true;
+    const field = editing;
+    const previous = valueOf(field);
+    const next = draft.trim();
+    setEditing(null);
+    if (next === previous.trim()) return;
+    setterOf(field)(next);
+    updateItem(item.id, { [field]: next }).catch((err) => {
+      setterOf(field)(previous);
+      setEditError(friendlyError(err));
+    });
+  };
+
+  const reorganize = async () => {
+    if (organizing) return;
+    setEditError('');
+    try {
+      await reorganizeItem(item.id);
+      setOrganizing(true);
+    } catch (err) {
+      if (asQuotaError(err)) {
+        navigation.navigate('Paywall', { reason: 'classify' });
+        return;
+      }
+      setEditError(friendlyError(err));
+    }
+  };
+
+  const editInput = (field: EditField, textStyle: object, placeholder: string) => (
+    <TextInput
+      value={draft}
+      onChangeText={setDraft}
+      autoFocus
+      multiline
+      blurOnSubmit={field === 'title'}
+      onSubmitEditing={field === 'title' ? commitEdit : undefined}
+      onBlur={commitEdit}
+      placeholder={placeholder}
+      placeholderTextColor={theme.sub}
+      style={[textStyle, styles.editInput, { borderColor: theme.line }]}
+    />
+  );
 
   // Optimistic: the tag chip disappears/appears immediately, and rolls back
   // if the server call fails rather than leaving the UI ahead of reality.
@@ -180,7 +279,7 @@ export default function ItemDetailScreen() {
                 in this one spot -- source/capture type moved to the footer
                 near the timestamp, see below. */}
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-              {item.category}
+              {category}
             </Text>
             <Pressable
               onPress={() => setDeleteState('confirming')}
@@ -220,9 +319,15 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          <Heading theme={theme} offset={4} style={{ marginTop: 10 }}>
-            {item.title ?? item.raw_text?.slice(0, 40) ?? (item.classification_status === 'pending' ? '분석 중...' : '(제목 없음)')}
-          </Heading>
+          {editing === 'title' ? (
+            editInput('title', { color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 20, marginTop: 10 }, '제목')
+          ) : (
+            <Pressable onPress={() => startEdit('title')}>
+              <Heading theme={theme} offset={4} style={{ marginTop: 10 }}>
+                {title || (organizing ? 'AI가 정리하는 중...' : rawText.slice(0, 40) || '(제목 없음)')}
+              </Heading>
+            </Pressable>
+          )}
 
           {/* Horizontal instead of wrapping -- with enough tags, a wrapping
               row grows tall and pushes the image/description further down
@@ -300,20 +405,46 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {item.snippet && <Text style={[styles.body, { color: theme.sub }]}>{item.snippet}</Text>}
+          {item.capture_type !== 'text' &&
+            (editing === 'snippet' ? (
+              editInput('snippet', [styles.body, { color: theme.ink }], '메모')
+            ) : (
+              <Pressable onPress={() => startEdit('snippet')}>
+                <Text style={[styles.body, { color: snippet ? theme.sub : theme.line }]}>
+                  {snippet || (organizing ? '' : '메모를 적으려면 눌러요')}
+                </Text>
+              </Pressable>
+            ))}
 
           {/* The user's own "why I saved this" -- kept visually distinct
               (italic, accent-colored) from the AI snippet above it, since
               it's their words, not a generated summary. */}
           {item.user_note && (
-            <Text style={[styles.body, { color: theme.accent, fontStyle: 'italic', marginTop: item.snippet ? 4 : 0 }]}>
+            <Text style={[styles.body, { color: theme.accent, fontStyle: 'italic', marginTop: snippet ? 4 : 0 }]}>
               "{item.user_note}"
             </Text>
           )}
 
-          {item.capture_type === 'text' && item.raw_text && (
-            <Text style={[styles.body, { color: theme.ink }]}>{item.raw_text}</Text>
-          )}
+          {item.capture_type === 'text' &&
+            (editing === 'rawText' ? (
+              editInput('rawText', [styles.body, { color: theme.ink }], '본문')
+            ) : (
+              <Pressable onPress={() => startEdit('rawText')}>
+                <Text style={[styles.body, { color: rawText ? theme.ink : theme.line }]}>{rawText || '본문을 적으려면 눌러요'}</Text>
+              </Pressable>
+            ))}
+
+          {editError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>{editError}</Text>}
+
+          {/* Rewrite the title/memo however you like (or clear them), then
+              let the AI redo it with your version as the guide. */}
+          <Pressable onPress={reorganize} disabled={organizing || editing !== null} style={[styles.reorganize, pickStyle(theme)]}>
+            {organizing ? (
+              <ActivityIndicator size="small" color={theme.accent} />
+            ) : (
+              <Text style={pickTextStyle(theme)}>✦ AI로 다시 정리</Text>
+            )}
+          </Pressable>
 
           {item.raw_url && (
             <Pressable onPress={() => Linking.openURL(item.raw_url!)} style={styles.linkRow}>
@@ -363,6 +494,8 @@ const styles = StyleSheet.create({
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   linkRow: { marginTop: 14 },
+  editInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, textAlignVertical: 'top', outlineWidth: 0 } as object,
+  reorganize: { alignSelf: 'flex-start', marginTop: 16, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, minWidth: 120, alignItems: 'center' },
   tagScroll: { marginTop: 16, flexGrow: 0 },
   // paddingVertical: same Android horizontal-ScrollView bottom-edge clip as
   // Home's tab strip -- outlined tag chips lost their bottom border.

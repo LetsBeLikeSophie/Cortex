@@ -17,7 +17,7 @@ import type { RootStackParamList } from '../navigation/types';
 // sold as unlimited; the server keeps a fair-use ceiling behind it. The buy
 // button stays disabled until Play Billing ships with the Play Store
 // release -- the sheet itself is real so the upgrade moment can be tested.
-const PRICE = '월 4,900원';
+const PRICE = '월 3,900원';
 
 const HEADLINES = {
   classify: '이번 달 AI 정리를 다 썼어요',

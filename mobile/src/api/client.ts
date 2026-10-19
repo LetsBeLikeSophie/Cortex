@@ -324,6 +324,22 @@ export function deleteItem(itemId: string) {
   return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 }
 
+export function fetchItem(itemId: string) {
+  return request<ApiItem>(`/items/${encodeURIComponent(itemId)}`);
+}
+
+// The person's own edits from the detail screen. An empty string clears the
+// field. rawText is the body of a text memo only.
+export function updateItem(itemId: string, patch: { title?: string; snippet?: string; rawText?: string }) {
+  return request<ApiItem>(`/items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+// "AI로 다시 정리": re-runs classification with the current title/memo as a
+// hint. Uses one AI classification; 402 (asQuotaError) when none are left.
+export function reorganizeItem(itemId: string) {
+  return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/reorganize`, { method: 'POST', body: '{}' });
+}
+
 export function fetchTrash() {
   return request<{ items: ApiItem[] }>('/items/trash');
 }

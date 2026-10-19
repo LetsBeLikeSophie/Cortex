@@ -107,8 +107,21 @@ export interface ClassifyTextInput {
   siteName?: string;
   durationSec?: number;
   imageUrl?: string;
+  // The person's own words about the item (their note, or a title/memo they
+  // edited before asking for a re-organize) -- see hintLine.
+  hint?: string;
   // For the per-call usage log (aiLog.ts).
   userId?: string;
+}
+
+// When the person has written something themselves, it's the best signal of
+// what this item is to them -- the classifier should build on it, not
+// overrule it with a generic reading of the content.
+function hintLine(hint?: string): string | null {
+  const h = hint?.trim();
+  return h
+    ? `The person's own words about this (written or edited by them -- treat as the main guide; keep their names and facts, fill in from the content):\n${h}`
+    : null;
 }
 
 function formatDuration(sec: number): string {
@@ -126,6 +139,7 @@ export async function classifyText(input: ClassifyTextInput): Promise<Classifica
     input.creatorTags?.length ? `Creator's own tags: ${input.creatorTags.join(", ")}` : null,
     input.description ? `Page/video description:\n${input.description}` : null,
     input.rawText ? `Shared text:\n${input.rawText}` : null,
+    hintLine(input.hint),
     input.imageUrl
       ? "The attached image is the link's thumbnail -- read any words on it (video thumbnails usually carry the key words), but it's a preview, not the content itself."
       : null,
@@ -172,6 +186,7 @@ export interface ClassifyImageInput {
   source: string;
   imageBase64: string;
   mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  hint?: string;
   userId?: string;
 }
 
@@ -190,7 +205,7 @@ export async function classifyImage(input: ClassifyImageInput): Promise<Classifi
           },
           {
             type: "text",
-            text: `Source app: ${input.source}. This is a screenshot the user captured themselves. Read any caption/body text visible in the image and catalog it.`,
+            text: `Source app: ${input.source}. This is a screenshot the user captured themselves. Read any caption/body text visible in the image and catalog it.${hintLine(input.hint) ? `\n${hintLine(input.hint)}` : ""}`,
           },
         ],
       },

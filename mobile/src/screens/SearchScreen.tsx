@@ -480,6 +480,7 @@ export default function SearchScreen() {
           }
         >
           <FlatList
+            removeClippedSubviews={false}
             data={rows}
             keyExtractor={(row) => row.key}
             renderItem={({ item: row }) =>

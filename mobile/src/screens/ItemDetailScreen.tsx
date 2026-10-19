@@ -364,7 +364,9 @@ const styles = StyleSheet.create({
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   linkRow: { marginTop: 14 },
   tagScroll: { marginTop: 16, flexGrow: 0 },
-  tagRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8 },
+  // paddingVertical: same Android horizontal-ScrollView bottom-edge clip as
+  // Home's tab strip -- outlined tag chips lost their bottom border.
+  tagRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8, paddingVertical: 2 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   voiceTagSpinner: { marginLeft: 2 },

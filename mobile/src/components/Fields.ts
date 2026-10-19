@@ -27,8 +27,8 @@ export function fieldStyle(theme: Theme): ViewStyle {
 export function pickStyle(theme: Theme): ViewStyle {
   switch (conceptOf(theme)) {
     case 'line':
-      // Matches the line theme's buttons: square, light hairline outline.
-      return { borderWidth: OUTLINE, borderColor: theme.line, borderRadius: 0, backgroundColor: 'transparent' };
+      // Matches the line theme's buttons: thin ink-outlined pill.
+      return { borderWidth: 1, borderColor: theme.ink, borderRadius: 999, backgroundColor: 'transparent' };
     case 'border':
       return { borderWidth: OUTLINE, borderColor: theme.line, borderRadius: 999, backgroundColor: 'transparent' };
     case 'layer':

@@ -16,9 +16,8 @@ interface ButtonProps {
 
 // The sheet's bottom actions (취소/저장, 닫기/링크 열기 ...), one look per
 // concept:
-// - line: square-cornered, hairline-outlined (same light rule colour as the
-//   home screen's dividers), primary filled ink -- editorial, but clearly a
-//   button; the earlier "text over a heavy black rule" read as a divider
+// - line: the original pill -- thin ink outline, primary filled ink -- so it
+//   matches the other pill buttons on screen (e.g. 미분류함's action)
 // - border: outlined pill, primary filled
 // - layer: soft filled block, primary sits on a darker sheet and sinks when pressed
 // - vintage: typewriter-labelled index tabs, primary is a tilted ink stamp
@@ -98,14 +97,14 @@ export function ButtonRow({ theme, style, children }: { theme: Theme; style?: Vi
 }
 
 const GHOST: Record<ReturnType<typeof conceptOf>, (t: Theme) => ViewStyle> = {
-  line: (t) => ({ borderWidth: OUTLINE, borderColor: t.line, borderRadius: 0, backgroundColor: 'transparent' }),
+  line: (t) => ({ borderWidth: 1, borderColor: t.ink, borderRadius: 999, backgroundColor: 'transparent' }),
   border: (t) => ({ borderWidth: OUTLINE, borderColor: t.line, borderRadius: 999, backgroundColor: t.surface }),
   layer: (t) => ({ backgroundColor: t.bg, borderRadius: 14 }),
   vintage: (t) => ({ borderWidth: OUTLINE, borderColor: t.ink, borderRadius: 3, backgroundColor: t.bg }),
 };
 
 const SOLID: Record<ReturnType<typeof conceptOf>, (t: Theme) => ViewStyle> = {
-  line: (t) => ({ backgroundColor: t.ink, borderRadius: 0 }),
+  line: (t) => ({ backgroundColor: t.ink, borderRadius: 999 }),
   border: (t) => ({ backgroundColor: t.ink, borderRadius: 999 }),
   layer: (t) => ({ backgroundColor: t.ink, borderRadius: 14 }),
   vintage: (t) => ({ backgroundColor: t.accent, borderRadius: 3, transform: [{ rotate: '-1.2deg' }] }),

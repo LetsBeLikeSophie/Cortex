@@ -378,23 +378,26 @@ export default function HomeScreen() {
       </ScrollView>
 
       {activeTag === UNCLASSIFIED && (
+        // One compact strip, so the list underneath stays visible.
         <View style={[styles.backlog, { paddingHorizontal: boxed ? 24 : 26 }]}>
-          <Text style={[styles.backlogTitle, { color: theme.ink }]}>{unclassifiedCount}건이 정리를 기다리고 있어요</Text>
-          <Text style={[styles.backlogSub, { color: theme.sub }]}>
-            {classifyLeft > 0
-              ? `이번 달 AI 정리가 ${classifyLeft}건 남았어요. 오래된 것부터 정리해요.`
-              : `이번 달 AI 정리 ${plan?.classify.limit ?? ''}건을 다 썼어요. ${resetLabel(plan?.resetsAt)}에 다시 생겨요. 직접 태그를 달아도 돼요.`}
-          </Text>
+          <View style={styles.backlogText}>
+            <Text style={[styles.backlogTitle, { color: theme.ink }]} numberOfLines={1}>
+              {unclassifiedCount}건 정리 대기
+            </Text>
+            <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={1}>
+              {classifyLeft > 0 ? `이번 달 AI 정리 ${classifyLeft}건 남음` : `${resetLabel(plan?.resetsAt)}에 다시 생겨요`}
+            </Text>
+          </View>
           <Pressable
             onPress={sortBacklog}
             disabled={sorting}
             style={({ pressed }) => [styles.backlogButton, { backgroundColor: theme.ink, borderRadius: theme.btnRadius, opacity: pressed || sorting ? 0.7 : 1 }]}
           >
             {sorting ? (
-              <ActivityIndicator color={theme.bg} />
+              <ActivityIndicator size="small" color={theme.bg} />
             ) : (
               <Text style={[styles.backlogButtonText, { color: theme.bg }]}>
-                {classifyLeft > 0 ? `AI로 정리하기 (${Math.min(classifyLeft, unclassifiedCount)}건)` : 'Pro로 바로 정리하기'}
+                {classifyLeft > 0 ? `AI로 정리 (${Math.min(classifyLeft, unclassifiedCount)})` : 'Pro로 정리'}
               </Text>
             )}
           </Pressable>
@@ -471,6 +474,10 @@ export default function HomeScreen() {
         emptyText="아직 저장된 기억이 없어요."
       >
         <FlatList
+          // Android's default clips each row to its measured frame, which
+          // can drop an outlined card's bottom edge on fractional heights.
+          // These lists are short (≤50), so there's nothing to gain from it.
+          removeClippedSubviews={false}
           data={items}
           keyExtractor={(item, i) => item.no + i}
           renderItem={({ item, index }) => {
@@ -509,11 +516,12 @@ function resetLabel(iso?: string): string {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  backlog: { paddingTop: 16, paddingBottom: 6, gap: 6 },
-  backlogTitle: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
-  backlogSub: { fontSize: 12.5, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
-  backlogButton: { marginTop: 8, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  backlogButtonText: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
+  backlog: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 12, paddingBottom: 4 },
+  backlogText: { flex: 1, minWidth: 0 },
+  backlogTitle: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
+  backlogSub: { fontSize: 12, marginTop: 2, fontFamily: 'IBMPlexSansKR_400Regular' },
+  backlogButton: { minHeight: 34, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  backlogButtonText: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
   headPad: {},
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -533,7 +541,10 @@ const styles = StyleSheet.create({
   numSuffix: { fontSize: 14, lineHeight: 21, paddingBottom: 9, fontFamily: 'IBMPlexSansKR_400Regular' },
   heroFoot: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 },
   tabsScroll: { flexGrow: 0 },
-  tabs: { flexDirection: 'row' },
+  // Vertical breathing room: a horizontal ScrollView clips its content to
+  // the content's own (often fractional) height on Android, which shaved
+  // the bottom edge off outlined pill tabs.
+  tabs: { flexDirection: 'row', paddingVertical: 2 },
   list: { flex: 1 },
   bulkBar: { paddingTop: 12 },
   bulkBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

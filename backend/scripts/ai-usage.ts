@@ -1,4 +1,5 @@
-// AI usage/cost report from the ai_calls log (src/lib/aiLog.ts).
+// AI usage/cost report from the ai_calls log (src/lib/aiLog.ts), plus the
+// monthly roll-ups retention.ts keeps once detailed rows age out.
 //   npx.cmd tsx scripts/ai-usage.ts            -> last 30 days
 //   npx.cmd tsx scripts/ai-usage.ts --days 7
 // Read-only. Won is a rough conversion for reading, not billing.
@@ -47,3 +48,19 @@ console.log(`last ${days} days: ${rows.length} calls, ${won(total)} ($${total.to
 table("by feature", (r) => r.purpose);
 table("by day", (r) => r.created_at.slice(0, 10));
 table("by account (top 10 shown first)", (r) => r.user_id ?? "(deleted account)");
+
+// Older than the detailed-log window: what retention.ts summed up per month.
+const { data: monthly, error: monthlyError } = await getClient()
+  .from("ai_calls_monthly")
+  .select("month, purpose, calls, cost_usd")
+  .order("month", { ascending: false });
+if (monthlyError) {
+  console.log(`
+(monthly roll-up unavailable: ${monthlyError.message})`);
+} else if (monthly && monthly.length > 0) {
+  console.log("
+== rolled-up months (older than the detailed log)");
+  for (const m of monthly) {
+    console.log(`${String(m.month).slice(0, 7)}  ${m.purpose.padEnd(16)} ${String(m.calls).padStart(6)} calls  ${won(Number(m.cost_usd)).padStart(9)}`);
+  }
+}

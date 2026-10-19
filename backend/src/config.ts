@@ -38,6 +38,10 @@ export const config = {
   proSearchMonthly: Number(optional("PRO_SEARCH_MONTHLY") ?? 300),
   trialDays: Number(optional("TRIAL_DAYS") ?? 7),
 
+  // Detailed per-call AI log retention (src/lib/retention.ts); older rows
+  // are summed into ai_calls_monthly, then deleted.
+  aiCallsRetentionDays: Number(optional("AI_CALLS_RETENTION_DAYS") ?? 90),
+
   // Anthropic SDK reads ANTHROPIC_API_KEY itself; kept here only so routes
   // can check readiness before making a call.
   hasAnthropicKey: !!(

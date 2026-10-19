@@ -141,6 +141,7 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
         // Only where the thumbnail tends to carry the content's words
         // (YouTube); a generic og:image is usually just a logo.
         imageUrl: meta.analyzeImage ? meta.imageUrl : undefined,
+        userId: item.user_id,
       })),
       keyText: undefined,
     };
@@ -149,11 +150,11 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string) {
     thumbnailUrl = meta.imageUrl;
   } else if (item.capture_type === "screenshot" && item.image_path) {
     const b64 = imageBase64 ?? (await downloadScreenshot(item.image_path)).toString("base64");
-    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg" });
+    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg", userId: item.user_id });
   } else {
     // keyText is a screenshot-only field -- dropped here so a text memo's
     // own raw_text can never be overwritten by it.
-    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "" })), keyText: undefined };
+    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", userId: item.user_id })), keyText: undefined };
   }
   await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
   return classification.category;

@@ -212,3 +212,21 @@ create table if not exists ai_usage (
 );
 create index if not exists ai_usage_user_kind_time_idx on ai_usage (user_id, kind, created_at);
 alter table ai_usage enable row level security;
+
+-- Migration (2026-10-20): per-call AI usage/cost log (src/lib/aiLog.ts).
+-- The Anthropic console splits usage only by API key; this adds per-feature
+-- and per-account breakdowns. user_id is nulled on account deletion (rows
+-- kept for aggregate cost).
+create table if not exists ai_calls (
+  id bigserial primary key,
+  created_at timestamptz not null default now(),
+  user_id uuid,
+  purpose text not null check (purpose in ('classify_text', 'classify_link', 'classify_image', 'search', 'voice_tag')),
+  model text not null,
+  input_tokens integer not null,
+  output_tokens integer not null,
+  cost_usd numeric(12, 8)
+);
+create index if not exists ai_calls_time_idx on ai_calls (created_at);
+create index if not exists ai_calls_user_time_idx on ai_calls (user_id, created_at);
+alter table ai_calls enable row level security;

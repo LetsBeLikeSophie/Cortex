@@ -40,7 +40,10 @@ export const config = {
 
   // Anthropic SDK reads ANTHROPIC_API_KEY itself; kept here only so routes
   // can check readiness before making a call.
-  hasAnthropicKey: !!optional("ANTHROPIC_API_KEY"),
+  hasAnthropicKey: !!(
+    optional("ANTHROPIC_API_KEY") ||
+    (optional("ANTHROPIC_API_KEY_CLASSIFY") && optional("ANTHROPIC_API_KEY_SEARCH") && optional("ANTHROPIC_API_KEY_VOICE"))
+  ),
 
   // YouTube Data API v3 key (Google Cloud console, free quota). Optional:
   // without it YouTube links fall back to oEmbed (title + channel only).

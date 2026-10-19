@@ -2,9 +2,17 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { CATEGORIES } from "./categories.js";
+import { AiPurpose, logAiCall } from "./aiLog.js";
 
-// Reads ANTHROPIC_API_KEY from the environment -- never hardcode a key.
-const client = new Anthropic();
+// Keys come from the environment only -- never hardcode a key.
+// One client per feature, each with its own API key when set
+// (ANTHROPIC_API_KEY_CLASSIFY / _SEARCH / _VOICE), so the Anthropic console
+// can split usage and cost by feature. Unset -> falls back to the shared
+// ANTHROPIC_API_KEY, which keeps everything working before the keys exist.
+const clientFor = (envName: string) => new Anthropic({ apiKey: process.env[envName] || process.env.ANTHROPIC_API_KEY });
+const classifyClient = clientFor("ANTHROPIC_API_KEY_CLASSIFY");
+const searchClient = clientFor("ANTHROPIC_API_KEY_SEARCH");
+const voiceClient = clientFor("ANTHROPIC_API_KEY_VOICE");
 
 // The Claude API itself is unusable for reasons retrying won't fix: the
 // account's prepaid credit ran out, or the key is rejected. Distinct from a
@@ -99,6 +107,8 @@ export interface ClassifyTextInput {
   siteName?: string;
   durationSec?: number;
   imageUrl?: string;
+  // For the per-call usage log (aiLog.ts).
+  userId?: string;
 }
 
 function formatDuration(sec: number): string {
@@ -122,8 +132,10 @@ export async function classifyText(input: ClassifyTextInput): Promise<Classifica
   ].filter(Boolean);
   const text = lines.join("\n");
 
+  const purpose: AiPurpose = input.url ? "classify_link" : "classify_text";
   const run = (withImage: boolean) =>
-    client.messages.parse({
+    classifyClient.messages
+      .parse({
       model: MODEL,
       max_tokens: 2048,
       system: SYSTEM_PROMPT,
@@ -139,7 +151,11 @@ export async function classifyText(input: ClassifyTextInput): Promise<Classifica
         },
       ],
       output_config: { effort: "low", format: zodOutputFormat(ClassificationSchema) },
-    });
+      })
+      .then((response) => {
+        logAiCall(purpose, MODEL, response.usage, input.userId);
+        return response;
+      });
 
   if (!input.imageUrl) return requireParsed(await run(false));
   try {
@@ -156,10 +172,11 @@ export interface ClassifyImageInput {
   source: string;
   imageBase64: string;
   mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  userId?: string;
 }
 
 export async function classifyImage(input: ClassifyImageInput): Promise<Classification> {
-  const response = await client.messages.parse({
+  const response = await classifyClient.messages.parse({
     model: MODEL,
     max_tokens: 2048,
     system: SYSTEM_PROMPT,
@@ -181,6 +198,7 @@ export async function classifyImage(input: ClassifyImageInput): Promise<Classifi
     output_config: { effort: "low", format: zodOutputFormat(ClassificationSchema) },
   });
 
+  logAiCall("classify_image", MODEL, response.usage, input.userId);
   return requireParsed(response);
 }
 
@@ -244,8 +262,8 @@ already basically just a bare word or phrase, return it close to as-is.`;
 // on its own (it's spoken, not typed), so this is a second, much smaller
 // classification call purely to clean that up -- same model tier as
 // classifyText/classifyImage since it's just as bounded a task.
-export async function tagFromText(spokenText: string): Promise<string> {
-  const response = await client.messages.parse({
+export async function tagFromText(spokenText: string, userId?: string): Promise<string> {
+  const response = await voiceClient.messages.parse({
     model: MODEL,
     // Room for Haiku 5.5's (short, at "low") thinking before the tag itself.
     max_tokens: 1024,
@@ -253,6 +271,7 @@ export async function tagFromText(spokenText: string): Promise<string> {
     messages: [{ role: "user", content: spokenText }],
     output_config: { effort: "low", format: zodOutputFormat(TagFromTextSchema) },
   });
+  logAiCall("voice_tag", MODEL, response.usage, userId);
   if (!response.parsed_output) {
     throw new Error("Claude response did not parse against the tag schema");
   }
@@ -321,14 +340,15 @@ Fields:
 // output tokens), and max_tokens leaves room for any thinking it does do.
 const SEARCH_MODEL = process.env.SEARCH_MODEL ?? "claude-haiku-5-5";
 
-export async function interpretSearch(query: string, today: string): Promise<SearchInterpretation> {
-  const response = await client.messages.parse({
+export async function interpretSearch(query: string, today: string, userId?: string): Promise<SearchInterpretation> {
+  const response = await searchClient.messages.parse({
     model: SEARCH_MODEL,
     max_tokens: 2048,
     system: SEARCH_SYSTEM_PROMPT,
     messages: [{ role: "user", content: `Today (Korea time): ${today}\nSearch: ${query}` }],
     output_config: { effort: "low", format: zodOutputFormat(SearchInterpretationSchema) },
   });
+  logAiCall("search", SEARCH_MODEL, response.usage, userId);
   if (!response.parsed_output) {
     throw new Error("Claude response did not parse against the search schema");
   }

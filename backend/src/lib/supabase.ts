@@ -684,6 +684,9 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   if (planError) throw new Error(`failed to delete plan: ${planError.message}`);
   const { error: usageError } = await client.from("ai_usage").delete().eq("user_id", userId);
   if (usageError) throw new Error(`failed to delete usage log: ${usageError.message}`);
+  // Per-call cost log: keep the rows (aggregate cost), drop who made them.
+  const { error: callsError } = await client.from("ai_calls").update({ user_id: null }).eq("user_id", userId);
+  if (callsError) console.error(`failed to detach ai_calls: ${callsError.message}`);
 
   const { error: mappingError } = await client.from("kakao_users").delete().eq("user_id", userId);
   if (mappingError) throw new Error(`failed to delete kakao_users mapping: ${mappingError.message}`);

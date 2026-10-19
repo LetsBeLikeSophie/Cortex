@@ -171,7 +171,7 @@ export async function itemsRoutes(app: FastifyInstance) {
       if (ent && remaining(ent, "search") === 0) {
         return reply.code(402).send({ error: "quota", kind: "search", limit: ent.search.limit, tier: ent.tier, resetsAt: ent.resetsAt });
       }
-      const interpretation = await interpretSearch(parsed.data.query, todayInKorea());
+      const interpretation = await interpretSearch(parsed.data.query, todayInKorea(), userId);
       await recordUsage(userId, "search").catch((err) => req.log.error(err));
       const result = await searchItemsSmart(userId, interpretation);
       return reply.send({ interpretation, ...result });
@@ -289,8 +289,10 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
     }
-    await resolveUserId(req); // auth-gated like every other route here, even though the result isn't scoped to a user
-    const tag = await tagFromText(parsed.data.text);
+    // Auth-gated like every other route here; the user id only feeds the
+    // per-call usage log, the result itself isn't scoped to a user.
+    const userId = await resolveUserId(req);
+    const tag = await tagFromText(parsed.data.text, userId);
     return reply.send({ tag });
   });
 

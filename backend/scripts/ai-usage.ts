@@ -55,11 +55,9 @@ const { data: monthly, error: monthlyError } = await getClient()
   .select("month, purpose, calls, cost_usd")
   .order("month", { ascending: false });
 if (monthlyError) {
-  console.log(`
-(monthly roll-up unavailable: ${monthlyError.message})`);
+  console.log(`\n(monthly roll-up unavailable: ${monthlyError.message})`);
 } else if (monthly && monthly.length > 0) {
-  console.log("
-== rolled-up months (older than the detailed log)");
+  console.log("\n== rolled-up months (older than the detailed log)");
   for (const m of monthly) {
     console.log(`${String(m.month).slice(0, 7)}  ${m.purpose.padEnd(16)} ${String(m.calls).padStart(6)} calls  ${won(Number(m.cost_usd)).padStart(9)}`);
   }

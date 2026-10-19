@@ -6,6 +6,15 @@ import { CATEGORIES } from "./categories.js";
 // Reads ANTHROPIC_API_KEY from the environment -- never hardcode a key.
 const client = new Anthropic();
 
+// The Claude API itself is unusable for reasons retrying won't fix: the
+// account's prepaid credit ran out, or the key is rejected. Distinct from a
+// transient failure (overload, timeout), which is worth retrying.
+export function isAiUnavailable(err: unknown): boolean {
+  if (!(err instanceof Anthropic.APIError)) return false;
+  if (err.status === 401 || err.status === 403) return true;
+  return err.status === 400 && /credit balance/i.test(err.message);
+}
+
 // Runs on every single save (text or vision), so cost scales directly with
 // usage -- Opus was overkill for a bounded structured-output task this
 // small (title/snippet/category/≤5 tags via a Zod schema, no open-ended
@@ -19,7 +28,7 @@ const MODEL = process.env.CLASSIFY_MODEL ?? "claude-haiku-5-5";
 
 const ClassificationSchema = z.object({
   title: z.string().describe("Short list-item title (under ~60 characters), in Korean, plain wording"),
-  snippet: z.string().describe("One-line summary of what this is (under ~120 characters), in Korean"),
+  snippet: z.string().describe("A 1-2 sentence searchable note-to-self (under ~160 characters), in Korean"),
   category: z.enum(CATEGORIES),
   tags: z
     .array(z.string())
@@ -37,7 +46,12 @@ them again later by searching.
 
 For each item, produce:
 - title: a short, plain title for a list row (Korean, no hashtags, no quotes)
-- snippet: one short line describing what it actually is/says (Korean)
+- snippet: a 1-2 sentence note-to-self in Korean, written so the person can
+  find this again by searching months later: what it is, plus every concrete
+  detail actually present -- names (place, store, product, person, channel),
+  area or address, price, date/time/deadline, quantities, and who or what
+  it's for. Prefer those specifics over adjectives ("완전 맛있대" adds
+  nothing to search on). Don't repeat the title word for word.
 - category: exactly one of the fixed categories provided. These are
   intent-based ("why would someone save this"), not topic-based -- pick by
   what the person would likely use it for later, regardless of subject
@@ -208,7 +222,7 @@ function requireParsed(response: { parsed_output: Classification | null }): Clas
   return {
     ...c,
     title: clip(dropMixedKana(c.title), 120),
-    snippet: clip(dropMixedKana(c.snippet), 200),
+    snippet: clip(dropMixedKana(c.snippet), 250),
     tags: clipTags(c.tags, 8, 30),
     keyText: clip(c.keyText ?? "", 400),
   };

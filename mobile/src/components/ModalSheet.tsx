@@ -89,7 +89,7 @@ export function ModalSheet({
       </Pressable>
 
       {/* Each concept dresses the sheet its own way (see SHEET below):
-          line = square top edge + ink rule, border = rounded + 1px outline,
+          line = square top edge + light rule, border = rounded + 1px outline,
           layer = the cards' paper tone (its stacked "back sheet" depth only
           ever sits bottom-right, on cards and the primary button -- never
           above the sheet's top edge), vintage =
@@ -136,8 +136,10 @@ const SHEET: Record<
   line: {
     radius: 0,
     bg: (t) => t.bg,
-    edge: (t) => ({ borderTopWidth: OUTLINE, borderColor: t.ink }),
-    grabber: (t) => ({ width: 22, height: 1.5, borderRadius: 0, backgroundColor: t.ink }),
+    // Same light rule as the home screen's dividers -- an ink line here
+    // read as heavier than anything else in the line theme.
+    edge: (t) => ({ borderTopWidth: OUTLINE, borderColor: t.line }),
+    grabber: (t) => ({ width: 28, height: 2, borderRadius: 0, backgroundColor: t.line }),
   },
   border: {
     radius: 24,

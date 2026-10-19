@@ -1,7 +1,7 @@
 import { z } from "zod";
 import sharp from "sharp";
 import { fetchLinkMetadata } from "./metadata.js";
-import { classifyText, classifyImage } from "./anthropic.js";
+import { classifyText, classifyImage, isAiUnavailable } from "./anthropic.js";
 import type { Category } from "./categories.js";
 import { getEntitlement, refundUsage, remaining, reserveUsage } from "./plans.js";
 import {
@@ -220,7 +220,8 @@ async function runJob(job: ClassificationJob): Promise<void> {
       await job.onDone?.(category).catch((err) => console.error("classification onDone failed:", err));
       return;
     } catch (err) {
-      if (attempt < RETRY_DELAYS_MS.length) {
+      // Out of credit / key rejected: retrying can't help, park it now.
+      if (attempt < RETRY_DELAYS_MS.length && !isAiUnavailable(err)) {
         console.warn(`classification attempt ${attempt + 1} failed for item ${item.id}, retrying:`, err);
         await sleep(RETRY_DELAYS_MS[attempt]);
         continue;

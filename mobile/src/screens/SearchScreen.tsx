@@ -18,6 +18,7 @@ import {
   ApiItem,
   SearchInterpretation,
   SmartSearchResponse,
+  friendlyError,
 } from '../api/client';
 import { captureTypeLabel, sourceLabel, toSearchResult, toSmartSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
@@ -209,7 +210,7 @@ export default function SearchScreen() {
       })
       .catch((err) => {
         setHits([]);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(friendlyError(err));
       })
       .finally(() => setLoading(false));
   }, []);
@@ -237,7 +238,7 @@ export default function SearchScreen() {
         setInterpretation(null);
         const quota = asQuotaError(err);
         if (quota) setQuotaHit(quota);
-        else setError(err instanceof Error ? err.message : String(err));
+        else setError(friendlyError(err));
       })
       .finally(() => {
         setAsking(false);
@@ -252,7 +253,7 @@ export default function SearchScreen() {
       .then((res) => applySmart(res, q))
       .catch((err) => {
         setHits([]);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(friendlyError(err));
       })
       .finally(() => setLoading(false));
   };

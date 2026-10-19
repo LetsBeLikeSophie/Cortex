@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { signInWithKakao } from '../auth/kakaoLogin';
 import { useAuth } from '../auth/AuthContext';
+import { friendlyError } from '../api/client';
 
 // Kakao's own brand yellow (#FEE500) + near-black text/glyph -- their design
 // guidelines ask that the login button keep this exact pair regardless of
@@ -32,7 +33,7 @@ export default function LoginScreen() {
       // AuthContext's onAuthStateChange listener flips the app over.
       setStatus('idle');
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyError(err));
       setStatus('error');
     }
   };

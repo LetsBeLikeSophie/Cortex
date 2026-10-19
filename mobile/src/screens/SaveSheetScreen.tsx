@@ -21,7 +21,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
-import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, ApiItem, ItemSource } from '../api/client';
+import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, ApiItem, ItemSource, friendlyError } from '../api/client';
 import { sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
@@ -118,7 +118,7 @@ export default function SaveSheetScreen() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : String(err));
+          setError(friendlyError(err));
           setStatus('error');
         }
       });
@@ -249,6 +249,7 @@ export default function SaveSheetScreen() {
     setError('');
     const results: (ApiItem | null)[] = new Array(selectedScreenshots.length).fill(null);
     let completed = 0;
+    let lastError: unknown = null;
     setBulkProgress({ done: 0, total: selectedScreenshots.length });
 
     const sharedTag = bulkTag.trim();
@@ -264,8 +265,9 @@ export default function SaveSheetScreen() {
             // Best-effort -- a failed shared-tag add shouldn't undo an
             // otherwise-successful save.
             if (sharedTag) await addTag(item.id, sharedTag).catch(() => {});
-          } catch {
+          } catch (err) {
             // left as null -- counted as a failure below
+            lastError = err;
           } finally {
             completed += 1;
             setBulkProgress({ done: completed, total: selectedScreenshots.length });
@@ -277,7 +279,7 @@ export default function SaveSheetScreen() {
     const items = results.filter((item): item is ApiItem => item !== null);
     const failed = results.length - items.length;
     if (items.length === 0) {
-      setError('전부 저장하지 못했어요');
+      setError(lastError ? friendlyError(lastError) : '전부 저장하지 못했어요');
       setStatus('error');
       return;
     }
@@ -310,7 +312,7 @@ export default function SaveSheetScreen() {
         setStatus('done');
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(friendlyError(err));
         setStatus('error');
       });
   };
@@ -541,17 +543,12 @@ export default function SaveSheetScreen() {
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
               <GhostButton label="취소" theme={theme} onPress={close} />
-              {status === 'saving' ? (
-                <View style={[styles.savingButton, { borderColor: theme.line }]}>
-                  <ActivityIndicator color={theme.accent} />
-                </View>
-              ) : (
-                <SolidButton
-                  label={selectedScreenshots.length > 1 ? `${selectedScreenshots.length}장 저장하기` : '저장하기'}
-                  theme={theme}
-                  onPress={submit}
-                />
-              )}
+              <SolidButton
+                label={selectedScreenshots.length > 1 ? `${selectedScreenshots.length}장 저장하기` : '저장하기'}
+                theme={theme}
+                onPress={submit}
+                loading={status === 'saving'}
+              />
             </ButtonRow>
           </>
         ) : savedBulk ? (
@@ -807,7 +804,6 @@ const styles = StyleSheet.create({
   memoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 18 },
   noteInput: { marginTop: 0, minHeight: 0, paddingVertical: 12, fontSize: 13.5 },
   analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  savingButton: { flex: 1, borderRadius: 999, borderWidth: 1, paddingVertical: 14, alignItems: 'center' },
   screenshotSection: { marginTop: 18 },
   bulkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   bulkTagRow: { marginTop: 10 },

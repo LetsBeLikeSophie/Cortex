@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { fetchStats, ItemStats } from '../api/client';
+import { fetchStats, ItemStats, friendlyError } from '../api/client';
 import { sourceLabel, SOURCE_ORDER } from '../api/format';
 import { ALL_CATEGORIES } from '../data/tabs';
 import { DonutChart, BarChart, HorizontalBars, Heatmap } from '../components/Charts';
@@ -55,7 +55,7 @@ export default function StatsScreen() {
         setStats(res);
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(friendlyError(err)))
       .finally(() => setLoading(false));
   }, []);
 

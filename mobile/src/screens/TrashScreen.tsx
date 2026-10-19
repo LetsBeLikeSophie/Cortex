@@ -5,7 +5,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { ApiItem, fetchTrash, permanentlyDeleteItem, restoreItem } from '../api/client';
+import { ApiItem, fetchTrash, permanentlyDeleteItem, restoreItem, friendlyError } from '../api/client';
 import { relativeTime } from '../api/format';
 import { RestoreIcon, TrashIcon } from '../components/Icons';
 import { AsyncStateView } from '../components/AsyncStateView';
@@ -26,7 +26,7 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
       await restoreItem(item.id);
       onRemoved(item.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyError(err));
       setAction('idle');
     }
   };
@@ -37,7 +37,7 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
       await permanentlyDeleteItem(item.id);
       onRemoved(item.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyError(err));
       setAction('confirmingPermanent');
     }
   };
@@ -111,7 +111,7 @@ export default function TrashScreen() {
         setItems(res.items);
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(friendlyError(err)))
       .finally(() => setLoading(false));
   }, []);
 

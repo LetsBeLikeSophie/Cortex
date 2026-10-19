@@ -8,7 +8,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { LAYOUTS, PALETTES } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signOut } from '../auth/kakaoLogin';
-import { deleteAccount, fetchPlan, Plan } from '../api/client';
+import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
 import type { RootStackParamList } from '../navigation/types';
@@ -67,7 +67,7 @@ export default function ProfileScreen() {
       await deleteAccount();
       await signOut(); // the account is actually gone now -- clear the local session -> LoginScreen
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyError(err));
       setState('deleteError');
     }
   };

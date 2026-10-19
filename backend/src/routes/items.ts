@@ -3,7 +3,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem } from "../lib/pipeline.js";
 import { getEntitlement, recordUsage, remaining } from "../lib/plans.js";
-import { clipInterpretation, interpretSearch, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
+import { clipInterpretation, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -72,6 +72,13 @@ export async function itemsRoutes(app: FastifyInstance) {
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof UnauthorizedError) {
       return reply.code(401).send({ error: err.message });
+    }
+    // Claude can't be used right now (credit ran out / key rejected): a
+    // stable error the app can turn into a plain sentence, instead of the
+    // raw upstream 400 body.
+    if (isAiUnavailable(err)) {
+      _req.log.error(err);
+      return reply.code(503).send({ error: "ai_unavailable" });
     }
     reply.send(err);
   });

@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice } from '../api/client';
+import { addTag, deleteItem, getScreenshotUrl, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
@@ -88,7 +88,7 @@ export default function ItemDetailScreen() {
     setTagError('');
     removeTagApi(item.id, tag).catch((err) => {
       setUserTags((current) => [...current, tag]);
-      setTagError(err instanceof Error ? err.message : String(err));
+      setTagError(friendlyError(err));
     });
   };
 
@@ -97,7 +97,7 @@ export default function ItemDetailScreen() {
     setTagError('');
     removeAiTagApi(item.id, tag).catch((err) => {
       setAiTags((current) => [...current, tag]);
-      setTagError(err instanceof Error ? err.message : String(err));
+      setTagError(friendlyError(err));
     });
   };
 
@@ -122,7 +122,7 @@ export default function ItemDetailScreen() {
     setTagError('');
     addTag(item.id, trimmed).catch((err) => {
       setUserTags((current) => current.filter((t) => t !== trimmed));
-      setTagError(err instanceof Error ? err.message : String(err));
+      setTagError(friendlyError(err));
     });
   };
 
@@ -142,10 +142,10 @@ export default function ItemDetailScreen() {
       setUserTags((current) => [...current, trimmed]);
       addTag(item.id, trimmed).catch((err) => {
         setUserTags((current) => current.filter((t) => t !== trimmed));
-        setTagError(err instanceof Error ? err.message : String(err));
+        setTagError(friendlyError(err));
       });
     } catch (err) {
-      setTagError(err instanceof Error ? err.message : String(err));
+      setTagError(friendlyError(err));
     } finally {
       setVoiceTagLoading(false);
     }
@@ -157,7 +157,7 @@ export default function ItemDetailScreen() {
       await deleteItem(item.id);
       close();
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : String(err));
+      setDeleteError(friendlyError(err));
       setDeleteState('confirming');
     }
   };

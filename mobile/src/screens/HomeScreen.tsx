@@ -10,7 +10,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeTag, ApiItem, Plan } from '../api/client';
+import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeTag, ApiItem, Plan, friendlyError } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -108,7 +108,7 @@ export default function HomeScreen() {
       // Leave whatever was already on screen alone -- a transient failure
       // (the backend mid-restart, a slow request timing out) shouldn't
       // wipe real saved items out from under someone who's just browsing.
-      .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+      .catch((err) => setError(friendlyError(err)))
       .finally(() => setLoading(false));
   }, []);
 

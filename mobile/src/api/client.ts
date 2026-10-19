@@ -95,6 +95,26 @@ export interface QuotaError {
   resetsAt: string;
 }
 
+// One readable sentence for any failure, instead of the raw
+// "GET /items failed (503): {...}" text (which still goes to the console).
+export function friendlyError(err: unknown): string {
+  console.warn(err);
+  if (err instanceof ApiError) {
+    const code = (err.body as { error?: string } | null)?.error;
+    if (err.status === 503 && code === 'ai_unavailable') return 'AI가 잠시 쉬고 있어요. 잠시 후 다시 시도해 주세요.';
+    if (err.status === 402) return '이번 달 사용량을 다 썼어요.';
+    if (err.status === 429) return '요청이 많아요. 잠시 후 다시 시도해 주세요.';
+    if (err.status === 401) return '로그인이 풀렸어요. 다시 로그인해 주세요.';
+    if (err.status === 413) return '사진이 너무 커요.';
+    if (err.status >= 500) return '서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요.';
+    return '요청을 처리하지 못했어요.';
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  if (/abort/i.test(message)) return '응답이 늦어요. 연결을 확인하고 다시 시도해 주세요.';
+  if (/network|failed to fetch/i.test(message)) return '인터넷 연결을 확인해 주세요.';
+  return message;
+}
+
 export function asQuotaError(err: unknown): QuotaError | null {
   if (err instanceof ApiError && err.status === 402 && (err.body as QuotaError | null)?.error === 'quota') {
     return err.body as QuotaError;

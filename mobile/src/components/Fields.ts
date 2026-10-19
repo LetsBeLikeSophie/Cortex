@@ -1,5 +1,5 @@
 import { TextStyle, ViewStyle } from 'react-native';
-import { MONO, OUTLINE, Theme, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf } from '../theme/themes';
 
 // Per-concept styling for text fields and the small secondary buttons that
 // sit inside sheets (앨범에서 선택 / 카메라로 촬영, inline confirm/cancel...),
@@ -11,15 +11,15 @@ export function fieldStyle(theme: Theme): ViewStyle {
   switch (conceptOf(theme)) {
     case 'line':
       // Underline only -- writing straight onto the page.
-      return { borderWidth: 0, borderBottomWidth: OUTLINE, borderColor: theme.line, borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
+      return { ...bottomEdge(OUTLINE, theme.line), borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
     case 'border':
-      return { borderWidth: OUTLINE, borderColor: theme.line, borderRadius: 14, backgroundColor: 'transparent' };
+      return { ...allEdges(OUTLINE, theme.line), borderRadius: 14, backgroundColor: 'transparent' };
     case 'layer':
       // A slightly different paper tone instead of an outline.
-      return { borderWidth: 0, borderRadius: 14, backgroundColor: theme.bg };
+      return { ...allEdges(0, 'transparent'), borderRadius: 14, backgroundColor: theme.bg };
     case 'vintage':
       // Written on the index card's own ruling (RuledLines behind the sheet).
-      return { borderWidth: 0, borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
+      return { ...allEdges(0, 'transparent'), borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
   }
 }
 
@@ -28,13 +28,13 @@ export function pickStyle(theme: Theme): ViewStyle {
   switch (conceptOf(theme)) {
     case 'line':
       // Matches the line theme's buttons: thin ink-outlined pill.
-      return { borderWidth: 1, borderColor: theme.ink, borderRadius: 999, backgroundColor: 'transparent' };
+      return { ...allEdges(1, theme.ink), borderRadius: 999, backgroundColor: 'transparent' };
     case 'border':
-      return { borderWidth: OUTLINE, borderColor: theme.line, borderRadius: 999, backgroundColor: 'transparent' };
+      return { ...allEdges(OUTLINE, theme.line), borderRadius: 999, backgroundColor: 'transparent' };
     case 'layer':
-      return { borderWidth: 0, borderRadius: 12, backgroundColor: theme.bg };
+      return { ...allEdges(0, 'transparent'), borderRadius: 12, backgroundColor: theme.bg };
     case 'vintage':
-      return { borderWidth: OUTLINE, borderColor: theme.ink, borderRadius: 3, backgroundColor: theme.bg };
+      return { ...allEdges(OUTLINE, theme.ink), borderRadius: 3, backgroundColor: theme.bg };
   }
 }
 

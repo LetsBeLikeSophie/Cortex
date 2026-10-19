@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { Theme, emToTracking, MONO, OUTLINE } from '../theme/themes';
+import { Theme, emToTracking, MONO, OUTLINE, allEdges, bottomEdge } from '../theme/themes';
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
@@ -45,12 +45,11 @@ function MetaLine({
 function cardShellStyle(theme: Theme): ViewStyle {
   switch (theme.list) {
     case 'line':
-      return { borderBottomWidth: 1, borderBottomColor: theme.soft, paddingVertical: 20 };
+      return { ...bottomEdge(1, theme.soft), paddingVertical: 20 };
     case 'bordered':
       return {
         backgroundColor: theme.surface,
-        borderWidth: OUTLINE,
-        borderColor: theme.line,
+        ...allEdges(OUTLINE, theme.line),
         borderRadius: theme.cardRadius,
         padding: 15,
         paddingHorizontal: 17,
@@ -59,6 +58,7 @@ function cardShellStyle(theme: Theme): ViewStyle {
     case 'layered':
       return {
         backgroundColor: theme.cardBg,
+        ...allEdges(0, 'transparent'),
         borderRadius: theme.cardRadius,
         padding: 15,
         paddingHorizontal: 17,
@@ -66,8 +66,7 @@ function cardShellStyle(theme: Theme): ViewStyle {
     case 'card':
       return {
         backgroundColor: theme.surface,
-        borderWidth: theme.surfaceEdge ? 1 : 0,
-        borderColor: theme.surfaceEdge ?? undefined,
+        ...allEdges(theme.surfaceEdge ? 1 : 0, theme.surfaceEdge ?? 'transparent'),
         borderRadius: theme.cardRadius,
         padding: 15,
         paddingHorizontal: 17,

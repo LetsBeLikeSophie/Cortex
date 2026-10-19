@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, OUTLINE, Theme, conceptOf, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeTag, ApiItem, Plan, friendlyError } from '../api/client';
@@ -27,12 +27,11 @@ import type { RootStackParamList } from '../navigation/types';
 function heroShellStyle(theme: Theme): ViewStyle {
   switch (theme.list) {
     case 'line':
-      return {};
+      return allEdges(0, 'transparent');
     case 'bordered':
       return {
         backgroundColor: theme.surface,
-        borderWidth: OUTLINE,
-        borderColor: theme.line,
+        ...allEdges(OUTLINE, theme.line),
         borderRadius: theme.cardRadius + 6,
         padding: 22,
         paddingTop: 24,
@@ -45,6 +44,7 @@ function heroShellStyle(theme: Theme): ViewStyle {
         padding: 22,
         paddingTop: 24,
         paddingBottom: 20,
+        ...allEdges(0, 'transparent'),
         // Vintage: the index card's colored header band.
         ...(conceptOf(theme) === 'vintage' ? { borderTopWidth: 3, borderTopColor: theme.accent } : null),
       };

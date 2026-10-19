@@ -144,6 +144,30 @@ export type Concept = 'line' | 'border' | 'layer' | 'vintage';
 // visibly vanish on some rows. 1.3dp always covers at least one full pixel.
 export const OUTLINE = 1.3;
 
+// Border styles that change with the concept must spell out all four sides.
+// Android keeps a side-specific value (borderBottomColor, borderBottomWidth)
+// from a previous style even after a later style sets the shorthand
+// (borderColor) -- so switching line -> border left the line theme's
+// faint/transparent bottom edge on cards and pill tabs ("bottom line cut
+// off"), while layer -> border (no side-specific values) looked fine.
+export function allEdges(width: number, color: string) {
+  return {
+    borderTopWidth: width,
+    borderRightWidth: width,
+    borderBottomWidth: width,
+    borderLeftWidth: width,
+    borderTopColor: color,
+    borderRightColor: color,
+    borderBottomColor: color,
+    borderLeftColor: color,
+  };
+}
+
+// Only a bottom rule (underline rows/tabs); the other three explicitly off.
+export function bottomEdge(width: number, color: string) {
+  return { ...allEdges(0, 'transparent'), borderBottomWidth: width, borderBottomColor: color };
+}
+
 export function conceptOf(theme: Theme): Concept {
   if (theme.decor === 'vintage') return 'vintage';
   if (theme.list === 'layered') return 'layer';

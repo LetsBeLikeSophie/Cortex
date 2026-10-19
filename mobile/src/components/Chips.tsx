@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MONO, OUTLINE, Theme, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf } from '../theme/themes';
 import { PlusIcon } from './Icons';
 import type { QueryChip } from '../hooks/useChipQuery';
 
@@ -12,9 +12,9 @@ export function TabChip({ label, active, theme, onPress }: { label: string; acti
   const pill = concept === 'border' || concept === 'layer';
   const shell = pill
     ? concept === 'border'
-      ? [styles.pillTab, { borderColor: active ? theme.ink : theme.line, backgroundColor: 'transparent' }]
-      : [styles.pillTab, { borderWidth: 0, backgroundColor: active ? theme.ink : theme.cardBg }]
-    : [styles.underlineTab, { borderBottomColor: active ? theme.ink : 'transparent' }];
+      ? [styles.pillTab, allEdges(OUTLINE, active ? theme.ink : theme.line), { backgroundColor: 'transparent' }]
+      : [styles.pillTab, allEdges(0, 'transparent'), { backgroundColor: active ? theme.ink : theme.cardBg }]
+    : [styles.underlineTab, bottomEdge(2, active ? theme.ink : 'transparent'), { backgroundColor: 'transparent' }];
   const color = concept === 'layer' ? (active ? theme.bg : theme.sub) : active ? theme.ink : theme.sub;
   return (
     <Pressable onPress={onPress} style={shell}>
@@ -39,13 +39,12 @@ function chipShell(theme: Theme, muted: boolean, tint: boolean) {
   if (concept === 'layer') {
     // theme.bg, not cardBg: these chips mostly sit on layer sheets, which
     // are cardBg themselves -- a cardBg chip there has no visible fill.
-    return { borderWidth: 0, paddingVertical: 7, backgroundColor: tint && !muted ? theme.accent + '1f' : theme.bg };
+    return { ...allEdges(0, 'transparent'), paddingVertical: 7, backgroundColor: tint && !muted ? theme.accent + '1f' : theme.bg };
   }
   return {
-    borderWidth: OUTLINE,
+    ...allEdges(OUTLINE, muted ? theme.sub : concept === 'border' ? theme.line : theme.ink),
     paddingVertical: 6,
     backgroundColor: 'transparent',
-    borderColor: muted ? theme.sub : concept === 'border' ? theme.line : theme.ink,
     ...(concept === 'vintage' ? { borderRadius: 3 } : null),
   };
 }
@@ -191,8 +190,8 @@ export function TagAddChip({ label, theme, onPress }: { label: string; theme: Th
 }
 
 const styles = StyleSheet.create({
-  pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999, borderWidth: OUTLINE },
-  underlineTab: { paddingBottom: 10, borderBottomWidth: 2 },
+  pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999 },
+  underlineTab: { paddingBottom: 10 },
   tag: { borderRadius: 999, paddingHorizontal: 14 },
   tagRow: { flexDirection: 'row', alignItems: 'center' },
   metaChip: { gap: 5 },

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { OUTLINE, Theme, conceptOf } from '../theme/themes';
+import { OUTLINE, Theme, allEdges, conceptOf } from '../theme/themes';
 import { RuledLines } from './Decor';
 
 const SHEET_TRAVEL = Dimensions.get('window').height;
@@ -138,25 +138,25 @@ const SHEET: Record<
     bg: (t) => t.bg,
     // Same light rule as the home screen's dividers -- an ink line here
     // read as heavier than anything else in the line theme.
-    edge: (t) => ({ borderTopWidth: OUTLINE, borderColor: t.line }),
+    edge: (t) => ({ ...allEdges(0, 'transparent'), borderTopWidth: OUTLINE, borderTopColor: t.line }),
     grabber: (t) => ({ width: 28, height: 2, borderRadius: 0, backgroundColor: t.line }),
   },
   border: {
     radius: 24,
     bg: (t) => t.surface,
-    edge: (t) => ({ borderTopWidth: OUTLINE, borderLeftWidth: OUTLINE, borderRightWidth: OUTLINE, borderColor: t.line, ...SHADOW }),
+    edge: (t) => ({ ...allEdges(OUTLINE, t.line), borderBottomWidth: 0, ...SHADOW }),
     grabber: (t) => ({ backgroundColor: t.line }),
   },
   layer: {
     radius: 22,
     bg: (t) => t.cardBg,
-    edge: () => ({}),
+    edge: () => allEdges(0, 'transparent'),
     grabber: (t) => ({ backgroundColor: t.cardStack }),
   },
   vintage: {
     radius: 6,
     bg: (t) => t.cardBg,
-    edge: (t) => ({ borderTopWidth: 3, borderColor: t.accent, overflow: 'hidden' }),
+    edge: (t) => ({ ...allEdges(0, 'transparent'), borderTopWidth: 3, borderTopColor: t.accent, overflow: 'hidden' }),
     grabber: () => ({}),
   },
 };

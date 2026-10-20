@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Easing, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, Easing, Keyboard, PanResponder, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { OUTLINE, Theme, allEdges, conceptOf } from '../theme/themes';
@@ -24,6 +24,7 @@ export function ModalSheet({
   maxHeightRatio,
   paddingHorizontal = 24,
   grabberMarginBottom = 24,
+  liftForKeyboard = false,
   children,
 }: {
   theme: Theme;
@@ -34,11 +35,32 @@ export function ModalSheet({
   maxHeightRatio?: number;
   paddingHorizontal?: number;
   grabberMarginBottom?: number;
+  // Sit the whole sheet on top of the keyboard and cap it to the space left
+  // above it, so content that shrinks (TabPicker's tag list) stays visible.
+  // The sheet lives in its own Dialog window on Android, which the OS never
+  // resizes for the keyboard, so a KeyboardAvoidingView inside it can't
+  // reliably do this (on a Z Flip it left one row showing).
+  liftForKeyboard?: boolean;
   children: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
   const concept = conceptOf(theme);
   const translateY = useRef(new Animated.Value(animated ? SHEET_TRAVEL : 0)).current;
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!liftForKeyboard) return;
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [liftForKeyboard]);
+
+  const lifted = liftForKeyboard && keyboardHeight > 0;
 
   useEffect(() => {
     if (!animated) return;
@@ -94,7 +116,7 @@ export function ModalSheet({
           ever sits bottom-right, on cards and the primary button -- never
           above the sheet's top edge), vintage =
           a ruled index card with an accent band and a punch hole for a handle. */}
-      <Animated.View style={[styles.sheetWrap, { transform: [{ translateY }] }]}>
+      <Animated.View style={[styles.sheetWrap, lifted && { bottom: keyboardHeight }, { transform: [{ translateY }] }]}>
         <View
           style={[
             styles.sheet,
@@ -103,8 +125,10 @@ export function ModalSheet({
               backgroundColor: SHEET[concept].bg(theme),
               borderTopLeftRadius: SHEET[concept].radius,
               borderTopRightRadius: SHEET[concept].radius,
-              paddingBottom: paddingBottom + insets.bottom,
+              // Above the keyboard the home-indicator inset is covered anyway.
+              paddingBottom: lifted ? 12 : paddingBottom + insets.bottom,
               ...(maxHeightRatio !== undefined ? { maxHeight: SHEET_TRAVEL * maxHeightRatio } : null),
+              ...(lifted ? { maxHeight: Math.min(SHEET_TRAVEL * (maxHeightRatio ?? 1), SHEET_TRAVEL - keyboardHeight - insets.top - 16) } : null),
               ...SHEET[concept].edge(theme, bordered),
             },
           ]}

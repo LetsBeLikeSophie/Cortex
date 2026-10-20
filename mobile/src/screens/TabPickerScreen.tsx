@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,8 +60,9 @@ export default function TabPickerScreen() {
       paddingHorizontal={20}
       grabberMarginBottom={18}
       maxHeightRatio={0.8}
+      liftForKeyboard
     >
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
+      <View style={styles.flexShrink}>
         <Heading theme={theme} size={20} style={styles.heading}>
           홈 화면 탭
         </Heading>
@@ -110,7 +109,7 @@ export default function TabPickerScreen() {
             </ScrollView>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </ModalSheet>
   );
 }
@@ -130,7 +129,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   emptyText: { fontSize: 13.5, textAlign: 'center', paddingVertical: 20, fontFamily: 'IBMPlexSansKR_400Regular' },
-  resultsBox: { height: Dimensions.get('window').height * 0.45 },
+  // Fixed height so typing doesn't resize the sheet -- but allowed to
+  // shrink when the keyboard leaves less room (ModalSheet liftForKeyboard).
+  resultsBox: { height: Dimensions.get('window').height * 0.45, flexShrink: 1, minHeight: 120 },
   list: { flex: 1 },
   row: {
     flexDirection: 'row',

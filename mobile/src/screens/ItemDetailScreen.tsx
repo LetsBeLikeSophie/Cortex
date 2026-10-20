@@ -20,7 +20,7 @@ import { MONO, emToTracking } from '../theme/themes';
 import { addTag, asQuotaError, deleteItem, fetchItem, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
-import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
+import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { pickStyle, pickTextStyle } from '../components/Fields';
 import { RestoreIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
@@ -348,13 +348,9 @@ export default function ItemDetailScreen() {
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
               {category}
             </Text>
-            <Pressable
-              onPress={() => setDeleteState('confirming')}
-              hitSlop={8}
-              style={[styles.trashButton, { borderColor: theme.line }]}
-            >
-              <TrashIcon size={13.5} color={theme.sub} strokeWidth={1.3} />
-            </Pressable>
+            <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label="휴지통으로 이동">
+              <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
+            </IconButton>
           </View>
 
           {deleteState !== 'idle' && (
@@ -532,7 +528,6 @@ export default function ItemDetailScreen() {
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  trashButton: { width: 24, height: 24, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   imageBox: { marginTop: 16, borderRadius: 14, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },

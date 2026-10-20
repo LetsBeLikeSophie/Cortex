@@ -1,6 +1,7 @@
 import React from 'react';
 import { screenGutter } from './Card';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { IconButton } from './Buttons';
 import { Theme } from '../theme/themes';
 import { BackIcon } from './Icons';
 import { Heading } from './Typography';
@@ -10,9 +11,9 @@ import { Heading } from './Typography';
 export function ScreenHeader({ title, theme, onBack }: { title: string; theme: Theme; onBack: () => void }) {
   return (
     <View style={[styles.header, { paddingHorizontal: screenGutter(theme) }]}>
-      <Pressable onPress={onBack} style={[styles.backButton, { borderColor: theme.line }]} hitSlop={8}>
+      <IconButton theme={theme} onPress={onBack} label="뒤로">
         <BackIcon size={16} color={theme.ink} strokeWidth={1.5} />
-      </Pressable>
+      </IconButton>
       <Heading theme={theme} offset={8}>
         {title}
       </Heading>
@@ -22,5 +23,4 @@ export function ScreenHeader({ title, theme, onBack }: { title: string; theme: T
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingTop: 20, paddingBottom: 18 },
-  backButton: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

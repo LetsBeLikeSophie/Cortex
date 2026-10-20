@@ -105,6 +105,44 @@ export function SolidButton({
   );
 }
 
+// The one round/square icon control (back, header actions, trash). 32px
+// with hitSlop out to a 44px touch target; corner and fill follow the
+// concept like the small pickers do (layer fills instead of outlining).
+// `on` is what it sits on in the layer theme, where the fill has to differ
+// from it: the page (bg) or a sheet (cardBg).
+export function IconButton({
+  theme,
+  onPress,
+  label,
+  on = 'page',
+  children,
+}: {
+  theme: Theme;
+  onPress: () => void;
+  label: string;
+  on?: 'page' | 'sheet';
+  children: React.ReactNode;
+}) {
+  const layer = conceptOf(theme) === 'layer';
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.icon,
+        { borderRadius: Math.min(theme.pickRadius, 16), opacity: pressed ? 0.6 : 1 },
+        layer
+          ? { ...allEdges(0, 'transparent'), backgroundColor: on === 'sheet' ? theme.bg : theme.cardBg }
+          : { ...allEdges(OUTLINE, theme.line), backgroundColor: 'transparent' },
+      ]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
 // Row wrapper for a sheet's bottom actions. Vintage adds its dashed
 // perforation above, like the tear-off edge of a card.
 export function ButtonRow({ theme, style, children }: { theme: Theme; style?: ViewStyle; children: React.ReactNode }) {
@@ -136,6 +174,7 @@ const styles = StyleSheet.create({
   typed: { fontSize: 14, letterSpacing: 0.6 },
   typedSm: { fontSize: 12.5 },
   row: { flexDirection: 'row', gap: 10 },
+  icon: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   perforation: { marginBottom: 14 },
   backLayer: { position: 'absolute', top: 4, left: 4, right: -4, bottom: -4 },
   sunk: { transform: [{ translateX: 3 }, { translateY: 3 }] },

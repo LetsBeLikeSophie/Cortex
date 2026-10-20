@@ -16,7 +16,7 @@ import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
-import { SolidButton } from '../components/Buttons';
+import { IconButton, SolidButton } from '../components/Buttons';
 import { Pulse } from '../components/Pulse';
 import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
@@ -219,27 +219,15 @@ export default function HomeScreen() {
             CORTEX
           </Text>
           <View style={styles.brandRowActions}>
-            <Pressable
-              onPress={() => navigation.navigate('Trash')}
-              style={[styles.iconButton, { borderColor: theme.line }]}
-              hitSlop={6}
-            >
+            <IconButton theme={theme} onPress={() => navigation.navigate('Trash')} label="휴지통">
               <TrashIcon size={14} color={theme.ink} strokeWidth={1.3} />
-            </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('Stats')}
-              style={[styles.iconButton, { borderColor: theme.line }]}
-              hitSlop={6}
-            >
+            </IconButton>
+            <IconButton theme={theme} onPress={() => navigation.navigate('Stats')} label="통계">
               <StatsIcon size={15} color={theme.ink} strokeWidth={1.4} />
-            </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('Profile')}
-              style={[styles.iconButton, { borderColor: theme.line }]}
-              hitSlop={6}
-            >
+            </IconButton>
+            <IconButton theme={theme} onPress={() => navigation.navigate('Profile')} label="내 계정">
               <ProfileIcon size={15} color={theme.ink} strokeWidth={1.4} />
-            </Pressable>
+            </IconButton>
           </View>
         </View>
 
@@ -503,14 +491,6 @@ const styles = StyleSheet.create({
   headPad: {},
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   heroWrap: { position: 'relative' },
   heroBack: { position: 'absolute', top: 6, left: 6, right: -6, bottom: -6 },
   heroBox: { position: 'relative', overflow: 'hidden' },

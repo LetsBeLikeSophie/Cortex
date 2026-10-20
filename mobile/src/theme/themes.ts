@@ -76,6 +76,11 @@ export interface Palette {
   // Errors and destructive actions. Not accent: in Sage the accent is green
   // and in Paper a clay brown -- neither reads as "something went wrong".
   danger: string;
+  // Text/icons drawn ON an accent fill (vintage's stamp button, the theme
+  // picker's check). White only where it actually reads: the light amber
+  // and lavender accents of Ink/Neural need dark text (white was 2.4:1 and
+  // 2.0:1 there).
+  onAccent: string;
 
   dark: boolean;
 }
@@ -206,6 +211,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     surface: '#ffffff', surfaceEdge: null, ghost: '#e8e4d9', ghostBar: '#dcd8cd',
     cardBg: '#f2f1ee', cardStack: '#714a34',
     danger: '#b23a2c',
+    onAccent: '#ffffff',
     dark: false,
   },
   ink: {
@@ -215,6 +221,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     surface: '#1c1b20', surfaceEdge: '#272630', ghost: '#242329', ghostBar: '#2d2c34',
     cardBg: '#252427', cardStack: '#a37451',
     danger: '#ec7b6b',
+    onAccent: '#151417',
     dark: true,
   },
   neural: {
@@ -224,6 +231,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     surface: '#191d23', surfaceEdge: '#22272e', ghost: '#202631', ghostBar: '#2a3038',
     cardBg: '#24272c', cardStack: '#7e87bf',
     danger: '#f08a8a',
+    onAccent: '#14171c',
     dark: true,
   },
   sage: {
@@ -233,6 +241,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     surface: '#ffffff', surfaceEdge: null, ghost: '#e4e0d6', ghostBar: '#dcd8cf',
     cardBg: '#eceae4', cardStack: '#3f5c4d',
     danger: '#b23a2c',
+    onAccent: '#ffffff',
     dark: false,
   },
   blush: {
@@ -242,6 +251,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     surface: '#ffffff', surfaceEdge: null, ghost: '#eadfdb', ghostBar: '#e0d1cd',
     cardBg: '#f2edec', cardStack: '#8d423b',
     danger: '#a3261d',
+    onAccent: '#ffffff',
     dark: false,
   },
 };

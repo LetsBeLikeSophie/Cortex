@@ -63,7 +63,7 @@ export function SolidButton({
 }: ButtonProps & { variant?: 'primary' | 'danger' }) {
   const concept = conceptOf(theme);
   const danger = variant === 'danger';
-  const textColor = danger ? theme.bg : concept === 'vintage' ? '#fff' : theme.bg;
+  const textColor = danger ? theme.bg : concept === 'vintage' ? theme.onAccent : theme.bg;
   const button = (
     <Pressable
       onPress={onPress}
@@ -77,7 +77,7 @@ export function SolidButton({
         pressed && (concept === 'layer' ? styles.sunk : { opacity: 0.75 }),
       ]}
     >
-      {concept === 'vintage' && <View pointerEvents="none" style={styles.stampInner} />}
+      {concept === 'vintage' && <View pointerEvents="none" style={[styles.stampInner, { borderColor: textColor, opacity: 0.75 }]} />}
       {loading ? (
         <ActivityIndicator color={textColor} />
       ) : (
@@ -139,6 +139,6 @@ const styles = StyleSheet.create({
   perforation: { marginBottom: 14 },
   backLayer: { position: 'absolute', top: 4, left: 4, right: -4, bottom: -4 },
   sunk: { transform: [{ translateX: 3 }, { translateY: 3 }] },
-  // Inner white rule of the "stamp" -- reads as a double border.
-  stampInner: { position: 'absolute', top: 3, left: 3, right: 3, bottom: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.75)', borderRadius: 2 },
+  // Inner rule of the "stamp" (in the label color) -- reads as a double border.
+  stampInner: { position: 'absolute', top: 3, left: 3, right: 3, bottom: 3, borderWidth: 1, borderRadius: 2 },
 });

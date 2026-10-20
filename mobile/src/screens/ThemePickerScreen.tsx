@@ -91,7 +91,7 @@ export default function ThemePickerScreen() {
                     { backgroundColor: p.accent, borderColor: active ? theme.ink : 'transparent' },
                   ]}
                 >
-                  {active && <CheckIcon size={14} color="#fff" strokeWidth={2.4} />}
+                  {active && <CheckIcon size={14} color={p.onAccent} strokeWidth={2.4} />}
                 </View>
               </Pressable>
             );

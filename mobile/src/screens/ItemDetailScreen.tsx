@@ -294,7 +294,7 @@ export default function ItemDetailScreen() {
             <View style={[styles.deleteConfirmCard, { borderColor: theme.line }]}>
               <Text style={[styles.deleteConfirmText, { color: theme.ink }]}>휴지통으로 이동할까요? 나중에 복원할 수 있어요.</Text>
               {deleteError !== '' && (
-                <Text style={[styles.errorText, { color: theme.accent }]}>삭제 실패: {deleteError}</Text>
+                <Text style={[styles.errorText, { color: theme.danger }]}>삭제 실패: {deleteError}</Text>
               )}
               <View style={styles.deleteConfirmButtons}>
                 <Pressable
@@ -307,12 +307,12 @@ export default function ItemDetailScreen() {
                 <Pressable
                   onPress={confirmDelete}
                   disabled={deleteState === 'deleting'}
-                  style={[styles.smallDeleteButton, { opacity: deleteState === 'deleting' ? 0.7 : 1 }]}
+                  style={[styles.smallDeleteButton, { backgroundColor: theme.danger, borderRadius: pickStyle(theme).borderRadius, opacity: deleteState === 'deleting' ? 0.7 : 1 }]}
                 >
                   {deleteState === 'deleting' ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={theme.bg} />
                   ) : (
-                    <Text style={{ color: '#fff', fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>삭제</Text>
+                    <Text style={{ color: theme.bg, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>삭제</Text>
                   )}
                 </Pressable>
               </View>
@@ -366,13 +366,14 @@ export default function ItemDetailScreen() {
             <VoiceInputButton
               theme={theme}
               size={14}
+              variant="chip"
               onResult={(text, isFinal) => {
                 if (isFinal) submitVoiceTag(text);
               }}
             />
             {voiceTagLoading && <ActivityIndicator size="small" color={theme.accent} style={styles.voiceTagSpinner} />}
           </ScrollView>
-          {tagError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>태그 저장 실패: {tagError}</Text>}
+          {tagError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>태그 저장 실패: {tagError}</Text>}
 
           {item.capture_type === 'screenshot' && (
             <View style={[styles.imageBox, { backgroundColor: theme.soft, borderColor: theme.line }]}>
@@ -434,7 +435,7 @@ export default function ItemDetailScreen() {
               </Pressable>
             ))}
 
-          {editError !== '' && <Text style={[styles.errorText, { color: theme.accent }]}>{editError}</Text>}
+          {editError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>{editError}</Text>}
 
           {/* Rewrite the title/memo however you like (or clear them), then
               let the AI redo it with your version as the guide. */}
@@ -510,6 +511,6 @@ const styles = StyleSheet.create({
   deleteConfirmText: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_500Medium' },
   deleteConfirmButtons: { flexDirection: 'row', gap: 10, marginTop: 12 },
   smallGhostButton: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 10, alignItems: 'center' },
-  smallDeleteButton: { flex: 1, backgroundColor: '#c0392b', borderRadius: 999, paddingVertical: 10, alignItems: 'center' },
+  smallDeleteButton: { flex: 1, paddingVertical: 10, alignItems: 'center' },
   buttonRow: { marginTop: 16 },
 });

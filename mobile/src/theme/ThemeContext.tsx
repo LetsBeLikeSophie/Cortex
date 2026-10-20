@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
-import { LayoutKey, PaletteKey, Theme, composeTheme } from './themes';
+import { LAYOUTS, LayoutKey, PaletteKey, Theme, composeTheme } from './themes';
 
 interface ThemeContextValue {
   layoutKey: LayoutKey;
@@ -15,8 +15,15 @@ const DEFAULT_LAYOUT: LayoutKey = 'line';
 const DEFAULT_PALETTE: PaletteKey = 'paper';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [layoutKey, setLayoutKey] = useState<LayoutKey>(DEFAULT_LAYOUT);
+  const [layoutKey, setLayout] = useState<LayoutKey>(DEFAULT_LAYOUT);
   const [paletteKey, setPaletteKey] = useState<PaletteKey>(DEFAULT_PALETTE);
+
+  // A layout arrives with its signature color; the palette row can still
+  // override it afterwards.
+  const setLayoutKey = (key: LayoutKey) => {
+    setLayout(key);
+    setPaletteKey(LAYOUTS[key].signature);
+  };
 
   const value = useMemo<ThemeContextValue>(
     () => ({ layoutKey, paletteKey, theme: composeTheme(layoutKey, paletteKey), setLayoutKey, setPaletteKey }),

@@ -49,8 +49,46 @@ function chipShell(theme: Theme, muted: boolean, tint: boolean) {
   };
 }
 
+// Dashed "add something" chip -- "+ 태그" and the voice-tag mic share it so
+// they read as one pair of controls. Corner follows the concept's chips.
+export function addChipShell(theme: Theme) {
+  return {
+    borderWidth: OUTLINE,
+    borderStyle: 'dashed' as const,
+    borderColor: theme.sub,
+    paddingVertical: 6,
+    borderRadius: conceptOf(theme) === 'vintage' ? 3 : 999,
+  };
+}
+
 function chipFont(theme: Theme) {
   return conceptOf(theme) === 'vintage' ? MONO : 'IBMPlexSansKR_400Regular';
+}
+
+// The 미분류 tab. Deliberately not a normal tab in a different state: it's
+// a pile waiting for AI, so it carries the accent (AI/attention role) with
+// a dot + count, in the concept's own tab shape. Selected, it fills/rules
+// in accent instead of ink, so it never looks like "모두" or a tag tab.
+export function PileTabChip({ count, active, theme, onPress }: { count: number; active: boolean; theme: Theme; onPress: () => void }) {
+  const concept = conceptOf(theme);
+  const pill = concept === 'border' || concept === 'layer';
+  const shell = pill
+    ? [
+        styles.pillTab,
+        styles.pileRow,
+        concept === 'border' ? allEdges(OUTLINE, active ? theme.accent : theme.accent + '55') : allEdges(0, 'transparent'),
+        { backgroundColor: active ? theme.accent : theme.accent + '17' },
+      ]
+    : [styles.underlineTab, styles.pileRow, bottomEdge(2, active ? theme.accent : 'transparent'), { backgroundColor: 'transparent' }];
+  const fg = pill && active ? theme.bg : theme.accent;
+  const font = concept === 'vintage' ? MONO : 'IBMPlexSansKR_500Medium';
+  return (
+    <Pressable onPress={onPress} style={shell} accessibilityLabel={`미분류 ${count}건`}>
+      {!(pill && active) && <View style={[styles.pileDot, { backgroundColor: theme.accent }]} />}
+      <Text style={{ fontSize: pill ? 12.5 : 13, color: fg, fontFamily: font }}>미분류</Text>
+      <Text style={{ fontSize: pill ? 11.5 : 12, color: fg, fontFamily: MONO, opacity: 0.85 }}>{count}</Text>
+    </Pressable>
+  );
 }
 
 // Sits at the end of the home-screen tab strip -- tapping it opens the tab
@@ -58,7 +96,7 @@ function chipFont(theme: Theme) {
 // strip currently renders as underline tabs or pill tabs.
 export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.tabAdd, { borderColor: theme.sub }]}>
+    <Pressable onPress={onPress} style={[styles.tabAdd, { borderColor: theme.sub, borderRadius: conceptOf(theme) === 'vintage' ? 3 : 13 }]}>
       <PlusIcon size={13} color={theme.sub} strokeWidth={1.4} />
     </Pressable>
   );
@@ -183,8 +221,8 @@ export function ChipQueryRow({
 
 export function TagAddChip({ label, theme, onPress }: { label: string; theme: Theme; onPress?: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.tag, { borderWidth: 1, borderStyle: 'dashed', borderColor: theme.sub, paddingVertical: 6 }]}>
-      <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{label}</Text>
+    <Pressable onPress={onPress} style={[styles.tag, addChipShell(theme)]}>
+      <Text style={{ fontSize: 13, color: theme.sub, fontFamily: chipFont(theme) }}>{label}</Text>
     </Pressable>
   );
 }
@@ -199,10 +237,11 @@ const styles = StyleSheet.create({
   searchChipText: { paddingVertical: 4 },
   searchChipX: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
   chipQueryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
+  pileRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  pileDot: { width: 5, height: 5, borderRadius: 3 },
   tabAdd: {
     width: 26,
     height: 26,
-    borderRadius: 13,
     borderWidth: 1,
     borderStyle: 'dashed',
     alignItems: 'center',

@@ -6,6 +6,7 @@ import {
 } from 'expo-speech-recognition';
 import { MicIcon } from './Icons';
 import { Theme } from '../theme/themes';
+import { addChipShell } from './Chips';
 import { permissionToast } from '../native/toast';
 
 // One mic button shared by every place that can take spoken input instead
@@ -26,6 +27,7 @@ export function VoiceInputButton({
   onStart,
   lang = 'ko-KR',
   size = 18,
+  variant = 'inField',
 }: {
   theme: Theme;
   onResult: (text: string, isFinal: boolean) => void;
@@ -34,6 +36,10 @@ export function VoiceInputButton({
   onStart?: () => void;
   lang?: string;
   size?: number;
+  // inField: a bare icon tucked into the corner of a text field (the field
+  // is the frame -- a second outlined circle beside it read as a stray
+  // control). chip: the dashed add-chip shape, next to "+ 태그".
+  variant?: 'inField' | 'chip';
 }) {
   const [recording, setRecording] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -75,15 +81,14 @@ export function VoiceInputButton({
     <Pressable
       onPress={toggle}
       hitSlop={8}
+      accessibilityLabel={recording ? '음성 입력 멈추기' : '음성으로 입력'}
       style={[
         styles.button,
-        {
-          width: size + 18,
-          height: size + 18,
-          borderRadius: (size + 18) / 2,
-          borderColor: recording ? theme.accent : theme.line,
-          backgroundColor: recording ? theme.accent + '1f' : 'transparent',
-        },
+        variant === 'chip'
+          ? { ...addChipShell(theme), paddingVertical: 0, height: 31, paddingHorizontal: 11 }
+          : { width: size + 16, height: size + 16, borderRadius: (size + 16) / 2, borderWidth: 0 },
+        // Recording is a status, so it takes the accent (see themes.ts roles).
+        recording && { backgroundColor: theme.accent + '1f', borderColor: theme.accent, borderStyle: 'solid' },
       ]}
     >
       {starting ? (
@@ -96,5 +101,5 @@ export function VoiceInputButton({
 }
 
 const styles = StyleSheet.create({
-  button: { borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  button: { alignItems: 'center', justifyContent: 'center' },
 });

@@ -128,10 +128,10 @@ export function RecentRow({
         <View
           style={[
             styles.selectCircle,
-            { borderColor: selected ? theme.accent : theme.line, backgroundColor: selected ? theme.accent : 'transparent' },
+            { borderColor: selected ? theme.ink : theme.line, backgroundColor: selected ? theme.ink : 'transparent' },
           ]}
         >
-          {selected && <CheckIcon size={10} color="#fff" strokeWidth={2.4} />}
+          {selected && <CheckIcon size={10} color={theme.bg} strokeWidth={2.4} />}
         </View>
       )}
       {/* key forces a full remount when the font family switches (line's

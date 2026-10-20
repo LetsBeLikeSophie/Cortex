@@ -15,7 +15,7 @@ import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
-import { TabChip, TabAddChip } from '../components/Chips';
+import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
 import { Pulse } from '../components/Pulse';
 import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
@@ -364,12 +364,7 @@ export default function HomeScreen() {
         {/* Fixed, not removable: the pile of saves the month's AI quota
             didn't cover. Its growing count is the point -- see Paywall. */}
         {unclassifiedCount > 0 && (
-          <TabChip
-            label={`미분류 · ${unclassifiedCount}`}
-            active={activeTag === UNCLASSIFIED}
-            theme={theme}
-            onPress={() => changeTag(UNCLASSIFIED)}
-          />
+          <PileTabChip count={unclassifiedCount} active={activeTag === UNCLASSIFIED} theme={theme} onPress={() => changeTag(UNCLASSIFIED)} />
         )}
         {customTabs.map((tag) => (
           <TabChip key={tag} label={tag} active={activeTag === tag} theme={theme} onPress={() => changeTag(tag)} />

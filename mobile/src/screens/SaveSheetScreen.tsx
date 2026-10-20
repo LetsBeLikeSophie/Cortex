@@ -325,11 +325,11 @@ export default function SaveSheetScreen() {
           <Pressable key={shot.id} onPress={() => toggleScreenshot(shot)} disabled={status === 'saving'}>
             <Image
               source={{ uri: shot.uri }}
-              style={[styles.screenshotThumb, { borderColor: selected ? theme.accent : theme.line, borderWidth: selected ? 2 : 1 }]}
+              style={[styles.screenshotThumb, { borderColor: selected ? theme.ink : theme.line, borderWidth: selected ? 2 : 1 }]}
             />
             {selected && (
-              <View style={[styles.screenshotCheck, { backgroundColor: theme.accent }]}>
-                <CheckIcon size={11} color="#fff" strokeWidth={2.2} />
+              <View style={[styles.screenshotCheck, { backgroundColor: theme.ink }]}>
+                <CheckIcon size={11} color={theme.bg} strokeWidth={2.2} />
               </View>
             )}
           </Pressable>
@@ -391,8 +391,8 @@ export default function SaveSheetScreen() {
                     styles.input,
                     fieldStyle(theme),
                     {
-                      flex: 1,
                       marginTop: 0,
+                      paddingRight: 44,
                       color: theme.ink,
                       fontFamily: 'IBMPlexSansKR_400Regular',
                       outlineWidth: 0,
@@ -400,14 +400,17 @@ export default function SaveSheetScreen() {
                   ]}
                 />
                 {/* Speaking adds onto whatever's already typed rather than
-                    replacing it -- this is the main memo, not a one-liner. */}
-                <VoiceInputButton
-                  theme={theme}
-                  onStart={() => {
-                    voiceBase.current = text.trim() ? `${text.trimEnd()} ` : '';
-                  }}
-                  onResult={(spoken) => setText(voiceBase.current + spoken)}
-                />
+                    replacing it -- this is the main memo, not a one-liner.
+                    Sits inside the field's bottom-right corner. */}
+                <View style={styles.micInMemo}>
+                  <VoiceInputButton
+                    theme={theme}
+                    onStart={() => {
+                      voiceBase.current = text.trim() ? `${text.trimEnd()} ` : '';
+                    }}
+                    onResult={(spoken) => setText(voiceBase.current + spoken)}
+                  />
+                </View>
                 </View>
 
                 {/* Same pill shape + border convention as GhostButton (the
@@ -522,19 +525,21 @@ export default function SaveSheetScreen() {
                     styles.noteInput,
                     fieldStyle(theme),
                     {
-                      flex: 1,
+                      paddingRight: 44,
                       color: theme.ink,
                       fontFamily: 'IBMPlexSansKR_400Regular',
                       outlineWidth: 0,
                     },
                   ]}
                 />
-                <VoiceInputButton theme={theme} onResult={(text) => setNote(text)} />
+                <View style={styles.micInNote}>
+                  <VoiceInputButton theme={theme} onResult={(text) => setNote(text)} />
+                </View>
               </View>
             )}
 
             {status === 'error' && (
-              <Text style={{ color: theme.accent, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+              <Text style={{ color: theme.danger, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
                 저장 실패: {error}
               </Text>
             )}
@@ -583,7 +588,7 @@ export default function SaveSheetScreen() {
                   {savedBulk.items.length}개 저장했어요
                 </Heading>
                 {savedBulk.failed > 0 && (
-                  <Text style={[styles.savedSub, { color: theme.accent }]}>{savedBulk.failed}개는 저장하지 못했어요.</Text>
+                  <Text style={[styles.savedSub, { color: theme.danger }]}>{savedBulk.failed}개는 저장하지 못했어요.</Text>
                 )}
               </View>
             </View>
@@ -800,8 +805,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlignVertical: 'top',
   },
-  noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
-  memoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 18 },
+  noteRow: { position: 'relative', marginTop: 14 },
+  memoRow: { position: 'relative', marginTop: 18 },
+  micInMemo: { position: 'absolute', right: 4, bottom: 6 },
+  micInNote: { position: 'absolute', right: 4, top: 0, bottom: 0, justifyContent: 'center' },
   noteInput: { marginTop: 0, minHeight: 0, paddingVertical: 12, fontSize: 13.5 },
   analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   screenshotSection: { marginTop: 18 },

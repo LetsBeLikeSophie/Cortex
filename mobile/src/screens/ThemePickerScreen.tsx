@@ -67,8 +67,8 @@ export default function ThemePickerScreen() {
                   style={[
                     styles.layoutRadio,
                     {
-                      borderColor: active ? theme.accent : theme.line,
-                      backgroundColor: active ? theme.accent : 'transparent',
+                      borderColor: active ? theme.ink : theme.line,
+                      backgroundColor: active ? theme.ink : 'transparent',
                     },
                   ]}
                 />

@@ -70,16 +70,14 @@ export function SegmentedToggle<K extends string>({
           pointerEvents="none"
           style={[
             line
-              ? { position: 'absolute', left: 0, bottom: -1, height: 2, backgroundColor: theme.accent }
+              ? { position: 'absolute', left: 0, bottom: -1, height: 2, backgroundColor: theme.ink }
               : {
                   position: 'absolute',
                   left: pad,
                   top: pad,
                   bottom: pad,
                   borderRadius: compact ? 999 : theme.btnRadius,
-                  backgroundColor: theme.accent + '1f',
-                  borderWidth: 1,
-                  borderColor: theme.accent,
+                  backgroundColor: theme.ink,
                 },
             {
               width: segW,
@@ -97,7 +95,8 @@ export function SegmentedToggle<K extends string>({
       )}
       {options.map((o) => {
         const active = o.key === value;
-        const color = active ? theme.accent : theme.sub;
+        // Selected = ink (boxed: solid ink thumb, so the label flips to bg).
+        const color = active ? (line ? theme.ink : theme.bg) : theme.sub;
         return (
           <Pressable
             key={o.key}

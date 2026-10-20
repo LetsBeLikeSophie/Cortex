@@ -24,6 +24,10 @@ export interface Layout {
   // Shown under the label in ThemePickerScreen's layout list -- same role
   // Palette.note already plays for colors.
   note: string;
+  // The color this layout comes with: picking the layout switches to it,
+  // so each theme has one clear identity out of the box (the color can
+  // still be changed afterwards).
+  signature: PaletteKey;
 
   headFamily: string;
   headWeight: '400' | '500' | '600' | '700';
@@ -70,6 +74,10 @@ export interface Palette {
   cardBg: string;
   cardStack: string;
 
+  // Errors and destructive actions. Not accent: in Sage the accent is green
+  // and in Paper a clay brown -- neither reads as "something went wrong".
+  danger: string;
+
   dark: boolean;
 }
 
@@ -77,7 +85,7 @@ export interface Palette {
 // together (see composeTheme below). No `key`/`label`/`note` here: those are
 // picker-identity metadata, not render inputs, and nothing reads them outside
 // ThemePickerScreen/ProfileScreen (which read LAYOUTS/PALETTES directly).
-export type Theme = Omit<Layout, 'label' | 'note'> & Omit<Palette, 'label' | 'note'>;
+export type Theme = Omit<Layout, 'label' | 'note' | 'signature'> & Omit<Palette, 'label' | 'note'>;
 
 export const SERIF = 'InstrumentSerif_400Regular';
 export const GROTESK_SEMIBOLD = 'SchibstedGrotesk_600SemiBold';
@@ -103,6 +111,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
   line: {
     label: '라인',
     note: '잡지처럼. 가는 선과 세리프 제목, 시트도 각진 윗변에 실선 한 줄이에요.',
+    signature: 'paper',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
     cardRadius: 0, btnRadius: 999, list: 'line',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
@@ -110,6 +119,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
   thinBorder: {
     label: '테두리',
     note: '미니멀 노트처럼. 카드·시트·버튼 모두 둥근 모서리에 1px 테두리예요.',
+    signature: 'sage',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 16, btnRadius: 999, list: 'bordered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
@@ -117,6 +127,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
   layered: {
     label: '레이어',
     note: '겹쳐 놓은 종이처럼. 카드·시트·버튼 뒤로 진한 종이가 한 장씩 삐져나와요.',
+    signature: 'blush',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 20, btnRadius: 999, list: 'layered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
@@ -124,6 +135,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
   layeredVintage: {
     label: '빈티지',
     note: '도서관 카드 목록처럼. 줄 쳐진 색인카드, 타자기체 라벨, 바탕엔 옅은 격자무늬예요.',
+    signature: 'ink',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 6, btnRadius: 4, list: 'layered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'vintage',
@@ -168,6 +180,13 @@ export function bottomEdge(width: number, color: string) {
   return { ...allEdges(0, 'transparent'), borderBottomWidth: width, borderBottomColor: color };
 }
 
+// Color roles, the same in every theme:
+// - ink: selected / active / primary. Tabs, toggles, checked photos and
+//   list rows, radio dots -- anything that says "this one is on".
+// - accent: meaning, never state. AI (sparkle, AI-written note), the
+//   미분류 pile, recording, small brand marks. A selection never turns
+//   accent, so a status never looks like something you tapped.
+// - danger: errors and delete.
 export function conceptOf(theme: Theme): Concept {
   if (theme.decor === 'vintage') return 'vintage';
   if (theme.list === 'layered') return 'layer';
@@ -188,6 +207,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     // what produced the "shadow visible, content square/invisible" bug.
     surface: '#ffffff', surfaceEdge: null, ghost: '#e8e4d9', ghostBar: '#dcd8cd',
     cardBg: '#f2f1ee', cardStack: '#714a34',
+    danger: '#b23a2c',
     dark: false,
   },
   ink: {
@@ -196,6 +216,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     line: '#2a2930', soft: '#232228', accent: '#d99a6c',
     surface: '#1c1b20', surfaceEdge: '#272630', ghost: '#242329', ghostBar: '#2d2c34',
     cardBg: '#252427', cardStack: '#a37451',
+    danger: '#ec7b6b',
     dark: true,
   },
   neural: {
@@ -204,6 +225,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     line: '#22272e', soft: '#1b1f26', accent: '#a8b4ff',
     surface: '#191d23', surfaceEdge: '#22272e', ghost: '#202631', ghostBar: '#2a3038',
     cardBg: '#24272c', cardStack: '#7e87bf',
+    danger: '#f08a8a',
     dark: true,
   },
   sage: {
@@ -212,6 +234,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     line: '#ddd9cf', soft: '#ffffff', accent: '#4f7360',
     surface: '#ffffff', surfaceEdge: null, ghost: '#e4e0d6', ghostBar: '#dcd8cf',
     cardBg: '#eceae4', cardStack: '#3f5c4d',
+    danger: '#b23a2c',
     dark: false,
   },
   blush: {
@@ -220,6 +243,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     line: '#e8dad6', soft: '#ffffff', accent: '#b0524a',
     surface: '#ffffff', surfaceEdge: null, ghost: '#eadfdb', ghostBar: '#e0d1cd',
     cardBg: '#f2edec', cardStack: '#8d423b',
+    danger: '#a3261d',
     dark: false,
   },
 };
@@ -227,7 +251,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
 export const PALETTE_ORDER: PaletteKey[] = ['paper', 'ink', 'neural', 'sage', 'blush'];
 
 export function composeTheme(layoutKey: LayoutKey, paletteKey: PaletteKey): Theme {
-  const { label: _layoutLabel, note: _layoutNote, ...layout } = LAYOUTS[layoutKey];
+  const { label: _layoutLabel, note: _layoutNote, signature: _signature, ...layout } = LAYOUTS[layoutKey];
   const { label: _paletteLabel, note: _paletteNote, ...palette } = PALETTES[paletteKey];
   return { ...layout, ...palette };
 }

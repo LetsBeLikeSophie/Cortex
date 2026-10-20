@@ -84,7 +84,8 @@ export function PileTabChip({ count, active, theme, onPress }: { count: number; 
   const font = concept === 'vintage' ? MONO : 'IBMPlexSansKR_500Medium';
   return (
     <Pressable onPress={onPress} style={shell} accessibilityLabel={`미분류 ${count}건`}>
-      {!(pill && active) && <View style={[styles.pileDot, { backgroundColor: theme.accent }]} />}
+      {/* Always rendered (just recolored) so selecting it doesn't shrink the tab. */}
+      <View style={[styles.pileDot, { backgroundColor: fg }]} />
       <Text style={{ fontSize: pill ? 12.5 : 13, color: fg, fontFamily: font }}>미분류</Text>
       <Text style={{ fontSize: pill ? 11.5 : 12, color: fg, fontFamily: MONO, opacity: 0.85 }}>{count}</Text>
     </Pressable>

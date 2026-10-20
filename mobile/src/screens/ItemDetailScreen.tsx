@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   View,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -22,7 +23,7 @@ import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { pickStyle, pickTextStyle } from '../components/Fields';
-import { TrashIcon, SourceIcon } from '../components/Icons';
+import { RestoreIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ImageViewer } from '../components/ImageViewer';
 import { VoiceInputButton } from '../components/VoiceInputButton';
@@ -63,10 +64,11 @@ export default function ItemDetailScreen() {
   const [snippet, setSnippet] = useState(item.snippet ?? '');
   const [rawText, setRawText] = useState(item.raw_text ?? '');
   const [category, setCategory] = useState(item.category);
-  const [editing, setEditing] = useState<EditField | null>(null);
-  const [draft, setDraft] = useState('');
+  // What the server has for each field, and -- after a change -- what it
+  // was before, so the undo icon next to the field can put it back.
+  const savedRef = useRef<Record<EditField, string>>({ title: item.title ?? '', snippet: item.snippet ?? '', rawText: item.raw_text ?? '' });
+  const [undo, setUndo] = useState<Partial<Record<EditField, string>>>({});
   const [editError, setEditError] = useState('');
-  const editSubmittedRef = useRef(false);
   const [organizing, setOrganizing] = useState(item.classification_status === 'pending');
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
@@ -97,6 +99,18 @@ export default function ItemDetailScreen() {
 
   const close = () => navigation.goBack();
 
+  // Same formula as <Heading offset={4}>, for the title's inline input.
+  const headSize = theme.headSize - 4;
+  const headingStyle = {
+    fontFamily: theme.headFamily,
+    fontWeight: theme.headWeight,
+    fontSize: headSize,
+    lineHeight: headSize * 1.15,
+    letterSpacing: emToTracking(-0.02, headSize),
+    color: theme.ink,
+    marginTop: 10,
+  };
+
   // While a re-organize runs on the server, check back until it lands, then
   // show the new title/memo/tags.
   useEffect(() => {
@@ -107,6 +121,13 @@ export default function ItemDetailScreen() {
         .then((fresh) => {
           if (cancelled || fresh.classification_status === 'pending') return;
           setOrganizing(false);
+          // The AI's rewrite can be undone like a manual edit.
+          const before = savedRef.current;
+          savedRef.current = { title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '' };
+          setUndo({
+            ...(before.title !== savedRef.current.title ? { title: before.title } : null),
+            ...(before.snippet !== savedRef.current.snippet ? { snippet: before.snippet } : null),
+          });
           setTitle(fresh.title ?? '');
           setSnippet(fresh.snippet ?? '');
           setRawText(fresh.raw_text ?? '');
@@ -126,28 +147,84 @@ export default function ItemDetailScreen() {
   const valueOf = (field: EditField) => (field === 'title' ? title : field === 'snippet' ? snippet : rawText);
   const setterOf = (field: EditField) => (field === 'title' ? setTitle : field === 'snippet' ? setSnippet : setRawText);
 
-  const startEdit = (field: EditField) => {
-    if (organizing) return;
-    editSubmittedRef.current = false;
-    setEditError('');
-    setDraft(valueOf(field));
-    setEditing(field);
-  };
-
-  // Same double-fire guard as submitNewTag (submit, then blur on unmount).
-  const commitEdit = () => {
-    if (editSubmittedRef.current || !editing) return;
-    editSubmittedRef.current = true;
-    const field = editing;
-    const previous = valueOf(field);
-    const next = draft.trim();
-    setEditing(null);
-    if (next === previous.trim()) return;
+  const save = (field: EditField, next: string, undoTo: string | undefined) => {
+    const previous = savedRef.current[field];
+    const previousUndo = undo[field];
+    savedRef.current[field] = next;
     setterOf(field)(next);
+    setUndo((u) => {
+      const copy = { ...u };
+      if (undoTo === undefined) delete copy[field];
+      else copy[field] = undoTo;
+      return copy;
+    });
     updateItem(item.id, { [field]: next }).catch((err) => {
+      // Nothing changed on the server, so put the undo state back as well.
+      savedRef.current[field] = previous;
       setterOf(field)(previous);
+      setUndo((u) => {
+        const copy = { ...u };
+        if (previousUndo === undefined) delete copy[field];
+        else copy[field] = previousUndo;
+        return copy;
+      });
       setEditError(friendlyError(err));
     });
+  };
+
+  // Typing goes straight into the text on screen (no edit box); leaving the
+  // field saves it, and the old text becomes the undo target.
+  const commit = (field: EditField) => {
+    const next = valueOf(field).trim();
+    const previous = savedRef.current[field];
+    if (next === previous) return;
+    setEditError('');
+    save(field, next, previous);
+  };
+
+  const undoEdit = (field: EditField) => {
+    const target = undo[field];
+    if (target === undefined) return;
+    save(field, target, undefined);
+  };
+
+  const undoButton = (field: EditField) =>
+    undo[field] !== undefined && !organizing ? (
+      <Pressable onPress={() => undoEdit(field)} hitSlop={10} style={styles.undo} accessibilityLabel="되돌리기">
+        <RestoreIcon size={16} color={theme.sub} strokeWidth={1.4} />
+      </Pressable>
+    ) : null;
+
+  // A TextInput dressed exactly like the text it replaces -- tapping just
+  // puts the cursor in, nothing on screen changes shape.
+  const inlineInput = (field: EditField, textStyle: object, placeholder: string) => {
+    const input = (
+      <TextInput
+        value={valueOf(field)}
+        onChangeText={setterOf(field)}
+        onBlur={() => commit(field)}
+        multiline
+        scrollEnabled={false}
+        blurOnSubmit={field === 'title'}
+        editable={!organizing}
+        placeholder={placeholder}
+        placeholderTextColor={theme.sub}
+        underlineColorAndroid="transparent"
+        style={[textStyle, styles.inline, Platform.OS === 'web' && [styles.inlineWebFill, { top: (StyleSheet.flatten(textStyle) as TextStyle).marginTop ?? 0 }]]}
+      />
+    );
+    if (Platform.OS !== 'web') return input;
+    // Web's multiline TextInput is a fixed-height textarea that never shrinks
+    // back. An invisible copy of the text gives the box its height (grows and
+    // shrinks with the words), and the input fills that box.
+    return (
+      <View>
+        <Text style={[textStyle, styles.inlineMirror]} aria-hidden>
+          {valueOf(field) || placeholder || ' '}
+        </Text>
+        {input}
+      </View>
+    );
   };
 
   const reorganize = async () => {
@@ -164,21 +241,6 @@ export default function ItemDetailScreen() {
       setEditError(friendlyError(err));
     }
   };
-
-  const editInput = (field: EditField, textStyle: object, placeholder: string) => (
-    <TextInput
-      value={draft}
-      onChangeText={setDraft}
-      autoFocus
-      multiline
-      blurOnSubmit={field === 'title'}
-      onSubmitEditing={field === 'title' ? commitEdit : undefined}
-      onBlur={commitEdit}
-      placeholder={placeholder}
-      placeholderTextColor={theme.sub}
-      style={[textStyle, styles.editInput, { borderColor: theme.line }]}
-    />
-  );
 
   // Optimistic: the tag chip disappears/appears immediately, and rolls back
   // if the server call fails rather than leaving the UI ahead of reality.
@@ -319,15 +381,12 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {editing === 'title' ? (
-            editInput('title', { color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 20, marginTop: 10 }, '제목')
-          ) : (
-            <Pressable onPress={() => startEdit('title')}>
-              <Heading theme={theme} offset={4} style={{ marginTop: 10 }}>
-                {title || (organizing ? 'AI가 정리하는 중...' : rawText.slice(0, 40) || '(제목 없음)')}
-              </Heading>
-            </Pressable>
-          )}
+          <View style={styles.editRow}>
+            <View style={styles.flex1}>
+              {inlineInput('title', headingStyle, organizing ? 'AI가 정리하는 중...' : rawText.slice(0, 40) || '제목 없음')}
+            </View>
+            {undoButton('title')}
+          </View>
 
           {/* Horizontal instead of wrapping -- with enough tags, a wrapping
               row grows tall and pushes the image/description further down
@@ -406,16 +465,12 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {item.capture_type !== 'text' &&
-            (editing === 'snippet' ? (
-              editInput('snippet', [styles.body, { color: theme.ink }], '메모')
-            ) : (
-              <Pressable onPress={() => startEdit('snippet')}>
-                <Text style={[styles.body, { color: snippet ? theme.sub : theme.line }]}>
-                  {snippet || (organizing ? '' : '메모를 적으려면 눌러요')}
-                </Text>
-              </Pressable>
-            ))}
+          {item.capture_type !== 'text' && (
+            <View style={styles.editRow}>
+              <View style={styles.flex1}>{inlineInput('snippet', [styles.body, { color: theme.sub }], organizing ? '' : '메모 없음')}</View>
+              {undoButton('snippet')}
+            </View>
+          )}
 
           {/* The user's own "why I saved this" -- kept visually distinct
               (italic, accent-colored) from the AI snippet above it, since
@@ -426,20 +481,18 @@ export default function ItemDetailScreen() {
             </Text>
           )}
 
-          {item.capture_type === 'text' &&
-            (editing === 'rawText' ? (
-              editInput('rawText', [styles.body, { color: theme.ink }], '본문')
-            ) : (
-              <Pressable onPress={() => startEdit('rawText')}>
-                <Text style={[styles.body, { color: rawText ? theme.ink : theme.line }]}>{rawText || '본문을 적으려면 눌러요'}</Text>
-              </Pressable>
-            ))}
+          {item.capture_type === 'text' && (
+            <View style={styles.editRow}>
+              <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], '본문 없음')}</View>
+              {undoButton('rawText')}
+            </View>
+          )}
 
           {editError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>{editError}</Text>}
 
           {/* Rewrite the title/memo however you like (or clear them), then
               let the AI redo it with your version as the guide. */}
-          <Pressable onPress={reorganize} disabled={organizing || editing !== null} style={[styles.reorganize, pickStyle(theme)]}>
+          <Pressable onPress={reorganize} disabled={organizing} style={[styles.reorganize, pickStyle(theme)]}>
             {organizing ? (
               <ActivityIndicator size="small" color={theme.accent} />
             ) : (
@@ -495,7 +548,13 @@ const styles = StyleSheet.create({
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   linkRow: { marginTop: 14 },
-  editInput: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, textAlignVertical: 'top', outlineWidth: 0 } as object,
+  inline: { padding: 0, paddingTop: 0, paddingBottom: 0, borderWidth: 0, textAlignVertical: 'top', outlineWidth: 0 } as object,
+  inlineMirror: { opacity: 0 },
+  // Placed under the mirror's top margin (top is set per field).
+  inlineWebFill: { position: 'absolute', left: 0, right: 0, bottom: 0, marginTop: 0, overflow: 'hidden' } as object,
+  editRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  flex1: { flex: 1 },
+  undo: { marginTop: 14, padding: 2 },
   reorganize: { alignSelf: 'flex-start', marginTop: 16, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, minWidth: 120, alignItems: 'center' },
   tagScroll: { marginTop: 16, flexGrow: 0 },
   // paddingVertical: same Android horizontal-ScrollView bottom-edge clip as

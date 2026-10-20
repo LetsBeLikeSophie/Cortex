@@ -15,7 +15,9 @@ import { startRetentionJob } from "./lib/retention.js";
 // FST_ERR_CTP_BODY_TOO_LARGE.
 const app = Fastify({ logger: true, bodyLimit: Math.ceil(config.maxImageBytes * 2) });
 
-await app.register(cors, { origin: true });
+// The plugin's default is GET/HEAD/POST only -- the web app's PATCH (edit
+// title/memo) and DELETE (trash) were blocked at the preflight.
+await app.register(cors, { origin: true, methods: ["GET", "HEAD", "POST", "PATCH", "DELETE"] });
 // Kakao's unlink webhook posts application/x-www-form-urlencoded, not JSON.
 await app.register(formbody);
 

@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, allEdges, emToTracking } from '../theme/themes';
 import { signInWithKakao } from '../auth/kakaoLogin';
 import { useAuth } from '../auth/AuthContext';
 import { friendlyError } from '../api/client';
@@ -84,7 +84,7 @@ export default function LoginScreen() {
         <Pressable
           onPress={onPress}
           disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.kakaoButton, { opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
+          style={[styles.kakaoButton, { borderRadius: theme.btnRadius, opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
         >
           {status === 'kakaoLoading' ? (
             <ActivityIndicator color={KAKAO_TEXT} />
@@ -95,7 +95,7 @@ export default function LoginScreen() {
         <Pressable
           onPress={onGuestPress}
           disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.guestButton, { borderColor: theme.line, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
+          style={[styles.guestButton, allEdges(OUTLINE, theme.line), { borderRadius: theme.btnRadius, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
         >
           {status === 'guestLoading' ? (
             <ActivityIndicator color={theme.ink} />
@@ -137,15 +137,12 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 13, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' },
   kakaoButton: {
     backgroundColor: KAKAO_YELLOW,
-    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   kakaoButtonText: { color: KAKAO_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
   guestButton: {
-    borderWidth: 1,
-    borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',

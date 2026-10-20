@@ -4,6 +4,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
+import { OUTLINE, allEdges } from '../theme/themes';
 import { fetchPlan, Plan } from '../api/client';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
@@ -70,7 +71,7 @@ export default function PaywallScreen() {
         </Text>
       )}
 
-      <View style={[styles.card, { borderColor: theme.line, backgroundColor: theme.surface, borderRadius: Math.max(theme.cardRadius, 14) }]}>
+      <View style={[styles.card, { ...allEdges(OUTLINE, theme.line), backgroundColor: theme.surface, borderRadius: theme.cardRadius }]}>
         <View style={styles.priceRow}>
           <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
           <Text style={[styles.price, { color: theme.accent }]}>{PRICE}</Text>
@@ -96,7 +97,7 @@ export default function PaywallScreen() {
 const styles = StyleSheet.create({
   heading: { paddingHorizontal: 4 },
   sub: { fontSize: 13.5, lineHeight: 20, marginTop: 8, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
-  card: { borderWidth: 1.3, padding: 18, marginTop: 18, gap: 12 },
+  card: { padding: 18, marginTop: 18, gap: 12 },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 },
   planName: { fontSize: 20, fontFamily: 'IBMPlexSansKR_500Medium' },
   price: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },

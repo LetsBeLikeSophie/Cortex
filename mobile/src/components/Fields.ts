@@ -28,13 +28,13 @@ export function pickStyle(theme: Theme): ViewStyle {
   switch (conceptOf(theme)) {
     case 'line':
       // Matches the line theme's buttons: thin ink-outlined pill.
-      return { ...allEdges(1, theme.ink), borderRadius: 999, backgroundColor: 'transparent' };
+      return { ...allEdges(OUTLINE, theme.ink), borderRadius: theme.pickRadius, backgroundColor: 'transparent' };
     case 'border':
-      return { ...allEdges(OUTLINE, theme.line), borderRadius: 999, backgroundColor: 'transparent' };
+      return { ...allEdges(OUTLINE, theme.line), borderRadius: theme.pickRadius, backgroundColor: 'transparent' };
     case 'layer':
-      return { ...allEdges(0, 'transparent'), borderRadius: 12, backgroundColor: theme.bg };
+      return { ...allEdges(0, 'transparent'), borderRadius: theme.pickRadius, backgroundColor: theme.bg };
     case 'vintage':
-      return { ...allEdges(OUTLINE, theme.ink), borderRadius: 3, backgroundColor: theme.bg };
+      return { ...allEdges(OUTLINE, theme.ink), borderRadius: theme.pickRadius, backgroundColor: theme.bg };
   }
 }
 

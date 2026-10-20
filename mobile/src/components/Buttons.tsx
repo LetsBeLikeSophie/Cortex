@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { MONO, OUTLINE, Theme, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, conceptOf } from '../theme/themes';
 import { DashedRule } from './Decor';
 
 interface ButtonProps {
@@ -99,7 +99,7 @@ export function SolidButton({
   // the list cards' back layer (no elevation).
   return (
     <View style={{ flex, marginRight: 4, marginBottom: 4 }}>
-      <View pointerEvents="none" style={[styles.backLayer, { backgroundColor: theme.cardStack, borderRadius: 14 }]} />
+      <View pointerEvents="none" style={[styles.backLayer, { backgroundColor: theme.cardStack, borderRadius: theme.btnRadius }]} />
       {button}
     </View>
   );
@@ -118,21 +118,21 @@ export function ButtonRow({ theme, style, children }: { theme: Theme; style?: Vi
 }
 
 const GHOST: Record<ReturnType<typeof conceptOf>, (t: Theme) => ViewStyle> = {
-  line: (t) => ({ borderWidth: 1, borderColor: t.ink, borderRadius: 999, backgroundColor: 'transparent' }),
-  border: (t) => ({ borderWidth: OUTLINE, borderColor: t.line, borderRadius: 999, backgroundColor: t.surface }),
-  layer: (t) => ({ backgroundColor: t.bg, borderRadius: 14 }),
-  vintage: (t) => ({ borderWidth: OUTLINE, borderColor: t.ink, borderRadius: 3, backgroundColor: t.bg }),
+  line: (t) => ({ ...allEdges(OUTLINE, t.ink), borderRadius: t.btnRadius, backgroundColor: 'transparent' }),
+  border: (t) => ({ ...allEdges(OUTLINE, t.line), borderRadius: t.btnRadius, backgroundColor: t.surface }),
+  layer: (t) => ({ ...allEdges(0, 'transparent'), backgroundColor: t.bg, borderRadius: t.btnRadius }),
+  vintage: (t) => ({ ...allEdges(OUTLINE, t.ink), borderRadius: t.btnRadius, backgroundColor: t.bg }),
 };
 
 const SOLID: Record<ReturnType<typeof conceptOf>, (t: Theme) => ViewStyle> = {
-  line: (t) => ({ backgroundColor: t.ink, borderRadius: 999 }),
-  border: (t) => ({ backgroundColor: t.ink, borderRadius: 999 }),
-  layer: (t) => ({ backgroundColor: t.ink, borderRadius: 14 }),
-  vintage: (t) => ({ backgroundColor: t.accent, borderRadius: 3, transform: [{ rotate: '-1.2deg' }] }),
+  line: (t) => ({ backgroundColor: t.ink, borderRadius: t.btnRadius }),
+  border: (t) => ({ backgroundColor: t.ink, borderRadius: t.btnRadius }),
+  layer: (t) => ({ backgroundColor: t.ink, borderRadius: t.btnRadius }),
+  vintage: (t) => ({ backgroundColor: t.accent, borderRadius: t.btnRadius, transform: [{ rotate: '-1.2deg' }] }),
 };
 
 const styles = StyleSheet.create({
-  base: { minHeight: 52, alignItems: 'center', justifyContent: 'center' },
+  base: { minHeight: 52, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
   typed: { fontSize: 14, letterSpacing: 0.6 },
   typedSm: { fontSize: 12.5 },
   row: { flexDirection: 'row', gap: 10 },

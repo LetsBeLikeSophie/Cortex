@@ -16,6 +16,7 @@ import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
+import { SolidButton } from '../components/Buttons';
 import { Pulse } from '../components/Pulse';
 import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
@@ -372,19 +373,14 @@ export default function HomeScreen() {
               {classifyLeft > 0 ? `이번 달 AI 정리 ${classifyLeft}건 남음` : `${resetLabel(plan?.resetsAt)}에 다시 생겨요`}
             </Text>
           </View>
-          <Pressable
+          <SolidButton
+            label={classifyLeft > 0 ? `AI로 정리 (${Math.min(classifyLeft, unclassifiedCount)})` : 'Pro로 정리'}
+            theme={theme}
+            size="sm"
+            flex={0}
+            loading={sorting}
             onPress={sortBacklog}
-            disabled={sorting}
-            style={({ pressed }) => [styles.backlogButton, { backgroundColor: theme.ink, borderRadius: theme.btnRadius, opacity: pressed || sorting ? 0.7 : 1 }]}
-          >
-            {sorting ? (
-              <ActivityIndicator size="small" color={theme.bg} />
-            ) : (
-              <Text style={[styles.backlogButtonText, { color: theme.bg }]}>
-                {classifyLeft > 0 ? `AI로 정리 (${Math.min(classifyLeft, unclassifiedCount)})` : 'Pro로 정리'}
-              </Text>
-            )}
-          </Pressable>
+          />
         </View>
       )}
 
@@ -504,8 +500,6 @@ const styles = StyleSheet.create({
   backlogText: { flex: 1, minWidth: 0 },
   backlogTitle: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
   backlogSub: { fontSize: 12, marginTop: 2, fontFamily: 'IBMPlexSansKR_400Regular' },
-  backlogButton: { minHeight: 34, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
-  backlogButtonText: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
   headPad: {},
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },

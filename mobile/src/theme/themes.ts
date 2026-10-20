@@ -34,8 +34,14 @@ export interface Layout {
   numSize: number;
   numTrackEm: number;
 
+  // The only place corner radii live -- components read these instead of
+  // keeping their own per-concept numbers.
+  // cardRadius: list cards, sections, confirm cards, paywall card.
+  // btnRadius: md buttons (sheet actions, sign-out, login) and sm ones.
+  // pickRadius: small pickers (사진 선택, 복원, AI로 다시 정리).
   cardRadius: number;
   btnRadius: number;
+  pickRadius: number;
   list: ListStyle;
 
   hitStyle: HitStyle;
@@ -117,7 +123,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     note: '잡지처럼. 가는 선과 세리프 제목, 시트도 각진 윗변에 실선 한 줄이에요.',
     signature: 'paper',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
-    cardRadius: 0, btnRadius: 999, list: 'line',
+    cardRadius: 0, btnRadius: 999, pickRadius: 999, list: 'line',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   thinBorder: {
@@ -125,7 +131,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     note: '미니멀 노트처럼. 카드·시트·버튼 모두 둥근 모서리에 1px 테두리예요.',
     signature: 'sage',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
-    cardRadius: 16, btnRadius: 999, list: 'bordered',
+    cardRadius: 16, btnRadius: 999, pickRadius: 999, list: 'bordered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   layered: {
@@ -133,7 +139,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     note: '겹쳐 놓은 종이처럼. 카드·시트·버튼 뒤로 진한 종이가 한 장씩 삐져나와요.',
     signature: 'blush',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
-    cardRadius: 20, btnRadius: 999, list: 'layered',
+    cardRadius: 20, btnRadius: 14, pickRadius: 12, list: 'layered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
   },
   layeredVintage: {
@@ -141,7 +147,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     note: '도서관 카드 목록처럼. 줄 쳐진 색인카드, 타자기체 라벨, 바탕엔 옅은 격자무늬예요.',
     signature: 'ink',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
-    cardRadius: 6, btnRadius: 4, list: 'layered',
+    cardRadius: 6, btnRadius: 3, pickRadius: 3, list: 'layered',
     hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'vintage',
   },
 };

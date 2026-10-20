@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { LAYOUTS, PALETTES } from '../theme/themes';
+import { LAYOUTS, OUTLINE, PALETTES, allEdges } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signOut } from '../auth/kakaoLogin';
 import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
@@ -112,14 +112,14 @@ export default function ProfileScreen() {
           <View style={{ gap: 28 }}>
             <Pressable
               onPress={() => navigation.navigate('Paywall')}
-              style={[styles.signOutButton, styles.themeRow, { borderColor: theme.line }]}
+              style={[styles.signOutButton, styles.themeRow, allEdges(OUTLINE, theme.line), { borderRadius: theme.cardRadius }]}
             >
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>플랜</Text>
               <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{planLabel}</Text>
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('ThemePicker')}
-              style={[styles.signOutButton, styles.themeRow, { borderColor: theme.line }]}
+              style={[styles.signOutButton, styles.themeRow, allEdges(OUTLINE, theme.line), { borderRadius: theme.cardRadius }]}
             >
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>테마</Text>
               <View style={styles.themeRowRight}>
@@ -133,7 +133,7 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={onSignOut}
                 disabled={state === 'signingOut'}
-                style={[styles.signOutButton, { borderColor: theme.line, opacity: state === 'signingOut' ? 0.6 : 1 }]}
+                style={[styles.signOutButton, allEdges(OUTLINE, theme.line), { borderRadius: theme.btnRadius, opacity: state === 'signingOut' ? 0.6 : 1 }]}
               >
                 {state === 'signingOut' ? (
                   <ActivityIndicator color={theme.ink} />
@@ -171,8 +171,6 @@ const styles = StyleSheet.create({
   nickname: { fontSize: 19, marginTop: 12 },
   provider: { fontSize: 13, fontFamily: 'IBMPlexSansKR_400Regular' },
   signOutButton: {
-    borderWidth: 1,
-    borderRadius: 14,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',

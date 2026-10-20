@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
@@ -105,7 +104,10 @@ export default function ItemDetailScreen() {
     fontFamily: theme.headFamily,
     fontWeight: theme.headWeight,
     fontSize: headSize,
-    lineHeight: headSize * 1.15,
+    // Android's multiline EditText with a lineHeight tighter than the
+    // font's own metrics keeps re-measuring as the cursor blinks -- let it
+    // use the font's natural line height there.
+    ...(Platform.OS === 'android' ? null : { lineHeight: headSize * 1.15 }),
     letterSpacing: emToTracking(-0.02, headSize),
     color: theme.ink,
     marginTop: 10,
@@ -325,16 +327,18 @@ export default function ItemDetailScreen() {
 
   return (
     <>
-    <ModalSheet theme={theme} onClose={close} paddingBottom={24} maxHeightRatio={0.82} grabberMarginBottom={20}>
+    <ModalSheet theme={theme} onClose={close} paddingBottom={24} maxHeightRatio={0.82} grabberMarginBottom={20} liftForKeyboard>
         {/* This sheet is a native-stack "transparentModal", which on Android
             react-native-screens renders inside a BottomSheetDialog -- a
             separate Dialog window that does NOT inherit the Activity's
             windowSoftInputMode="adjustResize" from AndroidManifest.xml
             (confirmed: ScreenModalFragment never calls
             getWindow().setSoftInputMode). The OS never resizes around the
-            keyboard here on either platform, so this actually has to do the
-            work on both. */}
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
+            keyboard here on either platform. ModalSheet's liftForKeyboard
+            does the work: a KeyboardAvoidingView here re-measured itself on
+            every cursor blink while editing the title and the sheet
+            flickered between two positions (Z Flip). */}
+        <View style={styles.flexShrink}>
         <ScrollView ref={scrollRef} style={styles.flexShrink} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.metaRow}>
             {/* Category is the one piece of info this screen only ever shows
@@ -522,7 +526,7 @@ export default function ItemDetailScreen() {
             </Text>
           </View>
         </ScrollView>
-        </KeyboardAvoidingView>
+        </View>
 
         <ButtonRow theme={theme} style={styles.buttonRow}>
           {item.raw_url ? (

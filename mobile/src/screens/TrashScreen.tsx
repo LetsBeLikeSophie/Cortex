@@ -10,6 +10,7 @@ import { relativeTime } from '../api/format';
 import { RestoreIcon, TrashIcon } from '../components/Icons';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Card, isBoxed, screenGutter } from '../components/Card';
+import { ConfirmCard } from '../components/ConfirmCard';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
@@ -49,24 +50,18 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
       </Text>
       <Text style={[styles.meta, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
 
-      {error !== '' && <Text style={[styles.error, { color: theme.accent }]}>실패: {error}</Text>}
+      {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>실패: {error}</Text>}
 
       {action === 'confirmingPermanent' || action === 'deletingPermanent' ? (
-        <View style={styles.confirmRow}>
-          <Text style={[styles.confirmText, { color: theme.ink }]}>영구 삭제할까요? 되돌릴 수 없어요.</Text>
-          <View style={styles.actionRow}>
-            <Pressable onPress={() => setAction('idle')} style={[styles.smallGhostButton, { borderColor: theme.line }]}>
-              <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13 }}>취소</Text>
-            </Pressable>
-            <Pressable onPress={permanentlyDelete} disabled={action === 'deletingPermanent'} style={styles.smallDeleteButton}>
-              {action === 'deletingPermanent' ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: '#fff', fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13 }}>영구 삭제</Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
+        <ConfirmCard
+          theme={theme}
+          bare
+          title="영구 삭제할까요? 되돌릴 수 없어요."
+          confirmLabel="영구 삭제"
+          busy={action === 'deletingPermanent'}
+          onCancel={() => setAction('idle')}
+          onConfirm={permanentlyDelete}
+        />
       ) : (
         <View style={styles.actionRow}>
           <Pressable onPress={restore} disabled={action === 'restoring'} style={[styles.iconTextButton, { borderColor: theme.line }]}>
@@ -157,8 +152,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  confirmRow: { marginTop: 4, gap: 8 },
-  confirmText: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
-  smallGhostButton: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
-  smallDeleteButton: { flex: 1, backgroundColor: '#c0392b', borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
 });

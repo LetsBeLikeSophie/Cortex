@@ -12,6 +12,7 @@ import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { screenGutter } from '../components/Card';
+import { ConfirmCard } from '../components/ConfirmCard';
 import type { RootStackParamList } from '../navigation/types';
 
 type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'deleteError';
@@ -94,39 +95,16 @@ export default function ProfileScreen() {
         </View>
 
         {state === 'confirmingDelete' || state === 'deleting' || state === 'deleteError' ? (
-          <View style={[styles.confirmCard, { borderColor: theme.line, backgroundColor: 'transparent' }]}>
-            <Text style={[styles.confirmTitle, { color: theme.ink }]}>
-              {isGuest ? '정말 삭제하시겠어요?' : '정말 탈퇴하시겠어요?'}
-            </Text>
-            <Text style={[styles.confirmBody, { color: theme.sub }]}>
-              {isGuest
-                ? '이 게스트가 저장한 기억이 모두 사라지고, 되돌릴 수 없어요.'
-                : '저장된 기억이 모두 사라지고, 되돌릴 수 없어요.'}
-            </Text>
-            {state === 'deleteError' && (
-              <Text style={[styles.errorText, { color: theme.accent }]}>삭제 실패: {error}</Text>
-            )}
-            <View style={styles.confirmButtonRow}>
-              <Pressable
-                onPress={() => setState('idle')}
-                disabled={state === 'deleting'}
-                style={[styles.ghostButton, { borderColor: theme.line }]}
-              >
-                <Text style={[styles.ghostButtonLabel, { color: theme.ink }]}>취소</Text>
-              </Pressable>
-              <Pressable
-                onPress={onConfirmDelete}
-                disabled={state === 'deleting'}
-                style={[styles.deleteButton, { opacity: state === 'deleting' ? 0.7 : 1 }]}
-              >
-                {state === 'deleting' ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.deleteButtonLabel}>{isGuest ? '삭제하기' : '탈퇴하기'}</Text>
-                )}
-              </Pressable>
-            </View>
-          </View>
+          <ConfirmCard
+            theme={theme}
+            title={isGuest ? '정말 삭제하시겠어요?' : '정말 탈퇴하시겠어요?'}
+            body={isGuest ? '이 게스트가 저장한 기억이 모두 사라지고, 되돌릴 수 없어요.' : '저장된 기억이 모두 사라지고, 되돌릴 수 없어요.'}
+            confirmLabel={isGuest ? '삭제하기' : '탈퇴하기'}
+            busy={state === 'deleting'}
+            error={state === 'deleteError' ? `삭제 실패: ${error}` : undefined}
+            onCancel={() => setState('idle')}
+            onConfirm={onConfirmDelete}
+          />
         ) : (
           // Theme sits in its own group, well clear of sign-out/delete --
           // matching borders on adjacent buttons with only a small gap
@@ -208,25 +186,4 @@ const styles = StyleSheet.create({
   policyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   policyLabel: { fontSize: 12, fontFamily: 'IBMPlexSansKR_400Regular', textDecorationLine: 'underline' },
   policyDivider: { fontSize: 12 },
-  confirmCard: { borderWidth: 1, borderRadius: 16, padding: 18, gap: 6 },
-  confirmTitle: { fontSize: 15.5, fontFamily: 'IBMPlexSansKR_500Medium' },
-  confirmBody: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
-  errorText: { fontSize: 12.5, marginTop: 6, fontFamily: 'IBMPlexSansKR_400Regular' },
-  confirmButtonRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
-  ghostButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  ghostButtonLabel: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
-  deleteButton: {
-    flex: 1,
-    backgroundColor: '#c0392b',
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  deleteButtonLabel: { fontSize: 14, color: '#fff', fontFamily: 'IBMPlexSansKR_500Medium' },
 });

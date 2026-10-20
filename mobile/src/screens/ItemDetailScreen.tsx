@@ -24,6 +24,7 @@ import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { pickStyle, pickTextStyle } from '../components/Fields';
 import { RestoreIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
+import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
@@ -357,32 +358,16 @@ export default function ItemDetailScreen() {
           </View>
 
           {deleteState !== 'idle' && (
-            <View style={[styles.deleteConfirmCard, { borderColor: theme.line }]}>
-              <Text style={[styles.deleteConfirmText, { color: theme.ink }]}>휴지통으로 이동할까요? 나중에 복원할 수 있어요.</Text>
-              {deleteError !== '' && (
-                <Text style={[styles.errorText, { color: theme.danger }]}>삭제 실패: {deleteError}</Text>
-              )}
-              <View style={styles.deleteConfirmButtons}>
-                <Pressable
-                  onPress={() => setDeleteState('idle')}
-                  disabled={deleteState === 'deleting'}
-                  style={[styles.smallGhostButton, pickStyle(theme)]}
-                >
-                  <Text style={pickTextStyle(theme)}>취소</Text>
-                </Pressable>
-                <Pressable
-                  onPress={confirmDelete}
-                  disabled={deleteState === 'deleting'}
-                  style={[styles.smallDeleteButton, { backgroundColor: theme.danger, borderRadius: pickStyle(theme).borderRadius, opacity: deleteState === 'deleting' ? 0.7 : 1 }]}
-                >
-                  {deleteState === 'deleting' ? (
-                    <ActivityIndicator color={theme.bg} />
-                  ) : (
-                    <Text style={{ color: theme.bg, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>삭제</Text>
-                  )}
-                </Pressable>
-              </View>
-            </View>
+            <ConfirmCard
+              theme={theme}
+              title="휴지통으로 이동할까요?"
+              body="나중에 복원할 수 있어요."
+              confirmLabel="삭제"
+              busy={deleteState === 'deleting'}
+              error={deleteError ? `삭제 실패: ${deleteError}` : undefined}
+              onCancel={() => setDeleteState('idle')}
+              onConfirm={confirmDelete}
+            />
           )}
 
           <View style={styles.editRow}>
@@ -570,10 +555,5 @@ const styles = StyleSheet.create({
   timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   footerMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerMetaText: { marginTop: 0 },
-  deleteConfirmCard: { borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 14 },
-  deleteConfirmText: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_500Medium' },
-  deleteConfirmButtons: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  smallGhostButton: { flex: 1, borderWidth: 1, borderRadius: 999, paddingVertical: 10, alignItems: 'center' },
-  smallDeleteButton: { flex: 1, paddingVertical: 10, alignItems: 'center' },
   buttonRow: { marginTop: 16 },
 });

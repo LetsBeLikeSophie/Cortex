@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Theme } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf } from '../theme/themes';
 
 export interface SegmentOption<K extends string> {
   key: K;
@@ -35,12 +35,18 @@ export function SegmentedToggle<K extends string>({
   const [width, setWidth] = useState(0);
   const index = Math.max(0, options.findIndex((o) => o.key === value));
   const x = useRef(new Animated.Value(index)).current;
+  const concept = conceptOf(theme);
   const line = theme.list === 'line' && !compact;
   const pad = line ? 0 : compact ? 2 : 3;
-  // onLayout's width includes the 1px track border on each side (boxed
-  // styles only); the thumb is positioned inside the border, so take both
-  // the border and the padding out before splitting into segments.
-  const segW = (width - (line ? 0 : pad * 2 + 2)) / options.length;
+  // Track per concept: layer is a filled slip with no outline (like its
+  // other controls), the rest an outlined track. Vintage labels are typed.
+  const edge = line || concept === 'layer' ? 0 : OUTLINE;
+  const trackRadius = compact ? Math.min(theme.pickRadius, 999) : theme.btnRadius + pad;
+  const thumbRadius = compact ? Math.min(theme.pickRadius, 999) : theme.btnRadius;
+  // onLayout's width includes the track border on each side (boxed styles
+  // only); the thumb is positioned inside the border, so take both the
+  // border and the padding out before splitting into segments.
+  const segW = (width - (line ? 0 : pad * 2 + edge * 2)) / options.length;
 
   useEffect(() => {
     Animated.spring(x, { toValue: index, useNativeDriver: true, friction: 9, tension: 80 }).start();
@@ -54,15 +60,16 @@ export function SegmentedToggle<K extends string>({
       style={[
         styles.track,
         line
-          ? { borderBottomWidth: 1, borderBottomColor: theme.soft }
+          ? bottomEdge(1, theme.soft)
           : {
-              borderWidth: 1,
-              borderColor: theme.line,
-              borderRadius: compact ? 999 : theme.btnRadius + pad,
+              ...allEdges(edge, edge ? theme.line : 'transparent'),
+              borderRadius: trackRadius,
               padding: pad,
-              backgroundColor: theme.bg,
+              // compact sits inside the search bar, which is cardBg in layer
+              // -- the track takes the page tone there so it still shows.
+              backgroundColor: concept === 'layer' && !compact ? theme.cardBg : theme.bg,
             },
-        compact && { width: COMPACT_SEG * options.length + pad * 2 + 2 },
+        compact && { width: COMPACT_SEG * options.length + pad * 2 + edge * 2 },
       ]}
     >
       {width > 0 && (
@@ -76,7 +83,7 @@ export function SegmentedToggle<K extends string>({
                   left: pad,
                   top: pad,
                   bottom: pad,
-                  borderRadius: compact ? 999 : theme.btnRadius,
+                  borderRadius: thumbRadius,
                   backgroundColor: theme.ink,
                 },
             {
@@ -109,7 +116,13 @@ export function SegmentedToggle<K extends string>({
           >
             {o.icon?.(color)}
             {!compact && (
-              <Text style={{ fontSize: 13.5, color, fontFamily: active ? 'IBMPlexSansKR_500Medium' : 'IBMPlexSansKR_400Regular' }}>
+              <Text
+                style={{
+                  fontSize: concept === 'vintage' ? 12.5 : 13.5,
+                  color,
+                  fontFamily: concept === 'vintage' ? MONO : active ? 'IBMPlexSansKR_500Medium' : 'IBMPlexSansKR_400Regular',
+                }}
+              >
                 {o.label}
               </Text>
             )}

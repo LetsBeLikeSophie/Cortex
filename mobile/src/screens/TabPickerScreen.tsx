@@ -34,6 +34,9 @@ export default function TabPickerScreen() {
   const [allTags, setAllTags] = useState<TagTab[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  // Height of the title + description above the search box: the part that
+  // may ride off the top of the screen when the keyboard pushes the sheet up.
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   useEffect(() => {
     loadHomeTabs().then(setSelected);
@@ -61,12 +64,15 @@ export default function TabPickerScreen() {
       grabberMarginBottom={18}
       maxHeightRatio={0.8}
       liftForKeyboard
+      keyboardOverflow={headerHeight}
     >
       <View style={styles.flexShrink}>
-        <Heading theme={theme} size={20} style={styles.heading}>
-          홈 화면 탭
-        </Heading>
-        <Text style={[styles.sub, { color: theme.sub }]}>보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.</Text>
+        <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+          <Heading theme={theme} size={20} style={styles.heading}>
+            홈 화면 탭
+          </Heading>
+          <Text style={[styles.sub, { color: theme.sub }]}>보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.</Text>
+        </View>
 
         <View style={[styles.searchBox, fieldStyle(theme)]}>
           <SearchIcon color={theme.sub} size={15} strokeWidth={1.4} />

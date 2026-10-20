@@ -25,6 +25,7 @@ export function ModalSheet({
   paddingHorizontal = 24,
   grabberMarginBottom = 24,
   liftForKeyboard = false,
+  keyboardOverflow = 0,
   children,
 }: {
   theme: Theme;
@@ -41,6 +42,11 @@ export function ModalSheet({
   // resizes for the keyboard, so a KeyboardAvoidingView inside it can't
   // reliably do this (on a Z Flip it left one row showing).
   liftForKeyboard?: boolean;
+  // How much of the sheet's top may slide off-screen when lifted, instead of
+  // shrinking the content. TabPicker passes its heading block's height, so
+  // the whole sheet rides up with the keyboard and the tag list keeps its
+  // size -- only the title/description go out of view, never the search box.
+  keyboardOverflow?: number;
   children: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
@@ -128,7 +134,9 @@ export function ModalSheet({
               // Above the keyboard the home-indicator inset is covered anyway.
               paddingBottom: lifted ? 12 : paddingBottom + insets.bottom,
               ...(maxHeightRatio !== undefined ? { maxHeight: SHEET_TRAVEL * maxHeightRatio } : null),
-              ...(lifted ? { maxHeight: Math.min(SHEET_TRAVEL * (maxHeightRatio ?? 1), SHEET_TRAVEL - keyboardHeight - insets.top - 16) } : null),
+              ...(lifted
+                ? { maxHeight: Math.min(SHEET_TRAVEL * (maxHeightRatio ?? 1), SHEET_TRAVEL - keyboardHeight - insets.top - 16 + keyboardOverflow) }
+                : null),
               ...SHEET[concept].edge(theme, bordered),
             },
           ]}

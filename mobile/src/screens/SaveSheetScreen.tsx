@@ -19,7 +19,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, allEdges, conceptOf, emToTracking } from '../theme/themes';
+import { Card, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
 import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, ApiItem, ItemSource, friendlyError } from '../api/client';
 import { sourceLabel } from '../api/format';
@@ -73,7 +74,8 @@ export default function SaveSheetScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'SaveSheet'>>();
-  const card = theme.list === 'card';
+  // Layer fills its marks instead of outlining them (no borders there).
+  const filledMark = conceptOf(theme) === 'layer';
   const tech = theme.copy === 'tech';
   const txt = copyFor(theme.copy);
 
@@ -366,7 +368,7 @@ export default function SaveSheetScreen() {
                 </Pressable>
               </View>
             ) : linkUrl ? (
-              <View style={[styles.linkPreview, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
+              <View style={[styles.linkPreview, { borderColor: theme.line, backgroundColor: 'transparent' }]}>
                 <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 14 }} numberOfLines={2}>
                   {linkUrl}
                 </Text>
@@ -563,15 +565,14 @@ export default function SaveSheetScreen() {
                 style={[
                   styles.savedMark,
                   {
-                    width: card ? 54 : 40,
-                    height: card ? 54 : 40,
-                    backgroundColor: card ? theme.accent + '26' : 'transparent',
-                    borderWidth: card ? 0 : 1,
-                    borderColor: theme.accent,
+                    width: 40,
+                    height: 40,
+                    backgroundColor: filledMark ? theme.accent + '26' : 'transparent',
+                    ...allEdges(filledMark ? 0 : OUTLINE, theme.accent),
                   },
                 ]}
               >
-                <CheckIcon size={card ? 24 : 18} color={theme.accent} strokeWidth={1.7} />
+                <CheckIcon size={18} color={theme.accent} strokeWidth={1.7} />
               </View>
               <View style={styles.savedHeadBody}>
                 <Text
@@ -597,15 +598,7 @@ export default function SaveSheetScreen() {
               {savedBulk.items.map((item) => {
                 const pending = item.classification_status === 'pending';
                 return (
-                  <View
-                    key={item.id}
-                    style={[
-                      styles.bulkResultRow,
-                      card
-                        ? { backgroundColor: theme.surface, borderRadius: theme.cardRadius }
-                        : { borderBottomWidth: 1, borderColor: theme.line },
-                    ]}
-                  >
+                  <Card key={item.id} theme={theme} style={styles.bulkResultRow}>
                     <Text
                       style={[
                         styles.bulkResultTitle,
@@ -616,7 +609,7 @@ export default function SaveSheetScreen() {
                       {item.title ?? item.raw_text ?? (pending ? '분석 중...' : '(제목 없음)')}
                     </Text>
                     {!pending && <Text style={{ fontFamily: MONO, fontSize: 10, color: theme.sub }}>{item.category}</Text>}
-                  </View>
+                  </Card>
                 );
               })}
             </ScrollView>
@@ -649,15 +642,14 @@ export default function SaveSheetScreen() {
                   style={[
                     styles.savedMark,
                     {
-                      width: card ? 54 : 40,
-                      height: card ? 54 : 40,
-                      backgroundColor: card ? theme.accent + '26' : 'transparent',
-                      borderWidth: card ? 0 : 1,
-                      borderColor: theme.accent,
+                      width: 40,
+                      height: 40,
+                      backgroundColor: filledMark ? theme.accent + '26' : 'transparent',
+                      ...allEdges(filledMark ? 0 : OUTLINE, theme.accent),
                     },
                   ]}
                 >
-                  <CheckIcon size={card ? 24 : 18} color={theme.accent} strokeWidth={1.7} />
+                  <CheckIcon size={18} color={theme.accent} strokeWidth={1.7} />
                 </View>
                 <View style={styles.savedHeadBody}>
                   <Text
@@ -677,20 +669,14 @@ export default function SaveSheetScreen() {
                 </View>
               </View>
 
-              <View
-                style={[
-                  styles.savedCard,
-                  card
-                    ? {
-                        backgroundColor: theme.surface,
-                        borderRadius: theme.cardRadius,
-                        borderWidth: theme.surfaceEdge ? 1 : 0,
-                        borderColor: theme.surfaceEdge ?? undefined,
-                        padding: 16,
-                        paddingHorizontal: 18,
-                      }
-                    : { paddingTop: 20, borderTopWidth: 1, borderColor: theme.line },
-                ]}
+              <View style={styles.savedCard}>
+              <Card
+                theme={theme}
+                style={
+                  isBoxed(theme)
+                    ? { padding: 16, paddingHorizontal: 18 }
+                    : { ...allEdges(0, 'transparent'), borderTopWidth: 1, borderTopColor: theme.line, paddingTop: 20, paddingBottom: 0 }
+                }
               >
                 <View style={styles.savedCardMeta}>
                   <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
@@ -742,6 +728,7 @@ export default function SaveSheetScreen() {
                     {saved.snippet && <Text style={[styles.snippet, { color: theme.sub }]}>{saved.snippet}</Text>}
                   </>
                 )}
+              </Card>
               </View>
 
               {saved.classification_status !== 'pending' && saved.classification_status !== 'unclassified' && (

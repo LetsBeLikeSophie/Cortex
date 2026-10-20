@@ -1,4 +1,5 @@
 import React from 'react';
+import { screenGutter } from './Card';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Theme } from '../theme/themes';
 import { BackIcon } from './Icons';
@@ -7,9 +8,8 @@ import { Heading } from './Typography';
 // The back-button + title row Stats, Profile, and Trash were each hand-
 // copying verbatim (same circular back button, same heading formula).
 export function ScreenHeader({ title, theme, onBack }: { title: string; theme: Theme; onBack: () => void }) {
-  const card = theme.list === 'card';
   return (
-    <View style={[styles.header, { paddingHorizontal: card ? 24 : 26 }]}>
+    <View style={[styles.header, { paddingHorizontal: screenGutter(theme) }]}>
       <Pressable onPress={onBack} style={[styles.backButton, { borderColor: theme.line }]} hitSlop={8}>
         <BackIcon size={16} color={theme.ink} strokeWidth={1.5} />
       </Pressable>

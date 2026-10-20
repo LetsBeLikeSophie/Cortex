@@ -10,32 +10,31 @@ import { sourceLabel, SOURCE_ORDER } from '../api/format';
 import { ALL_CATEGORIES } from '../data/tabs';
 import { DonutChart, BarChart, HorizontalBars, Heatmap } from '../components/Charts';
 import { AsyncStateView } from '../components/AsyncStateView';
+import { Card, isBoxed, screenGutter } from '../components/Card';
+import { allEdges } from '../theme/themes';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
 
 function Section({ title, note, children, theme }: { title: string; note?: string; children: React.ReactNode; theme: ReturnType<typeof useTheme>['theme'] }) {
-  const card = theme.list === 'card';
-  return (
-    <View
-      style={[
-        styles.section,
-        card
-          ? {
-              backgroundColor: theme.surface,
-              borderRadius: theme.cardRadius,
-              borderWidth: theme.surfaceEdge ? 1 : 0,
-              borderColor: theme.surfaceEdge ?? undefined,
-              padding: 18,
-            }
-          : { borderTopWidth: 1, borderTopColor: theme.line, paddingTop: 22 },
-      ]}
-    >
+  const body = (
+    <>
       <Text style={[styles.sectionTitle, { color: theme.ink, fontFamily: theme.headFamily, fontWeight: theme.headWeight }]}>
         {title}
       </Text>
       {note && <Text style={[styles.sectionNote, { color: theme.sub }]}>{note}</Text>}
       <View style={{ marginTop: 16 }}>{children}</View>
+    </>
+  );
+  // Line keeps its section rule on top; boxed layouts use the shared card.
+  if (!isBoxed(theme)) {
+    return <View style={[styles.section, { ...allEdges(0, 'transparent'), borderTopWidth: 1, borderTopColor: theme.line, paddingTop: 22 }]}>{body}</View>;
+  }
+  return (
+    <View style={styles.section}>
+      <Card theme={theme} style={{ padding: 18 }}>
+        {body}
+      </Card>
     </View>
   );
 }
@@ -46,7 +45,6 @@ export default function StatsScreen() {
   const [stats, setStats] = useState<ItemStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const card = theme.list === 'card';
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -78,7 +76,7 @@ export default function StatsScreen() {
         topOffset={60}
       >
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: screenGutter(theme), paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
           <Section title="카테고리 비율" theme={theme}>

@@ -143,7 +143,6 @@ function searchShellStyle(theme: Theme): ViewStyle {
     case 'layered':
       return { ...box, ...allEdges(0, 'transparent'), backgroundColor: theme.cardBg };
     case 'bordered':
-    case 'card':
       return { ...box, backgroundColor: theme.surface, ...allEdges(OUTLINE, theme.line) };
   }
 }

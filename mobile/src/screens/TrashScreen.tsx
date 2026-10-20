@@ -9,6 +9,7 @@ import { ApiItem, fetchTrash, permanentlyDeleteItem, restoreItem, friendlyError 
 import { relativeTime } from '../api/format';
 import { RestoreIcon, TrashIcon } from '../components/Icons';
 import { AsyncStateView } from '../components/AsyncStateView';
+import { Card, isBoxed, screenGutter } from '../components/Card';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
@@ -16,7 +17,6 @@ import type { RootStackParamList } from '../navigation/types';
 type RowAction = 'idle' | 'restoring' | 'confirmingPermanent' | 'deletingPermanent';
 
 function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType<typeof useTheme>['theme']; onRemoved: (id: string) => void }) {
-  const card = theme.list === 'card';
   const [action, setAction] = useState<RowAction>('idle');
   const [error, setError] = useState('');
 
@@ -43,14 +43,7 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
   };
 
   return (
-    <View
-      style={[
-        styles.row,
-        card
-          ? { backgroundColor: theme.surface, borderRadius: theme.cardRadius, padding: 15 }
-          : { borderBottomWidth: 1, borderBottomColor: theme.line, paddingVertical: 16 },
-      ]}
-    >
+    <Card theme={theme} style={styles.row}>
       <Text style={[styles.title, { color: theme.ink }]} numberOfLines={2}>
         {item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)'}
       </Text>
@@ -92,14 +85,13 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
           </Pressable>
         </View>
       )}
-    </View>
+    </Card>
   );
 }
 
 export default function TrashScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const card = theme.list === 'card';
   const [items, setItems] = useState<ApiItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +130,7 @@ export default function TrashScreen() {
         topOffset={60}
       >
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: card ? 24 : 26, paddingTop: card ? 12 : 0, paddingBottom: 24, gap: card ? 10 : 0 }}
+          contentContainerStyle={{ paddingHorizontal: screenGutter(theme), paddingTop: isBoxed(theme) ? 12 : 0, paddingBottom: 24 }}
         >
           {items.map((item) => (
             <TrashRow key={item.id} item={item} theme={theme} onRemoved={removeFromList} />

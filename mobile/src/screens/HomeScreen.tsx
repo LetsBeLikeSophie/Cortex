@@ -48,16 +48,6 @@ function heroShellStyle(theme: Theme): ViewStyle {
         // Vintage: the index card's colored header band.
         ...(conceptOf(theme) === 'vintage' ? { borderTopWidth: 3, borderTopColor: theme.accent } : null),
       };
-    case 'card':
-      return {
-        backgroundColor: theme.surface,
-        borderWidth: theme.surfaceEdge ? 1 : 0,
-        borderColor: theme.surfaceEdge ?? undefined,
-        borderRadius: theme.cardRadius + 6,
-        padding: 22,
-        paddingTop: 24,
-        paddingBottom: 20,
-      };
   }
 }
 
@@ -80,8 +70,7 @@ export default function HomeScreen() {
   const [bulkEditing, setBulkEditing] = useState<'add' | 'remove' | null>(null);
   const [bulkTagDraft, setBulkTagDraft] = useState('');
   const [bulkApplying, setBulkApplying] = useState(false);
-  // True for any boxed-away-from-the-edge layout ('card' (retired),
-  // 'bordered', 'layered') -- drives outer padding/spacing choices that
+  // True for any boxed-away-from-the-edge layout ('bordered', 'layered') -- drives outer padding/spacing choices that
   // apply the same way across all of them. The hero box's own
   // background/border/stack rendering is more specific, see heroShellStyle
   // below.

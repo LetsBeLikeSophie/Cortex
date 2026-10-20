@@ -7,12 +7,11 @@
 // every component reads individual `theme.X` fields rather than switching on
 // which named preset it came from.
 
-// 'card' is retired (see the LAYOUTS comment below) but kept in the union
-// since nothing currently reads it -- removing it outright would be a
-// separate, unrelated cleanup. 'bordered' is thinBorder's plain 1px-border
+// The old 'card' list style is gone (see the LAYOUTS comment below).
+// 'bordered' is thinBorder's plain 1px-border
 // box; 'layered' is layered/layeredVintage's two-plain-Views-offset stack
 // (no elevation either way -- see cardShellStyle in ListItems.tsx).
-export type ListStyle = 'line' | 'card' | 'bordered' | 'layered';
+export type ListStyle = 'line' | 'bordered' | 'layered';
 export type HitStyle = 'marker' | 'underline' | 'chip';
 export type CopyTone = 'plain' | 'tech';
 
@@ -147,7 +146,6 @@ export const LAYOUT_ORDER: LayoutKey[] = ['line', 'thinBorder', 'layered', 'laye
 // The four design concepts, as one value every component can switch on --
 // list style alone can't tell layered from vintage (both stack cards), and
 // sheets/buttons/inputs/tabs all change per concept, not just list rows.
-// 'card' (retired) folds into 'border', its closest living relative.
 export type Concept = 'line' | 'border' | 'layer' | 'vintage';
 
 // Outline width for bordered surfaces (cards, pills, chips, fields, sheet
@@ -190,7 +188,7 @@ export function bottomEdge(width: number, color: string) {
 export function conceptOf(theme: Theme): Concept {
   if (theme.decor === 'vintage') return 'vintage';
   if (theme.list === 'layered') return 'layer';
-  if (theme.list === 'bordered' || theme.list === 'card') return 'border';
+  if (theme.list === 'bordered') return 'border';
   return 'line';
 }
 

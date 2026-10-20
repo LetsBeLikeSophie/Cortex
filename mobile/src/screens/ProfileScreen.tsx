@@ -11,6 +11,7 @@ import { signOut } from '../auth/kakaoLogin';
 import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
+import { screenGutter } from '../components/Card';
 import type { RootStackParamList } from '../navigation/types';
 
 type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'deleteError';
@@ -37,7 +38,6 @@ export default function ProfileScreen() {
         : plan
           ? `무료 · AI 정리 ${plan.classify.used}/${plan.classify.limit}`
           : '';
-  const card = theme.list === 'card';
 
   const isGuest = session?.user.is_anonymous ?? false;
   const meta = session?.user.user_metadata as { nickname?: string; avatar_url?: string } | undefined;
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
       <ScreenHeader title="내 계정" theme={theme} onBack={() => navigation.goBack()} />
 
-      <View style={[styles.body, { paddingHorizontal: card ? 24 : 26 }]}>
+      <View style={[styles.body, { paddingHorizontal: screenGutter(theme) }]}>
         <View style={styles.identity}>
           {avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={[styles.avatar, { backgroundColor: theme.soft }]} />
@@ -94,7 +94,7 @@ export default function ProfileScreen() {
         </View>
 
         {state === 'confirmingDelete' || state === 'deleting' || state === 'deleteError' ? (
-          <View style={[styles.confirmCard, { borderColor: theme.line, backgroundColor: card ? theme.surface : 'transparent' }]}>
+          <View style={[styles.confirmCard, { borderColor: theme.line, backgroundColor: 'transparent' }]}>
             <Text style={[styles.confirmTitle, { color: theme.ink }]}>
               {isGuest ? '정말 삭제하시겠어요?' : '정말 탈퇴하시겠어요?'}
             </Text>

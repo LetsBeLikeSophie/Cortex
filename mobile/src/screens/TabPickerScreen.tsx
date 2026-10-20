@@ -29,7 +29,6 @@ import type { RootStackParamList } from '../navigation/types';
 export default function TabPickerScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const card = theme.list === 'card';
   const [selected, setSelected] = useState<TagTab[]>([]);
   const [allTags, setAllTags] = useState<TagTab[]>([]);
   const [loading, setLoading] = useState(true);

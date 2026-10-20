@@ -6,6 +6,7 @@ import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
 import { SourceIcon, CheckIcon } from './Icons';
 import { LayeredBack } from './Decor';
+import { LAYERED_BACK_OFFSET, cardShellStyle } from './Card';
 
 // e.g. "▶ 링크 · 3분전" -- the channel reads as its icon (a text label per
 // source would crowd this line), the method and time stay as text.
@@ -34,53 +35,6 @@ function MetaLine({
     </View>
   );
 }
-
-// No shadow/elevation anywhere in here -- 'card' (retired) is what caused
-// the Android "shadow rounded, content square" rendering bug, by pairing
-// elevation with overflow:hidden. 'bordered' is a plain 1px border, which
-// never needed elevation in the first place. 'layered' only returns the
-// FRONT card's fill; the second, offset back card is a sibling View added
-// in RecentRow/ResultRow themselves (LayeredBack in Decor.tsx), since a
-// single ViewStyle object can't describe two stacked Views.
-function cardShellStyle(theme: Theme): ViewStyle {
-  switch (theme.list) {
-    case 'line':
-      return { ...bottomEdge(1, theme.soft), paddingVertical: 20 };
-    case 'bordered':
-      return {
-        backgroundColor: theme.surface,
-        ...allEdges(OUTLINE, theme.line),
-        borderRadius: theme.cardRadius,
-        padding: 15,
-        paddingHorizontal: 17,
-        marginBottom: 9,
-      };
-    case 'layered':
-      return {
-        backgroundColor: theme.cardBg,
-        ...allEdges(0, 'transparent'),
-        borderRadius: theme.cardRadius,
-        padding: 15,
-        paddingHorizontal: 17,
-      };
-    case 'card':
-      return {
-        backgroundColor: theme.surface,
-        ...allEdges(theme.surfaceEdge ? 1 : 0, theme.surfaceEdge ?? 'transparent'),
-        borderRadius: theme.cardRadius,
-        padding: 15,
-        paddingHorizontal: 17,
-        marginBottom: 10,
-      };
-  }
-}
-
-// The layered list's back card -- same radius as the front, offset 6px
-// down-right, rendered as an earlier sibling (not a ::before/z-index
-// trick) so it paints behind the front card purely through JSX order, the
-// same two-plain-Views approach verified safe in the design-preview
-// artifact.
-const LAYERED_BACK_OFFSET: ViewStyle = { position: 'absolute', top: 6, left: 6, right: -6, bottom: -6 };
 
 // Pressed feedback. Fading the row (opacity) works for every flat layout,
 // but on 'layered' it turns the front card see-through and the back card

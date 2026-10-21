@@ -1,5 +1,5 @@
 import { TextStyle, ViewStyle } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
 
 // Per-concept styling for text fields and the small secondary buttons that
 // sit inside sheets (앨범에서 선택 / 카메라로 촬영, inline confirm/cancel...),
@@ -16,7 +16,7 @@ export function fieldStyle(theme: Theme): ViewStyle {
       return { ...allEdges(OUTLINE, theme.line), borderRadius: 14, backgroundColor: 'transparent' };
     case 'layer':
       // A slightly different paper tone instead of an outline.
-      return { ...allEdges(0, 'transparent'), borderRadius: 14, backgroundColor: theme.bg };
+      return { ...layerEdge(theme), borderRadius: 14, backgroundColor: theme.bg };
     case 'vintage':
       // Written on the index card's own ruling (RuledLines behind the sheet).
       return { ...allEdges(0, 'transparent'), borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
@@ -32,7 +32,7 @@ export function pickStyle(theme: Theme): ViewStyle {
     case 'border':
       return { ...allEdges(OUTLINE, theme.line), borderRadius: theme.pickRadius, backgroundColor: 'transparent' };
     case 'layer':
-      return { ...allEdges(0, 'transparent'), borderRadius: theme.pickRadius, backgroundColor: theme.bg };
+      return { ...layerEdge(theme), borderRadius: theme.pickRadius, backgroundColor: theme.bg };
     case 'vintage':
       return { ...allEdges(OUTLINE, theme.ink), borderRadius: theme.pickRadius, backgroundColor: theme.bg };
   }

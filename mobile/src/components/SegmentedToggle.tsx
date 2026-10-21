@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
 
 export interface SegmentOption<K extends string> {
   key: K;
@@ -38,9 +38,10 @@ export function SegmentedToggle<K extends string>({
   const concept = conceptOf(theme);
   const line = theme.list === 'line' && !compact;
   const pad = line ? 0 : compact ? 2 : 3;
-  // Track per concept: layer is a filled slip with no outline (like its
-  // other controls), the rest an outlined track. Vintage labels are typed.
-  const edge = line || concept === 'layer' ? 0 : OUTLINE;
+  // Track per concept: layer is a filled slip with only its faint layerEdge
+  // (like its other controls), the rest an outlined track. Vintage labels
+  // are typed.
+  const edge = line ? 0 : OUTLINE;
   const trackRadius = compact ? Math.min(theme.pickRadius, 999) : theme.btnRadius + pad;
   const thumbRadius = compact ? Math.min(theme.pickRadius, 999) : theme.btnRadius;
   // onLayout's width includes the track border on each side (boxed styles
@@ -62,7 +63,7 @@ export function SegmentedToggle<K extends string>({
         line
           ? bottomEdge(1, theme.soft)
           : {
-              ...allEdges(edge, edge ? theme.line : 'transparent'),
+              ...(concept === 'layer' ? layerEdge(theme) : allEdges(edge, edge ? theme.line : 'transparent')),
               borderRadius: trackRadius,
               padding: pad,
               // compact sits inside the search bar, which is cardBg in layer

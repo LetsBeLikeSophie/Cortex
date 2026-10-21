@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { Theme, emToTracking, MONO, OUTLINE, allEdges, bottomEdge } from '../theme/themes';
+import { Theme, emToTracking, MONO, OUTLINE, allEdges, bottomEdge, SERIF } from '../theme/themes';
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
@@ -92,7 +92,8 @@ export function RecentRow({
         key={boxed ? 'mono' : theme.headFamily}
         style={{
           fontFamily: boxed ? MONO : theme.headFamily,
-          fontStyle: boxed ? 'normal' : 'italic',
+          // The italic numeral belongs to the serif; a sans heading stays upright.
+          fontStyle: !boxed && theme.headFamily === SERIF ? 'italic' : 'normal',
           fontSize: boxed ? 11 : 17,
           color: theme.accent,
           minWidth: 24,

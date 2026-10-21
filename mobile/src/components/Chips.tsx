@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
 import { PlusIcon } from './Icons';
 import type { QueryChip } from '../hooks/useChipQuery';
 
@@ -39,7 +39,7 @@ function chipShell(theme: Theme, muted: boolean, tint: boolean) {
   if (concept === 'layer') {
     // theme.bg, not cardBg: these chips mostly sit on layer sheets, which
     // are cardBg themselves -- a cardBg chip there has no visible fill.
-    return { ...allEdges(0, 'transparent'), paddingVertical: 7, backgroundColor: tint && !muted ? theme.accent + '1f' : theme.bg };
+    return { ...layerEdge(theme), paddingVertical: 6, backgroundColor: tint && !muted ? theme.accent + '1f' : theme.bg };
   }
   return {
     ...allEdges(OUTLINE, muted ? theme.sub : concept === 'border' ? theme.line : theme.ink),

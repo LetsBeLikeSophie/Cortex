@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, conceptOf } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, conceptOf, layerEdge } from '../theme/themes';
 import { DashedRule } from './Decor';
 
 interface ButtonProps {
@@ -134,7 +134,7 @@ export function IconButton({
         styles.icon,
         { borderRadius: Math.min(theme.pickRadius, 16), opacity: pressed ? 0.6 : 1 },
         layer
-          ? { ...allEdges(0, 'transparent'), backgroundColor: on === 'sheet' ? theme.bg : theme.cardBg }
+          ? { ...layerEdge(theme), backgroundColor: on === 'sheet' ? theme.bg : theme.cardBg }
           : { ...allEdges(OUTLINE, theme.line), backgroundColor: 'transparent' },
       ]}
     >
@@ -158,7 +158,7 @@ export function ButtonRow({ theme, style, children }: { theme: Theme; style?: Vi
 const GHOST: Record<ReturnType<typeof conceptOf>, (t: Theme) => ViewStyle> = {
   line: (t) => ({ ...allEdges(OUTLINE, t.ink), borderRadius: t.btnRadius, backgroundColor: 'transparent' }),
   border: (t) => ({ ...allEdges(OUTLINE, t.line), borderRadius: t.btnRadius, backgroundColor: t.surface }),
-  layer: (t) => ({ ...allEdges(0, 'transparent'), backgroundColor: t.bg, borderRadius: t.btnRadius }),
+  layer: (t) => ({ ...layerEdge(t), backgroundColor: t.bg, borderRadius: t.btnRadius }),
   vintage: (t) => ({ ...allEdges(OUTLINE, t.ink), borderRadius: t.btnRadius, backgroundColor: t.bg }),
 };
 

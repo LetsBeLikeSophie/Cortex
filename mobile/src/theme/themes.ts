@@ -115,9 +115,13 @@ export const BODY_KR_MEDIUM = 'IBMPlexSansKR_500Medium';
 export const LAYOUTS: Record<LayoutKey, Layout> = {
   line: {
     label: '라인',
-    note: '잡지처럼. 가는 선과 세리프 제목, 시트도 각진 윗변에 실선 한 줄이에요.',
+    note: '잡지처럼. 가는 선과 산세리프 숫자·제목, 시트도 각진 윗변에 실선 한 줄이에요.',
     signature: 'paper',
-    headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
+    // Grotesk carries no Hangul (neither does the serif), so Korean titles
+    // are the system sans either way -- this changes the big count, Latin
+    // and the row numbers. The file is already the semibold cut; weight
+    // stays '400' so Android doesn't go looking for a synthetic bold.
+    headFamily: GROTESK_SEMIBOLD, headWeight: '400', headSize: 38, numSize: 72, numTrackEm: -0.04,
     cardRadius: 0, btnRadius: 999, pickRadius: 999, list: 'line',
     decor: 'none',
   },
@@ -177,6 +181,14 @@ export function allEdges(width: number, color: string) {
     borderBottomColor: color,
     borderLeftColor: color,
   };
+}
+
+// Layer's controls (ghost buttons, fields, chips, icon buttons, framed rows)
+// are fills sitting on fills only a few percent apart -- Blush's bg on its
+// cardBg sheet is about 1.08:1 -- so they get a faint edge in the stack
+// color. Still no structural outlines: cards keep their back sheet instead.
+export function layerEdge(theme: Theme) {
+  return allEdges(OUTLINE, theme.cardStack + '40');
 }
 
 // Only a bottom rule (underline rows/tabs); the other three explicitly off.

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import { OUTLINE, Theme, allEdges, bottomEdge, conceptOf } from '../theme/themes';
+import { OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
 import { LayeredBack } from './Decor';
 
 // The one definition of "a card" per layout, shared by the home/search
@@ -42,11 +42,11 @@ export function cardShellStyle(theme: Theme): ViewStyle {
 export const LAYERED_BACK_OFFSET: ViewStyle = { position: 'absolute', top: 6, left: 6, right: -6, bottom: -6 };
 
 // A plain framed box (profile rows, the sign-out/login buttons, the paywall
-// card): outlined everywhere except layer, which never outlines -- it fills
-// with the card tone instead.
+// card): outlined in line/border/vintage; layer fills with the card tone
+// and only takes its faint layerEdge.
 export function frameStyle(theme: Theme): ViewStyle {
   return conceptOf(theme) === 'layer'
-    ? { ...allEdges(0, 'transparent'), backgroundColor: theme.cardBg }
+    ? { ...layerEdge(theme), backgroundColor: theme.cardBg }
     : { ...allEdges(OUTLINE, theme.line) };
 }
 

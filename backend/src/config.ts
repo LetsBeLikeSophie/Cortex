@@ -28,11 +28,12 @@ export const config = {
   searchRateLimitMax: Number(optional("SEARCH_RATE_LIMIT_MAX") ?? 60),
   maxImageBytes: Number(optional("MAX_IMAGE_BYTES") ?? 8 * 1024 * 1024),
 
-  // Plans (see src/lib/plans.ts). Free quotas are deliberately tight -- the
-  // point is that unclassified saves visibly pile up in 미분류함 and that's
-  // the reason to upgrade, not API cost (an item costs well under 1원).
-  // Pro is sold as unlimited; its numbers are only a fair-use ceiling.
-  freeClassifyMonthly: Number(optional("FREE_CLASSIFY_MONTHLY") ?? 30),
+  // Plans (see src/lib/plans.ts). Free classification is enough for a
+  // daily habit (50/month, raised from 30 on 2026-10-21: 30 ran out in a
+  // week and broke the habit); heavier use piles up in 미분류함, which is
+  // the reason to upgrade -- not API cost (an item costs well under 1원).
+  // Pro's numbers are a stated monthly ceiling (shown on the paywall).
+  freeClassifyMonthly: Number(optional("FREE_CLASSIFY_MONTHLY") ?? 50),
   freeSearchMonthly: Number(optional("FREE_SEARCH_MONTHLY") ?? 10),
   proClassifyMonthly: Number(optional("PRO_CLASSIFY_MONTHLY") ?? 2000),
   proSearchMonthly: Number(optional("PRO_SEARCH_MONTHLY") ?? 300),

@@ -76,8 +76,7 @@ export default function SaveSheetScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'SaveSheet'>>();
   // Layer fills its marks instead of outlining them (no borders there).
   const filledMark = conceptOf(theme) === 'layer';
-  const tech = theme.copy === 'tech';
-  const txt = copyFor(theme.copy);
+  const txt = copyFor();
 
   const [text, setText] = useState(route.params?.sharedText ?? '');
   const [linkUrl, setLinkUrl] = useState(route.params?.sharedUrl ?? null);
@@ -577,9 +576,9 @@ export default function SaveSheetScreen() {
               <View style={styles.savedHeadBody}>
                 <Text
                   style={{
-                    fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-                    fontSize: tech ? 10.5 : 12.5,
-                    letterSpacing: tech ? emToTracking(0.22, 10.5) : emToTracking(0.02, 12.5),
+                    fontFamily: 'IBMPlexSansKR_400Regular',
+                    fontSize: 12.5,
+                    letterSpacing: emToTracking(0.02, 12.5),
                     color: theme.accent,
                   }}
                 >
@@ -654,9 +653,9 @@ export default function SaveSheetScreen() {
                 <View style={styles.savedHeadBody}>
                   <Text
                     style={{
-                      fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-                      fontSize: tech ? 10.5 : 12.5,
-                      letterSpacing: tech ? emToTracking(0.22, 10.5) : emToTracking(0.02, 12.5),
+                      fontFamily: 'IBMPlexSansKR_400Regular',
+                      fontSize: 12.5,
+                      letterSpacing: emToTracking(0.02, 12.5),
                       color: theme.accent,
                     }}
                   >
@@ -735,9 +734,9 @@ export default function SaveSheetScreen() {
                 <>
                   <Text
                     style={{
-                      fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-                      fontSize: tech ? 10.5 : 13,
-                      letterSpacing: tech ? emToTracking(0.14, 10.5) : emToTracking(0.01, 13),
+                      fontFamily: 'IBMPlexSansKR_400Regular',
+                      fontSize: 13,
+                      letterSpacing: emToTracking(0.01, 13),
                       color: theme.sub,
                       marginTop: 22,
                     }}

@@ -13,24 +13,22 @@ import { LAYERED_BACK_OFFSET, cardShellStyle } from './Card';
 function MetaLine({
   item,
   theme,
-  tech,
 }: {
   item: Pick<RecentItem, 'source' | 'captureType' | 'timeLabel'>;
   theme: Theme;
-  tech: boolean;
 }) {
   return (
     <View style={styles.metaLine}>
       <SourceIcon source={item.source} size={11} color={theme.sub} strokeWidth={1.3} />
       <Text
         style={{
-          fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-          fontSize: tech ? 10.5 : 12.5,
-          letterSpacing: tech ? emToTracking(0.1, 10.5) : emToTracking(0.01, 12.5),
+          fontFamily: 'IBMPlexSansKR_400Regular',
+          fontSize: 12.5,
+          letterSpacing: emToTracking(0.01, 12.5),
           color: theme.sub,
         }}
       >
-        {captureTypeLabel(item.captureType, tech)} · {item.timeLabel}
+        {captureTypeLabel(item.captureType, false)} · {item.timeLabel}
       </Text>
     </View>
   );
@@ -50,14 +48,12 @@ export function pressedStyle(theme: Theme, pressed: boolean): ViewStyle {
 export function RecentRow({
   item,
   theme,
-  tech,
   onPress,
   selectMode = false,
   selected = false,
 }: {
   item: RecentItem;
   theme: Theme;
-  tech: boolean;
   onPress?: () => void;
   // Tag-filtered multi-select (bulk tag add/remove) -- a checkbox in front
   // of the row number instead of changing what tapping the row does, so the
@@ -110,7 +106,7 @@ export function RecentRow({
           {item.title}
         </Text>
         <View style={{ marginTop: 7 }}>
-          <MetaLine item={item} theme={theme} tech={tech} />
+          <MetaLine item={item} theme={theme} />
         </View>
       </View>
     </Pressable>
@@ -133,14 +129,12 @@ export function RecentRow({
 export function ResultRow({
   item,
   theme,
-  tech,
   onPress,
   trashed,
   onRestore,
 }: {
   item: SearchResult;
   theme: Theme;
-  tech: boolean;
   onPress?: () => void;
   trashed?: boolean;
   onRestore?: () => void;
@@ -160,7 +154,6 @@ export function ResultRow({
         text={item.title}
         terms={item.terms}
         accent={theme.accent}
-        hitStyle={theme.hitStyle}
         baseStyle={[
           styles.title,
           { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal', opacity: trashed ? 0.6 : 1 },
@@ -170,12 +163,11 @@ export function ResultRow({
         text={item.snippet}
         terms={item.terms}
         accent={theme.accent}
-        hitStyle={theme.hitStyle}
         baseStyle={[styles.snippet, { color: theme.sub, opacity: trashed ? 0.6 : 1 }]}
       />
       <View style={styles.resultFooter}>
         <View style={[styles.resultFooterLeft, { opacity: trashed ? 0.6 : 1 }]}>
-          <MetaLine item={item} theme={theme} tech={tech} />
+          <MetaLine item={item} theme={theme} />
           {item.missingTerms.length > 0 && (
             <View style={[styles.missingBadge, { borderColor: theme.sub }]}>
               <Text style={{ fontSize: 11.5, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>

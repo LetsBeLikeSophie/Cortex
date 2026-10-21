@@ -12,8 +12,6 @@
 // box; 'layered' is layered/layeredVintage's two-plain-Views-offset stack
 // (no elevation either way -- see cardShellStyle in ListItems.tsx).
 export type ListStyle = 'line' | 'bordered' | 'layered';
-export type HitStyle = 'marker' | 'underline' | 'chip';
-export type CopyTone = 'plain' | 'tech';
 
 export type LayoutKey = 'line' | 'thinBorder' | 'layered' | 'layeredVintage';
 export type PaletteKey = 'paper' | 'ink' | 'neural' | 'sage' | 'blush';
@@ -44,9 +42,6 @@ export interface Layout {
   pickRadius: number;
   list: ListStyle;
 
-  hitStyle: HitStyle;
-  copy: CopyTone;
-  pulse: boolean;
   // Extra decoration on top of the list style -- 'vintage' adds the faint
   // diagonal crosshatch wallpaper behind each screen and the quatrefoil
   // pattern on layered back cards (see components/Decor.tsx).
@@ -124,7 +119,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     signature: 'paper',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
     cardRadius: 0, btnRadius: 999, pickRadius: 999, list: 'line',
-    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
+    decor: 'none',
   },
   thinBorder: {
     label: '테두리',
@@ -132,7 +127,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     signature: 'sage',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 16, btnRadius: 999, pickRadius: 999, list: 'bordered',
-    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
+    decor: 'none',
   },
   layered: {
     label: '레이어',
@@ -140,7 +135,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     signature: 'blush',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 20, btnRadius: 14, pickRadius: 12, list: 'layered',
-    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'none',
+    decor: 'none',
   },
   layeredVintage: {
     label: '빈티지',
@@ -148,7 +143,7 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     signature: 'ink',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 6, btnRadius: 3, pickRadius: 3, list: 'layered',
-    hitStyle: 'marker', copy: 'plain', pulse: false, decor: 'vintage',
+    decor: 'vintage',
   },
 };
 

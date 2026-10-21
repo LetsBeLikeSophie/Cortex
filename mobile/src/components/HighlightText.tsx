@@ -1,12 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, TextStyle, StyleProp } from 'react-native';
-import { HitStyle } from '../theme/themes';
 
 interface Props {
   text: string;
   terms: string[];
   accent: string;
-  hitStyle: HitStyle;
   baseStyle: StyleProp<TextStyle>;
 }
 
@@ -44,16 +42,10 @@ function buildSegments(text: string, terms: string[]): Segment[] {
   return segments;
 }
 
-// Three ways a search match can be called out, one per theme family: a
-// highlighter-marker wash, an underline, or a small pill chip.
-export function HighlightText({ text, terms, accent, hitStyle, baseStyle }: Props) {
+// A search match gets a highlighter-marker wash in the accent.
+export function HighlightText({ text, terms, accent, baseStyle }: Props) {
   const baseColor = (StyleSheet.flatten(baseStyle) as TextStyle | undefined)?.color;
-  const hitTextStyle: TextStyle =
-    hitStyle === 'underline'
-      ? { color: accent, borderBottomWidth: 1, borderBottomColor: accent }
-      : hitStyle === 'chip'
-      ? { backgroundColor: accent + '26', borderRadius: 4, paddingHorizontal: 4, color: baseColor }
-      : { backgroundColor: accent + '3d', color: baseColor };
+  const hitTextStyle: TextStyle = { backgroundColor: accent + '3d', color: baseColor };
 
   const segments = buildSegments(text, terms);
   return (

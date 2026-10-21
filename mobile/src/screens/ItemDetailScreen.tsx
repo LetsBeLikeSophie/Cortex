@@ -39,15 +39,14 @@ export default function ItemDetailScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ItemDetail'>>();
-  const tech = theme.copy === 'tech';
   const { item } = route.params;
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
 
-  const sourceText = sourceLabel(item.source, tech);
-  const captureTypeText = captureTypeLabel(item.capture_type, tech);
+  const sourceText = sourceLabel(item.source, false);
+  const captureTypeText = captureTypeLabel(item.capture_type, false);
   const channelMetaLabel = captureTypeText === sourceText ? sourceText : `${sourceText} · ${captureTypeText}`;
 
   const [aiTags, setAiTags] = useState(item.tags);

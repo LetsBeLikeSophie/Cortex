@@ -34,7 +34,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
   // at its top edge), with a dashed perforation in place of the hairline
   // and the typewriter face for labels.
   const vintage = conceptOf(theme) === 'vintage';
-  const tech = theme.copy === 'tech' || vintage;
+  const tech = vintage;
 
   const items: { key: string; route: keyof TabParamList; label: string; Icon: typeof ArchiveIcon }[] = [
     { key: 'Home', route: 'Home', label: '보관함', Icon: ArchiveIcon },

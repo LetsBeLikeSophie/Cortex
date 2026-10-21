@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
@@ -17,7 +16,6 @@ import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
 import { IconButton, SolidButton } from '../components/Buttons';
-import { Pulse } from '../components/Pulse';
 import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -79,8 +77,7 @@ export default function HomeScreen() {
   // Matches TabChip (Chips.tsx): border/layer render pill tabs, line and
   // vintage render underline tabs -- the tab row's own spacing follows that.
   const pillTabs = ['border', 'layer'].includes(conceptOf(theme));
-  const tech = theme.copy === 'tech';
-  const txt = copyFor(theme.copy);
+  const txt = copyFor();
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -248,23 +245,12 @@ export default function HomeScreen() {
             <LayeredBack theme={theme} radius={theme.cardRadius + 6} style={styles.heroBack} />
           )}
           <View style={[styles.heroBox, heroShellStyle(theme)]}>
-            {theme.pulse && (
-              <Svg width={150} height={150} style={styles.heroGlow} pointerEvents="none">
-                <Defs>
-                  <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0%" stopColor={theme.accent} stopOpacity={0.16} />
-                    <Stop offset="65%" stopColor={theme.accent} stopOpacity={0} />
-                  </RadialGradient>
-                </Defs>
-                <Circle cx={75} cy={75} r={75} fill="url(#glow)" />
-              </Svg>
-            )}
 
             <Text
               style={{
-                fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-                fontSize: tech ? 10.5 : 13.5,
-                letterSpacing: tech ? emToTracking(0.22, 10.5) : emToTracking(0.01, 13.5),
+                fontFamily: 'IBMPlexSansKR_400Regular',
+                fontSize: 13.5,
+                letterSpacing: emToTracking(0.01, 13.5),
                 color: theme.sub,
               }}
             >
@@ -293,12 +279,12 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.heroFoot}>
-              <Pulse color={theme.accent} active={theme.pulse} />
+              <View style={[styles.heroDot, { backgroundColor: theme.accent }]} />
               <Text
                 style={{
-                  fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
-                  fontSize: tech ? 11 : 12.5,
-                  letterSpacing: tech ? emToTracking(0.1, 11) : emToTracking(0.01, 12.5),
+                  fontFamily: 'IBMPlexSansKR_400Regular',
+                  fontSize: 12.5,
+                  letterSpacing: emToTracking(0.01, 12.5),
                   color: theme.accent,
                 }}
               >
@@ -454,7 +440,6 @@ export default function HomeScreen() {
               <RecentRow
                 item={item}
                 theme={theme}
-                tech={tech}
                 selectMode={selectMode}
                 selected={selectedIds.has(rawId)}
                 onPress={() =>
@@ -494,7 +479,7 @@ const styles = StyleSheet.create({
   heroWrap: { position: 'relative' },
   heroBack: { position: 'absolute', top: 6, left: 6, right: -6, bottom: -6 },
   heroBox: { position: 'relative', overflow: 'hidden' },
-  heroGlow: { position: 'absolute', top: -40, right: -30 },
+  heroDot: { width: 8, height: 8, borderRadius: 4 },
   numRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 },
   numSuffix: { fontSize: 14, lineHeight: 21, paddingBottom: 9, fontFamily: 'IBMPlexSansKR_400Regular' },
   heroFoot: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 },

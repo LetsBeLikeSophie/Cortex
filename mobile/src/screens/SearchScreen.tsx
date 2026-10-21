@@ -156,9 +156,7 @@ export default function SearchScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   // Any boxed-away-from-the-edge layout -- same outer spacing rule Home uses.
   const boxed = theme.list !== 'line';
-  const tech = theme.copy === 'tech';
-  const mono = tech;
-  const txt = copyFor(theme.copy);
+  const txt = copyFor();
 
   const {
     mode,
@@ -350,9 +348,9 @@ export default function SearchScreen() {
     onChangeText('');
   };
   const metaStyle = {
-    fontFamily: mono ? MONO : 'IBMPlexSansKR_400Regular',
-    fontSize: mono ? 10.5 : 12.5,
-    letterSpacing: mono ? emToTracking(0.12, 10.5) : emToTracking(0.01, 12.5),
+    fontFamily: 'IBMPlexSansKR_400Regular',
+    fontSize: 12.5,
+    letterSpacing: emToTracking(0.01, 12.5),
     color: theme.sub,
   };
 
@@ -492,7 +490,6 @@ export default function SearchScreen() {
                 <ResultRow
                   item={row.hit.result}
                   theme={theme}
-                  tech={tech}
                   trashed={!!row.hit.raw.deleted_at}
                   onRestore={() => restore(row.hit.raw.id)}
                   onPress={row.hit.raw.deleted_at ? undefined : () => navigation.navigate('ItemDetail', { item: row.hit.raw })}

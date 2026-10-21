@@ -21,13 +21,13 @@ import { addTag, asQuotaError, deleteItem, fetchItem, fetchPlan, getScreenshotUr
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
-import { RestoreIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
+import { SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
-import { showToast } from '../native/toast';
+import type { ApiItem } from '../api/client';
 import type { RootStackParamList } from '../navigation/types';
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
@@ -36,6 +36,15 @@ type DeleteState = 'idle' | 'confirming' | 'deleting';
 type EditField = 'title' | 'snippet' | 'rawText' | 'userNote';
 
 const REORGANIZE_POLL_MS = 2000;
+const SNACK_MS = 6000;
+
+// "<field>을/를 바꿨어요" for the undo bar after a manual edit.
+const EDITED_MESSAGE: Record<EditField, string> = {
+  title: '제목을 바꿨어요',
+  snippet: 'AI 메모를 바꿨어요',
+  rawText: '본문을 바꿨어요',
+  userNote: '내 메모를 바꿨어요',
+};
 
 export default function ItemDetailScreen() {
   const { theme } = useTheme();
@@ -68,15 +77,20 @@ export default function ItemDetailScreen() {
   // What was in the field when a recording started -- speech appends to it.
   const voiceBaseRef = useRef('');
   const [category, setCategory] = useState(item.category);
-  // What the server has for each field, and -- after a change -- what it
-  // was before, so the undo icon next to the field can put it back.
+  // What the server has for each field (the baseline an edit is compared to).
   const savedRef = useRef<Record<EditField, string>>({
     title: item.title ?? '',
     snippet: item.snippet ?? '',
     rawText: item.raw_text ?? '',
     userNote: item.user_note ?? '',
   });
-  const [undo, setUndo] = useState<Partial<Record<EditField, string>>>({});
+  // Undo lives in one bar at the bottom that shows for a few seconds after
+  // a change (manual edit or AI re-organize) and undoes that whole change --
+  // no per-field undo icons.
+  const [snack, setSnack] = useState<{ message: string; undo: () => void } | null>(null);
+  const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // What an AI re-organize is about to replace, so its undo can put it all back.
+  const beforeAiRef = useRef<{ title: string; snippet: string; category: ApiItem['category']; tags: string[] } | null>(null);
   const [editError, setEditError] = useState('');
   const [organizing, setOrganizing] = useState(item.classification_status === 'pending');
 
@@ -133,20 +147,23 @@ export default function ItemDetailScreen() {
         .then((fresh) => {
           if (cancelled || fresh.classification_status === 'pending') return;
           setOrganizing(false);
-          // The AI's rewrite can be undone like a manual edit.
-          const before = savedRef.current;
-          savedRef.current = { title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '', userNote: before.userNote };
-          setUndo({
-            ...(before.title !== savedRef.current.title ? { title: before.title } : null),
-            ...(before.snippet !== savedRef.current.snippet ? { snippet: before.snippet } : null),
-          });
+          savedRef.current = { ...savedRef.current, title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '' };
           setTitle(fresh.title ?? '');
           setSnippet(fresh.snippet ?? '');
           setRawText(fresh.raw_text ?? '');
           setCategory(fresh.category);
           setAiTags(fresh.tags);
           setUserTags(fresh.user_tags);
-          if (fresh.classification_status === 'unclassified') setEditError('AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+          if (fresh.classification_status === 'unclassified') {
+            setEditError('AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            return;
+          }
+          const before = beforeAiRef.current;
+          const what = item.capture_type === 'text' ? '제목·태그를' : '제목·메모·태그를';
+          fetchPlan()
+            .then((p) => `AI가 ${what} 다시 정리했어요 · 이번 달 ${Math.max(0, p.classify.limit - p.classify.used)}건 남음`)
+            .catch(() => `AI가 ${what} 다시 정리했어요`)
+            .then((message) => showSnack(message, before ? () => undoAi(before) : null));
         })
         .catch(() => {});
     }, REORGANIZE_POLL_MS);
@@ -159,39 +176,68 @@ export default function ItemDetailScreen() {
   const valueOf = (field: EditField) => ({ title, snippet, rawText, userNote })[field];
   const setterOf = (field: EditField) => ({ title: setTitle, snippet: setSnippet, rawText: setRawText, userNote: setUserNote })[field];
 
-  const save = (field: EditField, next: string, undoTo: string | undefined) => {
+  const showSnack = (message: string, undo: (() => void) | null) => {
+    if (snackTimer.current) clearTimeout(snackTimer.current);
+    setSnack({ message, undo: undo ?? (() => {}) });
+    snackTimer.current = setTimeout(() => setSnack(null), SNACK_MS);
+  };
+  const hideSnack = () => {
+    if (snackTimer.current) clearTimeout(snackTimer.current);
+    setSnack(null);
+  };
+  useEffect(
+    () => () => {
+      if (snackTimer.current) clearTimeout(snackTimer.current);
+    },
+    []
+  );
+
+  // Saves one field; on success hands the previous value to onSaved (which
+  // offers the undo bar). A failed save puts the old text back.
+  const save = (field: EditField, next: string, onSaved?: (previous: string) => void) => {
     const previous = savedRef.current[field];
-    const previousUndo = undo[field];
     savedRef.current[field] = next;
     setterOf(field)(next);
-    setUndo((u) => {
-      const copy = { ...u };
-      if (undoTo === undefined) delete copy[field];
-      else copy[field] = undoTo;
-      return copy;
-    });
-    updateItem(item.id, { [field]: next }).catch((err) => {
-      // Nothing changed on the server, so put the undo state back as well.
-      savedRef.current[field] = previous;
-      setterOf(field)(previous);
-      setUndo((u) => {
-        const copy = { ...u };
-        if (previousUndo === undefined) delete copy[field];
-        else copy[field] = previousUndo;
-        return copy;
+    updateItem(item.id, { [field]: next })
+      .then(() => onSaved?.(previous))
+      .catch((err) => {
+        savedRef.current[field] = previous;
+        setterOf(field)(previous);
+        setEditError(friendlyError(err));
       });
-      setEditError(friendlyError(err));
-    });
   };
 
   // Typing goes straight into the text on screen (no edit box); leaving the
-  // field saves it, and the old text becomes the undo target.
+  // field saves it and offers a few seconds to undo.
   const commit = (field: EditField, value = valueOf(field)) => {
     const next = value.trim();
-    const previous = savedRef.current[field];
-    if (next === previous) return;
+    if (next === savedRef.current[field]) return;
     setEditError('');
-    save(field, next, previous);
+    save(field, next, (previous) =>
+      showSnack(EDITED_MESSAGE[field], () => {
+        hideSnack();
+        save(field, previous);
+      })
+    );
+  };
+
+  // Undo for an AI re-organize: everything it replaced, in one request.
+  const undoAi = (before: NonNullable<typeof beforeAiRef.current>) => {
+    hideSnack();
+    const now = { title: savedRef.current.title, snippet: savedRef.current.snippet, category, tags: aiTags };
+    savedRef.current = { ...savedRef.current, title: before.title, snippet: before.snippet };
+    setTitle(before.title);
+    setSnippet(before.snippet);
+    setCategory(before.category);
+    setAiTags(before.tags);
+    updateItem(item.id, { title: before.title, snippet: before.snippet, category: before.category, tags: before.tags }).catch((err) => {
+      savedRef.current = { ...savedRef.current, title: now.title, snippet: now.snippet };
+      setTitle(now.title);
+      setSnippet(now.snippet);
+      setCategory(now.category);
+      setAiTags(now.tags);
+      setEditError(friendlyError(err));
+    });
   };
 
   const voiceButton = (field: EditField) => (
@@ -211,19 +257,6 @@ export default function ItemDetailScreen() {
       />
     </View>
   );
-
-  const undoEdit = (field: EditField) => {
-    const target = undo[field];
-    if (target === undefined) return;
-    save(field, target, undefined);
-  };
-
-  const undoButton = (field: EditField) =>
-    undo[field] !== undefined && !organizing ? (
-      <Pressable onPress={() => undoEdit(field)} hitSlop={10} style={styles.undo} accessibilityLabel="되돌리기">
-        <RestoreIcon size={16} color={theme.sub} strokeWidth={1.4} />
-      </Pressable>
-    ) : null;
 
   // A TextInput dressed exactly like the text it replaces -- tapping just
   // puts the cursor in, nothing on screen changes shape.
@@ -261,12 +294,10 @@ export default function ItemDetailScreen() {
     if (organizing) return;
     setEditError('');
     try {
+      beforeAiRef.current = { title: savedRef.current.title, snippet: savedRef.current.snippet, category, tags: aiTags };
+      hideSnack();
       await reorganizeItem(item.id);
       setOrganizing(true);
-      // An icon-only button that spends quota should say so.
-      fetchPlan()
-        .then((p) => showToast(`AI가 다시 정리하고 있어요 · 이번 달 ${Math.max(0, p.classify.limit - p.classify.used)}건 남음`))
-        .catch(() => showToast('AI가 다시 정리하고 있어요'));
     } catch (err) {
       if (asQuotaError(err)) {
         navigation.navigate('Paywall', { reason: 'classify' });
@@ -321,6 +352,12 @@ export default function ItemDetailScreen() {
     });
   };
 
+  const sparkleButton = (
+    <IconButton theme={theme} on="sheet" onPress={reorganize} label="AI로 다시 정리">
+      {organizing ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon size={15} color={theme.accent} strokeWidth={1.4} />}
+    </IconButton>
+  );
+
   const confirmDelete = async () => {
     setDeleteState('deleting');
     try {
@@ -357,9 +394,7 @@ export default function ItemDetailScreen() {
             <View style={styles.headerActions}>
               {/* Rewrite the title/memo/tags with the person's own words as the
                   guide (see pipeline.ts hintFor). Same ✦ as sentence search. */}
-              <IconButton theme={theme} on="sheet" onPress={reorganize} label="AI로 다시 정리">
-                {organizing ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon size={15} color={theme.accent} strokeWidth={1.4} />}
-              </IconButton>
+              {item.capture_type === 'text' && sparkleButton}
               <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label="휴지통으로 이동">
                 <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
@@ -383,7 +418,6 @@ export default function ItemDetailScreen() {
             <View style={styles.flex1}>
               {inlineInput('title', headingStyle, organizing ? 'AI가 정리하는 중...' : rawText.slice(0, 40) || '제목 없음')}
             </View>
-            {undoButton('title')}
           </View>
 
           {/* Horizontal instead of wrapping -- with enough tags, a wrapping
@@ -454,10 +488,17 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {item.capture_type !== 'text' && (snippet !== '' || undo.snippet !== undefined) && (
-            <View style={styles.editRow}>
-              <Text style={[styles.body, styles.flex1, { color: theme.sub }]}>{snippet}</Text>
-              {undoButton('snippet')}
+          {/* The AI's own memo, with the ✦ that rewrites it (and the title,
+              category and AI tags with it) right where its words are. */}
+          {item.capture_type !== 'text' && (
+            <View style={styles.aiMemo}>
+              <View style={styles.aiMemoHead}>
+                <Text style={[styles.aiMemoLabel, { color: theme.sub }]}>AI 메모</Text>
+                {sparkleButton}
+              </View>
+              <Text style={[styles.body, styles.aiMemoText, { color: snippet ? theme.sub : theme.line }]}>
+                {snippet || (organizing ? 'AI가 정리하는 중...' : '아직 AI 메모가 없어요')}
+              </Text>
             </View>
           )}
 
@@ -468,7 +509,6 @@ export default function ItemDetailScreen() {
               <View style={styles.flex1}>
                 {inlineInput('userNote', [styles.body, { color: theme.accent, fontStyle: 'italic' }], '내 메모 — 말하거나 눌러서 적어요')}
               </View>
-              {undoButton('userNote')}
               {voiceButton('userNote')}
             </View>
           )}
@@ -476,7 +516,6 @@ export default function ItemDetailScreen() {
           {item.capture_type === 'text' && (
             <View style={styles.editRow}>
               <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], '본문 — 말하거나 눌러서 적어요')}</View>
-              {undoButton('rawText')}
               {voiceButton('rawText')}
             </View>
           )}
@@ -507,6 +546,17 @@ export default function ItemDetailScreen() {
           </View>
         </ScrollView>
         </View>
+
+        {snack && (
+          <View style={[styles.snack, { backgroundColor: theme.ink, borderRadius: Math.min(theme.pickRadius, 12) }]}>
+            <Text style={[styles.snackText, { color: theme.bg }]} numberOfLines={2}>
+              {snack.message}
+            </Text>
+            <Pressable onPress={snack.undo} hitSlop={10}>
+              <Text style={[styles.snackAction, { color: theme.bg }]}>되돌리기</Text>
+            </Pressable>
+          </View>
+        )}
 
         <ButtonRow theme={theme} style={styles.buttonRow}>
           {item.raw_url ? (
@@ -539,7 +589,13 @@ const styles = StyleSheet.create({
   inlineWebFill: { position: 'absolute', left: 0, right: 0, bottom: 0, marginTop: 0, overflow: 'hidden' } as object,
   editRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   flex1: { flex: 1 },
-  undo: { marginTop: 14, padding: 2 },
+  aiMemo: { marginTop: 16 },
+  aiMemoHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  aiMemoLabel: { fontFamily: MONO, fontSize: 10.5, letterSpacing: 1.2 },
+  aiMemoText: { marginTop: 6 },
+  snack: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11, marginTop: 12 },
+  snackText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: 'IBMPlexSansKR_400Regular' },
+  snackAction: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
   tagScroll: { marginTop: 16, flexGrow: 0 },
   // paddingVertical: same Android horizontal-ScrollView bottom-edge clip as
   // Home's tab strip -- outlined tag chips lost their bottom border.

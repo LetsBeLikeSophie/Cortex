@@ -219,6 +219,7 @@ export interface SearchInterpretation {
   category: ItemCategory | null;
   dateFrom: string | null; // YYYY-MM-DD, Korea time
   dateTo: string | null;
+  sort?: 'oldest' | 'newest' | null;
 }
 
 export type SmartHit = ApiItem & { matched_count: number };
@@ -332,7 +333,12 @@ export function fetchItem(itemId: string) {
 
 // The person's own edits from the detail screen. An empty string clears the
 // field. rawText is the body of a text memo only.
-export function updateItem(itemId: string, patch: { title?: string; snippet?: string; rawText?: string; userNote?: string }) {
+// category/tags: only sent by undo after an AI re-organize (puts back what
+// the AI replaced).
+export function updateItem(
+  itemId: string,
+  patch: { title?: string; snippet?: string; rawText?: string; userNote?: string; category?: ApiItem['category']; tags?: string[] }
+) {
   return request<ApiItem>(`/items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 

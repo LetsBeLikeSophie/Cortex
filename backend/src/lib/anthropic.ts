@@ -377,6 +377,10 @@ export const SearchInterpretationSchema = z.object({
   category: z.enum(CATEGORIES).nullable(),
   dateFrom: z.string().nullable().describe("Inclusive start date, YYYY-MM-DD, Korea time"),
   dateTo: z.string().nullable().describe("Inclusive end date, YYYY-MM-DD, Korea time"),
+  sort: z
+    .enum(["oldest", "newest"])
+    .nullable()
+    .describe("Order asked for by the sentence (가장 오래된/처음 -> oldest, 가장 최근/마지막 -> newest); null when no order is asked for"),
 });
 
 export type SearchInterpretation = z.infer<typeof SearchInterpretationSchema>;
@@ -393,7 +397,9 @@ Fields:
   add up to 4 synonyms the saved item might use instead (e.g. 카페 -> 커피, 디저트;
   숙소 -> 호텔, 펜션, 에어비앤비). Drop filler (그거, 뭐더라, 저장한, 봤던, 같은 거) --
   it is not a keyword. Words that map onto a filter below (인스타, 지난달, 사진...) are
-  NOT keywords either. Empty list is fine if nothing but filters was said.
+  NOT keywords either. Words that only mean "something I saved" (기억, 저장한 거,
+  메모, 거, 것) are not keywords either -- "가장 오래된 기억" has no keyword.
+  Empty list is fine if nothing but filters was said.
 - exclude: only things explicitly ruled out ("카페 말고" -> 카페). Usually empty.
 - source: where it was saved FROM -- instagram (인스타), kakaotalk (카톡), safari
   (사파리/인터넷/웹/브라우저), youtube (유튜브), memo (직접 쓴 메모). null unless stated.
@@ -405,7 +411,10 @@ Fields:
 - dateFrom/dateTo: when it was saved, resolved against today's date given below.
   "지난달" = the whole previous calendar month, "최근/요즘" = last 14 days,
   "작년" = previous calendar year, "어제" = yesterday only. Be generous with vague
-  ranges -- people misremember timing. null if no time was mentioned.`;
+  ranges -- people misremember timing. null if no time was mentioned.
+- sort: "oldest" when they ask for the earliest/oldest/first saved (가장 오래된,
+  처음 저장한, 제일 예전), "newest" for the latest (가장 최근, 마지막으로 저장한).
+  null otherwise -- results are then ranked by how well they match.`;
 
 // Search runs far more often than saves and is a small, bounded parse, so
 // it gets the cheapest current model on its own setting (separate from

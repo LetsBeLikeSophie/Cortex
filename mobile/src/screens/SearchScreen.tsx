@@ -66,8 +66,24 @@ function InterpretationRow({
   onChange: (next: SearchInterpretation) => void;
 }) {
   const noop = () => {};
+  const nothingRead =
+    q.keywords.length === 0 && q.exclude.length === 0 && !q.source && !q.captureType && !q.category && !q.dateFrom && !q.dateTo && !q.sort;
+  // The AI found no condition in the sentence -- say so, instead of an empty
+  // chip row above a list that seems to come from nowhere.
+  if (nothingRead) {
+    return <Text style={[styles.noReading, { color: theme.sub }]}>찾을 조건을 못 읽었어요 · 최근에 저장한 순서로 보여줘요</Text>;
+  }
   return (
     <View style={styles.chipRow}>
+      {q.sort && (
+        <SearchChip
+          label={`순서 · ${q.sort === 'oldest' ? '오래된 순' : '최신 순'}`}
+          excluded={false}
+          theme={theme}
+          onToggle={noop}
+          onRemove={() => onChange({ ...q, sort: null })}
+        />
+      )}
       {(q.dateFrom || q.dateTo) && (
         <SearchChip
           label={`기간 · ${dateRangeLabel(q.dateFrom, q.dateTo)}`}
@@ -520,6 +536,7 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
+  noReading: { fontSize: 12.5, marginTop: 12, fontFamily: 'IBMPlexSansKR_400Regular' },
   screen: { flex: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   searchInput: { fontSize: 17, flex: 1, padding: 0 },

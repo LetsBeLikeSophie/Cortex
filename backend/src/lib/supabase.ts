@@ -185,7 +185,14 @@ export async function listPendingItems(limit: number): Promise<ItemRecord[]> {
 export async function updateItemText(
   userId: string,
   itemId: string,
-  patch: { title?: string | null; snippet?: string | null; rawText?: string | null; userNote?: string | null }
+  patch: {
+    title?: string | null;
+    snippet?: string | null;
+    rawText?: string | null;
+    userNote?: string | null;
+    category?: Category;
+    tags?: string[];
+  }
 ): Promise<ItemRecord> {
   const { data, error } = await getClient()
     .from("items")
@@ -194,6 +201,8 @@ export async function updateItemText(
       ...(patch.snippet !== undefined ? { snippet: patch.snippet } : null),
       ...(patch.rawText !== undefined ? { raw_text: patch.rawText } : null),
       ...(patch.userNote !== undefined ? { user_note: patch.userNote } : null),
+      ...(patch.category !== undefined ? { category: patch.category } : null),
+      ...(patch.tags !== undefined ? { tags: patch.tags } : null),
     })
     .eq("id", itemId)
     .eq("user_id", userId)
@@ -552,7 +561,9 @@ export async function searchItemsSmart(
       if (q.dateFrom && DATE_RE.test(q.dateFrom)) query = query.gte("shared_at", `${q.dateFrom}T00:00:00+09:00`);
       if (q.dateTo && DATE_RE.test(q.dateTo)) query = query.lte("shared_at", `${q.dateTo}T23:59:59.999+09:00`);
     }
-    const { data, error } = await query.order("shared_at", { ascending: false }).limit(500);
+    // "가장 오래된 ..." asks for the start of the archive, not the latest 500.
+    const oldestFirst = q.sort === "oldest";
+    const { data, error } = await query.order("shared_at", { ascending: oldestFirst }).limit(500);
     if (error) throw new Error(`searchItemsSmart failed: ${error.message}`);
 
     return ((data ?? []) as ItemRecord[])
@@ -564,8 +575,9 @@ export async function searchItemsSmart(
       // No keywords at all ("지난달 인스타에서 저장한 거") means the filters
       // alone are the query -- everything they let through counts.
       .filter((item) => groups.length === 0 || item.matched_count > 0)
-      // Stable sort, so equal scores keep the query's newest-first order.
-      .sort((a, b) => b.matched_count - a.matched_count);
+      // Stable sort, so equal scores keep the query's date order. An
+      // explicit order (oldest/newest) wins outright: it was asked for.
+      .sort((a, b) => (q.sort ? 0 : b.matched_count - a.matched_count));
   };
 
   const items = await run(true);

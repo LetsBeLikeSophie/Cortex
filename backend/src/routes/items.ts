@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
+import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
 import { getEntitlement, recordUsage, remaining } from "../lib/plans.js";
 import { clipInterpretation, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
@@ -33,6 +34,10 @@ const UpdateItemSchema = z.object({
   rawText: z.string().max(20000).optional(),
   // The person's own note on a screenshot/link ("내 메모").
   userNote: z.string().max(1000).optional(),
+  // Only sent by "undo" after an AI re-organize, putting back what the AI
+  // replaced (it rewrites category and AI tags along with title/memo).
+  category: z.enum(CATEGORIES).optional(),
+  tags: z.array(z.string().max(30)).max(8).optional(),
 });
 
 const ListQuerySchema = z.object({
@@ -56,7 +61,8 @@ const AskSearchSchema = z.object({
 });
 
 const SmartSearchSchema = z.object({
-  interpretation: SearchInterpretationSchema,
+  // sort was added later; an app version that doesn't send it means "no order".
+  interpretation: SearchInterpretationSchema.extend({ sort: SearchInterpretationSchema.shape.sort.default(null) }),
 });
 
 // Korea-time calendar date (YYYY-MM-DD) -- what "지난달"/"어제" in a search
@@ -280,6 +286,8 @@ export async function itemsRoutes(app: FastifyInstance) {
       snippet: blankToNull(parsed.data.snippet),
       rawText: blankToNull(parsed.data.rawText),
       userNote: blankToNull(parsed.data.userNote),
+      category: parsed.data.category,
+      tags: parsed.data.tags,
     });
     return reply.send(updated);
   });

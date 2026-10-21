@@ -27,6 +27,7 @@ import { Heading } from '../components/Typography';
 import { ChipQueryRow, SearchChip } from '../components/Chips';
 import { HashIcon, SparkleIcon } from '../components/Icons';
 import { SegmentedToggle } from '../components/SegmentedToggle';
+import { VoiceInputButton } from '../components/VoiceInputButton';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { useChipQuery } from '../hooks/useChipQuery';
 import type { RootStackParamList } from '../navigation/types';
@@ -219,8 +220,8 @@ export default function SearchScreen() {
     setError(null);
   };
 
-  const ask = () => {
-    const query = draft.trim();
+  const ask = (spoken?: string) => {
+    const query = (spoken ?? draft).trim();
     if (!query) return;
     setAsking(true);
     setLoading(true);
@@ -379,7 +380,7 @@ export default function SearchScreen() {
             <TextInput
               value={draft}
               onChangeText={onChangeText}
-              onSubmitEditing={sentence ? ask : commitDraft}
+              onSubmitEditing={sentence ? () => ask() : commitDraft}
               onKeyPress={onKeyPress}
               blurOnSubmit={false}
               returnKeyType={sentence ? 'search' : 'done'}
@@ -388,6 +389,19 @@ export default function SearchScreen() {
               placeholder={sentence ? '지난달 인스타에서 본 카페' : chips.length > 0 ? '' : '태그 입력 후 Enter'}
               placeholderTextColor={theme.sub}
             />
+            {/* Sentence (AI) search only: a spoken question is a sentence by
+                nature, and it runs as soon as you stop talking. Tag search
+                stays typed -- tags are single words picked from a list. */}
+            {sentence && (
+              <VoiceInputButton
+                theme={theme}
+                size={16}
+                onResult={(spoken, isFinal) => {
+                  onChangeText(spoken);
+                  if (isFinal && spoken.trim()) ask(spoken);
+                }}
+              />
+            )}
           </View>
         </View>
 

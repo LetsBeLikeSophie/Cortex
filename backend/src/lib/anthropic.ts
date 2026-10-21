@@ -97,6 +97,11 @@ wording like "맛집 정보" or "좋은 글". In title and snippet, write names
 exactly as the source does (Rick Astley stays Rick Astley) -- the Hangul
 spelling of a foreign name belongs in tags only.
 
+Write title and snippet as a terse memo, always in the same style: end each
+sentence with a noun or a noun-form ending (~함, ~음, ~것, or just the noun),
+e.g. "성수동 크로플 맛집. 평일 웨이팅 30분, 5월까지 한정 메뉴 있음." Never
+해요체 or 합니다체 ("~예요", "~입니다").
+
 Describe what IS there. Never write that something is absent -- no
 "글자는 보이지 않음", "텍스트 없음", "설명 없음" or the like in the title,
 snippet or tags. Whether an image has text goes in hasText, and the person
@@ -258,6 +263,37 @@ function clipTags(tags: string[], maxCount: number, maxLen: number): string[] {
   return out;
 }
 
+// Backstop for the prompt rule above: a sentence that only says the image
+// has no (readable) text -- "글자는 보이지 않음", "화면에 읽을 수 있는 글자는
+// 없습니다", "텍스트 없음" ... -- is dropped from the snippet. That fact lives
+// in hasText; it's noise to the person reading the memo.
+const ABSENT_TEXT = /(글자|글씨|텍스트|문구|문자)[^.。!?]*?(없|보이지 ?않|확인되지 ?않|읽을 수 ?없)/;
+
+// Works clause by clause (", " splits clauses; "4,500원" has no space so it
+// stays whole) so only the "no text" part goes and the rest keeps its
+// punctuation.
+export function stripAbsentTextNotes(snippet: string): string {
+  if (!ABSENT_TEXT.test(snippet)) return snippet;
+  // Sentence ends only where punctuation is followed by a space, so "1.0%"
+  // and "?'" stay intact.
+  const sentences = snippet.split(/(?<=[.。!?])\s+/);
+  const kept: string[] = [];
+  for (const raw of sentences) {
+    const sentence = raw.trim();
+    if (!ABSENT_TEXT.test(sentence)) {
+      if (sentence) kept.push(sentence);
+      continue;
+    }
+    const end = sentence.match(/[.。!?]$/)?.[0] ?? "";
+    const body = end ? sentence.slice(0, -1) : sentence;
+    const clauses = body.split(/,\s+/).filter((c) => c.trim() && !ABSENT_TEXT.test(c));
+    // "...달이 보이는 사진으로, 글자는 없습니다." loses its second clause;
+    // drop the connective the first one was left hanging on.
+    if (clauses.length > 0) kept.push(clauses.join(", ").trim().replace(/(으로|이며|이고)$/, "") + (end || "."));
+  }
+  return kept.join(" ");
+}
+
 function requireParsed(response: { parsed_output: Classification | null }): Classification {
   const c = response.parsed_output;
   if (!c) {
@@ -266,7 +302,7 @@ function requireParsed(response: { parsed_output: Classification | null }): Clas
   return {
     ...c,
     title: clip(dropMixedKana(c.title), 120),
-    snippet: clip(dropMixedKana(c.snippet), 250),
+    snippet: clip(stripAbsentTextNotes(dropMixedKana(c.snippet)), 250),
     tags: clipTags(c.tags, 8, 30),
     keyText: clip(c.keyText ?? "", 400),
   };

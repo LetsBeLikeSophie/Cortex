@@ -115,21 +115,21 @@ export const BODY_KR_MEDIUM = 'IBMPlexSansKR_500Medium';
 export const LAYOUTS: Record<LayoutKey, Layout> = {
   line: {
     label: '라인',
-    note: '잡지처럼. 가는 선과 산세리프 숫자·제목, 시트도 각진 윗변에 실선 한 줄이에요.',
+    note: '잡지처럼. 가는 선과 세리프 제목, 시트도 각진 윗변에 실선 한 줄이에요.',
     signature: 'paper',
-    // Grotesk carries no Hangul (neither does the serif), so Korean titles
-    // are the system sans either way -- this changes the big count, Latin
-    // and the row numbers. The file is already the semibold cut; weight
-    // stays '400' so Android doesn't go looking for a synthetic bold.
-    headFamily: GROTESK_SEMIBOLD, headWeight: '400', headSize: 38, numSize: 72, numTrackEm: -0.04,
+    headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
     cardRadius: 0, btnRadius: 999, pickRadius: 999, list: 'line',
     decor: 'none',
   },
   thinBorder: {
     label: '테두리',
-    note: '미니멀 노트처럼. 카드·시트·버튼 모두 둥근 모서리에 1px 테두리예요.',
+    note: '미니멀 노트처럼. 산세리프 숫자·제목에, 카드·시트·버튼 모두 둥근 모서리에 1px 테두리예요.',
     signature: 'sage',
-    headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
+    // Grotesk carries no Hangul (neither does the serif), so Korean titles
+    // are the system sans either way -- this changes the big count, Latin
+    // and the row numbers. The file is already the semibold cut; weight
+    // stays '400' so Android doesn't go looking for a synthetic bold.
+    headFamily: GROTESK_SEMIBOLD, headWeight: '400', headSize: 38, numSize: 66, numTrackEm: -0.04,
     cardRadius: 16, btnRadius: 999, pickRadius: 999, list: 'bordered',
     decor: 'none',
   },

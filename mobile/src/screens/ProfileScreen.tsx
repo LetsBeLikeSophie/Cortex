@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { LAYOUTS, OUTLINE, PALETTES, allEdges } from '../theme/themes';
+import { LAYOUTS, PALETTES, allEdges, conceptOf } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signOut } from '../auth/kakaoLogin';
 import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
@@ -133,7 +133,12 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={onSignOut}
                 disabled={state === 'signingOut'}
-                style={[styles.signOutButton, frameStyle(theme), { borderRadius: theme.btnRadius, opacity: state === 'signingOut' ? 0.6 : 1 }]}
+                style={[
+                  styles.signOutButton,
+                  frameStyle(theme),
+                  // Layer: a plain filled button -- the faint edge is for rows, not this.
+                  conceptOf(theme) === 'layer' && allEdges(0, 'transparent'),
+                  { borderRadius: theme.btnRadius, opacity: state === 'signingOut' ? 0.6 : 1 }]}
               >
                 {state === 'signingOut' ? (
                   <ActivityIndicator color={theme.ink} />

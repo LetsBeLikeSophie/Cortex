@@ -14,8 +14,9 @@ import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 
 // Cortex Pro. Opened when a metered AI feature runs out (미분류함's "Pro로
-// 바로 정리", sentence search's quota message) or from the profile. Pro is
-// sold as unlimited; the server keeps a fair-use ceiling behind it. The buy
+// 바로 정리", sentence search's quota message) or from the profile. The
+// benefits state Pro's real monthly ceilings (from /me/plan) -- it isn't
+// unlimited, and the copy shouldn't say so. The buy
 // button stays disabled until Play Billing ships with the Play Store
 // release -- the sheet itself is real so the upgrade moment can be tested.
 const PRICE = '월 3,900원';
@@ -45,10 +46,11 @@ export default function PaywallScreen() {
 
   const close = () => navigation.goBack();
 
+  const pro = plan?.proLimits;
   const benefits = [
-    '저장하는 모든 기억을 AI가 바로 정리해요',
+    pro ? `AI 정리 월 ${pro.classify.toLocaleString()}건 — 저장하는 대로 바로 정리돼요` : '저장하는 대로 AI가 바로 정리해요',
     plan && plan.unclassifiedCount > 0 ? `미분류함 ${plan.unclassifiedCount}건도 한 번에 정리돼요` : '미분류함에 쌓이지 않아요',
-    '문장으로 찾기를 횟수 걱정 없이',
+    pro ? `문장으로 찾기 월 ${pro.search.toLocaleString()}회` : '문장으로 찾기를 넉넉하게',
   ];
 
   const status =

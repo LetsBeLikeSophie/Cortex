@@ -4,7 +4,9 @@ import { getClient } from "./supabase.js";
 // Free vs Pro, and the monthly AI quotas behind them. Saving is never
 // limited -- only the Claude-backed work is: auto-classification (over
 // quota, items save as 'unclassified' and wait in 미분류함) and sentence
-// search. New accounts get a trial with Pro limits.
+// search. New Kakao accounts get a trial with Pro limits; guests don't
+// (a guest is one tap to create and reinstalling makes a fresh one, so a
+// guest trial could be re-taken endlessly).
 
 export type Tier = "free" | "trial" | "pro";
 export type UsageKind = "classify" | "search";
@@ -14,6 +16,9 @@ export interface Entitlement {
   trialEndsAt: string;
   proUntil: string | null;
   classify: { used: number; limit: number };
+  // What Pro includes, so the paywall states the real monthly ceilings
+  // instead of "unlimited".
+  proLimits: { classify: number; search: number };
   search: { used: number; limit: number };
   // When this month's quota resets (start of next month, Korea time).
   resetsAt: string;
@@ -31,15 +36,22 @@ function monthWindow(now = new Date()): { start: Date; next: Date } {
 }
 
 // Lazily creates the plan row the first time an account is seen -- which is
-// also when its trial starts. Existing accounts get their trial from the
-// first request after this ships.
+// also when a Kakao account's trial starts. A guest (anonymous) account's
+// row is created with its trial already over. Guests can't be upgraded to
+// Kakao in place (a Kakao login is a separate account), so this is decided
+// once, at creation.
 async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_until: string | null }> {
   const client = getClient();
   const { data, error } = await client.from("user_plans").select("trial_ends_at, pro_until").eq("user_id", userId).maybeSingle();
   if (error) throw new Error(`getPlanRow failed: ${error.message}`);
   if (data) return data;
 
-  const trialEndsAt = new Date(Date.now() + config.trialDays * 24 * 60 * 60 * 1000).toISOString();
+  // Throws on a lookup failure rather than guessing: no row is written, and
+  // the next request tries again.
+  const { data: authUser, error: authError } = await client.auth.admin.getUserById(userId);
+  if (authError || !authUser.user) throw new Error(`getPlanRow user lookup failed: ${authError?.message ?? "no user"}`);
+  const trialMs = authUser.user.is_anonymous ? 0 : config.trialDays * 24 * 60 * 60 * 1000;
+  const trialEndsAt = new Date(Date.now() + trialMs).toISOString();
   const { error: insertError } = await client
     .from("user_plans")
     .upsert({ user_id: userId, trial_ends_at: trialEndsAt }, { onConflict: "user_id", ignoreDuplicates: true });
@@ -94,6 +106,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     proUntil: row.pro_until,
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
     search: { used: searchUsed, limit: paid ? config.proSearchMonthly : config.freeSearchMonthly },
+    proLimits: { classify: config.proClassifyMonthly, search: config.proSearchMonthly },
     resetsAt: next.toISOString(),
     unclassifiedCount,
   };

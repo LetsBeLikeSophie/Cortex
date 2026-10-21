@@ -21,6 +21,8 @@ export interface Plan {
   proUntil: string | null;
   classify: { used: number; limit: number };
   search: { used: number; limit: number };
+  // Pro's monthly ceilings (optional: older servers didn't send it).
+  proLimits?: { classify: number; search: number };
   resetsAt: string;
   unclassifiedCount: number;
 }

@@ -28,6 +28,10 @@ export interface RecentScreenshotsState {
   // sheet points to Settings instead of rendering nothing, which would look
   // identical to "no screenshots exist".
   permissionDenied: boolean;
+  // Access is fine but the Screenshots album is empty/missing -- the sheet
+  // says so instead of showing nothing after a tap.
+  empty: boolean;
+  loading: boolean;
   requestAccess: () => void;
 }
 
@@ -37,27 +41,39 @@ export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
   const [screenshots, setScreenshots] = useState<RecentScreenshot[]>([]);
   const [needsPermission, setNeedsPermission] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [empty, setEmpty] = useState(false);
+  const [loading, setLoading] = useState(false);
   const cancelledRef = useRef(false);
 
   const load = useCallback(
     async (ask: boolean) => {
       if (!MediaLibrary) return;
       const lib = MediaLibrary;
-      let perm = await lib.getPermissionsAsync();
+      // Photos only: with no granular list, Android 13+ asks for music/audio
+      // and video too, and refusing any of them counted as "not granted" --
+      // the row stayed empty after a tap on a fresh install.
+      let perm = await lib.getPermissionsAsync(false, ['photo']);
       if (!perm.granted && perm.canAskAgain && ask) {
-        perm = await lib.requestPermissionsAsync();
+        setLoading(true);
+        perm = await lib.requestPermissionsAsync(false, ['photo']).finally(() => setLoading(false));
       }
       if (cancelledRef.current) return;
-      setNeedsPermission(!perm.granted && perm.canAskAgain);
-      setPermissionDenied(!perm.granted && !perm.canAskAgain);
-      if (!perm.granted) return;
+      // Android 14 "selected photos only" is limited access, still readable.
+      const usable = perm.granted || perm.accessPrivileges === 'limited';
+      setNeedsPermission(!usable && perm.canAskAgain);
+      setPermissionDenied(!usable && !perm.canAskAgain);
+      if (!usable) return;
 
       let album: InstanceType<typeof lib.Album> | null = null;
       for (const title of ALBUM_TITLES) {
         album = await lib.Album.get(title).catch(() => null);
         if (album) break;
       }
-      if (!album || cancelledRef.current) return;
+      if (cancelledRef.current) return;
+      if (!album) {
+        setEmpty(true);
+        return;
+      }
 
       const assets = await new lib.Query()
         .album(album)
@@ -71,7 +87,9 @@ export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
         assets.map(async (asset) => ({ id: asset.id, uri: await asset.getUri().catch(() => null) }))
       );
       if (!cancelledRef.current) {
-        setScreenshots(resolved.filter((s): s is RecentScreenshot => !!s.uri));
+        const found = resolved.filter((s): s is RecentScreenshot => !!s.uri);
+        setScreenshots(found);
+        setEmpty(found.length === 0);
       }
     },
     [limit]
@@ -86,5 +104,5 @@ export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
     };
   }, [load]);
 
-  return { screenshots, needsPermission, permissionDenied, requestAccess: () => load(true) };
+  return { screenshots, needsPermission, permissionDenied, empty, loading, requestAccess: () => load(true) };
 }

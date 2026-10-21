@@ -111,6 +111,8 @@ export default function SaveSheetScreen() {
     screenshots: recentScreenshots,
     needsPermission: screenshotsNeedPermission,
     permissionDenied: screenshotsPermissionDenied,
+    empty: screenshotsEmpty,
+    loading: screenshotsLoading,
     requestAccess: requestScreenshotAccess,
   } = useRecentScreenshots();
 
@@ -497,9 +499,17 @@ export default function SaveSheetScreen() {
                 ) : screenshotsNeedPermission ? (
                   // Asked only when tapped -- not the moment the sheet opens.
                   <View style={styles.screenshotSection}>
-                    <Pressable onPress={requestScreenshotAccess} hitSlop={6}>
-                      <Text style={[styles.permissionHintText, { color: theme.accent }]}>최근 스크린샷 불러오기</Text>
-                    </Pressable>
+                    {screenshotsLoading ? (
+                      <ActivityIndicator size="small" color={theme.accent} style={{ alignSelf: 'flex-start' }} />
+                    ) : (
+                      <Pressable onPress={requestScreenshotAccess} hitSlop={6}>
+                        <Text style={[styles.permissionHintText, { color: theme.accent }]}>최근 스크린샷 불러오기</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                ) : screenshotsEmpty ? (
+                  <View style={styles.screenshotSection}>
+                    <Text style={[styles.screenshotLabel, { color: theme.sub }]}>최근 스크린샷이 없어요. 앨범에서 선택해 주세요.</Text>
                   </View>
                 ) : (
                   screenshotsPermissionDenied && (

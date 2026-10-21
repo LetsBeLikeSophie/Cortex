@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.cortex"
+      "package": "dev.itssophie.cortex",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -44,7 +45,10 @@
       [
         "expo-share-intent",
         {
-          "androidIntentFilters": ["text/*", "image/*"],
+          "androidIntentFilters": [
+            "text/*",
+            "image/*"
+          ],
           "disableIOS": true
         }
       ],
@@ -55,7 +59,9 @@
           "speechRecognitionPermission": "Cortex가 말한 내용을 인식할 수 있도록 음성 인식 접근을 허용해주세요."
         }
       ],
-      "./plugins/withDisableAndroidBackup"
+      "./plugins/withDisableAndroidBackup",
+      "expo-iap",
+      "./plugins/withReleaseSigning"
     ]
   }
 }

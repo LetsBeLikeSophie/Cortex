@@ -6,3 +6,6 @@
 # Local build output and Claude Code session config -- not part of the repo.
 mobile/build_log*.txt
 /.claude/
+
+# Built Play Store bundles (signed with the upload key) -- kept locally, not in git.
+/releases/

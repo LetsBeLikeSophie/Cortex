@@ -44,6 +44,9 @@ const ClassificationSchema = z.object({
   keyText: z
     .string()
     .describe("Screenshots only: the key words actually visible in the image (names, places, prices, dates, product/menu names); empty string otherwise"),
+  hasText: z
+    .boolean()
+    .describe("Screenshots only: true if the image shows readable text (captions, signs, menus, app UI, chat); false if not, and false for anything that isn't an image"),
 });
 
 export type Classification = z.infer<typeof ClassificationSchema>;
@@ -84,12 +87,20 @@ For each item, produce:
   copied as they appear (names, addresses, prices, dates, menu or product
   names) -- this is what lets someone find the screenshot by a word that was
   in it. Not a description; empty string for anything that isn't an image.
+- hasText: for screenshots only, true when the image contains readable text
+  (captions, signs, menus, app screens, chats), false when it doesn't (a
+  landscape, a face, an object). false for anything that isn't an image.
 
 Title and snippet should carry the findable specifics too (the place or
 product name, the area, the price or date if given) rather than generic
 wording like "맛집 정보" or "좋은 글". In title and snippet, write names
 exactly as the source does (Rick Astley stays Rick Astley) -- the Hangul
 spelling of a foreign name belongs in tags only.
+
+Describe what IS there. Never write that something is absent -- no
+"글자는 보이지 않음", "텍스트 없음", "설명 없음" or the like in the title,
+snippet or tags. Whether an image has text goes in hasText, and the person
+never needs to read it.
 
 Never invent facts not present in the given content. If the content is too
 thin to summarize confidently, keep title/snippet minimal and honest rather

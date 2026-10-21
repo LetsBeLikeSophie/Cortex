@@ -67,6 +67,11 @@ export function ModalSheet({
   }, [liftForKeyboard]);
 
   const lifted = liftForKeyboard && keyboardHeight > 0;
+  // Android reports the keyboard height minus the navigation bar, but this
+  // sheet's bottom edge sits at the very bottom of the screen (behind that
+  // bar) -- without adding it back the sheet stopped short and the keyboard
+  // still covered its bottom row (the detail sheet's 닫기 button).
+  const keyboardLift = keyboardHeight + (Platform.OS === 'android' ? insets.bottom : 0);
 
   useEffect(() => {
     if (!animated) return;
@@ -122,7 +127,7 @@ export function ModalSheet({
           ever sits bottom-right, on cards and the primary button -- never
           above the sheet's top edge), vintage =
           a ruled index card with an accent band and a punch hole for a handle. */}
-      <Animated.View style={[styles.sheetWrap, lifted && { bottom: keyboardHeight }, { transform: [{ translateY }] }]}>
+      <Animated.View style={[styles.sheetWrap, lifted && { bottom: keyboardLift }, { transform: [{ translateY }] }]}>
         <View
           style={[
             styles.sheet,
@@ -135,7 +140,7 @@ export function ModalSheet({
               paddingBottom: lifted ? 12 : paddingBottom + insets.bottom,
               ...(maxHeightRatio !== undefined ? { maxHeight: SHEET_TRAVEL * maxHeightRatio } : null),
               ...(lifted
-                ? { maxHeight: Math.min(SHEET_TRAVEL * (maxHeightRatio ?? 1), SHEET_TRAVEL - keyboardHeight - insets.top - 16 + keyboardOverflow) }
+                ? { maxHeight: Math.min(SHEET_TRAVEL * (maxHeightRatio ?? 1), SHEET_TRAVEL - keyboardLift - insets.top - 16 + keyboardOverflow) }
                 : null),
               ...SHEET[concept].edge(theme, bordered),
             },

@@ -106,12 +106,12 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
 export async function completeClassification(
   itemId: string,
   userId: string,
-  classification: { title: string; snippet: string; category: Category; tags: string[]; keyText?: string },
+  classification: { title: string; snippet: string; category: Category; tags: string[]; keyText?: string; hasText?: boolean },
   // Links only -- fetched by the same background metadata call that feeds
   // classifyText, so it lands here rather than as a separate write.
   thumbnailUrl?: string
 ): Promise<void> {
-  const { title, snippet, category, tags, keyText } = classification;
+  const { title, snippet, category, tags, keyText, hasText } = classification;
   const { error } = await getClient()
     .from("items")
     .update({
@@ -125,6 +125,9 @@ export async function completeClassification(
       // image by a word that was in it. The app only renders raw_text as
       // the body for text items, so this stays invisible otherwise.
       ...(keyText?.trim() ? { raw_text: keyText.trim() } : null),
+      // Screenshots only (undefined for links/text): does the image carry
+      // readable text. Kept as data for search, never shown.
+      ...(hasText !== undefined ? { has_text: hasText } : null),
       classification_status: "done" satisfies ClassificationStatus,
     })
     .eq("id", itemId)

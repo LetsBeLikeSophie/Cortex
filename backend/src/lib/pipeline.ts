@@ -166,6 +166,7 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
         userId: item.user_id,
       })),
       keyText: undefined,
+      hasText: undefined,
     };
     // og:image/oEmbed's thumbnail -- fetched alongside the classification
     // since both depend on the same metadata call.
@@ -176,7 +177,7 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
   } else {
     // keyText is a screenshot-only field -- dropped here so a text memo's
     // own raw_text can never be overwritten by it.
-    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, userId: item.user_id })), keyText: undefined };
+    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, userId: item.user_id })), keyText: undefined, hasText: undefined };
   }
   await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
   return classification.category;

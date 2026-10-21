@@ -246,3 +246,6 @@ create table if not exists ai_calls_monthly (
   primary key (month, purpose, model)
 );
 alter table ai_calls_monthly enable row level security;
+
+-- 2026-10-21: screenshots record whether the image carries readable text.
+alter table items add column if not exists has_text boolean;

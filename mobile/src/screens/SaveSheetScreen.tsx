@@ -20,7 +20,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, allEdges, conceptOf, emToTracking } from '../theme/themes';
-import { Card, isBoxed } from '../components/Card';
+import { Card, frameStyle, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
 import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, ApiItem, ItemSource, friendlyError } from '../api/client';
 import { sourceLabel } from '../api/format';
@@ -56,6 +56,13 @@ function asBareUrl(raw: string): string | null {
   } catch {
     return null;
   }
+}
+
+// Gallery asset ids MediaLibrary can delete. An album pick that came back
+// without an assetId uses its file uri as the id (pickFromLibrary) -- there
+// is nothing to delete through the media library for those.
+function deletableIds(ids: string[]): string[] {
+  return ids.filter((id) => !id.includes('://') && !id.startsWith('/'));
 }
 
 function guessSourceFromUrl(url: string): ItemSource {
@@ -96,13 +103,10 @@ export default function SaveSheetScreen() {
   // many; there's no separate "just one" path to keep in sync.
   const [selectedScreenshots, setSelectedScreenshots] = useState<RecentScreenshot[]>([]);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
-  const [savedBulk, setSavedBulk] = useState<{ items: ApiItem[]; failed: number } | null>(null);
-  // Optional, applied to every item in the batch after it saves -- collapsed
-  // behind a chip by default so it costs nothing for the common "just dump
-  // these in" case, same affordance language as ItemDetailScreen's "+ 태그".
-  const [bulkTag, setBulkTag] = useState('');
-  const [addingBulkTag, setAddingBulkTag] = useState(false);
-  const [deleteOriginalState, setDeleteOriginalState] = useState<'idle' | 'deleting' | 'done'>('idle');
+  // savedShotIds: the photos whose save went through -- the only ones the
+  // "지울까요?" step may delete (a failed one is still only in the gallery).
+  const [savedBulk, setSavedBulk] = useState<{ items: ApiItem[]; failed: number; savedShotIds: string[] } | null>(null);
+  const [deleteOriginalState, setDeleteOriginalState] = useState<'idle' | 'deleting' | 'done' | 'kept'>('idle');
   const { screenshots: recentScreenshots, permissionDenied: screenshotsPermissionDenied } = useRecentScreenshots();
 
   // The share sheet only ever hands us a content:// / file:// URI for an
@@ -164,12 +168,10 @@ export default function SaveSheetScreen() {
     if (result.canceled || result.assets.length === 0) return;
 
     if (result.assets.length > 1) {
-      setText('');
+      // The memo box stays: with several photos it's their shared note.
       setLinkUrl(null);
       setImage(null);
       setNote('');
-      setBulkTag('');
-      setAddingBulkTag(false);
       setStatus('input');
       setSelectedScreenshots(result.assets.map((a) => ({ id: a.assetId ?? a.uri, uri: a.uri, base64: a.base64 ?? undefined })));
       return;
@@ -183,8 +185,6 @@ export default function SaveSheetScreen() {
     setLinkUrl(null);
     setNote('');
     setSelectedScreenshots([]);
-    setBulkTag('');
-    setAddingBulkTag(false);
     setStatus('input');
     setImage({ base64, previewUri: asset.uri });
   };
@@ -202,8 +202,6 @@ export default function SaveSheetScreen() {
     setLinkUrl(null);
     setNote('');
     setSelectedScreenshots([]);
-    setBulkTag('');
-    setAddingBulkTag(false);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });
   };
@@ -211,7 +209,7 @@ export default function SaveSheetScreen() {
   // Tapping a "최근 스크린샷" thumbnail toggles it in/out of the batch --
   // selecting the first one is what switches the sheet into bulk mode.
   const toggleScreenshot = (shot: RecentScreenshot) => {
-    setText('');
+    // The memo box stays: with photos selected it's their shared note.
     setLinkUrl(null);
     setImage(null);
     setNote('');
@@ -221,10 +219,11 @@ export default function SaveSheetScreen() {
   };
 
   const deleteOriginalScreenshots = async () => {
-    if (selectedScreenshots.length === 0 || !MediaLibrary) return;
+    const ids = savedBulk ? deletableIds(savedBulk.savedShotIds) : [];
+    if (ids.length === 0 || !MediaLibrary) return;
     setDeleteOriginalState('deleting');
     try {
-      await MediaLibrary.Asset.delete(selectedScreenshots.map((s) => new MediaLibrary!.Asset(s.id)));
+      await MediaLibrary.Asset.delete(ids.map((id) => new MediaLibrary!.Asset(id)));
       setDeleteOriginalState('done');
     } catch (err) {
       // Android's own delete-confirmation dialog rejects this promise when
@@ -253,7 +252,9 @@ export default function SaveSheetScreen() {
     let lastError: unknown = null;
     setBulkProgress({ done: 0, total: selectedScreenshots.length });
 
-    const sharedTag = bulkTag.trim();
+    // What's in the memo box goes to every photo as its 내 메모 -- the
+    // classifier reads it as the person's own words for each one.
+    const sharedNote = text.trim() || undefined;
 
     for (let start = 0; start < selectedScreenshots.length; start += BULK_CONCURRENCY) {
       const batch = selectedScreenshots.slice(start, start + BULK_CONCURRENCY);
@@ -261,11 +262,7 @@ export default function SaveSheetScreen() {
         batch.map(async (shot, offset) => {
           try {
             const base64 = shot.base64 ?? (await new File(shot.uri).base64());
-            const item = await saveScreenshotItem('other', base64);
-            results[start + offset] = item;
-            // Best-effort -- a failed shared-tag add shouldn't undo an
-            // otherwise-successful save.
-            if (sharedTag) await addTag(item.id, sharedTag).catch(() => {});
+            results[start + offset] = await saveScreenshotItem('other', base64, sharedNote);
           } catch (err) {
             // left as null -- counted as a failure below
             lastError = err;
@@ -284,7 +281,8 @@ export default function SaveSheetScreen() {
       setStatus('error');
       return;
     }
-    setSavedBulk({ items, failed });
+    const shots = selectedScreenshots;
+    setSavedBulk({ items, failed, savedShotIds: shots.filter((_, i) => results[i] !== null).map((s) => s.id) });
     setStatus('done');
   };
 
@@ -340,15 +338,16 @@ export default function SaveSheetScreen() {
   );
 
   return (
-    <ModalSheet theme={theme} onClose={close} paddingBottom={32} maxHeightRatio={0.86}>
+    <ModalSheet theme={theme} onClose={close} paddingBottom={32} maxHeightRatio={0.86} liftForKeyboard>
         {status === 'input' || status === 'saving' || status === 'error' ? (
           <>
           {/* This sheet is a native-stack "transparentModal", rendered on
               Android inside a BottomSheetDialog (a separate Dialog window)
               that does NOT get the Activity's windowSoftInputMode=
-              "adjustResize" -- the OS never resizes around the keyboard
-              here on either platform, so this has to do the work itself. */}
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flexShrink}>
+              "adjustResize". ModalSheet's liftForKeyboard sits the sheet on
+              top of the keyboard instead (a KeyboardAvoidingView here left
+              the focused field under it). */}
+          <View style={styles.flexShrink}>
           <ScrollView ref={scrollRef} style={styles.flexShrink} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Heading theme={theme} offset={2}>
               무엇을 저장할까요?
@@ -386,7 +385,11 @@ export default function SaveSheetScreen() {
                   multiline
                   editable={status !== 'saving'}
                   onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50)}
-                  placeholder="예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래"
+                  placeholder={
+                    selectedScreenshots.length > 0
+                      ? '고른 사진들에 같이 남길 메모 (선택) — 예: 제주 여행 맛집들'
+                      : '예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래'
+                  }
                   placeholderTextColor={theme.sub}
                   style={[
                     styles.input,
@@ -451,8 +454,6 @@ export default function SaveSheetScreen() {
                         <Pressable
                           onPress={() => {
                             setSelectedScreenshots([]);
-                            setBulkTag('');
-                            setAddingBulkTag(false);
                           }}
                           disabled={status === 'saving'}
                         >
@@ -467,34 +468,6 @@ export default function SaveSheetScreen() {
                       <Text style={[styles.screenshotLabel, { color: theme.sub, marginTop: 10 }]}>
                         {bulkProgress.done}/{bulkProgress.total}장 저장 중...
                       </Text>
-                    )}
-                    {selectedScreenshots.length > 0 && status !== 'saving' && (
-                      <View style={styles.bulkTagRow}>
-                        {addingBulkTag ? (
-                          <View style={[styles.newTagBox, { borderColor: theme.line }]}>
-                            <TextInput
-                              value={bulkTag}
-                              onChangeText={setBulkTag}
-                              autoFocus
-                              placeholder="모두에게 추가할 태그"
-                              placeholderTextColor={theme.sub}
-                              onBlur={() => {
-                                if (!bulkTag.trim()) setAddingBulkTag(false);
-                              }}
-                              style={{
-                                color: theme.ink,
-                                fontFamily: 'IBMPlexSansKR_400Regular',
-                                fontSize: 13,
-                                padding: 0,
-                                minWidth: 100,
-                                outlineWidth: 0,
-                              }}
-                            />
-                          </View>
-                        ) : (
-                          <TagAddChip label="+ 모두에게 태그 추가" theme={theme} onPress={() => setAddingBulkTag(true)} />
-                        )}
-                      </View>
                     )}
                   </View>
                 ) : (
@@ -545,7 +518,7 @@ export default function SaveSheetScreen() {
               </Text>
             )}
           </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
               <GhostButton label="취소" theme={theme} onPress={close} />
@@ -613,18 +586,28 @@ export default function SaveSheetScreen() {
               })}
             </ScrollView>
 
-            {selectedScreenshots.length > 0 && (
-              <View style={styles.deleteOriginalRow}>
+            {/* Clearing the gallery is usually why the photos were brought
+                in -- so once they're safely saved, ask plainly. Only the ones
+                that actually saved can go (Android adds its own confirm). */}
+            {savedBulk && deletableIds(savedBulk.savedShotIds).length > 0 && deleteOriginalState !== 'kept' && (
+              <View style={[styles.deleteOriginalCard, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
                 {deleteOriginalState === 'done' ? (
-                  <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>원본 스크린샷을 삭제했어요.</Text>
-                ) : deleteOriginalState === 'deleting' ? (
-                  <ActivityIndicator color={theme.sub} size="small" />
+                  <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>원본 사진을 지웠어요. 저장한 건 Cortex에 그대로 있어요.</Text>
                 ) : (
-                  <Pressable onPress={deleteOriginalScreenshots}>
-                    <Text style={[styles.deleteOriginalText, styles.deleteOriginalLink, { color: theme.accent }]}>
-                      {`원본 스크린샷 ${selectedScreenshots.length}장 모두 삭제할까요?`}
+                  <>
+                    <Text style={[styles.deleteOriginalTitle, { color: theme.ink }]}>
+                      {`정리한 원본 사진 ${deletableIds(savedBulk.savedShotIds).length}장을 지울까요?`}
                     </Text>
-                  </Pressable>
+                    <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>
+                      {savedBulk.failed > 0
+                        ? `저장에 실패한 ${savedBulk.failed}장은 지우지 않아요.`
+                        : '갤러리에서만 지워지고, Cortex에는 그대로 남아요.'}
+                    </Text>
+                    <View style={styles.deleteOriginalButtons}>
+                      <GhostButton label="그대로 두기" theme={theme} size="sm" onPress={() => setDeleteOriginalState('kept')} disabled={deleteOriginalState === 'deleting'} />
+                      <SolidButton label="원본 지우기" theme={theme} size="sm" flex={1} variant="danger" onPress={deleteOriginalScreenshots} loading={deleteOriginalState === 'deleting'} />
+                    </View>
+                  </>
                 )}
               </View>
             )}
@@ -799,7 +782,6 @@ const styles = StyleSheet.create({
   analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   screenshotSection: { marginTop: 18 },
   bulkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  bulkTagRow: { marginTop: 10 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, alignSelf: 'flex-start' },
   screenshotLabel: { fontSize: 12.5, marginBottom: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   permissionHintText: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
@@ -818,7 +800,8 @@ const styles = StyleSheet.create({
   bulkResultList: { marginTop: 18, maxHeight: 220 },
   bulkResultRow: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   bulkResultTitle: { flex: 1, fontSize: 13.5, fontFamily: 'IBMPlexSansKR_400Regular' },
-  deleteOriginalRow: { marginTop: 14, alignItems: 'center' },
-  deleteOriginalText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
-  deleteOriginalLink: { textDecorationLine: 'underline' },
+  deleteOriginalCard: { marginTop: 16, padding: 16, gap: 6 },
+  deleteOriginalTitle: { fontSize: 14.5, fontFamily: 'IBMPlexSansKR_500Medium' },
+  deleteOriginalButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  deleteOriginalText: { fontSize: 12.5, lineHeight: 18, fontFamily: 'IBMPlexSansKR_400Regular' },
 });

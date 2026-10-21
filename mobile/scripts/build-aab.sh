@@ -19,6 +19,12 @@ if [ -e "$TARGET" ]; then
 fi
 
 cd "$MOBILE/android"
+# `expo prebuild --clean` regenerates android/ and drops local.properties
+# (the SDK path Gradle needs) -- put it back if it's gone.
+if [ ! -f local.properties ]; then
+  SDK="${ANDROID_HOME:-$HOME/AppData/Local/Android/Sdk}"
+  echo "sdk.dir=$(cygpath -m "$SDK" 2>/dev/null || echo "$SDK")" > local.properties
+fi
 ./gradlew bundleRelease -q
 mkdir -p "$OUT"
 cp app/build/outputs/bundle/release/app-release.aab "$TARGET"

@@ -496,7 +496,8 @@ export default function ItemDetailScreen() {
                 <Text style={[styles.aiMemoLabel, { color: theme.sub }]}>AI 메모</Text>
                 {sparkleButton}
               </View>
-              <Text style={[styles.body, styles.aiMemoText, { color: snippet ? theme.sub : theme.line }]}>
+              {/* Empty/working state in sub italic -- theme.line was ~1.1-1.3:1, unreadable. */}
+              <Text style={[styles.body, styles.aiMemoText, { color: theme.sub, fontStyle: snippet ? 'normal' : 'italic' }]}>
                 {snippet || (organizing ? 'AI가 정리하는 중...' : '아직 AI 메모가 없어요')}
               </Text>
             </View>
@@ -507,7 +508,8 @@ export default function ItemDetailScreen() {
           {item.capture_type !== 'text' && (
             <View style={styles.editRow}>
               <View style={styles.flex1}>
-                {inlineInput('userNote', [styles.body, { color: theme.accent, fontStyle: 'italic' }], '내 메모 — 말하거나 눌러서 적어요')}
+                {/* The person's own words: ink (accent is reserved for AI/status). */}
+                {inlineInput('userNote', [styles.body, { color: theme.ink, fontStyle: 'italic' }], '내 메모 — 말하거나 눌러서 적어요')}
               </View>
               {voiceButton('userNote')}
             </View>

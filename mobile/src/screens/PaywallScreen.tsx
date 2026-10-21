@@ -4,7 +4,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { OUTLINE, allEdges } from '../theme/themes';
+import { frameStyle } from '../components/Card';
 import { fetchPlan, Plan } from '../api/client';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
@@ -71,7 +71,7 @@ export default function PaywallScreen() {
         </Text>
       )}
 
-      <View style={[styles.card, { ...allEdges(OUTLINE, theme.line), backgroundColor: theme.surface, borderRadius: theme.cardRadius }]}>
+      <View style={[styles.card, { backgroundColor: theme.surface, ...frameStyle(theme), borderRadius: theme.cardRadius }]}>
         <View style={styles.priceRow}>
           <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
           <Text style={[styles.price, { color: theme.accent }]}>{PRICE}</Text>

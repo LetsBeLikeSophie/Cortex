@@ -11,7 +11,7 @@ import { signOut } from '../auth/kakaoLogin';
 import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { screenGutter } from '../components/Card';
+import { frameStyle, screenGutter } from '../components/Card';
 import { ConfirmCard } from '../components/ConfirmCard';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -112,14 +112,14 @@ export default function ProfileScreen() {
           <View style={{ gap: 28 }}>
             <Pressable
               onPress={() => navigation.navigate('Paywall')}
-              style={[styles.signOutButton, styles.themeRow, allEdges(OUTLINE, theme.line), { borderRadius: theme.cardRadius }]}
+              style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
             >
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>플랜</Text>
               <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{planLabel}</Text>
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('ThemePicker')}
-              style={[styles.signOutButton, styles.themeRow, allEdges(OUTLINE, theme.line), { borderRadius: theme.cardRadius }]}
+              style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
             >
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>테마</Text>
               <View style={styles.themeRowRight}>
@@ -133,7 +133,7 @@ export default function ProfileScreen() {
               <Pressable
                 onPress={onSignOut}
                 disabled={state === 'signingOut'}
-                style={[styles.signOutButton, allEdges(OUTLINE, theme.line), { borderRadius: theme.btnRadius, opacity: state === 'signingOut' ? 0.6 : 1 }]}
+                style={[styles.signOutButton, frameStyle(theme), { borderRadius: theme.btnRadius, opacity: state === 'signingOut' ? 0.6 : 1 }]}
               >
                 {state === 'signingOut' ? (
                   <ActivityIndicator color={theme.ink} />

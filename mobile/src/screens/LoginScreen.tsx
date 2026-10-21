@@ -3,7 +3,8 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, OUTLINE, allEdges, emToTracking } from '../theme/themes';
+import { MONO, emToTracking } from '../theme/themes';
+import { frameStyle } from '../components/Card';
 import { signInWithKakao } from '../auth/kakaoLogin';
 import { useAuth } from '../auth/AuthContext';
 import { friendlyError } from '../api/client';
@@ -95,7 +96,7 @@ export default function LoginScreen() {
         <Pressable
           onPress={onGuestPress}
           disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.guestButton, allEdges(OUTLINE, theme.line), { borderRadius: theme.btnRadius, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
+          style={[styles.guestButton, frameStyle(theme), { borderRadius: theme.btnRadius, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
         >
           {status === 'guestLoading' ? (
             <ActivityIndicator color={theme.ink} />

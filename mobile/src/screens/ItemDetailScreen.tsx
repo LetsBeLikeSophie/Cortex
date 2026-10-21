@@ -17,21 +17,23 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, asQuotaError, deleteItem, fetchItem, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, tagFromVoice, updateItem, friendlyError } from '../api/client';
+import { addTag, asQuotaError, deleteItem, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
-import { pickStyle, pickTextStyle } from '../components/Fields';
-import { RestoreIcon, TrashIcon, SourceIcon } from '../components/Icons';
+import { RestoreIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
+import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
-type EditField = 'title' | 'snippet' | 'rawText';
+// snippet (the AI memo) isn't typed into -- it's only ever replaced by the
+// AI or put back with undo -- but it shares the save/undo plumbing.
+type EditField = 'title' | 'snippet' | 'rawText' | 'userNote';
 
 const REORGANIZE_POLL_MS = 2000;
 
@@ -54,18 +56,26 @@ export default function ItemDetailScreen() {
   const [tagError, setTagError] = useState('');
   const [addingTag, setAddingTag] = useState(false);
   const [newTag, setNewTag] = useState('');
-  const [voiceTagLoading, setVoiceTagLoading] = useState(false);
 
-  // Title / memo / body are editable in place: tap the text, it becomes an
-  // input, leaving it (blur or done) saves. For screenshots and links the
-  // body is the AI memo (snippet); for a text memo it's the text itself.
+  // What's typed into, in place (tap the text; leaving it saves): the title,
+  // and the person's own words -- "내 메모" (user_note) on a screenshot or
+  // link, the body itself on a text memo. Both also take the mic. The AI
+  // memo (snippet) is read-only: it's search text, and ✦ rewrites it.
   const [title, setTitle] = useState(item.title ?? '');
   const [snippet, setSnippet] = useState(item.snippet ?? '');
   const [rawText, setRawText] = useState(item.raw_text ?? '');
+  const [userNote, setUserNote] = useState(item.user_note ?? '');
+  // What was in the field when a recording started -- speech appends to it.
+  const voiceBaseRef = useRef('');
   const [category, setCategory] = useState(item.category);
   // What the server has for each field, and -- after a change -- what it
   // was before, so the undo icon next to the field can put it back.
-  const savedRef = useRef<Record<EditField, string>>({ title: item.title ?? '', snippet: item.snippet ?? '', rawText: item.raw_text ?? '' });
+  const savedRef = useRef<Record<EditField, string>>({
+    title: item.title ?? '',
+    snippet: item.snippet ?? '',
+    rawText: item.raw_text ?? '',
+    userNote: item.user_note ?? '',
+  });
   const [undo, setUndo] = useState<Partial<Record<EditField, string>>>({});
   const [editError, setEditError] = useState('');
   const [organizing, setOrganizing] = useState(item.classification_status === 'pending');
@@ -125,7 +135,7 @@ export default function ItemDetailScreen() {
           setOrganizing(false);
           // The AI's rewrite can be undone like a manual edit.
           const before = savedRef.current;
-          savedRef.current = { title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '' };
+          savedRef.current = { title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '', userNote: before.userNote };
           setUndo({
             ...(before.title !== savedRef.current.title ? { title: before.title } : null),
             ...(before.snippet !== savedRef.current.snippet ? { snippet: before.snippet } : null),
@@ -146,8 +156,8 @@ export default function ItemDetailScreen() {
     };
   }, [organizing, item.id]);
 
-  const valueOf = (field: EditField) => (field === 'title' ? title : field === 'snippet' ? snippet : rawText);
-  const setterOf = (field: EditField) => (field === 'title' ? setTitle : field === 'snippet' ? setSnippet : setRawText);
+  const valueOf = (field: EditField) => ({ title, snippet, rawText, userNote })[field];
+  const setterOf = (field: EditField) => ({ title: setTitle, snippet: setSnippet, rawText: setRawText, userNote: setUserNote })[field];
 
   const save = (field: EditField, next: string, undoTo: string | undefined) => {
     const previous = savedRef.current[field];
@@ -176,13 +186,31 @@ export default function ItemDetailScreen() {
 
   // Typing goes straight into the text on screen (no edit box); leaving the
   // field saves it, and the old text becomes the undo target.
-  const commit = (field: EditField) => {
-    const next = valueOf(field).trim();
+  const commit = (field: EditField, value = valueOf(field)) => {
+    const next = value.trim();
     const previous = savedRef.current[field];
     if (next === previous) return;
     setEditError('');
     save(field, next, previous);
   };
+
+  const voiceButton = (field: EditField) => (
+    <View style={styles.micSlot}>
+      <VoiceInputButton
+        theme={theme}
+        size={16}
+        onStart={() => {
+          const current = valueOf(field);
+          voiceBaseRef.current = current.trim() ? `${current.trimEnd()} ` : '';
+        }}
+        onResult={(spoken, isFinal) => {
+          const text = voiceBaseRef.current + spoken;
+          setterOf(field)(text);
+          if (isFinal) commit(field, text);
+        }}
+      />
+    </View>
+  );
 
   const undoEdit = (field: EditField) => {
     const target = undo[field];
@@ -235,6 +263,10 @@ export default function ItemDetailScreen() {
     try {
       await reorganizeItem(item.id);
       setOrganizing(true);
+      // An icon-only button that spends quota should say so.
+      fetchPlan()
+        .then((p) => showToast(`AI가 다시 정리하고 있어요 · 이번 달 ${Math.max(0, p.classify.limit - p.classify.used)}건 남음`))
+        .catch(() => showToast('AI가 다시 정리하고 있어요'));
     } catch (err) {
       if (asQuotaError(err)) {
         navigation.navigate('Paywall', { reason: 'classify' });
@@ -289,31 +321,6 @@ export default function ItemDetailScreen() {
     });
   };
 
-  // A spoken sentence ("이건 엄마 생신 선물 후보야") almost never reads as a
-  // clean tag on its own, so this goes through tagFromVoice's small cleanup
-  // call first, then adds the result the same optimistic way submitNewTag
-  // does. Only called with the *final* transcript, not every partial one.
-  const submitVoiceTag = async (spokenText: string) => {
-    const trimmedSpoken = spokenText.trim();
-    if (!trimmedSpoken) return;
-    setVoiceTagLoading(true);
-    setTagError('');
-    try {
-      const { tag } = await tagFromVoice(trimmedSpoken);
-      const trimmed = tag.trim();
-      if (!trimmed || aiTags.includes(trimmed) || userTags.includes(trimmed)) return;
-      setUserTags((current) => [...current, trimmed]);
-      addTag(item.id, trimmed).catch((err) => {
-        setUserTags((current) => current.filter((t) => t !== trimmed));
-        setTagError(friendlyError(err));
-      });
-    } catch (err) {
-      setTagError(friendlyError(err));
-    } finally {
-      setVoiceTagLoading(false);
-    }
-  };
-
   const confirmDelete = async () => {
     setDeleteState('deleting');
     try {
@@ -347,9 +354,16 @@ export default function ItemDetailScreen() {
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
               {category}
             </Text>
-            <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label="휴지통으로 이동">
-              <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
-            </IconButton>
+            <View style={styles.headerActions}>
+              {/* Rewrite the title/memo/tags with the person's own words as the
+                  guide (see pipeline.ts hintFor). Same ✦ as sentence search. */}
+              <IconButton theme={theme} on="sheet" onPress={reorganize} label="AI로 다시 정리">
+                {organizing ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon size={15} color={theme.accent} strokeWidth={1.4} />}
+              </IconButton>
+              <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label="휴지통으로 이동">
+                <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
+              </IconButton>
+            </View>
           </View>
 
           {deleteState !== 'idle' && (
@@ -406,15 +420,6 @@ export default function ItemDetailScreen() {
             ) : (
               <TagAddChip label="+ 태그" theme={theme} onPress={openTagInput} />
             )}
-            <VoiceInputButton
-              theme={theme}
-              size={14}
-              variant="chip"
-              onResult={(text, isFinal) => {
-                if (isFinal) submitVoiceTag(text);
-              }}
-            />
-            {voiceTagLoading && <ActivityIndicator size="small" color={theme.accent} style={styles.voiceTagSpinner} />}
           </ScrollView>
           {tagError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>태그 저장 실패: {tagError}</Text>}
 
@@ -449,40 +454,35 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {item.capture_type !== 'text' && (
+          {item.capture_type !== 'text' && (snippet !== '' || undo.snippet !== undefined) && (
             <View style={styles.editRow}>
-              <View style={styles.flex1}>{inlineInput('snippet', [styles.body, { color: theme.sub }], organizing ? '' : '메모 없음')}</View>
+              <Text style={[styles.body, styles.flex1, { color: theme.sub }]}>{snippet}</Text>
               {undoButton('snippet')}
             </View>
           )}
 
-          {/* The user's own "why I saved this" -- kept visually distinct
-              (italic, accent-colored) from the AI snippet above it, since
-              it's their words, not a generated summary. */}
-          {item.user_note && (
-            <Text style={[styles.body, { color: theme.accent, fontStyle: 'italic', marginTop: snippet ? 4 : 0 }]}>
-              "{item.user_note}"
-            </Text>
+          {/* The person's own words -- kept visually distinct (italic,
+              accent) from the AI memo above, since it isn't generated. */}
+          {item.capture_type !== 'text' && (
+            <View style={styles.editRow}>
+              <View style={styles.flex1}>
+                {inlineInput('userNote', [styles.body, { color: theme.accent, fontStyle: 'italic' }], '내 메모 — 말하거나 눌러서 적어요')}
+              </View>
+              {undoButton('userNote')}
+              {voiceButton('userNote')}
+            </View>
           )}
 
           {item.capture_type === 'text' && (
             <View style={styles.editRow}>
-              <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], '본문 없음')}</View>
+              <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], '본문 — 말하거나 눌러서 적어요')}</View>
               {undoButton('rawText')}
+              {voiceButton('rawText')}
             </View>
           )}
 
           {editError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>{editError}</Text>}
 
-          {/* Rewrite the title/memo however you like (or clear them), then
-              let the AI redo it with your version as the guide. */}
-          <Pressable onPress={reorganize} disabled={organizing} style={[styles.reorganize, pickStyle(theme)]}>
-            {organizing ? (
-              <ActivityIndicator size="small" color={theme.accent} />
-            ) : (
-              <Text style={pickTextStyle(theme)}>✦ AI로 다시 정리</Text>
-            )}
-          </Pressable>
 
           {item.raw_url && (
             <Pressable onPress={() => Linking.openURL(item.raw_url!)} style={styles.linkRow}>
@@ -527,6 +527,8 @@ export default function ItemDetailScreen() {
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerActions: { flexDirection: 'row', gap: 8 },
+  micSlot: { marginTop: 10 },
   imageBox: { marginTop: 16, borderRadius: 14, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
@@ -538,14 +540,12 @@ const styles = StyleSheet.create({
   editRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   flex1: { flex: 1 },
   undo: { marginTop: 14, padding: 2 },
-  reorganize: { alignSelf: 'flex-start', marginTop: 16, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, minWidth: 120, alignItems: 'center' },
   tagScroll: { marginTop: 16, flexGrow: 0 },
   // paddingVertical: same Android horizontal-ScrollView bottom-edge clip as
   // Home's tab strip -- outlined tag chips lost their bottom border.
   tagRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8, paddingVertical: 2 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
   errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
-  voiceTagSpinner: { marginLeft: 2 },
   timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   footerMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerMetaText: { marginTop: 0 },

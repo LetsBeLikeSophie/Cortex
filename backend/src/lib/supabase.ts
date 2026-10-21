@@ -182,7 +182,7 @@ export async function listPendingItems(limit: number): Promise<ItemRecord[]> {
 export async function updateItemText(
   userId: string,
   itemId: string,
-  patch: { title?: string | null; snippet?: string | null; rawText?: string | null }
+  patch: { title?: string | null; snippet?: string | null; rawText?: string | null; userNote?: string | null }
 ): Promise<ItemRecord> {
   const { data, error } = await getClient()
     .from("items")
@@ -190,6 +190,7 @@ export async function updateItemText(
       ...(patch.title !== undefined ? { title: patch.title } : null),
       ...(patch.snippet !== undefined ? { snippet: patch.snippet } : null),
       ...(patch.rawText !== undefined ? { raw_text: patch.rawText } : null),
+      ...(patch.userNote !== undefined ? { user_note: patch.userNote } : null),
     })
     .eq("id", itemId)
     .eq("user_id", userId)

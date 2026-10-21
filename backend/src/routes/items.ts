@@ -31,6 +31,8 @@ const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
   snippet: z.string().max(1000).optional(),
   rawText: z.string().max(20000).optional(),
+  // The person's own note on a screenshot/link ("내 메모").
+  userNote: z.string().max(1000).optional(),
 });
 
 const ListQuerySchema = z.object({
@@ -277,6 +279,7 @@ export async function itemsRoutes(app: FastifyInstance) {
       title: blankToNull(parsed.data.title),
       snippet: blankToNull(parsed.data.snippet),
       rawText: blankToNull(parsed.data.rawText),
+      userNote: blankToNull(parsed.data.userNote),
     });
     return reply.send(updated);
   });

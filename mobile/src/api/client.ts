@@ -332,7 +332,7 @@ export function fetchItem(itemId: string) {
 
 // The person's own edits from the detail screen. An empty string clears the
 // field. rawText is the body of a text memo only.
-export function updateItem(itemId: string, patch: { title?: string; snippet?: string; rawText?: string }) {
+export function updateItem(itemId: string, patch: { title?: string; snippet?: string; rawText?: string; userNote?: string }) {
   return request<ApiItem>(`/items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: JSON.stringify(patch) });
 }
 

@@ -132,8 +132,14 @@ export default function HomeScreen() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   useEffect(() => {
     if (!hasShareIntent) return;
+    // Several images at once (ACTION_SEND_MULTIPLE, e.g. Mehh's screenshot
+    // cleanup) go to the sheet's bulk mode; one stays the single-image flow.
+    // The native module already copied each one into our cache dir, so the
+    // sender trashing its originals afterwards doesn't lose them.
+    const images = (shareIntent.files ?? []).filter((f) => f.path && (f.mimeType ?? 'image/').startsWith('image/'));
     navigation.navigate('SaveSheet', {
-      sharedImageUri: shareIntent.files?.[0]?.path,
+      sharedImageUri: images.length === 1 ? images[0].path : undefined,
+      sharedImageUris: images.length > 1 ? images.map((f) => f.path) : undefined,
       sharedUrl: shareIntent.webUrl ?? undefined,
       sharedText: shareIntent.webUrl ? undefined : shareIntent.text ?? undefined,
     });

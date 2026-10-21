@@ -23,7 +23,7 @@ const PRICE = '월 3,900원';
 
 const HEADLINES = {
   classify: '이번 달 AI 정리를 다 썼어요',
-  search: '이번 달 문장 검색을 다 썼어요',
+  search: '이번 달 AI 검색을 다 썼어요',
   default: 'Cortex Pro',
 } as const;
 
@@ -50,7 +50,7 @@ export default function PaywallScreen() {
   const benefits = [
     pro ? `AI 정리 월 ${pro.classify.toLocaleString()}건 — 저장하는 대로 바로 정리돼요` : '저장하는 대로 AI가 바로 정리해요',
     plan && plan.unclassifiedCount > 0 ? `미분류함 ${plan.unclassifiedCount}건도 한 번에 정리돼요` : '미분류함에 쌓이지 않아요',
-    pro ? `문장으로 찾기 월 ${pro.search.toLocaleString()}회` : '문장으로 찾기를 넉넉하게',
+    pro ? `AI 검색 월 ${pro.search.toLocaleString()}회` : 'AI 검색을 넉넉하게',
   ];
 
   const status =
@@ -59,7 +59,7 @@ export default function PaywallScreen() {
       : plan?.tier === 'pro'
         ? 'Pro 이용 중'
         : plan
-          ? `무료 · 이번 달 AI 정리 ${plan.classify.used}/${plan.classify.limit}건 · 문장 검색 ${plan.search.used}/${plan.search.limit}회`
+          ? `무료 · 이번 달 AI 정리 ${plan.classify.used}/${plan.classify.limit}건 · AI 검색 ${plan.search.used}/${plan.search.limit}회`
           : '';
 
   return (
@@ -69,7 +69,7 @@ export default function PaywallScreen() {
       </Heading>
       {reason && (
         <Text style={[styles.sub, { color: theme.sub }]}>
-          저장은 계속 돼요. 정리와 문장 검색은 다음 달에 다시 생기거나, Pro로 바로 이어서 쓸 수 있어요.
+          저장은 계속 돼요. AI 정리와 AI 검색은 다음 달에 다시 생기거나, Pro로 바로 이어서 쓸 수 있어요.
         </Text>
       )}
 

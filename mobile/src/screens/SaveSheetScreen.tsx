@@ -107,7 +107,12 @@ export default function SaveSheetScreen() {
   // "지울까요?" step may delete (a failed one is still only in the gallery).
   const [savedBulk, setSavedBulk] = useState<{ items: ApiItem[]; failed: number; savedShotIds: string[] } | null>(null);
   const [deleteOriginalState, setDeleteOriginalState] = useState<'idle' | 'deleting' | 'done' | 'kept'>('idle');
-  const { screenshots: recentScreenshots, permissionDenied: screenshotsPermissionDenied } = useRecentScreenshots();
+  const {
+    screenshots: recentScreenshots,
+    needsPermission: screenshotsNeedPermission,
+    permissionDenied: screenshotsPermissionDenied,
+    requestAccess: requestScreenshotAccess,
+  } = useRecentScreenshots();
 
   // The share sheet only ever hands us a content:// / file:// URI for an
   // image, never the bytes directly -- read it into base64 once, here,
@@ -131,6 +136,19 @@ export default function SaveSheetScreen() {
       cancelled = true;
     };
   }, [route.params?.sharedImageUri]);
+
+  // Several images shared at once land straight in bulk mode, already
+  // selected -- each is a cache-dir copy, read to base64 at save time like a
+  // recent-screenshot tile. Their ids are file:// uris, so deletableIds keeps
+  // the "원본 지울까요?" step away from them (the sender owns the originals).
+  const sharedImageUris = route.params?.sharedImageUris;
+  const [sharedShots, setSharedShots] = useState<RecentScreenshot[]>([]);
+  useEffect(() => {
+    if (!sharedImageUris?.length) return;
+    const shots = sharedImageUris.map((uri) => ({ id: uri, uri }));
+    setSharedShots(shots);
+    setSelectedScreenshots(shots);
+  }, [sharedImageUris]);
 
   const scrollRef = useRef<ScrollView>(null);
   // Text already in the memo when a voice dictation starts -- live partial
@@ -316,9 +334,15 @@ export default function SaveSheetScreen() {
       });
   };
 
+  // Shared-in photos and album picks that aren't in the recent row lead it,
+  // so the batch is always visible (shared ones stay after a deselect).
+  const gridScreenshots: RecentScreenshot[] = [];
+  for (const shot of [...sharedShots, ...selectedScreenshots, ...recentScreenshots]) {
+    if (!gridScreenshots.some((g) => g.id === shot.id)) gridScreenshots.push(shot);
+  }
   const screenshotGrid = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.screenshotRow}>
-      {recentScreenshots.map((shot) => {
+      {gridScreenshots.map((shot) => {
         const selected = selectedScreenshots.some((s) => s.id === shot.id);
         return (
           <Pressable key={shot.id} onPress={() => toggleScreenshot(shot)} disabled={status === 'saving'}>
@@ -442,7 +466,7 @@ export default function SaveSheetScreen() {
                   </Pressable>
                 </View>
 
-                {recentScreenshots.length > 0 ? (
+                {gridScreenshots.length > 0 ? (
                   <View style={styles.screenshotSection}>
                     <View style={styles.bulkHeader}>
                       <Text style={[styles.screenshotLabel, { color: theme.sub, marginBottom: 0 }]}>
@@ -469,6 +493,13 @@ export default function SaveSheetScreen() {
                         {bulkProgress.done}/{bulkProgress.total}장 저장 중...
                       </Text>
                     )}
+                  </View>
+                ) : screenshotsNeedPermission ? (
+                  // Asked only when tapped -- not the moment the sheet opens.
+                  <View style={styles.screenshotSection}>
+                    <Pressable onPress={requestScreenshotAccess} hitSlop={6}>
+                      <Text style={[styles.permissionHintText, { color: theme.accent }]}>최근 스크린샷 불러오기</Text>
+                    </Pressable>
                   </View>
                 ) : (
                   screenshotsPermissionDenied && (

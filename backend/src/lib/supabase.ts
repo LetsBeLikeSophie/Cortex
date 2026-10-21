@@ -253,15 +253,16 @@ export async function downloadScreenshot(imagePath: string): Promise<Buffer> {
 export async function seedSampleItem(userId: string): Promise<void> {
   await insertItem({
     userId,
-    source: "instagram",
+    source: "memo",
     captureType: "text",
     rawText:
-      "인스타 게시물이든, 유튜브 링크든, 캡처한 스크린샷이든 공유 버튼 눌러서 코르텍스만 골라주면 끝이에요. " +
-      "제목 붙이고 태그 다는 건 AI가 알아서 할게요. 나중에 뭐였는지 가물가물하면 검색창에 아무 단어나 던져보세요, " +
-      "여기서 찾아드릴게요. 이 메모는 구경만 하고 지우셔도 되고, 첫 기억으로 계속 두셔도 저는 안 서운해요.",
+      "인스타 게시물이든, 유튜브 링크든, 캡처한 스크린샷이든 공유 버튼을 눌러 Cortex를 고르면 끝이에요. " +
+      "제목과 태그는 AI가 붙여요. 사진이나 링크에는 왜 저장했는지 내 메모를 말로 남겨도 돼요. " +
+      "나중에 찾을 땐 검색창에 단어를 치면 바로 나오고, 기억이 흐릿하면 문장으로 쓰고 ✦를 누르세요. " +
+      "이 메모는 지워도 되고, 첫 기억으로 둬도 돼요.",
     title: "저장 눌렀는데 어디로 갔지?",
-    snippet: "지금 보고 계신 게 정답이에요",
-    category: "볼 것",
+    snippet: "Cortex 사용법 안내",
+    category: "기억할 것",
     tags: ["가이드", "첫기억"],
     classificationStatus: "done",
   });

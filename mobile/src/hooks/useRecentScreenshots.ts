@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import MediaLibrary from '../native/mediaLibrary';
 
 export interface RecentScreenshot {
@@ -18,43 +18,46 @@ const ALBUM_TITLES = ['Screenshots', '스크린샷'];
 
 export interface RecentScreenshotsState {
   screenshots: RecentScreenshot[];
-  // True once we've actually checked and the answer is no -- lets the save
-  // sheet show *why* the quick-pick row is empty instead of just quietly
-  // rendering nothing, which otherwise looks identical to "no screenshots
-  // exist" and leaves no way to tell the two apart.
+  // Photo access hasn't been granted yet but can still be asked for -- the
+  // save sheet shows a "최근 스크린샷 불러오기" row that calls requestAccess,
+  // instead of a system prompt popping up the moment the sheet opens (on a
+  // first-time user's very first tap of 추가, before they've decided to add
+  // a photo at all).
+  needsPermission: boolean;
+  // Asked and refused for good (Android won't show the prompt again) -- the
+  // sheet points to Settings instead of rendering nothing, which would look
+  // identical to "no screenshots exist".
   permissionDenied: boolean;
+  requestAccess: () => void;
 }
 
 // Native-only (no photo library on web) and read-only by design: never
-// requests write access, and never asks for permission more than once --
-// if the user said no, this never nags again every time the save sheet
-// opens (see permissionDenied above for how that gets surfaced instead).
+// requests write access, and only asks when the person taps to load.
 export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
   const [screenshots, setScreenshots] = useState<RecentScreenshot[]>([]);
+  const [needsPermission, setNeedsPermission] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const cancelledRef = useRef(false);
 
-  useEffect(() => {
-    if (!MediaLibrary) return;
-    const lib = MediaLibrary;
-    let cancelled = false;
-
-    (async () => {
+  const load = useCallback(
+    async (ask: boolean) => {
+      if (!MediaLibrary) return;
+      const lib = MediaLibrary;
       let perm = await lib.getPermissionsAsync();
-      if (!perm.granted && perm.canAskAgain) {
+      if (!perm.granted && perm.canAskAgain && ask) {
         perm = await lib.requestPermissionsAsync();
       }
-      if (cancelled) return;
-      if (!perm.granted) {
-        setPermissionDenied(true);
-        return;
-      }
+      if (cancelledRef.current) return;
+      setNeedsPermission(!perm.granted && perm.canAskAgain);
+      setPermissionDenied(!perm.granted && !perm.canAskAgain);
+      if (!perm.granted) return;
 
       let album: InstanceType<typeof lib.Album> | null = null;
       for (const title of ALBUM_TITLES) {
         album = await lib.Album.get(title).catch(() => null);
         if (album) break;
       }
-      if (!album || cancelled) return;
+      if (!album || cancelledRef.current) return;
 
       const assets = await new lib.Query()
         .album(album)
@@ -62,20 +65,26 @@ export function useRecentScreenshots(limit = 12): RecentScreenshotsState {
         .limit(limit)
         .exe()
         .catch(() => []);
-      if (cancelled) return;
+      if (cancelledRef.current) return;
 
       const resolved = await Promise.all(
         assets.map(async (asset) => ({ id: asset.id, uri: await asset.getUri().catch(() => null) }))
       );
-      if (!cancelled) {
+      if (!cancelledRef.current) {
         setScreenshots(resolved.filter((s): s is RecentScreenshot => !!s.uri));
       }
-    })();
+    },
+    [limit]
+  );
 
+  // On open: only look (no prompt) -- loads right away once access exists.
+  useEffect(() => {
+    cancelledRef.current = false;
+    load(false);
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
-  }, [limit]);
+  }, [load]);
 
-  return { screenshots, permissionDenied };
+  return { screenshots, needsPermission, permissionDenied, requestAccess: () => load(true) };
 }

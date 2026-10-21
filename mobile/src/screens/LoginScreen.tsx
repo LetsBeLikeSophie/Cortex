@@ -74,7 +74,7 @@ export default function LoginScreen() {
           공유하면{'\n'}저장되는 기억
         </Text>
         <Text style={[styles.subtitle, { color: theme.sub }]}>
-          카카오 계정으로 로그인하면{'\n'}내 기억만 안전하게 모아둘 수 있어요.
+          카카오로 시작하면 Pro 7일 무료 체험이 있어요.{'\n'}내 기억은 계정에 안전하게 모여요.
         </Text>
       </View>
 
@@ -105,7 +105,7 @@ export default function LoginScreen() {
           )}
         </Pressable>
         <Text style={[styles.guestNote, { color: theme.sub }]}>
-          게스트 기록은 이 기기에만 저장돼요. 다른 기기에서는 볼 수 없어요.
+          게스트는 체험 없이 무료로 시작해요. 기록은 이 기기에서만 볼 수 있고, 나중에 카카오 계정으로 옮길 수 없어요.
         </Text>
         <Text style={[styles.policyNote, { color: theme.sub }]}>
           계속하면{' '}

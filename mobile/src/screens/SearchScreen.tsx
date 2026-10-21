@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, Pressable, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,11 +25,12 @@ import { ResultRow } from '../components/ListItems';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Heading } from '../components/Typography';
 import { ChipQueryRow, SearchChip } from '../components/Chips';
-import { HashIcon, SparkleIcon } from '../components/Icons';
-import { SegmentedToggle } from '../components/SegmentedToggle';
+import { HashIcon, SearchIcon, SparkleIcon } from '../components/Icons';
+import { fieldStyle } from '../components/Fields';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { useChipQuery } from '../hooks/useChipQuery';
+import { looksLikeSentenceWord } from '../data/sentenceDetect';
 import type { RootStackParamList } from '../navigation/types';
 
 interface Hit {
@@ -175,34 +176,28 @@ export default function SearchScreen() {
   const boxed = theme.list !== 'line';
   const txt = copyFor();
 
-  const {
-    mode,
-    setMode,
-    suggestSentence,
-    chips,
-    draft,
-    includeChips,
-    excludeChips,
-    addChip,
-    onChangeText,
-    commitDraft,
-    onKeyPress,
-    toggleChip,
-    removeChip,
-  } = useChipQuery();
-  const sentence = mode === 'sentence';
+  // One box. Typing searches instantly (no AI, nothing metered); Enter only
+  // closes the keyboard. ✦ (or the mic) sends what's typed to the AI search.
+  // A "-word" excludes it. Tag include/exclude chips live one layer down,
+  // under "# 태그로 좁히기", for when the plain box isn't enough.
+  const [query, setQuery] = useState('');
+  const tags = useChipQuery();
+  const [filterOpen, setFilterOpen] = useState(false);
+
   const [hits, setHits] = useState<Hit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Sentence mode only: the LLM's last reading of the sentence (null until
-  // Enter is pressed), and how many hits dropping its filters would give.
+  // AI search state: the text the AI results belong to (typing anything else
+  // drops back to instant search), its reading of it, and how many hits
+  // dropping its filters would give.
+  const [aiQuery, setAiQuery] = useState<string | null>(null);
   const [interpretation, setInterpretation] = useState<SearchInterpretation | null>(null);
   const [relaxedCount, setRelaxedCount] = useState<number | null>(null);
   const [asking, setAsking] = useState(false);
-  // This month's sentence searches are used up (402 from /items/search/ask).
+  // This month's AI searches are used up (402 from /items/search/ask).
   const [quotaHit, setQuotaHit] = useState<QuotaError | null>(null);
-  // Every tag actually saved, for tag-mode autocomplete -- refreshed on
-  // focus so tags added elsewhere show up without a restart.
+  // Every saved tag, for the tag filter's autocomplete -- refreshed on focus
+  // so tags added elsewhere show up without a restart.
   const [allTags, setAllTags] = useState<string[]>([]);
   useFocusEffect(
     React.useCallback(() => {
@@ -212,12 +207,22 @@ export default function SearchScreen() {
     }, []),
   );
 
-  const runSearch = React.useCallback((include: string[], exclude: string[]) => {
+  const trimmed = query.trim();
+  const aiMode = aiQuery !== null && aiQuery === trimmed;
+
+  // Instant search terms: typed words ("-word" = exclude) plus tag chips.
+  const words = trimmed ? trimmed.split(/\s+/) : [];
+  const isExcl = (w: string) => w.startsWith('-') && w.length > 1;
+  const include = words.filter((w) => !isExcl(w)).concat(tags.includeChips.map((c) => c.text));
+  const exclude = words.filter(isExcl).map((w) => w.slice(1)).concat(tags.excludeChips.map((c) => c.text));
+  const termsKey = JSON.stringify([include, exclude]);
+
+  const runSearch = React.useCallback((inc: string[], exc: string[]) => {
     setLoading(true);
-    apiSearchItems(include, exclude)
+    apiSearchItems(inc, exc)
       .then((res) => {
         const next = res.items
-          .map((raw) => ({ raw, result: toSearchResult(raw, include) }))
+          .map((raw) => ({ raw, result: toSearchResult(raw, inc) }))
           .sort((a, b) => b.result.matchedCount - a.result.matchedCount);
         setHits(next);
         setError(null);
@@ -229,26 +234,44 @@ export default function SearchScreen() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Instant search, debounced -- skipped while showing AI results for the
+  // exact text in the box.
+  useEffect(() => {
+    if (aiMode) return;
+    setInterpretation(null);
+    setRelaxedCount(null);
+    if (include.length === 0 && exclude.length === 0) {
+      setHits([]);
+      setError(null);
+      return;
+    }
+    const timer = setTimeout(() => runSearch(include, exclude), 250);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [termsKey, aiMode]);
+
   const applySmart = (res: SmartSearchResponse, q: SearchInterpretation) => {
-    // Server order is already score-then-newest.
+    // Server order: the asked-for date order, else score-then-newest.
     setHits(res.items.map((raw) => ({ raw, result: toSmartSearchResult(raw, q.keywords) })));
     setRelaxedCount(res.relaxed_count);
     setError(null);
   };
 
   const ask = (spoken?: string) => {
-    const query = (spoken ?? draft).trim();
-    if (!query) return;
+    const text = (spoken ?? query).trim();
+    if (!text || asking) return;
+    Keyboard.dismiss();
+    setAiQuery(text);
     setAsking(true);
     setLoading(true);
     setQuotaHit(null);
-    askSearch(query)
+    askSearch(text)
       .then((res) => {
         setInterpretation(res.interpretation);
         applySmart(res, res.interpretation);
       })
       .catch((err) => {
-        setHits([]);
+        setAiQuery(null);
         setInterpretation(null);
         const quota = asQuotaError(err);
         if (quota) setQuotaHit(quota);
@@ -272,50 +295,12 @@ export default function SearchScreen() {
       .finally(() => setLoading(false));
   };
 
-  // Searches the word still being typed too, not just chips already
-  // committed by a space/Enter -- same include/exclude ("-word") parsing
-  // useChipQuery's commit step uses, just applied live. Backend search is
-  // already substring matching (see searchItems' matchesTerm), so a partial
-  // word like "성수" finds "성수동" the same way a committed one would.
-  // Tag mode only -- a sentence costs an LLM call, so it waits for Enter.
-  const draftTerm = draft.trim();
-  const draftExcluded = draftTerm.startsWith('-') && draftTerm.length > 1;
-  const draftText = draftExcluded ? draftTerm.slice(1) : draftTerm;
-
-  useEffect(() => {
-    if (sentence) return;
-    setInterpretation(null);
-    setRelaxedCount(null);
-    if (chips.length === 0 && !draftText) {
-      setHits([]);
-      setError(null);
-      return;
-    }
-    const timer = setTimeout(() => {
-      const include = includeChips.map((c) => c.text).concat(!draftExcluded && draftText ? [draftText] : []);
-      const exclude = excludeChips.map((c) => c.text).concat(draftExcluded && draftText ? [draftText] : []);
-      runSearch(include, exclude);
-    }, 300);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chips, draftText, draftExcluded, sentence]);
-
-  // Clearing the sentence box clears its results too.
-  useEffect(() => {
-    if (sentence && !draftTerm) {
-      setHits([]);
-      setInterpretation(null);
-      setRelaxedCount(null);
-      setError(null);
-    }
-  }, [sentence, draftTerm]);
-
   const retry = () => {
-    if (sentence) {
+    if (aiMode) {
       if (interpretation) reSearch(interpretation);
       else ask();
     } else {
-      runSearch(includeChips.map((c) => c.text), excludeChips.map((c) => c.text));
+      runSearch(include, exclude);
     }
   };
 
@@ -330,10 +315,10 @@ export default function SearchScreen() {
     });
   };
 
-  // Same 모두/일부 포함 split for both modes -- what counts as "all" is the
-  // committed include chips in keyword mode, the interpreted keyword groups
-  // in sentence mode.
-  const termCount = sentence ? interpretation?.keywords.length ?? 0 : includeChips.length;
+  // 모두/일부 포함 split: the typed words + tag chips for instant search,
+  // the interpreted keyword groups for AI search. An explicit date order
+  // from the AI is shown as is, without the split.
+  const termCount = aiMode ? (interpretation?.sort ? 0 : interpretation?.keywords.length ?? 0) : include.length;
   const rows: Row[] = [];
   if (termCount > 1) {
     const all = hits.filter((h) => h.result.matchedCount === termCount);
@@ -350,26 +335,31 @@ export default function SearchScreen() {
     hits.forEach((hit, i) => rows.push({ kind: 'item', key: 'row' + i, hit }));
   }
 
-  const hasQuery = sentence ? !!interpretation || asking : chips.length > 0;
+  const hasQuery = aiMode ? !!interpretation || asking : include.length + exclude.length > 0;
+  // Reads like a sentence ("지난달에", "봤던") but is being searched word by
+  // word -- point at ✦ rather than leave a thin result unexplained.
+  const looksLikeSentence = !aiMode && words.some(looksLikeSentenceWord);
 
-  // Tag-mode autocomplete: saved tags containing what's being typed, minus
-  // ones already chipped. A "-" prefix carries over, so picking a
-  // suggestion while typing "-카페" adds it as an excluded chip.
-  const needle = draftText.toLowerCase();
-  const suggestions =
-    !sentence && needle
-      ? allTags.filter((t) => t.toLowerCase().includes(needle) && !chips.some((c) => c.text === t)).slice(0, 8)
-      : [];
+  // Tag filter autocomplete: saved tags containing what's typed there, minus
+  // ones already chipped. A "-" prefix carries over to an excluded chip.
+  const tagDraft = tags.draft.trim();
+  const tagExcluded = tagDraft.startsWith('-') && tagDraft.length > 1;
+  const tagNeedle = (tagExcluded ? tagDraft.slice(1) : tagDraft).toLowerCase();
+  const suggestions = filterOpen
+    ? allTags.filter((t) => (!tagNeedle || t.toLowerCase().includes(tagNeedle)) && !tags.chips.some((c) => c.text === t)).slice(0, 10)
+    : [];
   const pickSuggestion = (tag: string) => {
-    addChip(draftExcluded ? `-${tag}` : tag);
-    onChangeText('');
+    tags.addChip(tagExcluded ? `-${tag}` : tag);
+    tags.setDraft('');
   };
+
   const metaStyle = {
     fontFamily: 'IBMPlexSansKR_400Regular',
     fontSize: 12.5,
     letterSpacing: emToTracking(0.01, 12.5),
     color: theme.sub,
   };
+  const orderLabel = aiMode && interpretation?.sort ? (interpretation.sort === 'oldest' ? '오래된 순' : '최신 순') : '관련순';
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -380,104 +370,118 @@ export default function SearchScreen() {
         <View style={{ marginTop: boxed ? 20 : 24 }}>
           {theme.list === 'layered' && <LayeredBack theme={theme} radius={theme.cardRadius} style={LAYERED_BACK_OFFSET} />}
           <View style={[styles.searchBox, searchShellStyle(theme)]}>
-            {/* The mode switch is the bar's own leading icon -- same spot the
-              search icon used to be, so it reads as "what kind of search
-              this box is" rather than a separate control to deal with. */}
-            <SegmentedToggle
-              compact
-              theme={theme}
-              value={mode}
-              onChange={setMode}
-              options={[
-                { key: 'sentence', label: '문장으로 찾기', icon: (c) => <SparkleIcon color={c} size={14} strokeWidth={1.4} /> },
-                { key: 'tag', label: '태그로 찾기', icon: (c) => <HashIcon color={c} size={14} strokeWidth={1.4} /> },
-              ]}
-            />
+            <SearchIcon color={theme.sub} size={16} strokeWidth={1.4} />
             <TextInput
-              value={draft}
-              onChangeText={onChangeText}
-              onSubmitEditing={sentence ? () => ask() : commitDraft}
-              onKeyPress={onKeyPress}
-              blurOnSubmit={false}
-              returnKeyType={sentence ? 'search' : 'done'}
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={() => Keyboard.dismiss()}
+              returnKeyType="done"
               style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
               selectionColor={theme.accent}
-              placeholder={sentence ? '지난달 인스타에서 본 카페' : chips.length > 0 ? '' : '태그 입력 후 Enter'}
+              placeholder="단어로 바로 찾기 · ✦는 문장으로"
               placeholderTextColor={theme.sub}
             />
-            {/* Sentence (AI) search only: a spoken question is a sentence by
-                nature, and it runs as soon as you stop talking. Tag search
-                stays typed -- tags are single words picked from a list. */}
-            {sentence && (
-              <VoiceInputButton
-                theme={theme}
-                size={16}
-                onResult={(spoken, isFinal) => {
-                  onChangeText(spoken);
-                  if (isFinal && spoken.trim()) ask(spoken);
-                }}
-              />
-            )}
+            {/* Speaking is a sentence by nature, so it goes straight to the
+                AI search when you stop talking. */}
+            <VoiceInputButton
+              theme={theme}
+              size={16}
+              onResult={(spoken, isFinal) => {
+                setQuery(spoken);
+                if (isFinal && spoken.trim()) ask(spoken);
+              }}
+            />
+            <Pressable
+              onPress={() => ask()}
+              disabled={!trimmed || asking}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="AI로 찾기"
+              style={[styles.aiButton, { opacity: trimmed ? 1 : 0.4 }]}
+            >
+              {asking ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon color={theme.accent} size={17} strokeWidth={1.5} />}
+            </Pressable>
           </View>
         </View>
 
-        {sentence ? (
-          interpretation && <InterpretationRow q={interpretation} theme={theme} onChange={reSearch} />
-        ) : (
-          <ChipQueryRow chips={chips} theme={theme} onToggle={toggleChip} onRemove={removeChip} />
+        {/* Second layer: tag include/exclude. Collapsed, it still says how
+            many tag conditions are on so a narrowed result isn't a mystery. */}
+        <View style={styles.filterBar}>
+          <Pressable onPress={() => setFilterOpen((v) => !v)} hitSlop={8} style={styles.filterToggle}>
+            <HashIcon color={tags.chips.length ? theme.ink : theme.sub} size={13} strokeWidth={1.4} />
+            <Text style={[styles.filterLabel, { color: tags.chips.length ? theme.ink : theme.sub }]}>
+              {tags.chips.length ? `태그 조건 ${tags.chips.length}개` : '태그로 좁히기'} {filterOpen ? '▴' : '▾'}
+            </Text>
+          </Pressable>
+          {tags.chips.length > 0 && (
+            <Pressable onPress={tags.clearChips} hitSlop={8}>
+              <Text style={[styles.filterLabel, { color: theme.sub }]}>지우기</Text>
+            </Pressable>
+          )}
+        </View>
+        {filterOpen && (
+          <View style={styles.filterPanel}>
+            <TextInput
+              value={tags.draft}
+              onChangeText={tags.setDraft}
+              onSubmitEditing={tags.commitDraft}
+              onKeyPress={tags.onKeyPress}
+              blurOnSubmit={false}
+              returnKeyType="done"
+              placeholder="태그 입력 · -태그는 제외"
+              placeholderTextColor={theme.sub}
+              style={[styles.tagInput, fieldStyle(theme), { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
+            />
+            <ChipQueryRow chips={tags.chips} theme={theme} onToggle={tags.toggleChip} onRemove={tags.removeChip} />
+            {suggestions.length > 0 && (
+              <View style={styles.suggestRow}>
+                {suggestions.map((tag) => (
+                  <Pressable key={tag} onPress={() => pickSuggestion(tag)} style={[styles.suggestTag, { borderColor: theme.line }]}>
+                    <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>#{tag}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            <Text style={[styles.filterHelp, { color: theme.sub }]}>태그를 누르면 제외로 바뀌어요. ×는 빼기.</Text>
+          </View>
         )}
 
-        {suggestSentence && (
-          <Pressable onPress={() => setMode('sentence')} hitSlop={6} style={styles.suggestLine}>
+        {aiMode && interpretation && <InterpretationRow q={interpretation} theme={theme} onChange={reSearch} />}
+
+        {looksLikeSentence && (
+          <Pressable onPress={() => ask()} hitSlop={6} style={styles.suggestLine}>
             <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
             <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-              문장처럼 보여요 → <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>문장으로 찾기</Text>
+              문장처럼 보여요 → <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>AI로 찾기</Text>
             </Text>
           </Pressable>
         )}
 
-        {suggestions.length > 0 && (
-          <View style={styles.suggestRow}>
-            {suggestions.map((tag) => (
-              <Pressable key={tag} onPress={() => pickSuggestion(tag)} style={[styles.suggestTag, { borderColor: theme.line }]}>
-                <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>#{tag}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-
         {hasQuery && (
           <View style={[styles.metaRow, { paddingBottom: boxed ? 4 : 0 }]}>
-            <Text style={metaStyle}>{asking ? '문장 뜻 푸는 중...' : loading ? '검색 중...' : txt.hits(hits.length)}</Text>
-            <Text style={metaStyle}>관련순</Text>
+            <Text style={metaStyle}>{asking ? 'AI가 문장을 읽는 중...' : loading ? '검색 중...' : txt.hits(hits.length)}</Text>
+            <Text style={metaStyle}>{aiMode ? `✦ ${orderLabel}` : orderLabel}</Text>
           </View>
         )}
       </View>
 
       {!hasQuery ? (
         <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
-          {sentence && quotaHit ? (
+          {quotaHit ? (
             <>
-              <Text style={[styles.quotaTitle, { color: theme.ink }]}>이번 달 문장 검색 {quotaHit.limit}회를 다 썼어요</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>태그로 찾기는 계속 쓸 수 있어요. 문장 검색은 다음 달에 다시 생겨요.</Text>
+              <Text style={[styles.quotaTitle, { color: theme.ink }]}>이번 달 AI 검색 {quotaHit.limit}회를 다 썼어요</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>단어로 찾기는 계속 쓸 수 있어요. AI 검색은 다음 달에 다시 생겨요.</Text>
               <View style={styles.quotaActions}>
-                <Pressable onPress={() => setMode('tag')} hitSlop={6}>
-                  <Text style={[styles.quotaLink, { color: theme.sub }]}>태그로 찾기</Text>
-                </Pressable>
                 <Pressable onPress={() => navigation.navigate('Paywall', { reason: 'search' })} hitSlop={6}>
                   <Text style={[styles.quotaLink, { color: theme.accent }]}>Pro 보기</Text>
                 </Pressable>
               </View>
             </>
-          ) : sentence ? (
-            <>
-              <Text style={[styles.help, { color: theme.sub }]}>기억나는 대로 문장으로 써 보세요.</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>검색(Enter)을 누르면 기간·출처·키워드로 풀어서 찾아요.</Text>
-            </>
           ) : (
             <>
-              <Text style={[styles.help, { color: theme.sub }]}>태그를 쓰고 Enter를 누르면 하나씩 추가돼요.</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>태그를 누르면 제외, ×를 누르면 삭제.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>단어를 치는 대로 바로 찾아요. 앞에 -를 붙이면 빼고 찾아요.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>기억이 흐릿하면 문장으로 쓰고 ✦를 눌러 보세요.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>예: 지난달 인스타에서 본 성수 카페</Text>
             </>
           )}
         </View>
@@ -492,7 +496,7 @@ export default function SearchScreen() {
           emptyText={
             <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
               <Text style={[styles.help, { color: theme.sub }]}>결과가 없어요.</Text>
-              {sentence && interpretation && relaxedCount ? (
+              {aiMode && interpretation && relaxedCount ? (
                 <Pressable onPress={() => reSearch({ ...interpretation, ...NO_FILTERS })} hitSlop={6}>
                   <Text style={[styles.help, { color: theme.accent }]}>
                     기간·출처 같은 조건을 빼면 {relaxedCount}건 있어요. 조건 빼고 보기
@@ -500,7 +504,7 @@ export default function SearchScreen() {
                 </Pressable>
               ) : (
                 <Text style={[styles.help, { color: theme.sub }]}>
-                  {sentence ? '위 조건을 ×로 지워 보세요.' : '제외한 단어를 다시 눌러 풀어 보세요.'}
+                  {aiMode ? '위 조건을 ×로 지워 보세요.' : '기억나는 대로 문장으로 쓰고 ✦를 눌러 보세요.'}
                 </Text>
               )}
             </View>
@@ -508,6 +512,7 @@ export default function SearchScreen() {
         >
           <FlatList
             removeClippedSubviews={false}
+            keyboardShouldPersistTaps="handled"
             data={rows}
             keyExtractor={(row) => row.key}
             renderItem={({ item: row }) =>
@@ -538,8 +543,15 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   noReading: { fontSize: 12.5, marginTop: 12, fontFamily: 'IBMPlexSansKR_400Regular' },
   screen: { flex: 1 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchInput: { fontSize: 17, flex: 1, padding: 0 },
+  aiButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
+  filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  filterToggle: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  filterLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  filterPanel: { marginTop: 10 },
+  tagInput: { fontSize: 14, paddingHorizontal: 12, paddingVertical: 9 },
+  filterHelp: { fontSize: 12, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   suggestLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   suggestTag: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },

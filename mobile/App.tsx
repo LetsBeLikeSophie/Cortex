@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -65,11 +65,15 @@ export default function App() {
     IBMPlexMono_400Regular,
   });
 
+  // The splash stays up until fonts are in AND the saved theme has been
+  // read back (ThemeProvider's onReady), so the first frame is the right theme.
+  const [themeReady, setThemeReady] = useState(false);
+  const onThemeReady = useCallback(() => setThemeReady(true), []);
   const onLayoutRootView = useCallback(async () => {
-    if (fontsLoaded || fontError) {
+    if ((fontsLoaded || fontError) && themeReady) {
       await SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError]);
+  }, [fontsLoaded, fontError, themeReady]);
 
   useEffect(() => {
     onLayoutRootView();
@@ -82,7 +86,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ThemeProvider>
+        <ThemeProvider onReady={onThemeReady}>
           <AppShell />
         </ThemeProvider>
       </AuthProvider>

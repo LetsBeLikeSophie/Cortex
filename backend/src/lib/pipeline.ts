@@ -23,12 +23,20 @@ import {
 // size -- downscale-only (a small screenshot stays as-is) and re-encoded as
 // JPEG so both the stored copy and the classification call use the smaller
 // version, regardless of the original format.
-const SCREENSHOT_MAX_WIDTH = 1600;
-const SCREENSHOT_JPEG_QUALITY = 82;
+//
+// The cap is on the LONG edge, matched to what Claude actually looks at
+// (it scales anything past ~1568px on the long edge down itself). A width
+// cap did almost nothing for phone screenshots, which are tall (1080x2400
+// stayed 1080x2400 and the AI threw the extra resolution away). 1600 long /
+// q75 halves a typical screenshot (~277KB -> ~120KB) with the same image
+// for classification; going lower would start blurring small text.
+const SCREENSHOT_MAX_EDGE = 1600;
+const SCREENSHOT_JPEG_QUALITY = 75;
 
 async function compressScreenshot(bytes: Buffer): Promise<Buffer> {
   return sharp(bytes)
-    .resize({ width: SCREENSHOT_MAX_WIDTH, withoutEnlargement: true })
+    .rotate() // apply EXIF orientation before resizing (camera photos)
+    .resize({ width: SCREENSHOT_MAX_EDGE, height: SCREENSHOT_MAX_EDGE, fit: "inside", withoutEnlargement: true })
     .jpeg({ quality: SCREENSHOT_JPEG_QUALITY })
     .toBuffer();
 }

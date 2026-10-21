@@ -80,7 +80,7 @@ export default function LoginScreen() {
 
       <View style={styles.footer}>
         {status === 'error' && (
-          <Text style={[styles.errorText, { color: theme.accent }]}>로그인 실패: {error}</Text>
+          <Text style={[styles.errorText, { color: theme.danger }]}>로그인 실패: {error}</Text>
         )}
         <Pressable
           onPress={onPress}

@@ -82,6 +82,10 @@ For each item, produce:
     (a café's name -> 카페; a sneaker model -> 운동화)
   - where it is / what it's for when stated (성수, 제주, 선물, 다이어트)
   No filler tags (정보, 추천, 꿀팁) unless that is genuinely the subject.
+  Keep each tag to its core word: "수달", not "수달 캐릭터" / "수달 조형물";
+  if the kind matters, add it as its own tag ("캐릭터", "조형물"). When the
+  person's existing tags are listed, reuse one exactly as written whenever
+  it means the same thing, instead of a variant spelling or a longer form.
   Korean spellings are Hangul only -- never mix in Japanese kana or Hanja.
 - keyText: for screenshots only, the important words visible in the image,
   copied as they appear (names, addresses, prices, dates, menu or product
@@ -126,8 +130,14 @@ export interface ClassifyTextInput {
   // The person's own words about the item (their note, or a title/memo they
   // edited before asking for a re-organize) -- see hintLine.
   hint?: string;
+  // This person's most-used tags, to reuse instead of near-duplicates.
+  knownTags?: string[];
   // For the per-call usage log (aiLog.ts).
   userId?: string;
+}
+
+function knownTagsLine(tags?: string[]): string | null {
+  return tags && tags.length > 0 ? `Tags this person already uses (reuse when the meaning matches): ${tags.join(", ")}` : null;
 }
 
 // When the person has written something themselves, it's the best signal of
@@ -156,6 +166,7 @@ export async function classifyText(input: ClassifyTextInput): Promise<Classifica
     input.description ? `Page/video description:\n${input.description}` : null,
     input.rawText ? `Shared text:\n${input.rawText}` : null,
     hintLine(input.hint),
+    knownTagsLine(input.knownTags),
     input.imageUrl
       ? "The attached image is the link's thumbnail -- read any words on it (video thumbnails usually carry the key words), but it's a preview, not the content itself."
       : null,
@@ -203,6 +214,7 @@ export interface ClassifyImageInput {
   imageBase64: string;
   mediaType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
   hint?: string;
+  knownTags?: string[];
   userId?: string;
 }
 
@@ -221,7 +233,7 @@ export async function classifyImage(input: ClassifyImageInput): Promise<Classifi
           },
           {
             type: "text",
-            text: `Source app: ${input.source}. This is a screenshot the user captured themselves. Read any caption/body text visible in the image and catalog it.${hintLine(input.hint) ? `\n${hintLine(input.hint)}` : ""}`,
+            text: `Source app: ${input.source}. This is a screenshot the user captured themselves. Read any caption/body text visible in the image and catalog it.${[hintLine(input.hint), knownTagsLine(input.knownTags)].filter(Boolean).map((l) => `\n${l}`).join("")}`,
           },
         ],
       },

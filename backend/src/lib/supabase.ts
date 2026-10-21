@@ -436,6 +436,25 @@ export async function listTags(userId: string): Promise<string[]> {
   return [...set].sort((a, b) => a.localeCompare(b, "ko"));
 }
 
+// The tags this person uses most (AI + their own), most-used first -- fed to
+// the classifier so a new item reuses "수달" instead of minting "수달 캐릭터"
+// next to it. Capped so the prompt stays small.
+export async function listFrequentTags(userId: string, max = 150): Promise<string[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select("tags, user_tags")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("shared_at", { ascending: false })
+    .limit(1000);
+  if (error) throw new Error(`listFrequentTags failed: ${error.message}`);
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { tags: string[]; user_tags: string[] }[]) {
+    for (const tag of [...row.tags, ...row.user_tags]) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, max).map(([tag]) => tag);
+}
+
 // PostgREST's `or=()` logic-tree parser doesn't accept a `column::cast`
 // inside a grouped filter, so `tags::text.ilike...` can't sit alongside the
 // other ilike clauses there (see db/schema.sql's tsvector index --

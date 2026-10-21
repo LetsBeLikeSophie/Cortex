@@ -15,6 +15,7 @@ import {
   insertItem,
   logAnalyticsEvent,
   uploadScreenshot,
+  listFrequentTags,
   ItemRecord,
   ItemSource,
 } from "./supabase.js";
@@ -146,6 +147,9 @@ function hintFor(item: ItemRecord, includeText: boolean): string | undefined {
 
 async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEditsAsHint = false) {
   const hint = hintFor(item, useEditsAsHint);
+  // Best effort: without the list the item still classifies, just without
+  // the nudge toward existing tags.
+  const knownTags = await listFrequentTags(item.user_id).catch(() => []);
   let classification;
   let thumbnailUrl: string | undefined;
   if (item.capture_type === "link" && item.raw_url) {
@@ -163,6 +167,7 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
         // (YouTube); a generic og:image is usually just a logo.
         imageUrl: meta.analyzeImage ? meta.imageUrl : undefined,
         hint,
+        knownTags,
         userId: item.user_id,
       })),
       keyText: undefined,
@@ -173,11 +178,11 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
     thumbnailUrl = meta.imageUrl;
   } else if (item.capture_type === "screenshot" && item.image_path) {
     const b64 = imageBase64 ?? (await downloadScreenshot(item.image_path)).toString("base64");
-    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg", hint, userId: item.user_id });
+    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg", hint, knownTags, userId: item.user_id });
   } else {
     // keyText is a screenshot-only field -- dropped here so a text memo's
     // own raw_text can never be overwritten by it.
-    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, userId: item.user_id })), keyText: undefined, hasText: undefined };
+    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, knownTags, userId: item.user_id })), keyText: undefined, hasText: undefined };
   }
   await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
   return classification.category;

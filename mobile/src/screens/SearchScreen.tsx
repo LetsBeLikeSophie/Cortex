@@ -196,6 +196,10 @@ export default function SearchScreen() {
   const [asking, setAsking] = useState(false);
   // This month's AI searches are used up (402 from /items/search/ask).
   const [quotaHit, setQuotaHit] = useState<QuotaError | null>(null);
+  // The AI search for `failedQuery` failed (not a quota stop). Shown above
+  // the word-search results that took its place, until the text changes.
+  const [aiError, setAiError] = useState<{ query: string; message: string } | null>(null);
+  const [quotaQuery, setQuotaQuery] = useState<string | null>(null);
   // Every saved tag, for the tag filter's autocomplete -- refreshed on focus
   // so tags added elsewhere show up without a restart.
   const [allTags, setAllTags] = useState<string[]>([]);
@@ -265,17 +269,24 @@ export default function SearchScreen() {
     setAsking(true);
     setLoading(true);
     setQuotaHit(null);
+    setAiError(null);
     askSearch(text)
       .then((res) => {
         setInterpretation(res.interpretation);
         applySmart(res, res.interpretation);
       })
       .catch((err) => {
+        // Falls back to word search for the same text -- and says so,
+        // instead of the word results silently standing in for the AI's.
         setAiQuery(null);
         setInterpretation(null);
         const quota = asQuotaError(err);
-        if (quota) setQuotaHit(quota);
-        else setError(friendlyError(err));
+        if (quota) {
+          setQuotaHit(quota);
+          setQuotaQuery(text);
+        } else {
+          setAiError({ query: text, message: friendlyError(err) });
+        }
       })
       .finally(() => {
         setAsking(false);
@@ -446,6 +457,23 @@ export default function SearchScreen() {
           </View>
         )}
 
+        {quotaHit && quotaQuery === trimmed && (
+          <View style={styles.notice}>
+            <Text style={[styles.noticeText, { color: theme.ink }]}>이번 달 AI 검색 {quotaHit.limit}회를 다 썼어요. 단어로 찾은 결과예요.</Text>
+            <Pressable onPress={() => navigation.navigate('Paywall', { reason: 'search' })} hitSlop={6}>
+              <Text style={[styles.noticeLink, { color: theme.accent }]}>Pro 보기</Text>
+            </Pressable>
+          </View>
+        )}
+        {aiError && aiError.query === trimmed && (
+          <View style={styles.notice}>
+            <Text style={[styles.noticeText, { color: theme.danger }]}>AI 검색이 실패해서 단어로 찾은 결과예요.</Text>
+            <Pressable onPress={() => ask()} hitSlop={6}>
+              <Text style={[styles.noticeLink, { color: theme.ink }]}>다시 시도</Text>
+            </Pressable>
+          </View>
+        )}
+
         {aiMode && interpretation && <InterpretationRow q={interpretation} theme={theme} onChange={reSearch} />}
 
         {looksLikeSentence && (
@@ -467,23 +495,9 @@ export default function SearchScreen() {
 
       {!hasQuery ? (
         <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
-          {quotaHit ? (
-            <>
-              <Text style={[styles.quotaTitle, { color: theme.ink }]}>이번 달 AI 검색 {quotaHit.limit}회를 다 썼어요</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>단어로 찾기는 계속 쓸 수 있어요. AI 검색은 다음 달에 다시 생겨요.</Text>
-              <View style={styles.quotaActions}>
-                <Pressable onPress={() => navigation.navigate('Paywall', { reason: 'search' })} hitSlop={6}>
-                  <Text style={[styles.quotaLink, { color: theme.accent }]}>Pro 보기</Text>
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={[styles.help, { color: theme.sub }]}>단어를 치는 대로 바로 찾아요. 앞에 -를 붙이면 빼고 찾아요.</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>기억이 흐릿하면 문장으로 쓰고 ✦를 눌러 보세요.</Text>
-              <Text style={[styles.help, { color: theme.sub }]}>예: 지난달 인스타에서 본 성수 카페</Text>
-            </>
-          )}
+          <Text style={[styles.help, { color: theme.sub }]}>단어를 치는 대로 바로 찾아요. 앞에 -를 붙이면 빼고 찾아요.</Text>
+          <Text style={[styles.help, { color: theme.sub }]}>기억이 흐릿하면 문장으로 쓰고 ✦를 눌러 보세요.</Text>
+          <Text style={[styles.help, { color: theme.sub }]}>예: 지난달 인스타에서 본 성수 카페</Text>
         </View>
       ) : (
         <AsyncStateView
@@ -541,6 +555,9 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
+  notice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 },
+  noticeText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontFamily: 'IBMPlexSansKR_400Regular' },
+  noticeLink: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
   noReading: { fontSize: 12.5, marginTop: 12, fontFamily: 'IBMPlexSansKR_400Regular' },
   screen: { flex: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },

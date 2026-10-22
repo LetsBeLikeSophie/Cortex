@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { isUserCancelledError, useIAP, type Purchase } from 'expo-iap';
 
 import { Theme } from '../theme/themes';
-import { friendlyError, Offers, Plan, verifyGooglePurchase } from '../api/client';
+import { classifyBacklog, friendlyError, Offers, Plan, verifyGooglePurchase } from '../api/client';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { showToast } from '../native/toast';
 
@@ -36,22 +36,37 @@ export function AndroidPurchase({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const confirmWithServer = async (purchase: Purchase) => {
+  const confirmWithServer = async (purchase: Purchase): Promise<Plan | null> => {
     const token = purchase.purchaseToken;
-    if (!token) return;
+    if (!token) return null;
     const plan = await verifyGooglePurchase(purchase.productId, token);
     await finishTransaction({ purchase, isConsumable: false }).catch(() => {});
     onPlan(plan);
+    return plan;
+  };
+
+  // The paywall promised '미분류함 N건도 한 번에 정리돼요' -- so once Pro is
+  // on, start that right away and say so.
+  const announcePro = async (plan: Plan | null, first: string) => {
+    const waiting = plan?.unclassifiedCount ?? 0;
+    if (waiting === 0) {
+      showToast(first);
+      return;
+    }
+    try {
+      const { started } = await classifyBacklog();
+      showToast(`${first} · 미분류 ${started}건 정리를 시작했어요`);
+    } catch {
+      showToast(`${first} · 미분류함에서 'AI로 정리'를 눌러 주세요`);
+    }
   };
 
   const { connected, subscriptions, products, fetchProducts, requestPurchase, finishTransaction, getAvailablePurchases, availablePurchases } =
     useIAP({
       onPurchaseSuccess: (purchase) => {
         confirmWithServer(purchase)
-          .then(() => {
-            showToast('Pro가 시작됐어요');
-            onClose();
-          })
+          .then((plan) => announcePro(plan, 'Pro가 시작됐어요'))
+          .then(() => onClose())
           .catch((err) => setError(friendlyError(err)))
           .finally(() => setBusy(false));
       },
@@ -127,10 +142,8 @@ export function AndroidPurchase({
       return;
     }
     Promise.all(mine.map(confirmWithServer))
-      .then(() => {
-        showToast('Pro를 복원했어요');
-        onClose();
-      })
+      .then((plans) => announcePro(plans.filter(Boolean).pop() ?? null, 'Pro를 복원했어요'))
+      .then(() => onClose())
       .catch((err) => setError(friendlyError(err)))
       .finally(() => setRestoring(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

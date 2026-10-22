@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -89,49 +89,53 @@ export default function PaywallScreen() {
 
   return (
     <ModalSheet theme={theme} onClose={close} bordered={false} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
-      <Heading theme={theme} size={24} style={styles.heading}>
-        {HEADLINES[reason ?? 'default']}
-      </Heading>
-      {reason && (
-        <Text style={[styles.sub, { color: theme.sub }]}>
-          저장은 계속 돼요. AI 기능은 다음 달에 다시 생기거나, Pro로 바로 이어서 쓸 수 있어요.
-        </Text>
-      )}
+      {/* Title, benefits and plans scroll; the buy / close area below stays
+          pinned, so a small phone never pushes the button off the sheet. */}
+      <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false}>
+        <Heading theme={theme} size={24} style={styles.heading}>
+          {HEADLINES[reason ?? 'default']}
+        </Heading>
+        {reason && (
+          <Text style={[styles.sub, { color: theme.sub }]}>
+            저장은 계속 돼요. AI 기능은 다음 달에 다시 생기거나, Pro로 바로 이어서 쓸 수 있어요.
+          </Text>
+        )}
 
-      <View style={[styles.card, { backgroundColor: theme.surface, ...frameStyle(theme), borderRadius: theme.cardRadius }]}>
-        <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
-        {benefits.map((b) => (
-          <View key={b} style={styles.benefit}>
-            <CheckIcon size={16} color={theme.accent} strokeWidth={2} />
-            <Text style={[styles.benefitText, { color: theme.ink }]}>{b}</Text>
-          </View>
-        ))}
-      </View>
+        <View style={[styles.card, { backgroundColor: theme.surface, ...frameStyle(theme), borderRadius: theme.cardRadius }]}>
+          <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
+          {benefits.map((b) => (
+            <View key={b} style={styles.benefit}>
+              <CheckIcon size={16} color={theme.accent} strokeWidth={2} />
+              <Text style={[styles.benefitText, { color: theme.ink }]}>{b}</Text>
+            </View>
+          ))}
+        </View>
 
-      {/* The plans. Prices come from Google Play once the store answers
-          (what the person will actually be charged). */}
-      <View style={styles.options}>
-        {options.map((o) => {
-          const active = selected === o.key;
-          return (
-            <Pressable
-              key={o.key}
-              onPress={() => setSelected(o.key)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: active }}
-              style={[styles.option, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
-            >
-              <View style={styles.optionHead}>
-                <Text style={[styles.optionLabel, { color: theme.ink }]}>{o.label}</Text>
-                <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? FALLBACK_PRICE[o.key]}</Text>
-              </View>
-              <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+        {/* The plans. Prices come from Google Play once the store answers
+            (what the person will actually be charged). */}
+        <View style={styles.options}>
+          {options.map((o) => {
+            const active = selected === o.key;
+            return (
+              <Pressable
+                key={o.key}
+                onPress={() => setSelected(o.key)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                style={[styles.option, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
+              >
+                <View style={styles.optionHead}>
+                  <Text style={[styles.optionLabel, { color: theme.ink }]}>{o.label}</Text>
+                  <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? FALLBACK_PRICE[o.key]}</Text>
+                </View>
+                <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-      {status !== '' && <Text style={[styles.status, { color: theme.sub }]}>{status}</Text>}
+        {status !== '' && <Text style={[styles.status, { color: theme.sub }]}>{status}</Text>}
+      </ScrollView>
 
       {canBuy && offers && AndroidPurchase ? (
         <AndroidPurchase theme={theme} offers={offers} selected={selected} onPrices={setPrices} onPlan={setPlan} onClose={close} />
@@ -154,6 +158,7 @@ export default function PaywallScreen() {
 }
 
 const styles = StyleSheet.create({
+  flexShrink: { flexShrink: 1 },
   heading: { paddingHorizontal: 4 },
   sub: { fontSize: 13.5, lineHeight: 20, marginTop: 8, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   card: { padding: 18, marginTop: 18, gap: 12 },

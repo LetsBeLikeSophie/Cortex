@@ -456,7 +456,7 @@ export default function ItemDetailScreen() {
             <ConfirmCard
               theme={theme}
               title="휴지통으로 이동할까요?"
-              body="나중에 복원할 수 있어요."
+              body="나중에 홈 위쪽 휴지통에서 복원할 수 있어요."
               confirmLabel="삭제"
               busy={deleteState === 'deleting'}
               error={deleteError ? `삭제 실패: ${deleteError}` : undefined}

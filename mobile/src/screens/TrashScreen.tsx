@@ -6,16 +6,24 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { ApiItem, fetchTrash, permanentlyDeleteItem, restoreItem, friendlyError } from '../api/client';
-import { relativeTime } from '../api/format';
+import { relativeTime, itemTitle } from '../api/format';
 import { RestoreIcon, TrashIcon } from '../components/Icons';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Card, isBoxed, screenGutter } from '../components/Card';
+import { showToast } from '../native/toast';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
 
 type RowAction = 'idle' | 'restoring' | 'confirmingPermanent' | 'deletingPermanent';
+
+// "10월 3일" -- the day it was saved, which is where it returns to in the
+// (newest-first) list when restored.
+function savedDay(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType<typeof useTheme>['theme']; onRemoved: (id: string) => void }) {
   const [action, setAction] = useState<RowAction>('idle');
@@ -26,6 +34,7 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
     try {
       await restoreItem(item.id);
       onRemoved(item.id);
+      showToast(`복원했어요 · ${savedDay(item.shared_at)} 저장한 자리로 돌아갔어요`);
     } catch (err) {
       setError(friendlyError(err));
       setAction('idle');
@@ -46,9 +55,12 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
   return (
     <Card theme={theme} style={styles.row}>
       <Text style={[styles.title, { color: theme.ink }]} numberOfLines={2}>
-        {item.title ?? item.raw_text?.slice(0, 40) ?? '(제목 없음)'}
+        {itemTitle(item)}
       </Text>
-      <Text style={[styles.meta, { color: theme.sub }]}>{relativeTime(item.shared_at)} 저장됨</Text>
+      <Text style={[styles.meta, { color: theme.sub }]}>
+        {item.deleted_at ? `${relativeTime(item.deleted_at)} 삭제 · ` : ''}
+        {savedDay(item.shared_at)} 저장
+      </Text>
 
       {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>실패: {error}</Text>}
 

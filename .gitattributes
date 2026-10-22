@@ -1,0 +1,2 @@
+# patch-package needs the exact line endings it wrote
+mobile/patches/*.patch eol=lf

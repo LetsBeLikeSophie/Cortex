@@ -87,7 +87,9 @@ export default function ItemDetailScreen() {
   // Undo lives in one bar at the bottom that shows for a few seconds after
   // a change (manual edit or AI re-organize) and undoes that whole change --
   // no per-field undo icons.
-  const [snack, setSnack] = useState<{ message: string; undo: () => void } | null>(null);
+  // undo is absent when there's nothing to go back to (an item's first
+  // organize, not a re-organize) -- the bar then only informs.
+  const [snack, setSnack] = useState<{ message: string; undo?: () => void } | null>(null);
   const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // What an AI re-organize is about to replace, so its undo can put it all back.
   const beforeAiRef = useRef<{ title: string; snippet: string; category: ApiItem['category']; tags: string[] } | null>(null);
@@ -158,12 +160,18 @@ export default function ItemDetailScreen() {
             setEditError('AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.');
             return;
           }
+          // No snapshot = this was the item's first organize (opened while
+          // still 분석 중), not a ✦ re-organize: nothing to undo or recount.
           const before = beforeAiRef.current;
+          if (!before) {
+            showSnack(item.capture_type === 'text' ? 'AI가 제목·태그를 달았어요' : 'AI가 제목·메모·태그를 달았어요', null);
+            return;
+          }
           const what = item.capture_type === 'text' ? '제목·태그를' : '제목·메모·태그를';
           fetchPlan()
             .then((p) => `AI가 ${what} 다시 정리했어요 · 이번 달 ${Math.max(0, p.classify.limit - p.classify.used)}건 남음`)
             .catch(() => `AI가 ${what} 다시 정리했어요`)
-            .then((message) => showSnack(message, before ? () => undoAi(before) : null));
+            .then((message) => showSnack(message, () => undoAi(before)));
         })
         .catch(() => {});
     }, REORGANIZE_POLL_MS);
@@ -178,7 +186,7 @@ export default function ItemDetailScreen() {
 
   const showSnack = (message: string, undo: (() => void) | null) => {
     if (snackTimer.current) clearTimeout(snackTimer.current);
-    setSnack({ message, undo: undo ?? (() => {}) });
+    setSnack(undo ? { message, undo } : { message });
     snackTimer.current = setTimeout(() => setSnack(null), SNACK_MS);
   };
   const hideSnack = () => {
@@ -554,9 +562,11 @@ export default function ItemDetailScreen() {
             <Text style={[styles.snackText, { color: theme.bg }]} numberOfLines={2}>
               {snack.message}
             </Text>
-            <Pressable onPress={snack.undo} hitSlop={10}>
-              <Text style={[styles.snackAction, { color: theme.bg }]}>되돌리기</Text>
-            </Pressable>
+            {snack.undo && (
+              <Pressable onPress={snack.undo} hitSlop={10}>
+                <Text style={[styles.snackAction, { color: theme.bg }]}>되돌리기</Text>
+              </Pressable>
+            )}
           </View>
         )}
 

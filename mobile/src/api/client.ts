@@ -198,7 +198,7 @@ export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number }>(`/items?limit=${limit}`);
 }
 
-// The 미분류 tab's items, oldest first (the order 'AI로 정리' takes them).
+// The 미분류 tab's items, newest first (the order 'AI로 정리' takes them).
 export function fetchUnclassifiedItems(limit = 100) {
   return request<{ items: ApiItem[]; total: number }>(`/items?status=unclassified&limit=${limit}`);
 }

@@ -405,16 +405,10 @@ export default function SearchScreen() {
               placeholder="단어로 바로 찾기 · ✦는 문장으로"
               placeholderTextColor={theme.sub}
             />
-            {/* Speaking is a sentence by nature, so it goes straight to the
-                AI search when you stop talking. */}
-            <VoiceInputButton
-              theme={theme}
-              size={16}
-              onResult={(spoken, isFinal) => {
-                setQuery(spoken);
-                if (isFinal && spoken.trim()) ask(spoken);
-              }}
-            />
+            {/* The mic only types: what was said lands in the box and is
+                searched like typing. AI search stays on ✦ alone, so a spoken
+                search never spends the month's AI searches by itself. */}
+            <VoiceInputButton theme={theme} size={16} onResult={(spoken) => setQuery(spoken)} />
             <Pressable
               onPress={() => ask()}
               disabled={!trimmed || asking || aiMode}

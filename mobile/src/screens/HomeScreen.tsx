@@ -438,7 +438,7 @@ export default function HomeScreen() {
             </Text>
             <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={1}>
               {classifyLeft > 0
-                ? `오래된 것부터 ${Math.min(classifyLeft, unclassifiedCount)}건 · 이번 달 AI 정리 ${classifyLeft}건 남음`
+                ? `최근 것부터 ${Math.min(classifyLeft, unclassifiedCount)}건 · 이번 달 AI 정리 ${classifyLeft}건 남음`
                 : `${resetLabel(plan?.resetsAt)}에 다시 생겨요`}
             </Text>
           </View>

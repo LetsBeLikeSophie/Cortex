@@ -226,7 +226,9 @@ export async function listUnclassifiedItems(userId: string, limit: number): Prom
     .eq("user_id", userId)
     .eq("classification_status", "unclassified")
     .is("deleted_at", null)
-    .order("shared_at", { ascending: true })
+    // Newest first: what was just saved is what people look for next, so
+    // 'AI로 정리' (classifyBacklog) spends the month's allowance there first.
+    .order("shared_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(`listUnclassifiedItems failed: ${error.message}`);
   return (data ?? []) as ItemRecord[];

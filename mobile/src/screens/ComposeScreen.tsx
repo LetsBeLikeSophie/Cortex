@@ -48,8 +48,11 @@ export default function ComposeScreen() {
     setError('');
     setWorking(true);
     try {
-      const { item } = await composeFromTag(tag, format);
-      navigation.replace('ItemDetail', { item });
+      const { item, sourceCount } = await composeFromTag(tag, format);
+      navigation.replace('ItemDetail', {
+        item,
+        composedFrom: { tag, count: sourceCount, left: left !== null ? Math.max(0, left - 1) : undefined },
+      });
     } catch (err) {
       if (asQuotaError(err)) {
         navigation.replace('Paywall', { reason: 'compose' });

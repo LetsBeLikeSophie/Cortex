@@ -50,7 +50,7 @@ export default function ItemDetailScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ItemDetail'>>();
-  const { item } = route.params;
+  const { item, composedFrom } = route.params;
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
@@ -409,6 +409,16 @@ export default function ItemDetailScreen() {
             </View>
           </View>
 
+          {composedFrom && (
+            <View style={styles.composedNote}>
+              <SparkleIcon size={13} color={theme.accent} strokeWidth={1.5} />
+              <Text style={[styles.composedText, { color: theme.sub }]}>
+                {`'${composedFrom.tag}' 메모 ${composedFrom.count}개로 만들었어요`}
+                {composedFrom.left !== undefined ? ` · 이번 달 ${composedFrom.left}회 남음` : ''}
+              </Text>
+            </View>
+          )}
+
           {deleteState !== 'idle' && (
             <ConfirmCard
               theme={theme}
@@ -602,6 +612,8 @@ const styles = StyleSheet.create({
   editRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   flex1: { flex: 1 },
   aiMemo: { marginTop: 16 },
+  composedNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  composedText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   aiMemoHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   aiMemoLabel: { fontFamily: MONO, fontSize: 10.5, letterSpacing: 1.2 },
   aiMemoText: { marginTop: 6 },

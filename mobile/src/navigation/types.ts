@@ -15,7 +15,9 @@ export type RootStackParamList = {
   Stats: undefined;
   Profile: undefined;
   Trash: undefined;
-  ItemDetail: { item: ApiItem };
+  // composedFrom: just made by 모아서 만들기 -- the detail says from what
+  // (shown once, on arrival; the sources aren't stored with the memo).
+  ItemDetail: { item: ApiItem; composedFrom?: { tag: string; count: number; left?: number } };
   // Why it opened -- picks the headline; omitted = opened from the profile.
   Paywall: { reason?: 'classify' | 'search' | 'compose' } | undefined;
   // "모아서 만들기" for one home tag tab.

@@ -22,7 +22,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, allEdges, conceptOf, emToTracking } from '../theme/themes';
 import { Card, frameStyle, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
-import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, ApiItem, ItemSource, friendlyError } from '../api/client';
+import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError } from '../api/client';
 import { sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
@@ -93,6 +93,13 @@ export default function SaveSheetScreen() {
   // just be two text inputs saying the same kind of thing).
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<Status>('input');
+  // This month's AI organize allowance, for the line above 저장하기.
+  const [plan, setPlan] = useState<Plan | null>(null);
+  useEffect(() => {
+    fetchPlan()
+      .then(setPlan)
+      .catch(() => {});
+  }, []);
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
 
@@ -342,6 +349,24 @@ export default function SaveSheetScreen() {
   for (const shot of [...sharedShots, ...selectedScreenshots, ...recentScreenshots]) {
     if (!gridScreenshots.some((g) => g.id === shot.id)) gridScreenshots.push(shot);
   }
+  // What this save will do to the month's AI organize count: for several
+  // photos always (and how many will wait in 미분류함 past the allowance);
+  // for a single save only once it's running low.
+  const aiLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : null;
+  const saveCount = selectedScreenshots.length > 0 ? selectedScreenshots.length : 1;
+  const quotaLine =
+    aiLeft === null
+      ? ''
+      : saveCount > 1
+        ? [`AI가 한 장씩 제목·태그를 달아요 · 이번 달 ${aiLeft}건 남음`, saveCount > aiLeft ? `${saveCount - aiLeft}장은 미분류함에 들어가요 (저장은 돼요)` : null]
+            .filter(Boolean)
+            .join('\n')
+        : aiLeft === 0
+          ? '이번 달 AI 정리를 다 써서 미분류함에 들어가요 (저장은 돼요)'
+          : aiLeft <= 10
+            ? `이번 달 AI 정리 ${aiLeft}건 남음`
+            : '';
+
   const screenshotGrid = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.screenshotRow}>
       {gridScreenshots.map((shot) => {
@@ -560,6 +585,8 @@ export default function SaveSheetScreen() {
             )}
           </ScrollView>
           </View>
+
+            {quotaLine !== '' && <Text style={[styles.quotaLine, { color: theme.sub }]}>{quotaLine}</Text>}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
               <GhostButton label="취소" theme={theme} onPress={close} />
@@ -806,6 +833,7 @@ const styles = StyleSheet.create({
   snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: 'IBMPlexSansKR_400Regular' },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   buttonRow: { marginTop: 26 },
+  quotaLine: { fontSize: 12.5, lineHeight: 18, marginTop: 18, marginBottom: -12, fontFamily: 'IBMPlexSansKR_400Regular' },
   input: {
     marginTop: 18,
     minHeight: 90,

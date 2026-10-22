@@ -23,7 +23,7 @@ import { MONO, OUTLINE, allEdges, conceptOf, emToTracking } from '../theme/theme
 import { Card, frameStyle, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
 import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError } from '../api/client';
-import { sourceLabel } from '../api/format';
+import { itemTitle, sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { Heading } from '../components/Typography';
@@ -367,6 +367,8 @@ export default function SaveSheetScreen() {
             ? `이번 달 AI 정리 ${aiLeft}건 남음`
             : '';
 
+  const bulkUnclassified = savedBulk ? savedBulk.items.filter((it) => it.classification_status === 'unclassified').length : 0;
+
   const screenshotGrid = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.screenshotRow}>
       {gridScreenshots.map((shot) => {
@@ -631,12 +633,19 @@ export default function SaveSheetScreen() {
                 {savedBulk.failed > 0 && (
                   <Text style={[styles.savedSub, { color: theme.danger }]}>{savedBulk.failed}개는 저장하지 못했어요.</Text>
                 )}
+                {bulkUnclassified > 0 && (
+                  <Text style={[styles.savedSub, { color: theme.sub }]}>
+                    {bulkUnclassified}개는 이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요. 저장은 됐어요.
+                  </Text>
+                )}
               </View>
             </View>
 
             <ScrollView style={styles.bulkResultList} showsVerticalScrollIndicator={false}>
               {savedBulk.items.map((item) => {
-                const pending = item.classification_status === 'pending';
+                // Past the month's allowance an item waits in 미분류함 -- it
+                // reads '정리 대기 · 사진' (itemTitle), not '(제목 없음) · 기타'.
+                const pending = item.classification_status === 'pending' || item.classification_status === 'unclassified';
                 return (
                   <Card key={item.id} theme={theme} style={styles.bulkResultRow}>
                     <Text
@@ -646,7 +655,7 @@ export default function SaveSheetScreen() {
                       ]}
                       numberOfLines={1}
                     >
-                      {item.title ?? item.raw_text ?? (pending ? '분석 중...' : '(제목 없음)')}
+                      {itemTitle(item)}
                     </Text>
                     {!pending && <Text style={{ fontFamily: MONO, fontSize: 10, color: theme.sub }}>{item.category}</Text>}
                   </Card>
@@ -681,6 +690,9 @@ export default function SaveSheetScreen() {
             )}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
+              {bulkUnclassified > 0 && (
+                <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+              )}
               <SolidButton label="확인" theme={theme} onPress={close} />
             </ButtonRow>
           </>

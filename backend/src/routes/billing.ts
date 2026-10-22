@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
-import { resolveUserId } from "../lib/auth.js";
+import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 import { getEntitlement } from "../lib/plans.js";
 import { isPlayBillingConfigured, PlayApiError } from "../lib/googlePlay.js";
 import {
@@ -23,6 +23,13 @@ const RtdnSchema = z.object({
 });
 
 export async function billingRoutes(app: FastifyInstance) {
+  // Route plugins are encapsulated, so the items routes' handler doesn't
+  // cover these -- without it a missing login came back as a 500.
+  app.setErrorHandler((err, _req, reply) => {
+    if (err instanceof UnauthorizedError) return reply.code(401).send({ error: err.message });
+    reply.send(err);
+  });
+
   // What the paywall can offer right now: whether store billing is set up
   // on the server, the product ids to load from Play, and how many lifetime
   // passes are left (the option is hidden at 0).

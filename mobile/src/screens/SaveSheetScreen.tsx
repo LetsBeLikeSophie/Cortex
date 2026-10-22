@@ -165,6 +165,18 @@ export default function SaveSheetScreen() {
   const voiceBase = useRef('');
 
   const close = () => navigation.goBack();
+  // While photos are being saved, leaving would stop the batch partway with
+  // no result screen -- 취소, a tap outside, the grabber and the back button
+  // all wait until it's done.
+  const saving = status === 'saving';
+  const closeUnlessSaving = () => {
+    if (!saving) close();
+  };
+  useEffect(() => {
+    if (!saving) return;
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => e.preventDefault());
+    return unsubscribe;
+  }, [saving, navigation]);
 
   // Picking a photo and typing a memo are mutually exclusive in this sheet
   // -- picking one clears the others rather than trying to send several.
@@ -391,7 +403,7 @@ export default function SaveSheetScreen() {
   );
 
   return (
-    <ModalSheet theme={theme} onClose={close} paddingBottom={32} maxHeightRatio={0.86} liftForKeyboard>
+    <ModalSheet theme={theme} onClose={closeUnlessSaving} paddingBottom={32} maxHeightRatio={0.86} liftForKeyboard>
         {status === 'input' || status === 'saving' || status === 'error' ? (
           <>
           {/* This sheet is a native-stack "transparentModal", rendered on
@@ -591,7 +603,7 @@ export default function SaveSheetScreen() {
             {quotaLine !== '' && <Text style={[styles.quotaLine, { color: theme.sub }]}>{quotaLine}</Text>}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
-              <GhostButton label="취소" theme={theme} onPress={close} />
+              <GhostButton label="취소" theme={theme} onPress={close} disabled={saving} />
               <SolidButton
                 label={selectedScreenshots.length > 1 ? `${selectedScreenshots.length}장 저장하기` : '저장하기'}
                 theme={theme}

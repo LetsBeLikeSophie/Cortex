@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
+import { MEHH_SAVED_URL } from '../native/mehh';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
@@ -145,11 +146,17 @@ export default function HomeScreen() {
     // The native module already copied each one into our cache dir, so the
     // sender trashing its originals afterwards doesn't lose them.
     const images = (shareIntent.files ?? []).filter((f) => f.path && (f.mimeType ?? 'image/').startsWith('image/'));
+    // Mehh tags its screenshot shares with this marker (in EXTRA_TEXT, kept
+    // by our expo-share-intent patch): it's a request for a "saved" callback,
+    // never a memo. Text riding along with other apps' images stays ignored,
+    // as before.
+    const fromMehh = images.length > 0 && !!shareIntent.text?.includes(MEHH_SAVED_URL);
     navigation.navigate('SaveSheet', {
       sharedImageUri: images.length === 1 ? images[0].path : undefined,
       sharedImageUris: images.length > 1 ? images.map((f) => f.path) : undefined,
-      sharedUrl: shareIntent.webUrl ?? undefined,
-      sharedText: shareIntent.webUrl ? undefined : shareIntent.text ?? undefined,
+      sharedUrl: images.length > 0 ? undefined : shareIntent.webUrl ?? undefined,
+      sharedText: images.length > 0 || shareIntent.webUrl ? undefined : shareIntent.text ?? undefined,
+      returnToMehh: fromMehh || undefined,
     });
     resetShareIntent();
   }, [hasShareIntent, shareIntent, navigation, resetShareIntent]);

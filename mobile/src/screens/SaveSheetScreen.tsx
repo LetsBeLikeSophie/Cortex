@@ -31,6 +31,7 @@ import { ModalSheet } from '../components/ModalSheet';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast } from '../native/toast';
+import { tellMehhSaved } from '../native/mehh';
 import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
@@ -158,6 +159,17 @@ export default function SaveSheetScreen() {
     setSharedShots(shots);
     setSelectedScreenshots(shots);
   }, [sharedImageUris]);
+
+  // A share from Mehh wants a "saved" callback -- sent once, and only when
+  // every image it shared made it in. Cancel/close/failure sends nothing,
+  // so Mehh keeps its originals.
+  const returnToMehh = !!route.params?.returnToMehh;
+  const toldMehh = useRef(false);
+  const maybeTellMehh = (count: number) => {
+    if (!returnToMehh || toldMehh.current) return;
+    toldMehh.current = true;
+    tellMehhSaved(count);
+  };
 
   const scrollRef = useRef<ScrollView>(null);
   // Text already in the memo when a voice dictation starts -- live partial
@@ -321,8 +333,12 @@ export default function SaveSheetScreen() {
       return;
     }
     const shots = selectedScreenshots;
-    setSavedBulk({ items, failed, savedShotIds: shots.filter((_, i) => results[i] !== null).map((s) => s.id) });
+    const savedShotIds = shots.filter((_, i) => results[i] !== null).map((s) => s.id);
+    setSavedBulk({ items, failed, savedShotIds });
     setStatus('done');
+    if (sharedShots.length > 0 && sharedShots.every((s) => savedShotIds.includes(s.id))) {
+      maybeTellMehh(sharedShots.length);
+    }
   };
 
   const submit = () => {
@@ -348,6 +364,7 @@ export default function SaveSheetScreen() {
       .then((item) => {
         setSaved(item);
         setStatus('done');
+        if (image && image.previewUri === route.params?.sharedImageUri) maybeTellMehh(1);
       })
       .catch((err) => {
         setError(friendlyError(err));

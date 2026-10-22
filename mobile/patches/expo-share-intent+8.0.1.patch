@@ -1,0 +1,55 @@
+diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+index ff5b100..e758493 100644
+--- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
++++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+@@ -111,6 +111,12 @@ class ExpoShareIntentModule : Module() {
+             )
+         }
+ 
++        // EXTRA_TEXT riding along with shared files (a String on SEND, often a
++        // CharSequence list on SEND_MULTIPLE) -- dropped upstream, kept here.
++        private fun sharedFileText(intent: Intent): String? =
++            intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
++                ?: intent.getCharSequenceArrayListExtra(Intent.EXTRA_TEXT)?.firstOrNull()?.toString()
++
+         fun handleShareIntent(intent: Intent) {
+             val activity = instance?.currentActivity
+             if (activity != null && !activity.isTaskRoot) {
+@@ -142,14 +148,14 @@ class ExpoShareIntentModule : Module() {
+                 if (intent.action == Intent.ACTION_SEND) {
+                     val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM);
+                     if (uri != null) {
+-                        notifyShareIntent(mapOf( "files" to arrayOf(getFileInfo(uri), "type" to "file")))
++                        notifyShareIntent(mapOf( "files" to arrayOf(getFileInfo(uri), "type" to "file"), "text" to sharedFileText(intent)))
+                     } else {
+                         notifyError("empty uri for file sharing: " + intent.action)
+                     }
+                 } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+                     val uris = intent.parcelableArrayList<Uri>(Intent.EXTRA_STREAM)
+                     if (uris != null) {
+-                        notifyShareIntent(mapOf( "files" to uris.map { getFileInfo(it) }, "type" to "file"))
++                        notifyShareIntent(mapOf( "files" to uris.map { getFileInfo(it) }, "type" to "file", "text" to sharedFileText(intent)))
+                     } else {
+                         notifyError("empty uris array for file sharing: " + intent.action)
+                     }
+diff --git a/node_modules/expo-share-intent/build/utils.js b/node_modules/expo-share-intent/build/utils.js
+index 3d343c6..21f5b0f 100644
+--- a/node_modules/expo-share-intent/build/utils.js
++++ b/node_modules/expo-share-intent/build/utils.js
+@@ -57,7 +57,7 @@ export const parseShareIntent = (value, options) => {
+     else {
+         shareIntent = value; // Android
+     }
+-    if (shareIntent?.text) {
++    if (shareIntent?.text && !shareIntent?.files?.length) {
+         // Try to find the webURL in the SharedIntent text
+         const webUrl = shareIntent.text
+             .match(/[(http(s)?)://(www.)?-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_+.~#?&//=]*)/gi)
+@@ -112,6 +112,7 @@ export const parseShareIntent = (value, options) => {
+                 }, [])
+                 : null,
+             type: isMedia ? "media" : "file",
++            text: shareIntent?.text ?? null,
+         };
+     }
+     options.debug &&

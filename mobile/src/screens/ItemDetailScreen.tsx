@@ -96,6 +96,9 @@ export default function ItemDetailScreen() {
   const beforeAiRef = useRef<{ title: string; snippet: string; category: ApiItem['category']; tags: string[] } | null>(null);
   const [editError, setEditError] = useState('');
   const [organizing, setOrganizing] = useState(item.classification_status === 'pending');
+  // Still waiting in 미분류함 (never organized): ✦ is its first organize,
+  // not a re-organize -- nothing to undo back to.
+  const [waiting, setWaiting] = useState(item.classification_status === 'unclassified');
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
@@ -150,6 +153,7 @@ export default function ItemDetailScreen() {
         .then((fresh) => {
           if (cancelled || fresh.classification_status === 'pending') return;
           setOrganizing(false);
+          if (fresh.classification_status !== 'unclassified') setWaiting(false);
           savedRef.current = { ...savedRef.current, title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '' };
           setTitle(fresh.title ?? '');
           setSnippet(fresh.snippet ?? '');
@@ -303,7 +307,9 @@ export default function ItemDetailScreen() {
     if (organizing) return;
     setEditError('');
     try {
-      beforeAiRef.current = { title: savedRef.current.title, snippet: savedRef.current.snippet, category, tags: aiTags };
+      // An undo would put back the empty '정리 대기' placeholders (and the
+      // organize was still spent) -- so a first organize keeps no snapshot.
+      beforeAiRef.current = waiting ? null : { title: savedRef.current.title, snippet: savedRef.current.snippet, category, tags: aiTags };
       hideSnack();
       await reorganizeItem(item.id);
       setOrganizing(true);
@@ -543,7 +549,12 @@ export default function ItemDetailScreen() {
               </View>
               {/* Empty/working state in sub italic -- theme.line was ~1.1-1.3:1, unreadable. */}
               <Text style={[styles.body, styles.aiMemoText, { color: theme.sub, fontStyle: snippet ? 'normal' : 'italic' }]}>
-                {snippet || (organizing ? 'AI가 정리하는 중...' : '아직 AI 메모가 없어요')}
+                {snippet ||
+                  (organizing
+                    ? 'AI가 정리하는 중...'
+                    : waiting
+                      ? '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
+                      : '아직 AI 메모가 없어요')}
               </Text>
             </View>
           )}

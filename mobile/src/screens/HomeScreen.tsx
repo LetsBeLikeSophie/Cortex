@@ -9,7 +9,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
+import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -17,6 +17,7 @@ import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
 import { IconButton, SolidButton } from '../components/Buttons';
 import { SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
+import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 
 // The hero stat box's own front-layer fill -- mirrors cardShellStyle in
@@ -171,8 +172,46 @@ export default function HomeScreen() {
     if (!tag || selectedIds.size === 0 || !bulkEditing) return;
     setBulkApplying(true);
     const ids = [...selectedIds];
-    const call = bulkEditing === 'add' ? addTag : removeTag;
-    await Promise.all(ids.map((id) => call(id, tag).catch(() => {})));
+    // Removing has to hit the list the tag is actually in: an AI tag lives
+    // in `tags`, one the person added in `user_tags` (removeTag alone only
+    // ever cleared user_tags, so AI tags silently stayed). Items without the
+    // tag are skipped, not counted as done.
+    const byId = new Map(listSource.map((it) => [it.id, it]));
+    let done = 0;
+    let failed = 0;
+    let absent = 0;
+    await Promise.all(
+      ids.map(async (id) => {
+        const item = byId.get(id);
+        try {
+          if (bulkEditing === 'add') {
+            await addTag(id, tag);
+            done++;
+            return;
+          }
+          const inAi = !!item?.tags.includes(tag);
+          const inUser = !!item?.user_tags.includes(tag);
+          if (!inAi && !inUser) {
+            absent++;
+            return;
+          }
+          if (inAi) await removeAiTag(id, tag);
+          if (inUser) await removeTag(id, tag);
+          done++;
+        } catch {
+          failed++;
+        }
+      })
+    );
+    showToast(
+      [
+        bulkEditing === 'add' ? `${done}개에 '${tag}'를 붙였어요` : `${done}개에서 '${tag}'를 뺐어요`,
+        absent ? `${absent}개는 원래 없었어요` : null,
+        failed ? `실패 ${failed}개` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    );
     setBulkApplying(false);
     setBulkEditing(null);
     setBulkTagDraft('');
@@ -181,6 +220,7 @@ export default function HomeScreen() {
     load();
   };
 
+  const listSource = rawItems;
   const filtered =
     activeTag === UNCLASSIFIED
       ? rawItems.filter((it) => it.classification_status === 'unclassified')

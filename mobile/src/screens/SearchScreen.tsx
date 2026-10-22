@@ -11,6 +11,8 @@ import {
   askSearch,
   asQuotaError,
   QuotaError,
+  fetchPlan,
+  Plan,
   fetchTags,
   restoreItem,
   searchItems as apiSearchItems,
@@ -203,13 +205,22 @@ export default function SearchScreen() {
   // Every saved tag, for the tag filter's autocomplete -- refreshed on focus
   // so tags added elsewhere show up without a restart.
   const [allTags, setAllTags] = useState<string[]>([]);
+  // AI searches left this month -- shown before ✦ is pressed and after.
+  const [plan, setPlan] = useState<Plan | null>(null);
+  const refreshPlan = React.useCallback(() => {
+    fetchPlan()
+      .then(setPlan)
+      .catch(() => {});
+  }, []);
   useFocusEffect(
     React.useCallback(() => {
       fetchTags()
         .then((res) => setAllTags(res.tags))
         .catch(() => {});
-    }, []),
+      refreshPlan();
+    }, [refreshPlan]),
   );
+  const aiLeft = plan ? Math.max(0, plan.search.limit - plan.search.used) : null;
 
   const trimmed = query.trim();
   const aiMode = aiQuery !== null && aiQuery === trimmed;
@@ -274,6 +285,7 @@ export default function SearchScreen() {
       .then((res) => {
         setInterpretation(res.interpretation);
         applySmart(res, res.interpretation);
+        refreshPlan();
       })
       .catch((err) => {
         // Falls back to word search for the same text -- and says so,
@@ -404,11 +416,11 @@ export default function SearchScreen() {
             />
             <Pressable
               onPress={() => ask()}
-              disabled={!trimmed || asking}
+              disabled={!trimmed || asking || aiMode}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="AI로 찾기"
-              style={[styles.aiButton, { opacity: trimmed ? 1 : 0.4 }]}
+              style={[styles.aiButton, { opacity: trimmed && !aiMode ? 1 : 0.4 }]}
             >
               {asking ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon color={theme.accent} size={17} strokeWidth={1.5} />}
             </Pressable>
@@ -488,7 +500,9 @@ export default function SearchScreen() {
         {hasQuery && (
           <View style={[styles.metaRow, { paddingBottom: boxed ? 4 : 0 }]}>
             <Text style={metaStyle}>{asking ? 'AI가 문장을 읽는 중...' : loading ? '검색 중...' : txt.hits(hits.length)}</Text>
-            <Text style={metaStyle}>{aiMode ? `✦ ${orderLabel}` : orderLabel}</Text>
+            <Text style={metaStyle}>
+              {aiMode ? `✦ ${orderLabel} · 1회 사용${aiLeft !== null ? ` · ${aiLeft}회 남음` : ''}` : orderLabel}
+            </Text>
           </View>
         )}
       </View>
@@ -498,6 +512,7 @@ export default function SearchScreen() {
           <Text style={[styles.help, { color: theme.sub }]}>단어를 치는 대로 바로 찾아요. 앞에 -를 붙이면 빼고 찾아요.</Text>
           <Text style={[styles.help, { color: theme.sub }]}>기억이 흐릿하면 문장으로 쓰고 ✦를 눌러 보세요.</Text>
           <Text style={[styles.help, { color: theme.sub }]}>예: 지난달 인스타에서 본 성수 카페</Text>
+          {aiLeft !== null && <Text style={[styles.help, { color: theme.sub }]}>AI 검색은 이번 달 {aiLeft}회 남았어요.</Text>}
         </View>
       ) : (
         <AsyncStateView

@@ -402,7 +402,10 @@ export default function ItemDetailScreen() {
             <View style={styles.headerActions}>
               {/* Rewrite the title/memo/tags with the person's own words as the
                   guide (see pipeline.ts hintFor). Same ✦ as sentence search. */}
-              {item.capture_type === 'text' && sparkleButton}
+              {/* On a fresh 모아서 만들기 result the header ✦ ("re-tag", 1 AI
+                  organize) read as "make it again" -- that's the 다른 형식으로
+                  link under the title instead. */}
+              {item.capture_type === 'text' && !composedFrom && sparkleButton}
               <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label="휴지통으로 이동">
                 <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
@@ -416,6 +419,13 @@ export default function ItemDetailScreen() {
                 {`'${composedFrom.tag}' 메모 ${composedFrom.count}개로 만들었어요`}
                 {composedFrom.left !== undefined ? ` · 이번 달 ${composedFrom.left}회 남음` : ''}
               </Text>
+              <Pressable
+                onPress={() => navigation.replace('Compose', { tag: composedFrom.tag, count: composedFrom.count })}
+                hitSlop={8}
+                style={styles.composedAgain}
+              >
+                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>다른 형식으로 →</Text>
+              </Pressable>
             </View>
           )}
 
@@ -612,7 +622,8 @@ const styles = StyleSheet.create({
   editRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   flex1: { flex: 1 },
   aiMemo: { marginTop: 16 },
-  composedNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  composedNote: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  composedAgain: { marginLeft: 'auto' },
   composedText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
   aiMemoHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   aiMemoLabel: { fontFamily: MONO, fontSize: 10.5, letterSpacing: 1.2 },

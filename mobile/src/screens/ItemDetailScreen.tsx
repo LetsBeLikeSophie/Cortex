@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -21,7 +22,7 @@ import { addTag, asQuotaError, deleteItem, fetchItem, fetchPlan, getScreenshotUr
 import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
-import { SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
+import { ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
@@ -366,6 +367,19 @@ export default function ItemDetailScreen() {
     </IconButton>
   );
 
+  // The system share sheet (카톡, 메시지, 복사 ...) with what's on screen:
+  // the title and the body -- for a photo/link, its AI memo, 내 메모 and the
+  // link. Built-in Share, no extra library.
+  const share = () => {
+    const body =
+      item.capture_type === 'text'
+        ? rawText
+        : [snippet, userNote ? `내 메모: ${userNote}` : null, item.raw_url].filter(Boolean).join('\n\n');
+    const message = [title.trim(), body.trim()].filter(Boolean).join('\n\n');
+    if (!message) return;
+    Share.share({ message }).catch(() => {});
+  };
+
   const confirmDelete = async () => {
     setDeleteState('deleting');
     try {
@@ -406,6 +420,9 @@ export default function ItemDetailScreen() {
                   organize) read as "make it again" -- that's the 다른 형식으로
                   link under the title instead. */}
               {item.capture_type === 'text' && !composedFrom && sparkleButton}
+              <IconButton theme={theme} on="sheet" onPress={share} label="공유">
+                <ShareIcon size={14} color={theme.sub} strokeWidth={1.3} />
+              </IconButton>
               <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label="휴지통으로 이동">
                 <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>

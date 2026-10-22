@@ -80,6 +80,17 @@ export function TrashIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   );
 }
 
+// Box with an arrow out of the top -- "send this elsewhere" (share sheet).
+export function ShareIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M9 2.5v9" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M5.8 5.5 9 2.5l3.2 3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M5 8H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-1" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function RestoreIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">

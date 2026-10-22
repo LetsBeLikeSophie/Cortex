@@ -9,7 +9,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
+import { fetchItemsWithTag, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -57,6 +57,10 @@ export default function HomeScreen() {
   const [customTabs, setCustomTabs] = useState<TagTab[]>([]);
   const [activeTag, setActiveTag] = useState<TagTab | null>(null);
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
+  // The active tag tab's own items, fetched from the whole archive (the
+  // recent list above only covers the newest 50). Null while loading or
+  // when no tag tab is active.
+  const [tagItems, setTagItems] = useState<{ tag: string; items: ApiItem[] } | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [sorting, setSorting] = useState(false);
   const [total, setTotal] = useState(0);
@@ -150,6 +154,20 @@ export default function HomeScreen() {
   // Switching tabs invalidates whatever was selected (it was a selection
   // within the old filtered list), and "모두" has no filtered group to bulk
   // -edit at all, so leaving a tag tab always drops out of select mode too.
+  // Fetch the tag tab's items whenever it's opened or Home refreshes.
+  const loadTag = React.useCallback((tag: string | null) => {
+    if (!tag || tag === UNCLASSIFIED) {
+      setTagItems(null);
+      return;
+    }
+    fetchItemsWithTag(tag)
+      .then((res) => setTagItems({ tag, items: res.items }))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadTag(activeTag);
+  }, [activeTag, rawItems, loadTag]);
+
   const changeTag = (tag: TagTab | null) => {
     setActiveTag(tag);
     setSelectMode(false);
@@ -220,13 +238,15 @@ export default function HomeScreen() {
     load();
   };
 
-  const listSource = rawItems;
+  const tagList =
+    activeTag && activeTag !== UNCLASSIFIED
+      ? tagItems?.tag === activeTag
+        ? tagItems.items
+        : rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))
+      : null;
+  const listSource = tagList ?? rawItems;
   const filtered =
-    activeTag === UNCLASSIFIED
-      ? rawItems.filter((it) => it.classification_status === 'unclassified')
-      : activeTag
-        ? rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))
-        : rawItems;
+    activeTag === UNCLASSIFIED ? rawItems.filter((it) => it.classification_status === 'unclassified') : tagList ?? rawItems;
   const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;
   const classifyLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : 0;
 
@@ -462,7 +482,7 @@ export default function HomeScreen() {
               {/* "모아서 만들기": this tab's items -> one course/list/summary memo. */}
               {items.length >= 2 ? (
                 <Pressable
-                  onPress={() => navigation.navigate('Compose', { tag: activeTag, count: items.length, suggested: suggestFormat(rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))) })}
+                  onPress={() => navigation.navigate('Compose', { tag: activeTag, count: items.length, suggested: suggestFormat(listSource) })}
                   hitSlop={6}
                   style={styles.composeLink}
                 >

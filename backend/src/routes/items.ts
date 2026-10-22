@@ -49,6 +49,9 @@ const ComposeSchema = z.object({
 
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
+  // A home tag tab: that tag's items across the whole archive, not just
+  // whatever is among the newest `limit`.
+  tag: z.string().min(1).max(60).optional(),
 });
 
 const SearchQuerySchema = z.object({
@@ -155,6 +158,10 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
     }
     const userId = await resolveUserId(req);
+    if (parsed.data.tag) {
+      const items = await listItemsWithTag(userId, parsed.data.tag, parsed.data.limit ?? 100);
+      return reply.send({ items, total: items.length });
+    }
     const { items, total } = await listItems(userId, { limit: parsed.data.limit });
     return reply.send({ items, total });
   });

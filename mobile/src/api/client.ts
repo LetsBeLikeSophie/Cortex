@@ -198,6 +198,12 @@ export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number }>(`/items?limit=${limit}`);
 }
 
+// One home tag tab's items from the whole archive (newest first, up to 100)
+// -- filtering the recent 50 hid older memos with that tag.
+export function fetchItemsWithTag(tag: string, limit = 100) {
+  return request<{ items: ApiItem[]; total: number }>(`/items?tag=${encodeURIComponent(tag)}&limit=${limit}`);
+}
+
 // `include` terms are AND'd together, `exclude` terms are NOT'd -- see the
 // search screen's tag-chip input (space/enter turns a word into a chip,
 // tapping it toggles include/exclude, × removes it).

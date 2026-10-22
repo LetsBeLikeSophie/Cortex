@@ -21,6 +21,7 @@ import {
   getItemForUser,
   insertItem,
   listItemsWithTag,
+  listUnclassifiedItems,
   updateItemText,
   searchItemsSmart,
   trashItem,
@@ -52,6 +53,9 @@ const ListQuerySchema = z.object({
   // A home tag tab: that tag's items across the whole archive, not just
   // whatever is among the newest `limit`.
   tag: z.string().min(1).max(60).optional(),
+  // The 미분류 tab: everything waiting, oldest first -- the order
+  // classify-backlog works through, so the list matches what 'AI로 정리' does.
+  status: z.enum(["unclassified"]).optional(),
 });
 
 const SearchQuerySchema = z.object({
@@ -158,6 +162,10 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
     }
     const userId = await resolveUserId(req);
+    if (parsed.data.status === "unclassified") {
+      const items = await listUnclassifiedItems(userId, parsed.data.limit ?? 100);
+      return reply.send({ items, total: items.length });
+    }
     if (parsed.data.tag) {
       const items = await listItemsWithTag(userId, parsed.data.tag, parsed.data.limit ?? 100);
       return reply.send({ items, total: items.length });

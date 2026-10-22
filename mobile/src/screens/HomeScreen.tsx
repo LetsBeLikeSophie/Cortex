@@ -9,7 +9,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchItemsWithTag, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
+import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -61,6 +61,9 @@ export default function HomeScreen() {
   // recent list above only covers the newest 50). Null while loading or
   // when no tag tab is active.
   const [tagItems, setTagItems] = useState<{ tag: string; items: ApiItem[] } | null>(null);
+  // The 미분류 tab's own list from the server (oldest first) -- the recent
+  // 50 often held none of the items 'AI로 정리' actually works on.
+  const [waitingItems, setWaitingItems] = useState<ApiItem[] | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [sorting, setSorting] = useState(false);
   const [total, setTotal] = useState(0);
@@ -156,7 +159,14 @@ export default function HomeScreen() {
   // -edit at all, so leaving a tag tab always drops out of select mode too.
   // Fetch the tag tab's items whenever it's opened or Home refreshes.
   const loadTag = React.useCallback((tag: string | null) => {
-    if (!tag || tag === UNCLASSIFIED) {
+    if (tag === UNCLASSIFIED) {
+      setTagItems(null);
+      fetchUnclassifiedItems()
+        .then((res) => setWaitingItems(res.items))
+        .catch(() => {});
+      return;
+    }
+    if (!tag) {
       setTagItems(null);
       return;
     }
@@ -246,7 +256,9 @@ export default function HomeScreen() {
       : null;
   const listSource = tagList ?? rawItems;
   const filtered =
-    activeTag === UNCLASSIFIED ? rawItems.filter((it) => it.classification_status === 'unclassified') : tagList ?? rawItems;
+    activeTag === UNCLASSIFIED
+      ? waitingItems ?? rawItems.filter((it) => it.classification_status === 'unclassified')
+      : tagList ?? rawItems;
   const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;
   const classifyLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : 0;
 
@@ -259,12 +271,27 @@ export default function HomeScreen() {
     }
     setSorting(true);
     try {
-      await classifyBacklog();
+      // Say what happened: the started items leave this tab for '모두'
+      // (분석 중 there), and how many still wait.
+      const { started, left } = await classifyBacklog();
+      showToast(
+        started > 0
+          ? [`${started}건 정리를 시작했어요 · '모두'에서 분석 중이에요`, left > 0 ? `${left}건은 아직 기다려요` : null].filter(Boolean).join(' · ')
+          : '정리할 수 있는 항목이 없어요'
+      );
+    } catch (err) {
+      showToast(friendlyError(err));
     } finally {
       setSorting(false);
       load();
     }
   };
+
+  // The tab chip disappears at 0 -- don't leave its empty view selected.
+  useEffect(() => {
+    if (activeTag === UNCLASSIFIED && plan && plan.unclassifiedCount === 0) changeTag(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTag, plan]);
   const items = filtered.map(toRecentItem);
 
   // Always off the unfiltered list -- the hero card describes the whole
@@ -410,7 +437,9 @@ export default function HomeScreen() {
               {unclassifiedCount}건 정리 대기
             </Text>
             <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={1}>
-              {classifyLeft > 0 ? `이번 달 AI 정리 ${classifyLeft}건 남음` : `${resetLabel(plan?.resetsAt)}에 다시 생겨요`}
+              {classifyLeft > 0
+                ? `오래된 것부터 ${Math.min(classifyLeft, unclassifiedCount)}건 · 이번 달 AI 정리 ${classifyLeft}건 남음`
+                : `${resetLabel(plan?.resetsAt)}에 다시 생겨요`}
             </Text>
           </View>
           <SolidButton

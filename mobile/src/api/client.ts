@@ -198,6 +198,11 @@ export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number }>(`/items?limit=${limit}`);
 }
 
+// The 미분류 tab's items, oldest first (the order 'AI로 정리' takes them).
+export function fetchUnclassifiedItems(limit = 100) {
+  return request<{ items: ApiItem[]; total: number }>(`/items?status=unclassified&limit=${limit}`);
+}
+
 // One home tag tab's items from the whole archive (newest first, up to 100)
 // -- filtering the recent 50 hid older memos with that tag.
 export function fetchItemsWithTag(tag: string, limit = 100) {

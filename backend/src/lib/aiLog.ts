@@ -4,7 +4,7 @@ import { getClient } from "./supabase.js";
 // estimated cost -- so usage can be broken down by feature and by account
 // (the Anthropic console only splits by API key). Fire-and-forget: a failed
 // log write never fails the call it describes.
-export type AiPurpose = "classify_text" | "classify_link" | "classify_image" | "search" | "voice_tag";
+export type AiPurpose = "classify_text" | "classify_link" | "classify_image" | "search" | "voice_tag" | "compose";
 
 // USD per million tokens (input, output). Haiku 5.5's rate for prompts up
 // to 100K tokens -- every Cortex call is far below that. Unknown models log

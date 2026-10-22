@@ -6,6 +6,7 @@ import { config } from "./config.js";
 import { itemsRoutes } from "./routes/items.js";
 import { authRoutes } from "./routes/auth.js";
 import { webhookRoutes } from "./routes/webhooks.js";
+import { billingRoutes } from "./routes/billing.js";
 import { resumePendingClassifications } from "./lib/pipeline.js";
 import { startRetentionJob } from "./lib/retention.js";
 
@@ -47,6 +48,7 @@ app.get("/health", async () => ({
 await app.register(itemsRoutes);
 await app.register(authRoutes);
 await app.register(webhookRoutes);
+await app.register(billingRoutes);
 
 app.listen({ port: config.port, host: "0.0.0.0" })
   .then(() => {

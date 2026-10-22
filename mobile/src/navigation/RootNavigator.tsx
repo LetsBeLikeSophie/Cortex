@@ -19,6 +19,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import TrashScreen from '../screens/TrashScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
 import PaywallScreen from '../screens/PaywallScreen';
+import ComposeScreen from '../screens/ComposeScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -118,6 +119,7 @@ export default function RootNavigator() {
           <Stack.Screen name="TabPicker" component={TabPickerScreen} />
           <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
           <Stack.Screen name="Paywall" component={PaywallScreen} />
+          <Stack.Screen name="Compose" component={ComposeScreen} />
         </Stack.Group>
       </Stack.Navigator>
     </NavigationContainer>

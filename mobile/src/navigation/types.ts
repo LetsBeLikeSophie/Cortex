@@ -17,5 +17,7 @@ export type RootStackParamList = {
   Trash: undefined;
   ItemDetail: { item: ApiItem };
   // Why it opened -- picks the headline; omitted = opened from the profile.
-  Paywall: { reason?: 'classify' | 'search' } | undefined;
+  Paywall: { reason?: 'classify' | 'search' | 'compose' } | undefined;
+  // "모아서 만들기" for one home tag tab.
+  Compose: { tag: string; count: number; suggested?: import('../api/client').ComposeFormat };
 };

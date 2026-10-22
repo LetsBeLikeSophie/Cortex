@@ -3,8 +3,8 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
-import { getEntitlement, recordUsage, remaining } from "../lib/plans.js";
-import { clipInterpretation, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
+import { getEntitlement, recordUsage, refundUsage, remaining, reserveUsage } from "../lib/plans.js";
+import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -19,6 +19,8 @@ import {
   restoreItem,
   searchItems,
   getItemForUser,
+  insertItem,
+  listItemsWithTag,
   updateItemText,
   searchItemsSmart,
   trashItem,
@@ -38,6 +40,11 @@ const UpdateItemSchema = z.object({
   // replaced (it rewrites category and AI tags along with title/memo).
   category: z.enum(CATEGORIES).optional(),
   tags: z.array(z.string().max(30)).max(8).optional(),
+});
+
+const ComposeSchema = z.object({
+  tag: z.string().min(1).max(60),
+  format: z.enum(["course", "list", "summary"]),
 });
 
 const ListQuerySchema = z.object({
@@ -306,6 +313,60 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(402).send({ error: "quota", kind: "classify", limit: ent.classify.limit, tier: ent.tier, resetsAt: ent.resetsAt });
     }
     return reply.code(202).send({ ok: true });
+  });
+
+  // "모아서 만들기": everything under one tag -> one new text memo (a course,
+  // a list or a summary), saved with that tag. Metered monthly (402 when
+  // used up); the use is handed back if the AI call fails.
+  app.post("/items/compose", { config: { rateLimit: {} } }, async (req, reply) => {
+    const parsed = ComposeSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+    const userId = await resolveUserId(req);
+    const { tag, format } = parsed.data;
+
+    const ent = await getEntitlement(userId);
+    if (remaining(ent, "compose") === 0) {
+      return reply.code(402).send({ error: "quota", kind: "compose", limit: ent.compose.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+    }
+    const items = await listItemsWithTag(userId, tag);
+    if (items.length < 2) return reply.code(400).send({ error: "too_few", count: items.length });
+
+    const reservation = await reserveUsage(userId, "compose");
+    let composed: { title: string; body: string };
+    try {
+      composed = await composeFromItems(
+        tag,
+        format,
+        items.map((it) => ({
+          title: it.title,
+          memo: it.snippet,
+          myMemo: it.user_note,
+          keyText: it.capture_type === "screenshot" ? it.raw_text : it.capture_type === "text" ? it.raw_text : null,
+          category: it.category,
+          tags: [...it.tags, ...it.user_tags],
+          url: it.raw_url,
+        })),
+        userId
+      );
+    } catch (err) {
+      await refundUsage(reservation).catch(() => {});
+      throw err;
+    }
+    // Filed under the category most of its sources have.
+    const counts = new Map<string, number>();
+    for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1);
+    const category = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0] as (typeof items)[number]["category"];
+    const item = await insertItem({
+      userId,
+      source: "memo",
+      captureType: "text",
+      rawText: composed.body,
+      title: composed.title,
+      category,
+      tags: [tag],
+      classificationStatus: "done",
+    });
+    return reply.send({ item, sourceCount: items.length });
   });
 
   // Soft delete -- moves the item to the trash rather than removing it.

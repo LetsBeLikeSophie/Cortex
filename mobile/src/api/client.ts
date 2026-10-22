@@ -21,8 +21,10 @@ export interface Plan {
   proUntil: string | null;
   classify: { used: number; limit: number };
   search: { used: number; limit: number };
+  // "모아서 만들기" this month (optional: older servers didn't send it).
+  compose?: { used: number; limit: number };
   // Pro's monthly ceilings (optional: older servers didn't send it).
-  proLimits?: { classify: number; search: number };
+  proLimits?: { classify: number; search: number; compose?: number };
   resetsAt: string;
   unclassifiedCount: number;
 }
@@ -91,7 +93,7 @@ export class ApiError extends Error {
 // What a 402 from a metered route says (see POST /items/search/ask).
 export interface QuotaError {
   error: 'quota';
-  kind: 'classify' | 'search';
+  kind: 'classify' | 'search' | 'compose';
   limit: number;
   tier: Tier;
   resetsAt: string;
@@ -340,6 +342,31 @@ export function updateItem(
   patch: { title?: string; snippet?: string; rawText?: string; userNote?: string; category?: ApiItem['category']; tags?: string[] }
 ) {
   return request<ApiItem>(`/items/${encodeURIComponent(itemId)}`, { method: 'PATCH', body: JSON.stringify(patch) });
+}
+
+// What the paywall can sell: whether store billing is set up on the
+// server, the Play product ids, and how many lifetime passes are left.
+export interface Offers {
+  enabled: boolean;
+  subscriptionId: string;
+  lifetimeId: string;
+  lifetimeRemaining: number;
+}
+export function fetchOffers() {
+  return request<Offers>('/billing/offers');
+}
+
+// A finished Play purchase -> the server checks it with Google and turns Pro
+// on. Returns the new plan.
+export function verifyGooglePurchase(productId: string, purchaseToken: string) {
+  return request<Plan>('/billing/google/verify', { method: 'POST', body: JSON.stringify({ productId, purchaseToken }) });
+}
+
+// "모아서 만들기": everything under a tag -> one new memo. 402 when this
+// month's runs are used up, 400 too_few under 2 items.
+export type ComposeFormat = 'course' | 'list' | 'summary';
+export function composeFromTag(tag: string, format: ComposeFormat) {
+  return request<{ item: ApiItem; sourceCount: number }>('/items/compose', { method: 'POST', body: JSON.stringify({ tag, format }) }, 90_000);
 }
 
 // "AI로 다시 정리": re-runs classification with the current title/memo as a

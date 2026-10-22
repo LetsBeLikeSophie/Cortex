@@ -456,3 +456,84 @@ export function clipInterpretation(q: SearchInterpretation): SearchInterpretatio
     exclude: clipTags(q.exclude, 3, 30),
   };
 }
+
+// ---- "모아서 만들기" (compose) --------------------------------------------
+// Everything under one tag becomes one new memo: a course, a list, or a
+// summary. Works only from what's already saved (titles, AI memos, the
+// person's own notes, words read off screenshots) -- images aren't resent,
+// so a 50-item compose costs well under 1원.
+
+export type ComposeFormat = "course" | "list" | "summary";
+
+export interface ComposeSource {
+  title: string | null;
+  memo: string | null;
+  myMemo: string | null;
+  keyText: string | null;
+  category: string;
+  tags: string[];
+  url: string | null;
+}
+
+const ComposeSchema = z.object({
+  title: z.string().describe("Short title for the new memo, in Korean"),
+  body: z.string().describe("The composed memo, in Korean, plain text with simple line breaks and '-' bullets"),
+});
+
+const COMPOSE_FORMATS: Record<ComposeFormat, string> = {
+  course:
+    "A course/route plan: group the places by area, suggest a sensible order to visit them, and note per place what to see/eat/buy and anything the person wrote about it. Places that don't fit a route go in a short '기타' list at the end.",
+  list:
+    "A checklist/comparison: one line per item with the deciding facts that are actually given (price, where, size, what it's for, the person's own note), grouped by kind when that helps.",
+  summary:
+    "A summary note: first 2-3 lines on what this collection is about overall, then the key points as bullets, merging items that say the same thing.",
+};
+
+const COMPOSE_SYSTEM = `You turn a set of saved items from "Cortex" (a personal archive app)
+into one useful memo for the person who saved them.
+
+Rules:
+- Write everything in Korean. Names and brands may stay as written.
+- Use ONLY facts present in the items. Never add opening hours, prices,
+  addresses, ratings or anything else that isn't there. If something useful
+  is missing, don't fill it in.
+- Mention each item by its own name/title so the person recognizes it.
+- The person's own notes ("내 메모") matter most -- keep what they said.
+- Terse memo style, no greetings or filler. Plain text: line breaks, "-"
+  bullets, "1." numbering. No markdown headings, no emoji.`;
+
+export async function composeFromItems(
+  tag: string,
+  format: ComposeFormat,
+  items: ComposeSource[],
+  userId?: string
+): Promise<{ title: string; body: string }> {
+  const lines = items.map((it, i) =>
+    [
+      `#${i + 1} [${it.category}] ${it.title ?? "(제목 없음)"}`,
+      it.memo ? `  AI 메모: ${it.memo}` : null,
+      it.myMemo ? `  내 메모: ${it.myMemo}` : null,
+      it.keyText ? `  사진 속 글자: ${it.keyText.slice(0, 300)}` : null,
+      it.tags.length ? `  태그: ${it.tags.join(", ")}` : null,
+      it.url ? `  링크: ${it.url}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n")
+  );
+  const response = await classifyClient.messages.parse({
+    model: MODEL,
+    max_tokens: 4096,
+    system: COMPOSE_SYSTEM,
+    messages: [
+      {
+        role: "user",
+        content: `Tag: ${tag}\nFormat: ${COMPOSE_FORMATS[format]}\n\nItems (${items.length}):\n${lines.join("\n\n")}`,
+      },
+    ],
+    output_config: { effort: "medium", format: zodOutputFormat(ComposeSchema) },
+  });
+  logAiCall("compose", MODEL, response.usage, userId);
+  const out = response.parsed_output;
+  if (!out) throw new Error("Claude response did not parse against the compose schema");
+  return { title: clip(out.title.trim(), 120), body: out.body.trim().slice(0, 8000) };
+}

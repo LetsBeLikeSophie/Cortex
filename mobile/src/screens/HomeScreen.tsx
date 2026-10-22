@@ -9,14 +9,14 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeTag, ApiItem, Plan, friendlyError } from '../api/client';
+import { fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
 import { IconButton, SolidButton } from '../components/Buttons';
-import { StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
+import { SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
 // The hero stat box's own front-layer fill -- mirrors cardShellStyle in
@@ -418,9 +418,24 @@ export default function HomeScreen() {
               )}
             </>
           ) : (
-            <Pressable onPress={() => setSelectMode(true)} style={styles.bulkBarRow}>
-              <Text style={[styles.bulkBarLink, { color: theme.sub }]}>선택</Text>
-            </Pressable>
+            <View style={styles.bulkBarRow}>
+              {/* "모아서 만들기": this tab's items -> one course/list/summary memo. */}
+              {items.length >= 2 ? (
+                <Pressable
+                  onPress={() => navigation.navigate('Compose', { tag: activeTag, count: items.length, suggested: suggestFormat(rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))) })}
+                  hitSlop={6}
+                  style={styles.composeLink}
+                >
+                  <SparkleIcon color={theme.accent} size={13} strokeWidth={1.5} />
+                  <Text style={[styles.bulkBarLink, { color: theme.accent }]}>모아서 만들기</Text>
+                </Pressable>
+              ) : (
+                <View />
+              )}
+              <Pressable onPress={() => setSelectMode(true)} hitSlop={6}>
+                <Text style={[styles.bulkBarLink, { color: theme.sub }]}>선택</Text>
+              </Pressable>
+            </View>
           )}
         </View>
       )}
@@ -462,6 +477,14 @@ export default function HomeScreen() {
   );
 }
 
+// The compose format to suggest from what a tag mostly holds.
+function suggestFormat(items: { category: string }[]): ComposeFormat {
+  const counts = new Map<string, number>();
+  for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1);
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return top === '가볼 곳' ? 'course' : top === '살 것' ? 'list' : 'summary';
+}
+
 // Tab key for the 미분류함 filter -- can't collide with a real tag (tags
 // never start with "__").
 const UNCLASSIFIED = '__unclassified__';
@@ -495,6 +518,7 @@ const styles = StyleSheet.create({
   // the bottom edge off outlined pill tabs.
   tabs: { flexDirection: 'row', paddingVertical: 2 },
   list: { flex: 1 },
+  composeLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   bulkBar: { paddingTop: 12 },
   bulkBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bulkBarText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },

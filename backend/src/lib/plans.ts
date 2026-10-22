@@ -9,7 +9,7 @@ import { getClient } from "./supabase.js";
 // guest trial could be re-taken endlessly).
 
 export type Tier = "free" | "trial" | "pro";
-export type UsageKind = "classify" | "search";
+export type UsageKind = "classify" | "search" | "compose";
 
 export interface Entitlement {
   tier: Tier;
@@ -18,8 +18,10 @@ export interface Entitlement {
   classify: { used: number; limit: number };
   // What Pro includes, so the paywall states the real monthly ceilings
   // instead of "unlimited".
-  proLimits: { classify: number; search: number };
+  proLimits: { classify: number; search: number; compose: number };
   search: { used: number; limit: number };
+  // "모아서 만들기" (compose) runs this month.
+  compose: { used: number; limit: number };
   // When this month's quota resets (start of next month, Korea time).
   resetsAt: string;
   unclassifiedCount: number;
@@ -95,9 +97,10 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
         : "free";
   const paid = tier !== "free";
   const { start, next } = monthWindow();
-  const [classifyUsed, searchUsed, unclassifiedCount] = await Promise.all([
+  const [classifyUsed, searchUsed, composeUsed, unclassifiedCount] = await Promise.all([
     countUsage(userId, "classify", start),
     countUsage(userId, "search", start),
+    countUsage(userId, "compose", start),
     countUnclassified(userId),
   ]);
   return {
@@ -106,7 +109,8 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     proUntil: row.pro_until,
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
     search: { used: searchUsed, limit: paid ? config.proSearchMonthly : config.freeSearchMonthly },
-    proLimits: { classify: config.proClassifyMonthly, search: config.proSearchMonthly },
+    compose: { used: composeUsed, limit: paid ? config.proComposeMonthly : config.freeComposeMonthly },
+    proLimits: { classify: config.proClassifyMonthly, search: config.proSearchMonthly, compose: config.proComposeMonthly },
     resetsAt: next.toISOString(),
     unclassifiedCount,
   };

@@ -446,6 +446,21 @@ export async function listTags(userId: string): Promise<string[]> {
   return [...set].sort((a, b) => a.localeCompare(b, "ko"));
 }
 
+// Everything (not trashed) carrying this tag, AI-assigned or added by the
+// person, newest first -- the input to "모아서 만들기". Filtered in JS, like
+// listTags, rather than building a PostgREST array filter from free text.
+export async function listItemsWithTag(userId: string, tag: string, max = 50): Promise<ItemRecord[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select()
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .order("shared_at", { ascending: false })
+    .limit(1000);
+  if (error) throw new Error(`listItemsWithTag failed: ${error.message}`);
+  return ((data ?? []) as ItemRecord[]).filter((it) => it.tags.includes(tag) || it.user_tags.includes(tag)).slice(0, max);
+}
+
 // The tags this person uses most (AI + their own), most-used first -- fed to
 // the classifier so a new item reuses "수달" instead of minting "수달 캐릭터"
 // next to it. Capped so the prompt stays small.

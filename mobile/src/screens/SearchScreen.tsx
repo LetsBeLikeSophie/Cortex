@@ -126,7 +126,8 @@ function InterpretationRow({
       {q.keywords.map((k, i) => (
         <SearchChip
           key={'k' + i + k.term}
-          label={k.synonyms.length ? `${k.term} +${k.synonyms.length}` : k.term}
+          // "+3" read as a count of results; "외 3" says it's 3 more words.
+          label={k.synonyms.length ? `${k.term} 외 ${k.synonyms.length}` : k.term}
           excluded={false}
           theme={theme}
           onToggle={() =>
@@ -486,7 +487,16 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {aiMode && interpretation && <InterpretationRow q={interpretation} theme={theme} onChange={reSearch} />}
+        {aiMode && interpretation && (
+          <>
+            <InterpretationRow q={interpretation} theme={theme} onChange={reSearch} />
+            {/* Tapping a chip flips it to excluded -- say so, and that editing
+                these never spends another AI search. */}
+            <Text style={[styles.interpretHelp, { color: theme.sub }]}>
+              AI가 읽은 조건 · 단어를 누르면 제외, ×는 빼기 (다시 AI를 쓰지 않아요)
+            </Text>
+          </>
+        )}
 
         {looksLikeSentence && (
           <Pressable onPress={() => ask()} hitSlop={6} style={styles.suggestLine}>
@@ -573,6 +583,7 @@ const styles = StyleSheet.create({
   notice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 },
   noticeText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontFamily: 'IBMPlexSansKR_400Regular' },
   noticeLink: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
+  interpretHelp: { fontSize: 12, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
   noReading: { fontSize: 12.5, marginTop: 12, fontFamily: 'IBMPlexSansKR_400Regular' },
   screen: { flex: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },

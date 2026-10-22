@@ -122,7 +122,7 @@ export default function PaywallScreen() {
                 onPress={() => setSelected(o.key)}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: active }}
-                style={[styles.option, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
+                style={[styles.option, { backgroundColor: theme.surface }, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
               >
                 <View style={styles.optionHead}>
                   <Text style={[styles.optionLabel, { color: theme.ink }]}>{o.label}</Text>

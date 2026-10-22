@@ -90,7 +90,7 @@ export default function ComposeScreen() {
               disabled={working}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
-              style={[styles.option, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
+              style={[styles.option, { backgroundColor: theme.surface }, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
             >
               <Text style={[styles.optionLabel, { color: theme.ink }]}>
                 {f.label}

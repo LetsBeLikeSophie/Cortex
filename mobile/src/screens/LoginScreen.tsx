@@ -6,20 +6,23 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { frameStyle } from '../components/Card';
 import { signInWithKakao } from '../auth/kakaoLogin';
+import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
+import { GoogleIcon } from '../components/Icons';
 import { useAuth } from '../auth/AuthContext';
-import { friendlyError } from '../api/client';
-import { PRIVACY_URL, TERMS_URL, strings } from '../i18n';
+import { friendlyError, seedSampleItem } from '../api/client';
+import { LANG, PRIVACY_URL, TERMS_URL, strings } from '../i18n';
 
 const S = strings({
   ko: {
     title1: '공유하면',
     title2: '저장되는 기억',
-    sub1: '카카오로 시작하면 Pro 7일 무료 체험이 있어요.',
+    sub1: '로그인하면 Pro 7일 무료 체험이 있어요.',
     sub2: '내 기억은 계정에 안전하게 모여요.',
     failed: (e: string) => `로그인 실패: ${e}`,
     kakao: '카카오로 로그인',
     guest: '게스트로 시작',
-    guestNote: '게스트는 체험 없이 무료로 시작해요. 기록은 이 기기에서만 볼 수 있고, 나중에 카카오 계정으로 옮길 수 없어요.',
+    guestNote: '게스트는 체험 없이 무료로 시작해요. 기록은 이 기기에서만 볼 수 있고, 나중에 계정으로 옮길 수 없어요.',
+    google: 'Google로 계속하기',
     policyPre: '계속하면 ',
     terms: '이용약관',
     policyAnd: ' 및 ',
@@ -29,12 +32,13 @@ const S = strings({
   en: {
     title1: 'Share it,',
     title2: 'and it’s saved',
-    sub1: 'Start with Kakao for a 7-day free Pro trial.',
+    sub1: 'Sign in for a 7-day free Pro trial.',
     sub2: 'Your memories stay safe in your account.',
     failed: (e: string) => `Login failed: ${e}`,
     kakao: 'Continue with Kakao',
     guest: 'Start as guest',
-    guestNote: "Guests start free, with no trial. Your saves stay on this device only and can't be moved to a Kakao account later.",
+    guestNote: "Guests start free, with no trial. Your saves stay on this device only and can't be moved to an account later.",
+    google: 'Continue with Google',
     policyPre: 'By continuing, you agree to the ',
     terms: 'Terms',
     policyAnd: ' and ',
@@ -44,12 +48,13 @@ const S = strings({
   ja: {
     title1: '共有するだけで',
     title2: '残る記憶',
-    sub1: 'Kakaoで始めるとPro 7日間無料体験があります。',
+    sub1: 'ログインするとPro 7日間無料体験があります。',
     sub2: '記憶はアカウントに安全にまとまります。',
     failed: (e: string) => `ログイン失敗: ${e}`,
     kakao: 'Kakaoでログイン',
     guest: 'ゲストで始める',
-    guestNote: 'ゲストは体験なしの無料で始まります。記録はこの端末でのみ見られ、後からKakaoアカウントへ移せません。',
+    guestNote: 'ゲストは体験なしの無料で始まります。記録はこの端末でのみ見られ、後からアカウントへ移せません。',
+    google: 'Googleで続ける',
     policyPre: '続けると',
     terms: '利用規約',
     policyAnd: 'と',
@@ -59,12 +64,13 @@ const S = strings({
   'zh-Hans': {
     title1: '一分享',
     title2: '就存下的记忆',
-    sub1: '用 Kakao 开始可免费试用 Pro 7 天。',
+    sub1: '登录即可免费试用 Pro 7 天。',
     sub2: '你的记忆会安全地存在账号里。',
     failed: (e: string) => `登录失败：${e}`,
     kakao: '使用 Kakao 登录',
     guest: '以访客身份开始',
-    guestNote: '访客免费开始，没有试用。记录只能在这台设备上查看，之后也无法转移到 Kakao 账号。',
+    guestNote: '访客免费开始，没有试用。记录只能在这台设备上查看，之后也无法转移到账号。',
+    google: '使用 Google 继续',
     policyPre: '继续即表示你同意',
     terms: '使用条款',
     policyAnd: '和',
@@ -74,12 +80,13 @@ const S = strings({
   'zh-Hant': {
     title1: '一分享',
     title2: '就存下的記憶',
-    sub1: '用 Kakao 開始可免費試用 Pro 7 天。',
+    sub1: '登入即可免費試用 Pro 7 天。',
     sub2: '你的記憶會安全地存在帳號裡。',
     failed: (e: string) => `登入失敗：${e}`,
     kakao: '使用 Kakao 登入',
     guest: '以訪客身分開始',
-    guestNote: '訪客免費開始，沒有試用。紀錄只能在這台裝置上查看，之後也無法轉移到 Kakao 帳號。',
+    guestNote: '訪客免費開始，沒有試用。紀錄只能在這台裝置上查看，之後也無法轉移到帳號。',
+    google: '使用 Google 繼續',
     policyPre: '繼續即表示你同意',
     terms: '使用條款',
     policyAnd: '和',
@@ -94,8 +101,12 @@ const S = strings({
 // it, the same way "Sign in with Apple" always looks the same everywhere.
 const KAKAO_YELLOW = '#FEE500';
 const KAKAO_TEXT = '#191919';
+// Google's sign-in button guidelines: white, a light gray outline, dark
+// gray text and the four-color G -- same in every theme, like Kakao's.
+const GOOGLE_TEXT = '#1F1F1F';
+const GOOGLE_OUTLINE = '#747775';
 
-type Status = 'idle' | 'kakaoLoading' | 'guestLoading' | 'error';
+type Status = 'idle' | 'kakaoLoading' | 'googleLoading' | 'guestLoading' | 'error';
 
 export default function LoginScreen() {
   const { theme } = useTheme();
@@ -113,6 +124,25 @@ export default function LoginScreen() {
       // AuthContext's onAuthStateChange listener flips the app over.
       setStatus('idle');
     } catch (err) {
+      setError(friendlyError(err));
+      setStatus('error');
+    }
+  };
+
+  const onGooglePress = async () => {
+    setStatus('googleLoading');
+    setError('');
+    try {
+      await signInWithGoogle();
+      // A first Google login gets the same sample item a Kakao signup does
+      // (the server only seeds an empty account, so a returning one is safe).
+      await seedSampleItem().catch(() => {});
+      setStatus('idle');
+    } catch (err) {
+      if (err instanceof GoogleSignInCancelled) {
+        setStatus('idle');
+        return;
+      }
       setError(friendlyError(err));
       setStatus('error');
     }
@@ -161,6 +191,8 @@ export default function LoginScreen() {
         {status === 'error' && (
           <Text style={[styles.errorText, { color: theme.danger }]}>{S.failed(error)}</Text>
         )}
+        {LANG === 'ko' ? (
+          <>
         <Pressable
           onPress={onPress}
           disabled={status !== 'idle' && status !== 'error'}
@@ -172,6 +204,50 @@ export default function LoginScreen() {
             <Text style={styles.kakaoButtonText}>{S.kakao}</Text>
           )}
         </Pressable>
+        <Pressable
+          onPress={onGooglePress}
+          disabled={status !== 'idle' && status !== 'error'}
+          style={[styles.googleButton, { borderRadius: theme.btnRadius, opacity: status === 'googleLoading' ? 0.7 : 1 }]}
+        >
+          {status === 'googleLoading' ? (
+            <ActivityIndicator color={GOOGLE_TEXT} />
+          ) : (
+            <View style={styles.googleInner}>
+              <GoogleIcon size={18} />
+              <Text style={styles.googleButtonText}>{S.google}</Text>
+            </View>
+          )}
+        </Pressable>
+          </>
+        ) : (
+          <>
+        <Pressable
+          onPress={onGooglePress}
+          disabled={status !== 'idle' && status !== 'error'}
+          style={[styles.googleButton, { borderRadius: theme.btnRadius, opacity: status === 'googleLoading' ? 0.7 : 1 }]}
+        >
+          {status === 'googleLoading' ? (
+            <ActivityIndicator color={GOOGLE_TEXT} />
+          ) : (
+            <View style={styles.googleInner}>
+              <GoogleIcon size={18} />
+              <Text style={styles.googleButtonText}>{S.google}</Text>
+            </View>
+          )}
+        </Pressable>
+        <Pressable
+          onPress={onPress}
+          disabled={status !== 'idle' && status !== 'error'}
+          style={[styles.kakaoButton, { borderRadius: theme.btnRadius, opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
+        >
+          {status === 'kakaoLoading' ? (
+            <ActivityIndicator color={KAKAO_TEXT} />
+          ) : (
+            <Text style={styles.kakaoButtonText}>{S.kakao}</Text>
+          )}
+        </Pressable>
+          </>
+        )}
         <Pressable
           onPress={onGuestPress}
           disabled={status !== 'idle' && status !== 'error'}
@@ -222,6 +298,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   kakaoButtonText: { color: KAKAO_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: GOOGLE_OUTLINE,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  googleButtonText: { color: GOOGLE_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
   guestButton: {
     paddingVertical: 15,
     alignItems: 'center',

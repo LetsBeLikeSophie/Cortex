@@ -69,7 +69,8 @@
       ],
       "./plugins/withDisableAndroidBackup",
       "expo-iap",
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

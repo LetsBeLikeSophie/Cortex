@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
+import { signOutOfGoogle } from './googleLogin';
 import { API_BASE_URL } from '../api/client';
 import { strings } from '../i18n';
 
@@ -126,4 +127,6 @@ export async function signInWithKakao(): Promise<void> {
 // session is never actually signed out of Supabase.
 export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
+  // A Google login also forgets the account choice on this phone.
+  await signOutOfGoogle();
 }

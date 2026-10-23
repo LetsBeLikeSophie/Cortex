@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { DEFAULT_LANG } from "./anthropic.js";
-import { getClient } from "./supabase.js";
+import { getClient, logAnalyticsEvent } from "./supabase.js";
 
 // Free vs Pro, and the monthly AI quotas behind them. Saving is never
 // limited -- only the Claude-backed work is: auto-classification (over
@@ -68,6 +68,12 @@ async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_
     .from("user_plans")
     .upsert({ user_id: userId, trial_ends_at: trialEndsAt }, { onConflict: "user_id", ignoreDuplicates: true });
   if (insertError) throw new Error(`getPlanRow insert failed: ${insertError.message}`);
+  // Kakao signups are counted where the Kakao login creates the account;
+  // a Google account is created by Supabase itself, so it's counted the
+  // first time the server sees it -- here.
+  if (authUser.user.app_metadata?.provider === "google") {
+    await logAnalyticsEvent({ eventType: "account_created", userId });
+  }
   // Re-read so a concurrent first request that won the insert wins here too.
   const { data: row, error: rereadError } = await client.from("user_plans").select("trial_ends_at, pro_until, ai_consent, lang").eq("user_id", userId).single();
   if (rereadError) throw new Error(`getPlanRow reread failed: ${rereadError.message}`);

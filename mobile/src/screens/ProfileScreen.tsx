@@ -26,6 +26,7 @@ const S = strings({
     title: '내 계정',
     asGuest: '게스트로 이용 중',
     asKakao: '카카오 계정으로 로그인됨',
+    asGoogle: 'Google 계정으로 로그인됨',
     confirmGuest: '정말 삭제하시겠어요?',
     confirmAccount: '정말 탈퇴하시겠어요?',
     bodyGuest: '이 게스트가 저장한 기억이 모두 사라지고, 되돌릴 수 없어요.',
@@ -55,6 +56,7 @@ const S = strings({
     title: 'My account',
     asGuest: 'Using as a guest',
     asKakao: 'Signed in with Kakao',
+    asGoogle: 'Signed in with Google',
     confirmGuest: 'Delete everything?',
     confirmAccount: 'Delete your account?',
     bodyGuest: "Everything this guest saved will be gone, and this can't be undone.",
@@ -84,6 +86,7 @@ const S = strings({
     title: 'マイアカウント',
     asGuest: 'ゲストで利用中',
     asKakao: 'Kakaoアカウントでログイン中',
+    asGoogle: 'Googleアカウントでログイン中',
     confirmGuest: '本当に削除しますか？',
     confirmAccount: '本当に退会しますか？',
     bodyGuest: 'このゲストが保存した記憶はすべて消え、元に戻せません。',
@@ -113,6 +116,7 @@ const S = strings({
     title: '我的账号',
     asGuest: '以访客身份使用中',
     asKakao: '已使用 Kakao 账号登录',
+    asGoogle: '已使用 Google 账号登录',
     confirmGuest: '确定要删除吗？',
     confirmAccount: '确定要注销账号吗？',
     bodyGuest: '这个访客保存的记忆将全部消失，且无法恢复。',
@@ -142,6 +146,7 @@ const S = strings({
     title: '我的帳號',
     asGuest: '以訪客身分使用中',
     asKakao: '已使用 Kakao 帳號登入',
+    asGoogle: '已使用 Google 帳號登入',
     confirmGuest: '確定要刪除嗎？',
     confirmAccount: '確定要刪除帳號嗎？',
     bodyGuest: '這個訪客儲存的記憶將全部消失，且無法復原。',
@@ -192,9 +197,12 @@ export default function ProfileScreen() {
 
   const renewingPro = plan?.tier === 'pro' && !isLifetimePro(plan.proUntil);
   const isGuest = session?.user.is_anonymous ?? false;
-  const meta = session?.user.user_metadata as { nickname?: string; avatar_url?: string } | undefined;
-  const nickname = isGuest ? S.guest : meta?.nickname ?? S.noName;
-  const avatarUrl = isGuest ? undefined : meta?.avatar_url;
+  const meta = session?.user.user_metadata as { nickname?: string; full_name?: string; name?: string; avatar_url?: string; picture?: string } | undefined;
+  // Google accounts carry their name as full_name/name and picture as
+  // avatar_url/picture; Kakao ones as nickname/avatar_url.
+  const isGoogle = session?.user.app_metadata?.provider === 'google';
+  const nickname = isGuest ? S.guest : meta?.nickname ?? meta?.full_name ?? meta?.name ?? S.noName;
+  const avatarUrl = isGuest ? undefined : meta?.avatar_url ?? meta?.picture;
 
   const onSignOut = async () => {
     setState('signingOut');
@@ -241,7 +249,7 @@ export default function ProfileScreen() {
             {nickname}
           </Text>
           <Text style={[styles.provider, { color: theme.sub }]}>
-            {isGuest ? S.asGuest : S.asKakao}
+            {isGuest ? S.asGuest : isGoogle ? S.asGoogle : S.asKakao}
           </Text>
         </View>
 

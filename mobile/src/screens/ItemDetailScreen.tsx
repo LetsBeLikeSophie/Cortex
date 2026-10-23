@@ -99,6 +99,9 @@ export default function ItemDetailScreen() {
   // Still waiting in 미분류함 (never organized): ✦ is its first organize,
   // not a re-organize -- nothing to undo back to.
   const [waiting, setWaiting] = useState(item.classification_status === 'unclassified');
+  // This month's AI organizes left, read while the item waits -- whether it
+  // waits because the quota ran out (0) or because the AI failed on it.
+  const [classifyLeft, setClassifyLeft] = useState<number | null>(null);
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
@@ -153,7 +156,7 @@ export default function ItemDetailScreen() {
         .then((fresh) => {
           if (cancelled || fresh.classification_status === 'pending') return;
           setOrganizing(false);
-          if (fresh.classification_status !== 'unclassified') setWaiting(false);
+          setWaiting(fresh.classification_status === 'unclassified');
           savedRef.current = { ...savedRef.current, title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '' };
           setTitle(fresh.title ?? '');
           setSnippet(fresh.snippet ?? '');
@@ -162,7 +165,9 @@ export default function ItemDetailScreen() {
           setAiTags(fresh.tags);
           setUserTags(fresh.user_tags);
           if (fresh.classification_status === 'unclassified') {
-            setEditError('AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            // Where the AI memo shows, its waiting line says this already --
+            // one reason on screen, not two that disagree.
+            if (item.capture_type === 'text' || fresh.snippet) setEditError('AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.');
             return;
           }
           // No snapshot = this was the item's first organize (opened while
@@ -185,6 +190,19 @@ export default function ItemDetailScreen() {
       clearInterval(timer);
     };
   }, [organizing, item.id]);
+
+  useEffect(() => {
+    if (!waiting || organizing) return;
+    let cancelled = false;
+    fetchPlan()
+      .then((p) => {
+        if (!cancelled) setClassifyLeft(Math.max(0, p.classify.limit - p.classify.used));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [waiting, organizing]);
 
   const valueOf = (field: EditField) => ({ title, snippet, rawText, userNote })[field];
   const setterOf = (field: EditField) => ({ title: setTitle, snippet: setSnippet, rawText: setRawText, userNote: setUserNote })[field];
@@ -553,7 +571,9 @@ export default function ItemDetailScreen() {
                   (organizing
                     ? 'AI가 정리하는 중...'
                     : waiting
-                      ? '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
+                      ? classifyLeft === 0
+                        ? '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
+                        : 'AI 정리가 아직 안 됐어요 · ✦로 다시 정리 (1건)'
                       : '아직 AI 메모가 없어요')}
               </Text>
             </View>

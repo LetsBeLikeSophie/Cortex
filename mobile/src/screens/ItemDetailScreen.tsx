@@ -26,7 +26,7 @@ import { ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Ico
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
-import { MemoText } from '../components/MemoText';
+import { MemoText, refsIn } from '../components/MemoText';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
 import type { ApiItem } from '../api/client';
@@ -62,6 +62,7 @@ const S = strings({
     otherShape: '다른 모양으로 →',
     hideSources: '원본 메모 접기',
     showSources: (n: number) => `원본 메모 ${n}개 보기`,
+    notInMemo: (n: number) => `글에 안 나온 메모 ${n}개`,
     loading: '불러오는 중...',
     sourcesDeleted: (n: number) => `${n}개는 지워졌어요`,
     trashTitle: '휴지통으로 이동할까요?',
@@ -105,6 +106,7 @@ const S = strings({
     otherShape: 'Remake in another shape →',
     hideSources: 'Hide source items',
     showSources: (n: number) => `Show ${n} source items`,
+    notInMemo: (n: number) => `${n} not in the memo`,
     loading: 'Loading...',
     sourcesDeleted: (n: number) => `${n} deleted`,
     trashTitle: 'Move to trash?',
@@ -148,6 +150,7 @@ const S = strings({
     otherShape: '別の形で作り直す →',
     hideSources: '元のメモを閉じる',
     showSources: (n: number) => `元のメモ${n}件を見る`,
+    notInMemo: (n: number) => `本文にないメモ${n}件`,
     loading: '読み込み中...',
     sourcesDeleted: (n: number) => `${n}件は削除されました`,
     trashTitle: 'ゴミ箱に移動しますか？',
@@ -191,6 +194,7 @@ const S = strings({
     otherShape: '换个形式重做 →',
     hideSources: '收起原始内容',
     showSources: (n: number) => `查看 ${n} 项原始内容`,
+    notInMemo: (n: number) => `正文未提到的 ${n} 项`,
     loading: '加载中...',
     sourcesDeleted: (n: number) => `${n} 项已删除`,
     trashTitle: '移到回收站？',
@@ -234,6 +238,7 @@ const S = strings({
     otherShape: '換個形式重做 →',
     hideSources: '收起原始內容',
     showSources: (n: number) => `查看 ${n} 項原始內容`,
+    notInMemo: (n: number) => `內文未提到的 ${n} 項`,
     loading: '載入中...',
     sourcesDeleted: (n: number) => `${n} 項已刪除`,
     trashTitle: '移到垃圾桶？',
@@ -324,14 +329,34 @@ export default function ItemDetailScreen() {
   const [editingBody, setEditingBody] = useState(false);
   const [sources, setSources] = useState<ApiItem[] | null>(null);
   const [sourcesOpen, setSourcesOpen] = useState(false);
-  const toggleSources = () => {
-    setSourcesOpen((open) => !open);
-    if (sources === null) {
-      fetchComposeSources(item.id)
-        .then((res) => setSources(res.items))
-        .catch(() => setSources([]));
-    }
+  const toggleSources = () => setSourcesOpen((open) => !open);
+  // Loaded up front: the memo's [#N] links and the "not in the memo" list
+  // need them.
+  useEffect(() => {
+    if (sourceIds.length === 0) return;
+    let cancelled = false;
+    fetchComposeSources(item.id)
+      .then((res) => {
+        if (!cancelled) setSources(res.items);
+      })
+      .catch(() => {
+        if (!cancelled) setSources([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.id]);
+  // [#N] is the Nth item it was made from (compose order = composed_from).
+  const sourceAt = (n: number) => sources?.find((src) => src.id === sourceIds[n - 1]) ?? null;
+  const openSource = (n: number) => {
+    const src = sourceAt(n);
+    if (src) navigation.push('ItemDetail', { item: src });
   };
+  // Where the memo body starts in the scroll view, and each ref's line in
+  // it -- tapping a linked source in the list scrolls the memo there.
+  const bodyY = useRef(0);
+  const refY = useRef(new Map<number, number>());
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
@@ -702,33 +727,6 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {sourceIds.length > 0 && (
-            <View style={styles.sourcesBox}>
-              <Pressable onPress={toggleSources} hitSlop={6}>
-                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>
-                  {sourcesOpen ? S.hideSources : S.showSources(sourceIds.length)}
-                </Text>
-              </Pressable>
-              {sourcesOpen &&
-                (sources === null ? (
-                  <Text style={[styles.composedText, { color: theme.sub }]}>{S.loading}</Text>
-                ) : (
-                  <>
-                    {sources.map((src) => (
-                      <Pressable key={src.id} onPress={() => navigation.push('ItemDetail', { item: src })} hitSlop={4}>
-                        <Text style={[styles.composedText, { color: theme.ink }]} numberOfLines={1}>
-                          {`· ${itemTitle(src)}`}
-                        </Text>
-                      </Pressable>
-                    ))}
-                    {sources.length < sourceIds.length && (
-                      <Text style={[styles.composedText, { color: theme.sub }]}>{S.sourcesDeleted(sourceIds.length - sources.length)}</Text>
-                    )}
-                  </>
-                ))}
-            </View>
-          )}
-
           {deleteState !== 'idle' && (
             <ConfirmCard
               theme={theme}
@@ -874,8 +872,22 @@ export default function ItemDetailScreen() {
           {item.capture_type === 'text' &&
             (isComposed && !editingBody ? (
               // A 모아서 만들기 memo reads in sections; tap to edit the text.
-              <Pressable onPress={() => setEditingBody(true)} accessibilityHint={S.tapToEdit}>
-                <MemoText text={rawText} theme={theme} style={{ ...(StyleSheet.flatten(styles.body) as TextStyle), color: theme.ink }} />
+              <Pressable
+                onPress={() => setEditingBody(true)}
+                accessibilityHint={S.tapToEdit}
+                onLayout={(e) => {
+                  bodyY.current = e.nativeEvent.layout.y;
+                }}
+              >
+                <MemoText
+                  text={rawText}
+                  theme={theme}
+                  style={{ ...(StyleSheet.flatten(styles.body) as TextStyle), color: theme.ink }}
+                  onRef={openSource}
+                  onRefLayout={(n, y) => {
+                    if (!refY.current.has(n)) refY.current.set(n, y);
+                  }}
+                />
               </Pressable>
             ) : (
               <View style={styles.editRow}>
@@ -902,6 +914,57 @@ export default function ItemDetailScreen() {
               The two labels happen to coincide for a hand-typed memo (source
               'memo', capture type 'text' -- both read "메모" in Korean), so
               skip the repeat rather than show the same word twice. */}
+          {/* What it was made from: the ones the memo doesn't mention are
+              listed outright; the full list opens below. A source the memo
+              links to scrolls the memo to that line; any other opens it. */}
+          {sourceIds.length > 0 && sources !== null && (() => {
+            const mentioned = refsIn(rawText);
+            const order = sourceIds.map((id, idx) => ({ n: idx + 1, src: sources.find((x) => x.id === id) ?? null }));
+            const unmentioned = order.filter((o) => o.src && !mentioned.has(o.n));
+            const tapSource = (n: number) => {
+              const y = refY.current.get(n);
+              if (mentioned.has(n) && y !== undefined && !editingBody) scrollRef.current?.scrollTo({ y: Math.max(0, bodyY.current + y - 24), animated: true });
+              else openSource(n);
+            };
+            return (
+              <View style={styles.sourcesBox}>
+                {unmentioned.length > 0 && mentioned.size > 0 && (
+                  <>
+                    <Text style={[styles.composedText, { color: theme.sub }]}>{S.notInMemo(unmentioned.length)}</Text>
+                    {unmentioned.map((o) => (
+                      <Pressable key={o.n} onPress={() => openSource(o.n)} hitSlop={4}>
+                        <Text style={[styles.composedText, { color: theme.ink }]} numberOfLines={1}>
+                          {`· ${itemTitle(o.src!)}`}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </>
+                )}
+                <Pressable onPress={toggleSources} hitSlop={6} style={{ marginTop: 6 }}>
+                  <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>
+                    {sourcesOpen ? S.hideSources : S.showSources(sourceIds.length)}
+                  </Text>
+                </Pressable>
+                {sourcesOpen && (
+                  <>
+                    {order
+                      .filter((o) => o.src)
+                      .map((o) => (
+                        <Pressable key={o.n} onPress={() => tapSource(o.n)} hitSlop={4}>
+                          <Text style={[styles.composedText, { color: theme.ink }]} numberOfLines={1}>
+                            {`· ${itemTitle(o.src!)}${mentioned.has(o.n) ? '  ↑' : ''}`}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    {sources.length < sourceIds.length && (
+                      <Text style={[styles.composedText, { color: theme.sub }]}>{S.sourcesDeleted(sourceIds.length - sources.length)}</Text>
+                    )}
+                  </>
+                )}
+              </View>
+            );
+          })()}
+
           <View style={styles.footerMeta}>
             <SourceIcon source={item.source} size={11} color={theme.sub} strokeWidth={1.3} />
             <Text style={[styles.timestamp, styles.footerMetaText, { color: theme.sub }]}>

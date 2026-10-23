@@ -58,6 +58,7 @@ export function toRecentItem(item: ApiItem, index: number): RecentItem {
     captureType: item.capture_type,
     timeLabel: relativeTime(item.shared_at),
     pending,
+    composed: (item.composed_from?.length ?? 0) > 0,
   };
 }
 

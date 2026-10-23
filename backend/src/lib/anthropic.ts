@@ -592,6 +592,10 @@ Rules:
   addresses, ratings or anything else that isn't there. If something useful
   is missing, don't fill it in.
 - Mention each item by its own name/title so the person recognizes it.
+- Right after an item's bold name, add its reference "[#N]" (N = that item's
+  number in the list you were given, e.g. **블루보틀 성수**[#3]). The app turns
+  it into a link to the saved original. One reference per item, at the place
+  that is about it. Items you don't mention need no reference.
 - The person's own notes ("내 메모") and their own writing ("본문") matter most -- keep what they said.
 - It is read as text only (no pictures), so make it easy to scan:
   - Split it into short sections, each starting with a heading line "## " +
@@ -664,5 +668,10 @@ export async function composeFromItems(
   logAiCall("compose", MODEL, response.usage, userId);
   const out = response.parsed_output;
   if (!out) throw new Error("Claude response did not parse against the compose schema");
-  return { title: clip(out.title.trim(), 120), body: out.body.trim().slice(0, 8000) };
+  // Only references to items that exist survive ([#0], [#99] of 12 -> gone).
+  const body = out.body
+    .trim()
+    .slice(0, 8000)
+    .replace(/\[#(\d+)\]/g, (m, n) => (Number(n) >= 1 && Number(n) <= items.length ? `[#${Number(n)}]` : ""));
+  return { title: clip(out.title.trim(), 120), body };
 }

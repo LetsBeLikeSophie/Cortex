@@ -11,6 +11,8 @@ export interface RecentItem {
   // reads as "분석 중" in this case (see toRecentItem), this just lets
   // RecentRow show that as a muted/distinct style rather than a plain title.
   pending?: boolean;
+  // Made by 모아서 만들기 -- marked with ✦ in lists.
+  composed?: boolean;
 }
 
 export interface SearchResult {

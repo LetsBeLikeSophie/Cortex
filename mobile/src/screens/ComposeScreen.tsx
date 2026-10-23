@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,10 +18,13 @@ import {
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
-import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
+import { fieldStyle } from '../components/Fields';
+import { VoiceInputButton } from '../components/VoiceInputButton';
+import { OUTLINE, allEdges } from '../theme/themes';
 import { TagChip } from '../components/Chips';
 import { SparkleIcon } from '../components/Icons';
 import { MemoText } from '../components/MemoText';
+import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { COMMON } from '../i18n/common';
@@ -47,7 +50,9 @@ const S = strings({
     retryFreeNote: ' · 처음 만들 때 1회 썼고, 이번엔 무료',
     retryCost: (left: number) => ` · 1회 (${left}회 남음)`,
     monthLeft: (left: number) => ` · 이번 달 ${left}회 남음`,
-    askLabel: '정리 방식 (선택) · 안 고르면 AI가 알아서',
+    askLabel: '(선택) 정리 방식 · 안 고르면 AI가 알아서',
+    requestLabel: '(선택) 더 바라는 점',
+    autoShape: 'AI가 알아서',
     placeholder: '(선택) 예: 20명 갈 수 있는 곳만, 가격순',
     working: '정리하는 중 · 10~20초',
     toPreview: '미리보기로',
@@ -72,7 +77,9 @@ const S = strings({
     retryFreeNote: ' · The first run used 1, this one is free',
     retryCost: (left: number) => ` · 1 use (${left} left)`,
     monthLeft: (left: number) => ` · ${left} left this month`,
-    askLabel: 'How to arrange it (optional) · AI decides if blank',
+    askLabel: '(optional) How to arrange it · AI decides if you skip',
+    requestLabel: '(optional) Anything else',
+    autoShape: 'Let AI decide',
     placeholder: '(optional) e.g. only places for 20, by price',
     working: 'Working on it · 10–20 sec',
     toPreview: 'Back to preview',
@@ -97,7 +104,9 @@ const S = strings({
     retryFreeNote: ' · 最初の作成で1回使ったので、今回は無料',
     retryCost: (left: number) => ` · 1回(残り${left}回)`,
     monthLeft: (left: number) => ` · 今月残り${left}回`,
-    askLabel: 'まとめ方(任意)· 選ばなければAIにおまかせ',
+    askLabel: '(任意) まとめ方 · 選ばなければAIにおまかせ',
+    requestLabel: '(任意) ほかの希望',
+    autoShape: 'AIにおまかせ',
     placeholder: '(任意) 例: 20人で行ける所だけ、価格順',
     working: 'まとめ中 · 10〜20秒',
     toPreview: 'プレビューへ',
@@ -122,7 +131,9 @@ const S = strings({
     retryFreeNote: ' · 首次生成已用 1 次，这次免费',
     retryCost: (left: number) => ` · 1 次（剩 ${left} 次）`,
     monthLeft: (left: number) => ` · 本月剩 ${left} 次`,
-    askLabel: '整理方式（可选）· 不选由 AI 决定',
+    askLabel: '（可选）整理方式 · 不选由 AI 决定',
+    requestLabel: '（可选）其他要求',
+    autoShape: '交给 AI',
     placeholder: '（可选）例：只要能容纳 20 人的地方，按价格排序',
     working: '整理中 · 10~20 秒',
     toPreview: '回到预览',
@@ -147,7 +158,9 @@ const S = strings({
     retryFreeNote: ' · 首次產生已用 1 次，這次免費',
     retryCost: (left: number) => ` · 1 次（剩 ${left} 次）`,
     monthLeft: (left: number) => ` · 本月剩 ${left} 次`,
-    askLabel: '整理方式（選填）· 不選由 AI 決定',
+    askLabel: '（選填）整理方式 · 不選由 AI 決定',
+    requestLabel: '（選填）其他要求',
+    autoShape: '交給 AI',
     placeholder: '（選填）例：只要能容納 20 人的地方，依價格排序',
     working: '整理中 · 10~20 秒',
     toPreview: '回到預覽',
@@ -165,7 +178,10 @@ export default function ComposeScreen() {
   const { tag, count, itemIds, tagChoices } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
   const [pickedTag, setPickedTag] = useState(tagChoices?.[0] ?? tag);
   const [tagCount, setTagCount] = useState<number | null>(count ?? null);
+  const [shape, setShape] = useState<string | null>(null);
   const [ask, setAsk] = useState('');
+  // Dictation appends to what's typed rather than replacing it.
+  const askBase = useRef('');
   const [plan, setPlan] = useState<Plan | null>(null);
   const [working, setWorking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -210,7 +226,7 @@ export default function ComposeScreen() {
     setError('');
     setWorking(true);
     try {
-      const res = await composeDraft(pickedTag, 'auto', { itemIds, retryOf: draft?.draft.id, instruction: ask.trim() || undefined });
+      const res = await composeDraft(pickedTag, 'auto', { itemIds, retryOf: draft?.draft.id, instruction: [shape, ask.trim()].filter(Boolean).join(' · ') || undefined });
       setDraft(res);
       setPreviewing(true);
       refreshPlan();
@@ -235,6 +251,9 @@ export default function ComposeScreen() {
     setSaving(true);
     try {
       const { item, sourceCount } = await saveComposeDraft(draft.draft.id);
+      // The memo lives under its tag -- make sure that tag is a home tab.
+      const tabs = await loadHomeTabs();
+      if (!tabs.includes(pickedTag)) await saveHomeTabs([...tabs, pickedTag]);
       navigation.replace('ItemDetail', { item, composedFrom: { tag: pickedTag, count: sourceCount, left: left ?? undefined } });
     } catch (err) {
       if (err instanceof ApiError && err.status === 410) {
@@ -309,22 +328,49 @@ export default function ComposeScreen() {
         </Text>
 
         <Text style={[styles.askLabel, { color: theme.ink }]}>{S.askLabel}</Text>
-        <View style={styles.examples}>
-          {EXAMPLES.map((ex) => (
-            <Pressable key={ex} onPress={() => setAsk(ex)} disabled={busy} style={[styles.example, pickStyle(theme)]}>
-              <Text style={pickTextStyle(theme)}>{ex}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.radios} accessibilityRole="radiogroup">
+          {[null, ...EXAMPLES].map((ex) => {
+            const active = shape === ex;
+            return (
+              <Pressable
+                key={ex ?? 'auto'}
+                onPress={() => setShape(ex)}
+                disabled={busy}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                style={styles.radioRow}
+                hitSlop={4}
+              >
+                <View style={[styles.radioRing, allEdges(OUTLINE, active ? theme.ink : theme.sub)]}>
+                  {active && <View style={[styles.radioDot, { backgroundColor: theme.ink }]} />}
+                </View>
+                <Text style={[styles.radioText, { color: theme.ink }]}>{ex ?? S.autoShape}</Text>
+              </Pressable>
+            );
+          })}
         </View>
-        <TextInput
-          value={ask}
-          onChangeText={setAsk}
-          editable={!busy}
-          maxLength={100}
-          placeholder={S.placeholder}
-          placeholderTextColor={theme.sub}
-          style={[styles.askInput, fieldStyle(theme), { color: theme.ink, outlineWidth: 0 }]}
-        />
+        <Text style={[styles.askLabel, { color: theme.ink }]}>{S.requestLabel}</Text>
+        <View>
+          <TextInput
+            value={ask}
+            onChangeText={setAsk}
+            editable={!busy}
+            maxLength={100}
+            multiline
+            placeholder={S.placeholder}
+            placeholderTextColor={theme.sub}
+            style={[styles.askInput, fieldStyle(theme), { color: theme.ink, outlineWidth: 0 }]}
+          />
+          <View style={styles.micInField}>
+            <VoiceInputButton
+              theme={theme}
+              onStart={() => {
+                askBase.current = ask.trim() ? `${ask.trimEnd()} ` : '';
+              }}
+              onResult={(spoken) => setAsk((askBase.current + spoken).slice(0, 100))}
+            />
+          </View>
+        </View>
       </ScrollView>
 
       {working && <Text style={[styles.sub, { color: theme.sub }]}>{S.working}</Text>}
@@ -350,9 +396,13 @@ const styles = StyleSheet.create({
   tagChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingHorizontal: 4 },
   dim: { opacity: 0.45 },
   askLabel: { fontSize: 14, marginTop: 18, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_500Medium' },
-  examples: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingHorizontal: 4 },
-  example: { paddingHorizontal: 12, paddingVertical: 6 },
-  askInput: { marginTop: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
+  radios: { gap: 2, marginTop: 8, paddingHorizontal: 4 },
+  radioRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
+  radioRing: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  radioDot: { width: 9, height: 9, borderRadius: 4.5 },
+  radioText: { fontSize: 14.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  micInField: { position: 'absolute', right: 4, bottom: 6 },
+  askInput: { marginTop: 10, paddingHorizontal: 14, paddingRight: 44, paddingVertical: 11, minHeight: 48, fontSize: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   previewLabel: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
   previewTitle: { marginTop: 12, paddingHorizontal: 4 },
   previewBodyBox: { marginTop: 10, paddingHorizontal: 4 },

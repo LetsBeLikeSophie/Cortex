@@ -941,9 +941,10 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   composeLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   bulkBar: { paddingTop: 12 },
-  bulkBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  bulkBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 8 },
   bulkBarText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
-  bulkBarActions: { flexDirection: 'row', gap: 16 },
+  // Wraps to a second line when the actions don't fit (long languages, many selected).
+  bulkBarActions: { flexDirection: 'row', flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end', columnGap: 14, rowGap: 6 },
   bulkBarLink: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_500Medium' },
   bulkTagBox: {
     flexDirection: 'row',

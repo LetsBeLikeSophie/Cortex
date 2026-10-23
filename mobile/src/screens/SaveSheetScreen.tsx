@@ -844,8 +844,13 @@ export default function SaveSheetScreen() {
               )}
 
               <ButtonRow theme={theme} style={styles.buttonRow}>
-                {saved.classification_status === 'unclassified' && (
+                {/* Waiting in 미분류함: Pro is the way forward. Otherwise the
+                    detail sheet waits out the analysis and shows the result,
+                    tags ready to fix -- no hunting for it on home. */}
+                {saved.classification_status === 'unclassified' ? (
                   <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+                ) : (
+                  <GhostButton label="열어 보기" theme={theme} onPress={() => navigation.replace('ItemDetail', { item: saved })} />
                 )}
                 <SolidButton label="확인" theme={theme} onPress={close} />
               </ButtonRow>

@@ -47,7 +47,9 @@ const UpdateItemSchema = z.object({
 
 const ComposeSchema = z.object({
   tag: z.string().min(1).max(60),
-  format: z.enum(["auto", "course", "list", "summary"]),
+  format: z.enum(["auto", "course", "list", "summary"]).default("auto"),
+  // What shape they want, in their words (optional; empty = AI decides).
+  instruction: z.string().trim().max(100).optional(),
   // Picked items instead of the whole tag (decision Q5).
   itemIds: z.array(z.string().uuid()).min(2).max(50).optional(),
   // "다른 형식으로 다시": the draft this one replaces -- free once per draft
@@ -366,7 +368,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     const parsed = ComposeSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
     const userId = await resolveUserId(req);
-    const { tag, format, itemIds, retryOf } = parsed.data;
+    const { tag, format, itemIds, retryOf, instruction } = parsed.data;
 
     // A free retry reuses the same materials; anything else is a new run.
     const previous = retryOf ? takeDraft(retryOf, userId) : null;
@@ -399,7 +401,8 @@ export async function itemsRoutes(app: FastifyInstance) {
           tags: [...it.tags, ...it.user_tags],
           url: it.raw_url,
         })),
-        userId
+        userId,
+        instruction || undefined
       );
     } catch (err) {
       if (reservation !== null) await refundUsage(reservation).catch(() => {});

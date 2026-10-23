@@ -390,7 +390,7 @@ export interface ComposeDraft {
 // "모아서 만들기": a tag's items (or the picked itemIds) -> one memo, as a
 // draft to preview. retryOf = the draft it replaces ("다른 형식으로 다시",
 // free once). 402 (asQuotaError) when none are left.
-export function composeDraft(tag: string, format: ComposeFormat, opts: { itemIds?: string[]; retryOf?: string } = {}) {
+export function composeDraft(tag: string, format: ComposeFormat, opts: { itemIds?: string[]; retryOf?: string; instruction?: string } = {}) {
   return request<{ draft: ComposeDraft; sourceCount: number; freeRetry: boolean }>(
     '/items/compose',
     { method: 'POST', body: JSON.stringify({ tag, format, ...opts }) },

@@ -517,8 +517,13 @@ export async function composeFromItems(
   tag: string,
   format: ComposeFormat,
   items: ComposeSource[],
-  userId?: string
+  userId?: string,
+  // The person's own one-line ask ("비교표로, 가격순") -- shapes the memo.
+  instruction?: string
 ): Promise<{ title: string; body: string }> {
+  const ask = instruction
+    ? `\nThe person asked for: ${instruction}\n(Follow this for the shape and focus; it overrides the format above where they differ. Still use only what the items say.)`
+    : "";
   // A text memo's body is the person's own writing (a review, a list) --
   // sent up to COMPOSE_BODY_MAX each, within a total budget spent newest
   // first (items arrive newest first), so the oldest are cut short first.
@@ -549,7 +554,7 @@ export async function composeFromItems(
     messages: [
       {
         role: "user",
-        content: `Tag: ${tag}\nFormat: ${formatLine(format)}\n\nItems (${items.length}):\n${lines.join("\n\n")}`,
+        content: `Tag: ${tag}\nFormat: ${formatLine(format)}${ask}\n\nItems (${items.length}):\n${lines.join("\n\n")}`,
       },
     ],
     output_config: { effort: "medium", format: zodOutputFormat(ComposeSchema) },

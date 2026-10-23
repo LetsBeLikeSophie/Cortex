@@ -479,7 +479,7 @@ export default function ItemDetailScreen() {
                 hitSlop={8}
                 style={styles.composedAgain}
               >
-                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>다른 형식으로 →</Text>
+                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>다른 모양으로 →</Text>
               </Pressable>
             </View>
           )}

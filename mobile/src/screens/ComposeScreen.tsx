@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { allEdges } from '../theme/themes';
 import {
   ApiError,
   asQuotaError,
   composeDraft,
   ComposeDraft,
-  ComposeFormat,
   fetchItemsWithTag,
   fetchPlan,
   friendlyError,
@@ -20,29 +18,24 @@ import {
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
-import { frameStyle } from '../components/Card';
+import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { TagChip } from '../components/Chips';
 import { SparkleIcon } from '../components/Icons';
 import type { RootStackParamList } from '../navigation/types';
 
-// "모아서 만들기": everything under one tag (or the items picked in the
-// tag tab) becomes one new memo, in the shape picked here -- or the one the
-// AI thinks fits. The result is previewed first and saved only on 저장;
-// one "다른 형식으로 다시" per run is free (decision Q6, 2026-10-23).
-const FORMATS: { key: ComposeFormat; label: string; note: string }[] = [
-  { key: 'auto', label: 'AI가 알아서', note: '형식을 AI가 골라요' },
-  { key: 'course', label: '코스·동선', note: '지역별로 묶고 순서를 짜요' },
-  { key: 'list', label: '목록·비교', note: '한 줄씩 나란히 비교해요' },
-  { key: 'summary', label: '요약 노트', note: '요점만 모아요' },
-];
+// "모아서 만들기": a tag's items (or the ones picked in the tag tab) become
+// one memo. The AI picks the shape unless the person says what they want;
+// the chips are just quick ways to say it. Previewed before saving; one
+// remake per run is free.
+const EXAMPLES = ['코스·동선', '비교표', '체크리스트', '일정표', '요약'];
 
 export default function ComposeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { tag, count, suggested, itemIds, tagChoices } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
+  const { tag, count, itemIds, tagChoices } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
   const [pickedTag, setPickedTag] = useState(tagChoices?.[0] ?? tag);
   const [tagCount, setTagCount] = useState<number | null>(count ?? null);
-  const [format, setFormat] = useState<ComposeFormat>('auto');
+  const [ask, setAsk] = useState('');
   const [plan, setPlan] = useState<Plan | null>(null);
   const [working, setWorking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -87,7 +80,7 @@ export default function ComposeScreen() {
     setError('');
     setWorking(true);
     try {
-      const res = await composeDraft(pickedTag, format, { itemIds, retryOf: draft?.draft.id });
+      const res = await composeDraft(pickedTag, 'auto', { itemIds, retryOf: draft?.draft.id, instruction: ask.trim() || undefined });
       setDraft(res);
       setPreviewing(true);
       refreshPlan();
@@ -142,7 +135,7 @@ export default function ComposeScreen() {
         </ScrollView>
         <Pressable onPress={() => setPreviewing(false)} disabled={busy} hitSlop={6} style={styles.retryLink}>
           <Text style={[styles.link, { color: theme.ink }]}>
-            {retryFree ? '다른 형식으로 다시 · 무료' : `다른 형식으로 다시 · 1회${left !== null ? ` (${left}회 남음)` : ''}`}
+            {retryFree ? '다른 모양으로 다시 · 무료' : `다른 모양으로 다시 · 1회${left !== null ? ` (${left}회 남음)` : ''}`}
           </Text>
         </Pressable>
         <Text style={[styles.sub, { color: theme.sub }]}>저장해야 남아요</Text>
@@ -183,27 +176,23 @@ export default function ComposeScreen() {
           {draft ? (retryFree ? ' · 처음 만들 때 1회 썼고, 이번엔 무료' : left !== null ? ` · 1회 (${left}회 남음)` : '') : left !== null ? ` · 이번 달 ${left}회 남음` : ''}
         </Text>
 
-        <View style={styles.options}>
-          {FORMATS.map((f) => {
-            const active = format === f.key;
-            return (
-              <Pressable
-                key={f.key}
-                onPress={() => setFormat(f.key)}
-                disabled={busy}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: active }}
-                style={[styles.option, { backgroundColor: theme.surface }, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
-              >
-                <Text style={[styles.optionLabel, { color: theme.ink }]}>
-                  {f.label}
-                  {f.key === suggested ? <Text style={{ color: theme.accent }}>  추천</Text> : null}
-                </Text>
-                <Text style={[styles.optionNote, { color: theme.sub }]}>{f.note}</Text>
-              </Pressable>
-            );
-          })}
+        <Text style={[styles.askLabel, { color: theme.ink }]}>원하는 모양 (선택)</Text>
+        <View style={styles.examples}>
+          {EXAMPLES.map((ex) => (
+            <Pressable key={ex} onPress={() => setAsk(ex)} disabled={busy} style={[styles.example, pickStyle(theme)]}>
+              <Text style={pickTextStyle(theme)}>{ex}</Text>
+            </Pressable>
+          ))}
         </View>
+        <TextInput
+          value={ask}
+          onChangeText={setAsk}
+          editable={!busy}
+          maxLength={100}
+          placeholder="비우면 AI가 알아서 · 예: 20명 갈 수 있는 곳만, 가격순"
+          placeholderTextColor={theme.sub}
+          style={[styles.askInput, fieldStyle(theme), { color: theme.ink, outlineWidth: 0 }]}
+        />
       </ScrollView>
 
       {working && <Text style={[styles.sub, { color: theme.sub }]}>정리하는 중 · 10~20초</Text>}
@@ -228,10 +217,10 @@ const styles = StyleSheet.create({
   sub: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   tagChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingHorizontal: 4 },
   dim: { opacity: 0.45 },
-  options: { gap: 8, marginTop: 16 },
-  option: { paddingHorizontal: 16, paddingVertical: 12 },
-  optionLabel: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
-  optionNote: { fontSize: 12.5, marginTop: 3, fontFamily: 'IBMPlexSansKR_400Regular' },
+  askLabel: { fontSize: 14, marginTop: 18, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_500Medium' },
+  examples: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, paddingHorizontal: 4 },
+  example: { paddingHorizontal: 12, paddingVertical: 6 },
+  askInput: { marginTop: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   previewLabel: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
   previewTitle: { marginTop: 12, paddingHorizontal: 4 },
   previewBody: { fontSize: 14.5, lineHeight: 23, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },

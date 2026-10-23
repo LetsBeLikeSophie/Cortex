@@ -62,6 +62,39 @@ export function languageName(lang: string): string {
 
 const isKorean = (lang: string) => lang === "ko" || lang.startsWith("ko-");
 
+// Repeated in every request, next to the content: the system prompt alone
+// sometimes lost to an all-English source (an English video came back with
+// an English memo for a Korean user).
+function languageLine(lang: string, strict = false): string {
+  const L = languageName(lang);
+  return strict
+    ? `IMPORTANT: your previous answer was not in ${L}. Write the title, snippet and tags in ${L} only (translate; proper nouns may stay as written).`
+    : `Write the title, snippet and tags in ${L}, even if the content is in another language (translate; proper nouns may stay as written).`;
+}
+
+// A backstop for the languages whose script is easy to check: a Korean
+// memo with no Hangul (or a Japanese/Chinese one with no Japanese/Chinese
+// characters) came back in the wrong language. Other languages: trusted.
+function inWrongLanguage(lang: string, c: { title: string; snippet: string }): boolean {
+  const text = `${c.title} ${c.snippet}`;
+  if (!text.trim()) return false;
+  const l = lang.toLowerCase();
+  if (l.startsWith("ko")) return !/[가-힣]/.test(text);
+  if (l.startsWith("ja")) return !/[\u3040-\u30ff\u4e00-\u9fff]/.test(text);
+  if (l.startsWith("zh")) return !/[\u4e00-\u9fff]/.test(text);
+  return false;
+}
+
+// Runs a classification, and once more with a firmer language line if the
+// result came back in the wrong language.
+async function inLanguage(lang: string, run: (strict: boolean) => Promise<Classification>): Promise<Classification> {
+  const first = await run(false);
+  if (!inWrongLanguage(lang, first)) return first;
+  console.warn(`classification came back outside ${lang}; retrying once`);
+  const second = await run(true);
+  return inWrongLanguage(lang, second) ? first : second;
+}
+
 const ClassificationSchema = z.object({
   title: z.string().describe("Short list-item title (under ~60 characters), in the person's language, plain wording"),
   snippet: z.string().describe("A 1-2 sentence searchable note-to-self (under ~160 characters), in the person's language"),
@@ -207,6 +240,11 @@ function formatDuration(sec: number): string {
 }
 
 export async function classifyText(input: ClassifyTextInput): Promise<Classification> {
+  const lang = input.lang ?? DEFAULT_LANG;
+  return inLanguage(lang, (strict) => classifyTextOnce(input, languageLine(lang, strict)));
+}
+
+async function classifyTextOnce(input: ClassifyTextInput, langLine: string): Promise<Classification> {
   const lines = [
     `Source app: ${input.source}`,
     input.url ? `URL: ${input.url}` : null,
@@ -221,6 +259,7 @@ export async function classifyText(input: ClassifyTextInput): Promise<Classifica
     input.imageUrl
       ? "The attached image is the link's thumbnail -- read any words on it (video thumbnails usually carry the key words), but it's a preview, not the content itself."
       : null,
+    langLine,
   ].filter(Boolean);
   const text = lines.join("\n");
 
@@ -271,6 +310,11 @@ export interface ClassifyImageInput {
 }
 
 export async function classifyImage(input: ClassifyImageInput): Promise<Classification> {
+  const lang = input.lang ?? DEFAULT_LANG;
+  return inLanguage(lang, (strict) => classifyImageOnce(input, languageLine(lang, strict)));
+}
+
+async function classifyImageOnce(input: ClassifyImageInput, langLine: string): Promise<Classification> {
   const response = await classifyClient.messages.parse({
     model: MODEL,
     max_tokens: 2048,
@@ -285,7 +329,7 @@ export async function classifyImage(input: ClassifyImageInput): Promise<Classifi
           },
           {
             type: "text",
-            text: `Source app: ${input.source}. This is a screenshot the user captured themselves. Read any caption/body text visible in the image and catalog it.${[hintLine(input.hint), knownTagsLine(input.knownTags)].filter(Boolean).map((l) => `\n${l}`).join("")}`,
+            text: `Source app: ${input.source}. This is a screenshot the user captured themselves. Read any caption/body text visible in the image and catalog it.${[hintLine(input.hint), knownTagsLine(input.knownTags), langLine].filter(Boolean).map((l) => `\n${l}`).join("")}`,
           },
         ],
       },

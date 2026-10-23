@@ -502,14 +502,21 @@ export default function SearchScreen() {
           </>
         )}
 
-        {looksLikeSentence && (
-          <Pressable onPress={() => ask()} hitSlop={6} style={styles.suggestLine}>
-            <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
-            <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-              문장처럼 보여요 → <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>AI로 찾기</Text>
-            </Text>
-          </Pressable>
-        )}
+        {/* Says what the tap costs; with none left it stops offering. */}
+        {looksLikeSentence &&
+          (aiLeft === 0 ? (
+            <View style={styles.suggestLine}>
+              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>이번 달 AI 검색을 다 썼어요</Text>
+            </View>
+          ) : (
+            <Pressable onPress={() => ask()} hitSlop={6} style={styles.suggestLine}>
+              <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
+              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                문장처럼 보여요 → <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>AI로 찾기</Text>
+                {aiLeft !== null ? ` (1회 · ${aiLeft}회 남음)` : ' (1회)'}
+              </Text>
+            </Pressable>
+          ))}
 
         {hasQuery && (
           <View style={[styles.metaRow, { paddingBottom: boxed ? 4 : 0 }]}>

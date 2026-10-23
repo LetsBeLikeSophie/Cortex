@@ -5,6 +5,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 import { MEHH_SAVED_URL } from '../native/mehh';
+import { splitLinkText } from '../data/linkText';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
@@ -151,11 +152,15 @@ export default function HomeScreen() {
     // never a memo. Text riding along with other apps' images stays ignored,
     // as before.
     const fromMehh = images.length > 0 && !!shareIntent.text?.includes(MEHH_SAVED_URL);
+    // A shared link's surrounding words ("가게 이름 + 링크") were dropped;
+    // now they prefill the link's note.
+    const linkNote = images.length === 0 && shareIntent.webUrl && shareIntent.text ? splitLinkText(shareIntent.text)?.note : undefined;
     navigation.navigate('SaveSheet', {
       sharedImageUri: images.length === 1 ? images[0].path : undefined,
       sharedImageUris: images.length > 1 ? images.map((f) => f.path) : undefined,
       sharedUrl: images.length > 0 ? undefined : shareIntent.webUrl ?? undefined,
       sharedText: images.length > 0 || shareIntent.webUrl ? undefined : shareIntent.text ?? undefined,
+      sharedNote: linkNote || undefined,
       returnToMehh: fromMehh || undefined,
     });
     resetShareIntent();

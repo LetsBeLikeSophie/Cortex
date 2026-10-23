@@ -33,6 +33,7 @@ import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast } from '../native/toast';
 import { tellMehhSaved } from '../native/mehh';
 import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
+import { splitLinkText } from '../data/linkText';
 import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -46,19 +47,6 @@ type Status = 'input' | 'saving' | 'done' | 'error';
 // No reliable way to know which app a share came from (Android's generic
 // ACTION_SEND doesn't carry the sender's identity), but a link's own domain
 // is a good enough guess to avoid dumping every URL into 'other'.
-// The whole memo is exactly one http(s) link (whitespace aside) -- the
-// case worth saving as a link item instead of a plain-text memo.
-function asBareUrl(raw: string): string | null {
-  const value = raw.trim();
-  if (!value || /\s/.test(value)) return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? value : null;
-  } catch {
-    return null;
-  }
-}
-
 // Gallery asset ids MediaLibrary can delete. An album pick that came back
 // without an assetId uses its file uri as the id (pickFromLibrary) -- there
 // is nothing to delete through the media library for those.
@@ -92,7 +80,7 @@ export default function SaveSheetScreen() {
   // Optional "why I saved this" -- only shown for a photo/link save (a plain
   // text save already is a freeform note, so a second box next to it would
   // just be two text inputs saying the same kind of thing).
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(route.params?.sharedNote ?? '');
   const [status, setStatus] = useState<Status>('input');
   // This month's AI organize allowance, for the line above 저장하기.
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -349,12 +337,12 @@ export default function SaveSheetScreen() {
     if (!image && !linkUrl && !text.trim()) return;
     setStatus('saving');
     setError('');
-    const trimmedNote = note.trim() || undefined;
-    // A memo that's nothing but one link (pasted with the phone's own paste)
-    // is saved as a link, so it still gets a title/thumbnail -- what the
-    // old in-sheet 붙여넣기 button used to do, without needing the button.
-    const typedUrl = !image && !linkUrl ? asBareUrl(text) : null;
-    const url = linkUrl ?? typedUrl;
+    // A memo carrying one link (pasted with the phone's own paste, maybe
+    // with a shop name around it) is saved as that link, so it gets a
+    // title/thumbnail and opens -- the words around it become its note.
+    const typed = !image && !linkUrl ? splitLinkText(text) : null;
+    const url = linkUrl ?? typed?.url ?? null;
+    const trimmedNote = note.trim() || typed?.note || undefined;
     const request = image
       ? saveScreenshotItem('other', image.base64, trimmedNote)
       : url

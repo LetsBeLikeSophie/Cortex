@@ -382,10 +382,13 @@ export default function SaveSheetScreen() {
   // for a single save only once it's running low.
   const aiLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : null;
   const saveCount = selectedScreenshots.length > 0 ? selectedScreenshots.length : 1;
+  const noConsent = !!plan && plan.aiConsent !== undefined && plan.aiConsent !== 'agreed';
   const quotaLine =
     aiLeft === null
       ? ''
-      : saveCount > 1
+      : noConsent
+        ? 'AI 분석 동의 전이라 미분류함에 들어가요 (저장은 돼요)'
+        : saveCount > 1
         ? [`AI가 한 장씩 제목·태그를 달아요 · 이번 달 ${aiLeft}건 남음`, saveCount > aiLeft ? `${saveCount - aiLeft}장은 미분류함에 들어가요 (저장은 돼요)` : null]
             .filter(Boolean)
             .join('\n')
@@ -396,6 +399,7 @@ export default function SaveSheetScreen() {
             : '';
 
   const bulkUnclassified = savedBulk ? savedBulk.items.filter((it) => it.classification_status === 'unclassified').length : 0;
+  const bulkConsent = !!savedBulk?.items.some((it) => it.unclassified_reason === 'consent');
 
   const screenshotGrid = (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.screenshotRow}>
@@ -666,7 +670,9 @@ export default function SaveSheetScreen() {
                 )}
                 {bulkUnclassified > 0 && (
                   <Text style={[styles.savedSub, { color: theme.sub }]}>
-                    {bulkUnclassified}개는 이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요. 저장은 됐어요.
+                    {bulkConsent
+                      ? `${bulkUnclassified}개는 AI 분석 동의 전이라 미분류함에 넣어뒀어요`
+                      : `${bulkUnclassified}개는 이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요`}
                   </Text>
                 )}
               </View>
@@ -721,9 +727,12 @@ export default function SaveSheetScreen() {
             )}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
-              {bulkUnclassified > 0 && (
-                <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
-              )}
+              {bulkUnclassified > 0 &&
+                (bulkConsent ? (
+                  <GhostButton label="AI 분석 동의" theme={theme} onPress={() => navigation.replace('AiConsent')} />
+                ) : (
+                  <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+                ))}
               {doneButton}
             </ButtonRow>
           </>
@@ -812,7 +821,7 @@ export default function SaveSheetScreen() {
                   <>
                     {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]}>{saved.raw_text}</Text>}
                     <Text style={[styles.snippet, { color: theme.sub }]}>
-                      이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요. 저장은 됐어요.
+                      {saved.unclassified_reason === 'consent' ? 'AI 분석 동의 전이라 미분류함에 넣어뒀어요' : '이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요'}
                     </Text>
                   </>
                 ) : (
@@ -850,7 +859,11 @@ export default function SaveSheetScreen() {
                     detail sheet waits out the analysis and shows the result,
                     tags ready to fix -- no hunting for it on home. */}
                 {saved.classification_status === 'unclassified' ? (
-                  <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+                  saved.unclassified_reason === 'consent' ? (
+                    <GhostButton label="AI 분석 동의" theme={theme} onPress={() => navigation.replace('AiConsent')} />
+                  ) : (
+                    <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+                  )
                 ) : (
                   <GhostButton label="열어 보기" theme={theme} onPress={() => navigation.replace('ItemDetail', { item: saved })} />
                 )}

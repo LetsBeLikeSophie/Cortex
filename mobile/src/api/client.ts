@@ -17,6 +17,8 @@ export type Tier = 'free' | 'trial' | 'pro';
 // GET /me/plan -- mirrors Entitlement in backend/src/lib/plans.ts.
 export interface Plan {
   tier: Tier;
+  // Sending saved content to the AI abroad: asked once (null = not yet).
+  aiConsent?: 'agreed' | 'declined' | null;
   trialEndsAt: string;
   proUntil: string | null;
   classify: { used: number; limit: number };
@@ -43,7 +45,7 @@ export interface ApiItem {
   user_tags: string[]; // user-added, freely add/removable
   // Why it waits in 미분류함 (null/absent: not waiting, or saved before
   // the server recorded it).
-  unclassified_reason?: 'quota' | 'failed' | null;
+  unclassified_reason?: 'quota' | 'failed' | 'consent' | null;
   // A 모아서 만들기 memo: the items it was made from.
   composed_from?: string[] | null;
   user_note: string | null; // optional "why I saved this", set at save time
@@ -110,6 +112,7 @@ export function friendlyError(err: unknown): string {
   console.warn(err);
   if (err instanceof ApiError) {
     const code = (err.body as { error?: string } | null)?.error;
+    if (err.status === 403 && code === 'ai_consent') return 'AI 분석 동의가 필요해요.';
     if (err.status === 503 && code === 'ai_unavailable') return 'AI가 잠시 쉬고 있어요. 잠시 후 다시 시도해 주세요.';
     if (err.status === 402) return '이번 달 사용량을 다 썼어요.';
     if (err.status === 429) return '요청이 많아요. 잠시 후 다시 시도해 주세요.';
@@ -182,12 +185,23 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
       } catch {
         // not JSON -- keep the raw text in the message only
       }
+      // An AI feature used without consent: the app opens the consent sheet.
+      if (res.status === 403 && (parsed as { error?: string } | null)?.error === 'ai_consent') consentRequired?.();
       throw new ApiError(`${init?.method ?? 'GET'} ${path} failed (${res.status}): ${body}`, res.status, parsed);
     }
     return (await res.json()) as T;
   } finally {
     clearTimeout(timer);
   }
+}
+
+let consentRequired: (() => void) | null = null;
+export function onAiConsentRequired(fn: (() => void) | null) {
+  consentRequired = fn;
+}
+
+export function setAiConsent(agree: boolean) {
+  return request<Plan>('/me/ai-consent', { method: 'POST', body: JSON.stringify({ agree }) });
 }
 
 export function fetchPlan() {

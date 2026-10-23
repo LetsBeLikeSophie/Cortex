@@ -11,8 +11,15 @@ import { getClient } from "./supabase.js";
 export type Tier = "free" | "trial" | "pro";
 export type UsageKind = "classify" | "search" | "compose";
 
+// Whether saved content may go to the AI provider abroad (asked once in
+// the app). Anything but 'agreed' means no AI call at all.
+export type AiConsent = "agreed" | "declined" | null;
+// The notice they answered -- the privacy policy version it matches.
+export const AI_CONSENT_VERSION = "2026-10-30";
+
 export interface Entitlement {
   tier: Tier;
+  aiConsent: AiConsent;
   trialEndsAt: string;
   proUntil: string | null;
   classify: { used: number; limit: number };
@@ -42,9 +49,9 @@ function monthWindow(now = new Date()): { start: Date; next: Date } {
 // row is created with its trial already over. Guests can't be upgraded to
 // Kakao in place (a Kakao login is a separate account), so this is decided
 // once, at creation.
-async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_until: string | null }> {
+async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_until: string | null; ai_consent: AiConsent }> {
   const client = getClient();
-  const { data, error } = await client.from("user_plans").select("trial_ends_at, pro_until").eq("user_id", userId).maybeSingle();
+  const { data, error } = await client.from("user_plans").select("trial_ends_at, pro_until, ai_consent").eq("user_id", userId).maybeSingle();
   if (error) throw new Error(`getPlanRow failed: ${error.message}`);
   if (data) return data;
 
@@ -59,7 +66,7 @@ async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_
     .upsert({ user_id: userId, trial_ends_at: trialEndsAt }, { onConflict: "user_id", ignoreDuplicates: true });
   if (insertError) throw new Error(`getPlanRow insert failed: ${insertError.message}`);
   // Re-read so a concurrent first request that won the insert wins here too.
-  const { data: row, error: rereadError } = await client.from("user_plans").select("trial_ends_at, pro_until").eq("user_id", userId).single();
+  const { data: row, error: rereadError } = await client.from("user_plans").select("trial_ends_at, pro_until, ai_consent").eq("user_id", userId).single();
   if (rereadError) throw new Error(`getPlanRow reread failed: ${rereadError.message}`);
   return row;
 }
@@ -109,6 +116,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
   ]);
   return {
     tier,
+    aiConsent: row.ai_consent ?? null,
     trialEndsAt: row.trial_ends_at,
     proUntil: row.pro_until,
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
@@ -118,6 +126,28 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     resetsAt: next.toISOString(),
     unclassifiedCount,
   };
+}
+
+export async function setAiConsent(userId: string, agree: boolean): Promise<void> {
+  await getPlanRow(userId);
+  const { error } = await getClient()
+    .from("user_plans")
+    .update({ ai_consent: agree ? "agreed" : "declined", ai_consent_at: new Date().toISOString(), ai_consent_version: AI_CONSENT_VERSION })
+    .eq("user_id", userId);
+  if (error) throw new Error(`setAiConsent failed: ${error.message}`);
+}
+
+// Thrown by every route that would call the AI without consent; the app
+// answers it with the consent sheet.
+export class AiConsentRequiredError extends Error {
+  constructor() {
+    super("ai_consent_required");
+  }
+}
+
+export async function requireAiConsent(userId: string): Promise<void> {
+  const row = await getPlanRow(userId);
+  if (row.ai_consent !== "agreed") throw new AiConsentRequiredError();
 }
 
 export function remaining(ent: Entitlement, kind: UsageKind): number {

@@ -133,6 +133,15 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{planLabel}</Text>
             </Pressable>
             <Pressable
+              onPress={() => navigation.navigate('AiConsent')}
+              style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
+            >
+              <Text style={[styles.signOutLabel, { color: theme.ink }]}>AI 분석 동의</Text>
+              <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                {plan?.aiConsent === 'agreed' ? '동의함' : plan?.aiConsent === 'declined' ? '동의 안 함' : '아직 안 함'}
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={() => navigation.navigate('ThemePicker')}
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
             >

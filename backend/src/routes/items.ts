@@ -4,7 +4,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
-import { getEntitlement, recordUsage, refundUsage, remaining, reserveUsage } from "../lib/plans.js";
+import { AiConsentRequiredError, getEntitlement, recordUsage, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent } from "../lib/plans.js";
 import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
@@ -137,6 +137,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (err instanceof UnauthorizedError) {
       return reply.code(401).send({ error: err.message });
     }
+    if (err instanceof AiConsentRequiredError) {
+      return reply.code(403).send({ error: "ai_consent" });
+    }
     // Claude can't be used right now (credit ran out / key rejected): a
     // stable error the app can turn into a plain sentence, instead of the
     // raw upstream 400 body.
@@ -233,6 +236,7 @@ export async function itemsRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
       }
       const userId = await resolveUserId(req);
+      await requireAiConsent(userId);
       // Metered monthly (tag/keyword search stays free). 402 carries what
       // the app needs to say why and when it comes back.
       // Fails open like saving does (see processIncomingItem).
@@ -256,10 +260,21 @@ export async function itemsRoutes(app: FastifyInstance) {
     return reply.send(await getEntitlement(userId));
   });
 
+  // The answer to "send saved content to the AI abroad?" -- recorded with
+  // time and notice version; changeable any time from the profile.
+  app.post("/me/ai-consent", async (req, reply) => {
+    const parsed = z.object({ agree: z.boolean() }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+    const userId = await resolveUserId(req);
+    await setAiConsent(userId, parsed.data.agree);
+    return reply.send(await getEntitlement(userId));
+  });
+
   // "AI로 정리": classify as much of the 미분류함 backlog as the quota
   // allows. Calls Claude, so rate limited like POST /items.
   app.post("/items/classify-backlog", { config: { rateLimit: {} } }, async (req, reply) => {
     const userId = await resolveUserId(req);
+    await requireAiConsent(userId);
     const result = await classifyBacklog(userId);
     return reply.send(result);
   });
@@ -349,6 +364,7 @@ export async function itemsRoutes(app: FastifyInstance) {
   // current title/memo as a hint. Uses one from the monthly quota.
   app.post("/items/:id/reorganize", { config: { rateLimit: {} } }, async (req, reply) => {
     const userId = await resolveUserId(req);
+    await requireAiConsent(userId);
     const { id } = req.params as { id: string };
     const item = await getItemForUser(userId, id);
     if (!item) return reply.code(404).send({ error: "not found" });
@@ -368,6 +384,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     const parsed = ComposeSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
     const userId = await resolveUserId(req);
+    await requireAiConsent(userId);
     const { tag, format, itemIds, retryOf, instruction } = parsed.data;
 
     // A free retry reuses the same materials; anything else is a new run.
@@ -503,6 +520,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     // Auth-gated like every other route here; the user id only feeds the
     // per-call usage log, the result itself isn't scoped to a user.
     const userId = await resolveUserId(req);
+    await requireAiConsent(userId);
     const tag = await tagFromText(parsed.data.text, userId);
     return reply.send({ tag });
   });

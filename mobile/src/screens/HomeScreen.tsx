@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -88,6 +88,15 @@ export default function HomeScreen() {
   // vintage render underline tabs -- the tab row's own spacing follows that.
   const pillTabs = ['border', 'layer'].includes(conceptOf(theme));
   const txt = copyFor();
+
+  // Never asked about sending content to the AI: ask once per app run.
+  const askedConsent = useRef(false);
+  useEffect(() => {
+    if (plan && plan.aiConsent === null && !askedConsent.current) {
+      askedConsent.current = true;
+      navigation.navigate('AiConsent');
+    }
+  }, [plan, navigation]);
 
   const load = React.useCallback(() => {
     setLoading(true);

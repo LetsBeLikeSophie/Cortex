@@ -87,16 +87,23 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
   // The quota is reserved here, the moment the save is accepted -- not when
   // the classification finishes -- so a 30-photo batch counts as 30 right
   // away. Parallel uploads can each see one slot left and overshoot by a
-  // couple; acceptable for a soft monthly quota. Fails open: if the quota
-  // lookup itself breaks, saving still works and classifies as before.
-  let classifyNow = true;
+  // couple; acceptable for a soft monthly quota. Nothing goes to the AI
+  // without the person's consent (ai_consent) -- and if the lookup itself
+  // breaks, that can't be confirmed, so the item saves and waits instead.
+  let classifyNow = false;
+  let waitReason: "quota" | "consent" | "failed" = "failed";
   let reservation: number | null = null;
   try {
     const ent = await getEntitlement(userId);
-    classifyNow = remaining(ent, "classify") > 0;
-    if (classifyNow) reservation = await reserveUsage(userId, "classify");
+    if (ent.aiConsent !== "agreed") waitReason = "consent";
+    else if (remaining(ent, "classify") === 0) waitReason = "quota";
+    else {
+      classifyNow = true;
+      reservation = await reserveUsage(userId, "classify");
+    }
   } catch (err) {
-    console.error("quota lookup failed, classifying anyway:", err);
+    console.error("plan lookup failed, saving without classifying:", err);
+    classifyNow = false;
   }
   const status: ClassificationStatus = classifyNow ? "pending" : "unclassified";
   const base = {
@@ -106,7 +113,7 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
     category: PENDING_CATEGORY,
     tags: [],
     classificationStatus: status,
-    unclassifiedReason: classifyNow ? undefined : ("quota" as const),
+    unclassifiedReason: classifyNow ? undefined : waitReason,
   };
 
   let item: ItemRecord;
@@ -268,6 +275,16 @@ function enqueueClassification(job: ClassificationJob): void {
 
 async function runJob(job: ClassificationJob): Promise<void> {
   const { item } = job;
+  // Last gate before anything leaves for the AI: consent may have been
+  // withdrawn since the job was queued (or before a restart re-queued it).
+  const consented = await getEntitlement(item.user_id)
+    .then((ent) => ent.aiConsent === "agreed")
+    .catch(() => false);
+  if (!consented) {
+    if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
+    await markUnclassified(item.id, item.user_id, "consent").catch((e) => console.error("markUnclassified failed:", e));
+    return;
+  }
   for (let attempt = 0; ; attempt++) {
     try {
       const category = await withSlot(() => classifyAndComplete(item, job.imageBase64, job.useEditsAsHint));

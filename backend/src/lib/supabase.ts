@@ -30,7 +30,7 @@ export type ItemCaptureType = "link" | "text" | "screenshot";
 // Claude call was made; it waits in the app's 미분류함 until it's
 // classified later (see classifyStoredItem in pipeline.ts).
 export type ClassificationStatus = "pending" | "done" | "failed" | "unclassified";
-export type UnclassifiedReason = "quota" | "failed";
+export type UnclassifiedReason = "quota" | "failed" | "consent";
 
 export interface ItemRecord {
   id: string;
@@ -180,10 +180,10 @@ export async function markClassificationPending(itemId: string, userId: string):
 
 // Classification gave up after every retry: park the item in 미분류함
 // (still a real, openable item) so "AI로 정리" can try it again later.
-export async function markUnclassified(itemId: string, userId: string): Promise<void> {
+export async function markUnclassified(itemId: string, userId: string, reason: UnclassifiedReason = "failed"): Promise<void> {
   const { error } = await getClient()
     .from("items")
-    .update({ classification_status: "unclassified" satisfies ClassificationStatus, unclassified_reason: "failed" satisfies UnclassifiedReason })
+    .update({ classification_status: "unclassified" satisfies ClassificationStatus, unclassified_reason: reason })
     .eq("id", itemId)
     .eq("user_id", userId);
   if (error) throw new Error(`markUnclassified failed: ${error.message}`);

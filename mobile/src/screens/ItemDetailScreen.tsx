@@ -627,7 +627,9 @@ export default function ItemDetailScreen() {
                   (organizing
                     ? 'AI가 정리하는 중...'
                     : waiting
-                      ? waitReason === 'failed'
+                      ? waitReason === 'consent'
+                        ? 'AI 분석 동의 전에 저장됨 · ✦로 정리 (1건)'
+                        : waitReason === 'failed'
                         ? 'AI 정리에 실패했어요 · ✦로 다시 정리 (1건)'
                         : classifyLeft === 0
                           ? '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)'

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -18,6 +18,8 @@ import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TrashScreen from '../screens/TrashScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
+import AiConsentScreen from '../screens/AiConsentScreen';
+import { onAiConsentRequired } from '../api/client';
 import PaywallScreen from '../screens/PaywallScreen';
 import ComposeScreen from '../screens/ComposeScreen';
 import type { RootStackParamList, TabParamList } from './types';
@@ -104,10 +106,20 @@ function Tabs() {
   );
 }
 
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export default function RootNavigator() {
   const { theme } = useTheme();
+  // Any AI call the server refuses for lack of consent opens the consent
+  // sheet, wherever it came from.
+  useEffect(() => {
+    onAiConsentRequired(() => {
+      if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'AiConsent') navigationRef.navigate('AiConsent');
+    });
+    return () => onAiConsentRequired(null);
+  }, []);
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
         <Stack.Screen name="Stats" component={StatsScreen} />
@@ -120,6 +132,7 @@ export default function RootNavigator() {
           <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />
           <Stack.Screen name="Paywall" component={PaywallScreen} />
           <Stack.Screen name="Compose" component={ComposeScreen} />
+          <Stack.Screen name="AiConsent" component={AiConsentScreen} />
         </Stack.Group>
       </Stack.Navigator>
     </NavigationContainer>

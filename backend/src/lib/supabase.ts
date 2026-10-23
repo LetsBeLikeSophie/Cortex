@@ -807,6 +807,66 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   if (userError) throw new Error(`failed to delete user: ${userError.message}`);
 }
 
+// A guest who signs in with Kakao/Google keeps what they saved: the guest's
+// items (and their screenshot files) move to the real account, along with
+// this month's AI usage and the AI-consent answer if the account has none,
+// then the guest account is deleted. Works for a brand-new account and for
+// one already in use (the items are simply added). The guest's copy of the
+// sample guide item is dropped if the account already has one.
+const SAMPLE_TITLE = "저장 눌렀는데 어디로 갔지?";
+
+export async function claimGuestAccount(targetId: string, guestId: string): Promise<{ moved: number }> {
+  const client = getClient();
+
+  // Screenshot files live under "<userId>/..." -- move them first, so an
+  // item never points at a path that doesn't exist yet.
+  const { data: files, error: listError } = await client.storage.from(SCREENSHOTS_BUCKET).list(guestId, { limit: 1000 });
+  if (listError) throw new Error(`claim: list screenshots failed: ${listError.message}`);
+  for (const file of files ?? []) {
+    const { error } = await client.storage.from(SCREENSHOTS_BUCKET).move(`${guestId}/${file.name}`, `${targetId}/${file.name}`);
+    if (error) throw new Error(`claim: move screenshot failed: ${error.message}`);
+  }
+
+  const { data: targetSample } = await client.from("items").select("id").eq("user_id", targetId).eq("title", SAMPLE_TITLE).limit(1);
+  if (targetSample && targetSample.length > 0) {
+    await client.from("items").delete().eq("user_id", guestId).eq("title", SAMPLE_TITLE);
+  }
+
+  const { data: guestItems, error: itemsError } = await client.from("items").select("id, image_path").eq("user_id", guestId);
+  if (itemsError) throw new Error(`claim: read items failed: ${itemsError.message}`);
+  for (const it of (guestItems ?? []) as { id: string; image_path: string | null }[]) {
+    const imagePath = it.image_path?.startsWith(`${guestId}/`) ? `${targetId}/${it.image_path.slice(guestId.length + 1)}` : it.image_path;
+    const { error } = await client.from("items").update({ user_id: targetId, image_path: imagePath }).eq("id", it.id).eq("user_id", guestId);
+    if (error) throw new Error(`claim: move item failed: ${error.message}`);
+  }
+
+  // A Pro bought as a guest belongs to the person too (the plan is
+  // recomputed from purchases by the caller).
+  await client.from("purchases").update({ user_id: targetId }).eq("user_id", guestId);
+  // This month's AI use follows the person (no fresh quota by switching).
+  await client.from("ai_usage").update({ user_id: targetId }).eq("user_id", guestId);
+  await client.from("ai_calls").update({ user_id: targetId }).eq("user_id", guestId);
+
+  // The consent answer and language are the same person's -- carry them
+  // over only where the account hasn't answered itself.
+  const { data: plans } = await client.from("user_plans").select("user_id, ai_consent, ai_consent_at, ai_consent_version, lang").in("user_id", [guestId, targetId]);
+  const guestPlan = plans?.find((p) => p.user_id === guestId);
+  const targetPlan = plans?.find((p) => p.user_id === targetId);
+  if (guestPlan && targetPlan && !targetPlan.ai_consent && guestPlan.ai_consent) {
+    await client
+      .from("user_plans")
+      .update({ ai_consent: guestPlan.ai_consent, ai_consent_at: guestPlan.ai_consent_at, ai_consent_version: guestPlan.ai_consent_version })
+      .eq("user_id", targetId);
+  }
+  if (guestPlan && targetPlan && !targetPlan.lang && guestPlan.lang) {
+    await client.from("user_plans").update({ lang: guestPlan.lang }).eq("user_id", targetId);
+  }
+
+  // Whatever is left of the guest (plan row, auth user) goes.
+  await deleteUserAccount(guestId);
+  return { moved: guestItems?.length ?? 0 };
+}
+
 // One indexed row lookup instead of paging through every account -- see
 // kakao_users in db/schema.sql for why this table exists at all.
 export async function findUserIdByKakaoId(kakaoId: number): Promise<string | null> {

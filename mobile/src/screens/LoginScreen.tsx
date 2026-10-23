@@ -6,6 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
 import { frameStyle } from '../components/Card';
+import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
+import { COMMON } from '../i18n/common';
 import { signInWithKakao } from '../auth/kakaoLogin';
 import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
 import { GoogleIcon } from '../components/Icons';
@@ -25,6 +27,9 @@ const S = strings({
     guestNote: '게스트는 체험 없이 무료로 시작해요. 기록은 이 기기에서만 볼 수 있고, 나중에 계정으로 옮길 수 없어요.',
     google: 'Google로 계속하기',
     lastUsed: '최근 로그인',
+    guestTitle: '게스트로 시작할까요?',
+    guestStart: '시작',
+    guestLines: ['체험 없이 무료로 시작해요 (로그인하면 7일 체험)', '기록은 이 기기에만 남아요', '나중에 설정에서 계정을 연결하면 기록을 옮길 수 있어요'],
     policyPre: '계속하면 ',
     terms: '이용약관',
     policyAnd: ' 및 ',
@@ -42,6 +47,9 @@ const S = strings({
     guestNote: "Guests start free, with no trial. Your saves stay on this device only and can't be moved to an account later.",
     google: 'Continue with Google',
     lastUsed: 'Last used',
+    guestTitle: 'Start as a guest?',
+    guestStart: 'Start',
+    guestLines: ['Free, without the trial (sign in for 7 days of Pro)', 'Your saves stay on this device', 'Link an account later in settings to keep them'],
     policyPre: 'By continuing, you agree to the ',
     terms: 'Terms',
     policyAnd: ' and ',
@@ -59,6 +67,9 @@ const S = strings({
     guestNote: 'ゲストは体験なしの無料で始まります。記録はこの端末でのみ見られ、後からアカウントへ移せません。',
     google: 'Googleで続ける',
     lastUsed: '前回のログイン',
+    guestTitle: 'ゲストで始めますか?',
+    guestStart: '始める',
+    guestLines: ['体験なしの無料で始まります(ログインで7日間体験)', '記録はこの端末にだけ残ります', 'あとで設定からアカウントを連携すれば記録を移せます'],
     policyPre: '続けると',
     terms: '利用規約',
     policyAnd: 'と',
@@ -76,6 +87,9 @@ const S = strings({
     guestNote: '访客免费开始，没有试用。记录只能在这台设备上查看，之后也无法转移到账号。',
     google: '使用 Google 继续',
     lastUsed: '上次登录',
+    guestTitle: '以访客身份开始？',
+    guestStart: '开始',
+    guestLines: ['免费开始，没有试用（登录可试用 7 天）', '记录只保存在这台设备上', '之后在设置中关联账号即可转移记录'],
     policyPre: '继续即表示你同意',
     terms: '使用条款',
     policyAnd: '和',
@@ -93,6 +107,9 @@ const S = strings({
     guestNote: '訪客免費開始，沒有試用。紀錄只能在這台裝置上查看，之後也無法轉移到帳號。',
     google: '使用 Google 繼續',
     lastUsed: '上次登入',
+    guestTitle: '以訪客身分開始？',
+    guestStart: '開始',
+    guestLines: ['免費開始，沒有試用（登入可試用 7 天）', '紀錄只保存在這台裝置上', '之後在設定中連結帳號即可轉移紀錄'],
     policyPre: '繼續即表示你同意',
     terms: '使用條款',
     policyAnd: '和',
@@ -129,6 +146,7 @@ export default function LoginScreen() {
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   const [lastMethod, setLastMethod] = useState<Method | null>(null);
+  const [confirmGuest, setConfirmGuest] = useState(false);
   useEffect(() => {
     AsyncStorage.getItem(LAST_LOGIN_KEY)
       .then((v) => setLastMethod(v === 'kakao' || v === 'google' || v === 'guest' ? v : null))
@@ -288,7 +306,7 @@ export default function LoginScreen() {
         )}
         <View style={styles.buttonWrap}>
           <Pressable
-            onPress={onGuestPress}
+            onPress={() => setConfirmGuest(true)}
             disabled={status !== 'idle' && status !== 'error'}
             style={[styles.guestButton, frameStyle(theme), { borderRadius: theme.btnRadius, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
           >
@@ -300,9 +318,28 @@ export default function LoginScreen() {
           </Pressable>
           {lastMethod === 'guest' && <LastUsed theme={theme} label={S.lastUsed} />}
         </View>
-        <Text style={[styles.guestNote, { color: theme.sub }]}>
-          {S.guestNote}
-        </Text>
+        {confirmGuest && (
+          <View style={[styles.guestConfirm, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
+            <Text style={[styles.guestConfirmTitle, { color: theme.ink }]}>{S.guestTitle}</Text>
+            {S.guestLines.map((line) => (
+              <Text key={line} style={[styles.guestNote, { color: theme.sub }]}>
+                {line}
+              </Text>
+            ))}
+            <ButtonRow theme={theme} style={{ marginTop: 6 }}>
+              <GhostButton label={COMMON.cancel} theme={theme} size="sm" onPress={() => setConfirmGuest(false)} disabled={status === 'guestLoading'} />
+              <SolidButton
+                label={S.guestStart}
+                theme={theme}
+                size="sm"
+                loading={status === 'guestLoading'}
+                onPress={() => {
+                  void onGuestPress();
+                }}
+              />
+            </ButtonRow>
+          </View>
+        )}
         <Text style={[styles.policyNote, { color: theme.sub }]}>
           {S.policyPre}
           <Text
@@ -335,6 +372,8 @@ function LastUsed({ theme, label }: { theme: ReturnType<typeof useTheme>['theme'
 }
 
 const styles = StyleSheet.create({
+  guestConfirm: { padding: 14, gap: 4 },
+  guestConfirmTitle: { fontSize: 14.5, marginBottom: 2, fontFamily: 'IBMPlexSansKR_500Medium' },
   buttonWrap: { position: 'relative' },
   lastUsed: { position: 'absolute', top: -9, right: 14, paddingHorizontal: 8, paddingVertical: 2 },
   lastUsedText: { fontSize: 11, fontFamily: 'IBMPlexSansKR_500Medium' },

@@ -2,13 +2,34 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { completePendingWebLogin } from './kakaoLogin';
-import { seedSampleItem } from '../api/client';
+import { claimGuest, seedSampleItem } from '../api/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Set right before a guest signs in with Kakao/Google (which replaces the
+// guest session); once a real session shows up, the guest's saves are
+// moved over. Kept in storage because the web login redirects away.
+const PENDING_CLAIM_KEY = 'cortex.pendingGuestClaim';
+
+async function claimPendingGuest(): Promise<number | null> {
+  const token = await AsyncStorage.getItem(PENDING_CLAIM_KEY).catch(() => null);
+  if (!token) return null;
+  await AsyncStorage.removeItem(PENDING_CLAIM_KEY).catch(() => {});
+  try {
+    const { moved } = await claimGuest(token);
+    return moved;
+  } catch (err) {
+    console.warn('guest claim failed', err);
+    return null;
+  }
+}
 
 interface AuthState {
   session: Session | null;
   loading: boolean;
   signInAsGuest: () => Promise<{ error: string | null }>;
   pauseGuest: () => void;
+  // Call right before signing a guest in with Kakao/Google.
+  startLinking: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -16,6 +37,7 @@ const AuthContext = createContext<AuthState>({
   loading: true,
   signInAsGuest: async () => ({ error: null }),
   pauseGuest: () => {},
+  startLinking: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -40,6 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (suppressNextAuthEvent.current) return;
+      // A guest just became a real account: bring the guest's saves along
+      // before the app shows the account (best effort -- never blocks login).
+      if (newSession && !newSession.user.is_anonymous) {
+        void claimPendingGuest().finally(() => setSession(newSession));
+        return;
+      }
       setSession(newSession);
     });
 
@@ -81,8 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
+  const startLinking = async () => {
+    const { data } = await supabase.auth.getSession();
+    const s = data.session;
+    if (s?.user.is_anonymous) await AsyncStorage.setItem(PENDING_CLAIM_KEY, s.access_token).catch(() => {});
+  };
+
   return (
-    <AuthContext.Provider value={{ session, loading, signInAsGuest, pauseGuest }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ session, loading, signInAsGuest, pauseGuest, startLinking }}>{children}</AuthContext.Provider>
   );
 }
 

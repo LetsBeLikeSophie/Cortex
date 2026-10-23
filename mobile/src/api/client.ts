@@ -399,6 +399,13 @@ export function deleteAccount() {
 // Kakao signup gets a sample item server-side (kakaoAuth.ts); guest signup
 // happens entirely client-side via supabase.auth.signInAnonymously(), so
 // LoginScreen calls this right after to get the same starting point.
+// A guest who just signed in with Kakao/Google: move the guest's saves to
+// this account (guestToken = the guest session's access token, kept from
+// before the switch).
+export function claimGuest(guestToken: string) {
+  return request<{ ok: true; moved: number }>('/auth/claim-guest', { method: 'POST', body: JSON.stringify({ guestToken }) });
+}
+
 export function seedSampleItem() {
   return request<{ ok: true }>('/auth/seed-sample', { method: 'POST' });
 }

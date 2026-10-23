@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { deleteAccount, loginWithKakaoCode } from "../lib/kakaoAuth.js";
 import { verifyAccessToken } from "../lib/auth.js";
-import { countItemsSince, seedSampleItem } from "../lib/supabase.js";
+import { recomputeProUntil } from "../lib/billing.js";
+import { claimGuestAccount, countItemsSince, getClient, seedSampleItem } from "../lib/supabase.js";
 
 const KakaoLoginSchema = z.object({
   code: z.string().min(1),
@@ -48,6 +49,31 @@ export async function authRoutes(app: FastifyInstance) {
     } catch (err) {
       req.log.error(err);
       return reply.code(500).send({ error: err instanceof Error ? err.message : "delete failed" });
+    }
+  });
+
+  // A guest signing in with Kakao/Google: the app sends the guest's access
+  // token (kept from before the switch) while authenticated as the real
+  // account, and the guest's saves move over. The token proves the caller
+  // held that guest session; only anonymous accounts can be claimed.
+  app.post("/auth/claim-guest", async (req, reply) => {
+    const userId = await requireVerifiedUserId(req);
+    if (!userId) return reply.code(401).send({ error: "unauthorized" });
+    const parsed = z.object({ guestToken: z.string().min(10) }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+
+    const { data, error } = await getClient().auth.getUser(parsed.data.guestToken);
+    const guest = data?.user;
+    if (error || !guest) return reply.code(410).send({ error: "guest_expired" });
+    if (!guest.is_anonymous) return reply.code(400).send({ error: "not_guest" });
+    if (guest.id === userId) return reply.code(400).send({ error: "same_account" });
+    try {
+      const result = await claimGuestAccount(userId, guest.id);
+      await recomputeProUntil(userId).catch((e) => req.log.error(e));
+      return reply.send({ ok: true, ...result });
+    } catch (err) {
+      req.log.error(err);
+      return reply.code(500).send({ error: "claim_failed" });
     }
   });
 

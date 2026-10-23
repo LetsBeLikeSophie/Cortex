@@ -7,12 +7,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { LAYOUTS, PALETTES, allEdges, conceptOf } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
-import { signOut } from '../auth/kakaoLogin';
+import { signInWithKakao, signOut } from '../auth/kakaoLogin';
+import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
 import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { frameStyle, screenGutter } from '../components/Card';
 import { ConfirmCard } from '../components/ConfirmCard';
+import { GhostButton } from '../components/Buttons';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
 import { PRIVACY_URL, TERMS_URL, strings } from '../i18n';
@@ -27,6 +29,10 @@ const S = strings({
     asGuest: '게스트로 이용 중',
     asKakao: '카카오 계정으로 로그인됨',
     asGoogle: 'Google 계정으로 로그인됨',
+    linkTitle: '계정 연결',
+    linkNote: '연결하면 지금 기록을 그 계정으로 옮겨요',
+    linkKakao: '카카오로 연결',
+    linkGoogle: 'Google로 연결',
     confirmGuest: '정말 삭제하시겠어요?',
     confirmAccount: '정말 탈퇴하시겠어요?',
     bodyGuest: '이 게스트가 저장한 기억이 모두 사라지고, 되돌릴 수 없어요.',
@@ -57,6 +63,10 @@ const S = strings({
     asGuest: 'Using as a guest',
     asKakao: 'Signed in with Kakao',
     asGoogle: 'Signed in with Google',
+    linkTitle: 'Link an account',
+    linkNote: 'Your saves move to that account',
+    linkKakao: 'Link Kakao',
+    linkGoogle: 'Link Google',
     confirmGuest: 'Delete everything?',
     confirmAccount: 'Delete your account?',
     bodyGuest: "Everything this guest saved will be gone, and this can't be undone.",
@@ -87,6 +97,10 @@ const S = strings({
     asGuest: 'ゲストで利用中',
     asKakao: 'Kakaoアカウントでログイン中',
     asGoogle: 'Googleアカウントでログイン中',
+    linkTitle: 'アカウント連携',
+    linkNote: '今の記録がそのアカウントに移ります',
+    linkKakao: 'Kakaoで連携',
+    linkGoogle: 'Googleで連携',
     confirmGuest: '本当に削除しますか？',
     confirmAccount: '本当に退会しますか？',
     bodyGuest: 'このゲストが保存した記憶はすべて消え、元に戻せません。',
@@ -117,6 +131,10 @@ const S = strings({
     asGuest: '以访客身份使用中',
     asKakao: '已使用 Kakao 账号登录',
     asGoogle: '已使用 Google 账号登录',
+    linkTitle: '关联账号',
+    linkNote: '现在的记录会转到该账号',
+    linkKakao: '关联 Kakao',
+    linkGoogle: '关联 Google',
     confirmGuest: '确定要删除吗？',
     confirmAccount: '确定要注销账号吗？',
     bodyGuest: '这个访客保存的记忆将全部消失，且无法恢复。',
@@ -147,6 +165,10 @@ const S = strings({
     asGuest: '以訪客身分使用中',
     asKakao: '已使用 Kakao 帳號登入',
     asGoogle: '已使用 Google 帳號登入',
+    linkTitle: '連結帳號',
+    linkNote: '現在的紀錄會轉到該帳號',
+    linkKakao: '連結 Kakao',
+    linkGoogle: '連結 Google',
     confirmGuest: '確定要刪除嗎？',
     confirmAccount: '確定要刪除帳號嗎？',
     bodyGuest: '這個訪客儲存的記憶將全部消失，且無法復原。',
@@ -174,7 +196,23 @@ type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'de
 
 export default function ProfileScreen() {
   const { theme, layoutKey, paletteKey } = useTheme();
-  const { session, pauseGuest } = useAuth();
+  const { session, pauseGuest, startLinking } = useAuth();
+  const [linking, setLinking] = useState<'kakao' | 'google' | null>(null);
+  const [linkError, setLinkError] = useState('');
+  // A guest signs in with a real account; AuthContext moves the saves over.
+  const link = async (method: 'kakao' | 'google') => {
+    setLinkError('');
+    setLinking(method);
+    try {
+      await startLinking();
+      if (method === 'kakao') await signInWithKakao();
+      else await signInWithGoogle();
+    } catch (err) {
+      if (!(err instanceof GoogleSignInCancelled)) setLinkError(friendlyError(err));
+    } finally {
+      setLinking(null);
+    }
+  };
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [state, setState] = useState<FooterState>('idle');
   const [error, setError] = useState('');
@@ -282,6 +320,18 @@ export default function ProfileScreen() {
           // matching borders on adjacent buttons with only a small gap
           // read as one connected control and invited mis-taps.
           <View style={{ gap: 28 }}>
+            {isGuest && (
+              <View style={[styles.linkBox, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
+                <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.linkTitle}</Text>
+                <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.linkNote}</Text>
+                <View style={styles.linkButtons}>
+                  <GhostButton label={S.linkKakao} theme={theme} size="sm" onPress={() => link('kakao')} disabled={linking !== null} />
+                  <GhostButton label={S.linkGoogle} theme={theme} size="sm" onPress={() => link('google')} disabled={linking !== null} />
+                </View>
+                {linking !== null && <ActivityIndicator color={theme.ink} />}
+                {linkError !== '' && <Text style={{ fontSize: 12.5, color: theme.danger, fontFamily: 'IBMPlexSansKR_400Regular' }}>{linkError}</Text>}
+              </View>
+            )}
             <Pressable
               onPress={() => navigation.navigate('Paywall')}
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
@@ -349,6 +399,8 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  linkBox: { padding: 16, gap: 8 },
+  linkButtons: { flexDirection: 'row', gap: 8, marginTop: 4 },
   subWarning: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_500Medium' },
   subLink: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
   screen: { flex: 1 },

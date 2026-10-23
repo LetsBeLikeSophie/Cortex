@@ -474,6 +474,21 @@ export async function listTags(userId: string): Promise<string[]> {
 // Everything (not trashed) carrying this tag, AI-assigned or added by the
 // person, newest first -- the input to "모아서 만들기". Filtered in JS, like
 // listTags, rather than building a PostgREST array filter from free text.
+// The person's own items by id, not trashed, in newest-first order -- the
+// picked materials of a 모아서 만들기, or a composed memo's sources.
+export async function listItemsByIds(userId: string, ids: string[]): Promise<ItemRecord[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await getClient()
+    .from("items")
+    .select()
+    .eq("user_id", userId)
+    .in("id", ids)
+    .is("deleted_at", null)
+    .order("shared_at", { ascending: false });
+  if (error) throw new Error(`listItemsByIds failed: ${error.message}`);
+  return (data ?? []) as ItemRecord[];
+}
+
 export async function listItemsWithTag(userId: string, tag: string, max = 50): Promise<ItemRecord[]> {
   const { data, error } = await getClient()
     .from("items")

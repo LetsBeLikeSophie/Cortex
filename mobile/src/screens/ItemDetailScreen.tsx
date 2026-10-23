@@ -18,8 +18,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, asQuotaError, deleteItem, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
-import { relativeTime, sourceLabel, captureTypeLabel } from '../api/format';
+import { addTag, asQuotaError, deleteItem, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
+import { relativeTime, sourceLabel, captureTypeLabel, itemTitle } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
@@ -103,6 +103,18 @@ export default function ItemDetailScreen() {
   // waits because the quota ran out (0) or because the AI failed on it.
   const [classifyLeft, setClassifyLeft] = useState<number | null>(null);
   const [waitReason, setWaitReason] = useState(item.unclassified_reason ?? null);
+  // A composed memo's sources, loaded when "원본 N개" is opened (decision Q7).
+  const sourceIds = item.composed_from ?? [];
+  const [sources, setSources] = useState<ApiItem[] | null>(null);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const toggleSources = () => {
+    setSourcesOpen((open) => !open);
+    if (sources === null) {
+      fetchComposeSources(item.id)
+        .then((res) => setSources(res.items))
+        .catch(() => setSources([]));
+    }
+  };
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
@@ -472,6 +484,33 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
+          {sourceIds.length > 0 && (
+            <View style={styles.sourcesBox}>
+              <Pressable onPress={toggleSources} hitSlop={6}>
+                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>
+                  {sourcesOpen ? '원본 메모 접기' : `원본 메모 ${sourceIds.length}개 보기`}
+                </Text>
+              </Pressable>
+              {sourcesOpen &&
+                (sources === null ? (
+                  <Text style={[styles.composedText, { color: theme.sub }]}>불러오는 중...</Text>
+                ) : (
+                  <>
+                    {sources.map((src) => (
+                      <Pressable key={src.id} onPress={() => navigation.push('ItemDetail', { item: src })} hitSlop={4}>
+                        <Text style={[styles.composedText, { color: theme.ink }]} numberOfLines={1}>
+                          {`· ${itemTitle(src)}`}
+                        </Text>
+                      </Pressable>
+                    ))}
+                    {sources.length < sourceIds.length && (
+                      <Text style={[styles.composedText, { color: theme.sub }]}>{`${sourceIds.length - sources.length}개는 지워졌어요`}</Text>
+                    )}
+                  </>
+                ))}
+            </View>
+          )}
+
           {deleteState !== 'idle' && (
             <ConfirmCard
               theme={theme}
@@ -527,6 +566,21 @@ export default function ItemDetailScreen() {
             )}
           </ScrollView>
           {tagError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>태그 저장 실패: {tagError}</Text>}
+          {/* Another way into 모아서 만들기 (decision Q8): gather what shares
+              this item's tags. Not on a composed memo itself. */}
+          {aiTags.length + userTags.length > 0 && sourceIds.length === 0 && !composedFrom && (
+            <Pressable
+              onPress={() => {
+                const all = [...userTags, ...aiTags.filter((t) => !userTags.includes(t))];
+                navigation.navigate('Compose', { tag: all[0], tagChoices: all });
+              }}
+              hitSlop={6}
+              style={styles.composeEntry}
+            >
+              <SparkleIcon size={12} color={theme.accent} strokeWidth={1.5} />
+              <Text style={[styles.composedText, { color: theme.accent }]}>이 태그로 모아서 만들기</Text>
+            </Pressable>
+          )}
 
           {item.capture_type === 'screenshot' && (
             <View style={[styles.imageBox, { backgroundColor: theme.soft, borderColor: theme.line }]}>
@@ -661,6 +715,8 @@ export default function ItemDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  sourcesBox: { gap: 6, marginTop: 8 },
+  composeEntry: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8 },
   flexShrink: { flexShrink: 1 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerActions: { flexDirection: 'row', gap: 8 },

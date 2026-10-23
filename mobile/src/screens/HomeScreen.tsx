@@ -549,6 +549,19 @@ export default function HomeScreen() {
               <View style={styles.bulkBarRow}>
                 <Text style={[styles.bulkBarText, { color: theme.sub }]}>{selectedIds.size}개 선택됨</Text>
                 <View style={styles.bulkBarActions}>
+                  {/* Only the picked ones as materials (decision Q5). */}
+                  {selectedIds.size >= 2 && (
+                    <Pressable
+                      onPress={() => {
+                        const ids = [...selectedIds];
+                        setSelectMode(false);
+                        setSelectedIds(new Set());
+                        navigation.navigate('Compose', { tag: activeTag, count: ids.length, itemIds: ids, suggested: suggestFormat(listSource.filter((it) => ids.includes(it.id))) });
+                      }}
+                    >
+                      <Text style={[styles.bulkBarLink, { color: theme.accent }]}>✦ 모아서 만들기</Text>
+                    </Pressable>
+                  )}
                   <Pressable onPress={() => setBulkEditing('add')} disabled={selectedIds.size === 0}>
                     <Text style={[styles.bulkBarLink, { color: theme.accent, opacity: selectedIds.size ? 1 : 0.4 }]}>
                       태그 추가

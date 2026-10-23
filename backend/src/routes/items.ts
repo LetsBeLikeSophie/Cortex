@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
@@ -20,6 +21,7 @@ import {
   searchItems,
   getItemForUser,
   insertItem,
+  listItemsByIds,
   listItemsWithTag,
   listUnclassifiedItems,
   updateItemText,
@@ -45,8 +47,35 @@ const UpdateItemSchema = z.object({
 
 const ComposeSchema = z.object({
   tag: z.string().min(1).max(60),
-  format: z.enum(["course", "list", "summary"]),
+  format: z.enum(["auto", "course", "list", "summary"]),
+  // Picked items instead of the whole tag (decision Q5).
+  itemIds: z.array(z.string().uuid()).min(2).max(50).optional(),
+  // "다른 형식으로 다시": the draft this one replaces -- free once per draft
+  // chain (decision Q6).
+  retryOf: z.string().uuid().optional(),
 });
+
+// A compose result waits here until the person saves it (decision Q6:
+// preview before saving). In memory: a server restart drops unsaved
+// drafts, which the app reports as expired -- nothing was saved yet.
+type ComposeDraft = {
+  userId: string;
+  tag: string;
+  sourceIds: string[];
+  category: string;
+  title: string;
+  body: string;
+  freeRetry: boolean;
+  expiresAt: number;
+};
+const DRAFT_TTL_MS = 60 * 60 * 1000;
+const drafts = new Map<string, ComposeDraft>();
+function takeDraft(id: string, userId: string): ComposeDraft | null {
+  const now = Date.now();
+  for (const [k, d] of drafts) if (d.expiresAt < now) drafts.delete(k);
+  const d = drafts.get(id);
+  return d && d.userId === userId ? d : null;
+}
 
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -337,16 +366,24 @@ export async function itemsRoutes(app: FastifyInstance) {
     const parsed = ComposeSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
     const userId = await resolveUserId(req);
-    const { tag, format } = parsed.data;
+    const { tag, format, itemIds, retryOf } = parsed.data;
 
-    const ent = await getEntitlement(userId);
-    if (remaining(ent, "compose") === 0) {
-      return reply.code(402).send({ error: "quota", kind: "compose", limit: ent.compose.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+    // A free retry reuses the same materials; anything else is a new run.
+    const previous = retryOf ? takeDraft(retryOf, userId) : null;
+    const free = !!previous?.freeRetry;
+    if (!free) {
+      const ent = await getEntitlement(userId);
+      if (remaining(ent, "compose") === 0) {
+        return reply.code(402).send({ error: "quota", kind: "compose", limit: ent.compose.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+      }
     }
-    const items = await listItemsWithTag(userId, tag);
+    // Earlier composed memos aren't materials -- they'd fold a summary back
+    // into the next summary (decision Q7).
+    const picked = previous ? previous.sourceIds : itemIds;
+    const items = (picked ? await listItemsByIds(userId, picked) : await listItemsWithTag(userId, tag)).filter((it) => !it.composed_from);
     if (items.length < 2) return reply.code(400).send({ error: "too_few", count: items.length });
 
-    const reservation = await reserveUsage(userId, "compose");
+    const reservation = free ? null : await reserveUsage(userId, "compose");
     let composed: { title: string; body: string };
     try {
       composed = await composeFromItems(
@@ -365,24 +402,50 @@ export async function itemsRoutes(app: FastifyInstance) {
         userId
       );
     } catch (err) {
-      await refundUsage(reservation).catch(() => {});
+      if (reservation !== null) await refundUsage(reservation).catch(() => {});
       throw err;
     }
     // Filed under the category most of its sources have.
     const counts = new Map<string, number>();
     for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1);
-    const category = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0] as (typeof items)[number]["category"];
+    const category = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    if (retryOf) drafts.delete(retryOf);
+    const id = randomUUID();
+    // The first run of a chain earns one free retry; the retry itself doesn't.
+    const freeRetry = !previous;
+    drafts.set(id, { userId, tag, sourceIds: items.map((it) => it.id), category, title: composed.title, body: composed.body, freeRetry, expiresAt: Date.now() + DRAFT_TTL_MS });
+    return reply.send({ draft: { id, title: composed.title, body: composed.body }, sourceCount: items.length, freeRetry });
+  });
+
+  // Saves a previewed compose result as a memo that remembers its sources.
+  app.post("/items/compose/:draftId/save", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { draftId } = req.params as { draftId: string };
+    const draft = takeDraft(draftId, userId);
+    if (!draft) return reply.code(410).send({ error: "expired" });
     const item = await insertItem({
       userId,
       source: "memo",
       captureType: "text",
-      rawText: composed.body,
-      title: composed.title,
-      category,
-      tags: [tag],
+      rawText: draft.body,
+      title: draft.title,
+      category: draft.category as Parameters<typeof insertItem>[0]["category"],
+      tags: [draft.tag],
       classificationStatus: "done",
+      composedFrom: draft.sourceIds,
     });
-    return reply.send({ item, sourceCount: items.length });
+    drafts.delete(draftId);
+    return reply.send({ item, sourceCount: draft.sourceIds.length });
+  });
+
+  // A composed memo's sources (still in the archive), for "원본 N개".
+  app.get("/items/:id/sources", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    const item = await getItemForUser(userId, id);
+    if (!item) return reply.code(404).send({ error: "not found" });
+    const items = await listItemsByIds(userId, item.composed_from ?? []);
+    return reply.send({ items });
   });
 
   // Soft delete -- moves the item to the trash rather than removing it.

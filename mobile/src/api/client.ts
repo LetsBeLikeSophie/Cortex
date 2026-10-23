@@ -378,11 +378,35 @@ export function verifyGooglePurchase(productId: string, purchaseToken: string) {
   return request<Plan>('/billing/google/verify', { method: 'POST', body: JSON.stringify({ productId, purchaseToken }) });
 }
 
-// "모아서 만들기": everything under a tag -> one new memo. 402 when this
-// month's runs are used up, 400 too_few under 2 items.
-export type ComposeFormat = 'course' | 'list' | 'summary';
-export function composeFromTag(tag: string, format: ComposeFormat) {
-  return request<{ item: ApiItem; sourceCount: number }>('/items/compose', { method: 'POST', body: JSON.stringify({ tag, format }) }, 90_000);
+export type ComposeFormat = 'auto' | 'course' | 'list' | 'summary';
+
+// A compose result to preview; nothing is saved until saveComposeDraft.
+export interface ComposeDraft {
+  id: string;
+  title: string;
+  body: string;
+}
+
+// "모아서 만들기": a tag's items (or the picked itemIds) -> one memo, as a
+// draft to preview. retryOf = the draft it replaces ("다른 형식으로 다시",
+// free once). 402 (asQuotaError) when none are left.
+export function composeDraft(tag: string, format: ComposeFormat, opts: { itemIds?: string[]; retryOf?: string } = {}) {
+  return request<{ draft: ComposeDraft; sourceCount: number; freeRetry: boolean }>(
+    '/items/compose',
+    { method: 'POST', body: JSON.stringify({ tag, format, ...opts }) },
+    90_000
+  );
+}
+
+// 410 (error 'expired') when the draft is gone (an hour passed, or the
+// server restarted) -- make it again.
+export function saveComposeDraft(draftId: string) {
+  return request<{ item: ApiItem; sourceCount: number }>(`/items/compose/${encodeURIComponent(draftId)}/save`, { method: 'POST' });
+}
+
+// The items a composed memo was made from (those still in the archive).
+export function fetchComposeSources(itemId: string) {
+  return request<{ items: ApiItem[] }>(`/items/${encodeURIComponent(itemId)}/sources`);
 }
 
 // "AI로 다시 정리": re-runs classification with the current title/memo as a

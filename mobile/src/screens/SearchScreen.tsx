@@ -526,6 +526,19 @@ export default function SearchScreen() {
             </Text>
           </View>
         )}
+
+        {/* Searching by one tag is 모아서 만들기's material already --
+            offer it here too (decision Q8). */}
+        {!aiMode && words.length === 0 && tags.includeChips.length === 1 && tags.excludeChips.length === 0 && shown.length >= 2 && (
+          <Pressable
+            onPress={() => navigation.navigate('Compose', { tag: tags.includeChips[0].text, count: shown.length })}
+            hitSlop={6}
+            style={styles.suggestLine}
+          >
+            <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
+            <Text style={{ fontSize: 13, color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>{`'${tags.includeChips[0].text}' 모아서 만들기`}</Text>
+          </Pressable>
+        )}
       </View>
 
       {!hasQuery ? (

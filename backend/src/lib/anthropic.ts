@@ -463,7 +463,7 @@ export function clipInterpretation(q: SearchInterpretation): SearchInterpretatio
 // person's own notes, words read off screenshots) -- images aren't resent,
 // so a 50-item compose costs well under 1원.
 
-export type ComposeFormat = "course" | "list" | "summary";
+export type ComposeFormat = "auto" | "course" | "list" | "summary";
 
 export interface ComposeSource {
   title: string | null;
@@ -481,7 +481,7 @@ const ComposeSchema = z.object({
   body: z.string().describe("The composed memo, in Korean, plain text with simple line breaks and '-' bullets"),
 });
 
-const COMPOSE_FORMATS: Record<ComposeFormat, string> = {
+const COMPOSE_FORMATS: Record<Exclude<ComposeFormat, "auto">, string> = {
   course:
     "A course/route plan: group the places by area, suggest a sensible order to visit them, and note per place what to see/eat/buy and anything the person wrote about it. Places that don't fit a route go in a short '기타' list at the end.",
   list:
@@ -502,6 +502,13 @@ Rules:
 - The person's own notes ("내 메모") and their own writing ("본문") matter most -- keep what they said.
 - Terse memo style, no greetings or filler. Plain text: line breaks, "-"
   bullets, "1." numbering. No markdown headings, no emoji.`;
+
+// "AI가 알아서": the model picks the shape that suits the collection --
+// the three shapes are all still spelled out, so it costs about the same.
+function formatLine(format: ComposeFormat): string {
+  if (format !== "auto") return COMPOSE_FORMATS[format];
+  return `Pick whichever one of these fits the collection best and use it: (1) ${COMPOSE_FORMATS.course} (2) ${COMPOSE_FORMATS.list} (3) ${COMPOSE_FORMATS.summary}`;
+}
 
 const COMPOSE_BODY_MAX = 1500;
 const COMPOSE_BODY_TOTAL = 20000;
@@ -542,7 +549,7 @@ export async function composeFromItems(
     messages: [
       {
         role: "user",
-        content: `Tag: ${tag}\nFormat: ${COMPOSE_FORMATS[format]}\n\nItems (${items.length}):\n${lines.join("\n\n")}`,
+        content: `Tag: ${tag}\nFormat: ${formatLine(format)}\n\nItems (${items.length}):\n${lines.join("\n\n")}`,
       },
     ],
     output_config: { effort: "medium", format: zodOutputFormat(ComposeSchema) },

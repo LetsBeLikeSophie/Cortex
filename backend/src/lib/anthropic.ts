@@ -593,8 +593,16 @@ Rules:
   is missing, don't fill it in.
 - Mention each item by its own name/title so the person recognizes it.
 - The person's own notes ("내 메모") and their own writing ("본문") matter most -- keep what they said.
-- Terse memo style, no greetings or filler. Plain text: line breaks, "-"
-  bullets, "1." numbering. No markdown headings, no emoji.`;
+- It is read as text only (no pictures), so make it easy to scan:
+  - Split it into short sections, each starting with a heading line "## " +
+    a few words (an area, a kind, a day...). Usually 2-5 sections.
+  - Under a heading, one point per line as "- " bullets (or "1. " when the
+    order matters, like a route). Keep each line short -- one item, one line.
+  - Put each item's own name in **bold** at the start of its line.
+  - A blank line between sections.
+  - Use only these: "## ", "- ", "1. ", **bold**, blank lines. No other
+    markdown (no tables, links, ###, italics, quotes), no emoji.
+- Terse memo style, no greetings or filler.`;
 
 // "AI가 알아서": the model picks the shape that suits the collection --
 // the three shapes are all still spelled out, so it costs about the same.

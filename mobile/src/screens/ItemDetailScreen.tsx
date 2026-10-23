@@ -26,6 +26,7 @@ import { ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Ico
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
+import { MemoText } from '../components/MemoText';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
 import type { ApiItem } from '../api/client';
@@ -72,6 +73,7 @@ const S = strings({
     addTag: '+ 태그',
     tagSaveFailed: '태그 저장 실패: ',
     composeFromTag: '태그로 모아서 만들기',
+    tapToEdit: '눌러서 편집',
     imageFailed: '이미지를 불러오지 못했어요.',
     aiMemo: 'AI 메모',
     waitConsent: 'AI 분석 동의 전에 저장됨 · ✦로 정리 (1건)',
@@ -114,6 +116,7 @@ const S = strings({
     addTag: '+ Tag',
     tagSaveFailed: "Couldn't save tag: ",
     composeFromTag: 'Combine by tag',
+    tapToEdit: 'Tap to edit',
     imageFailed: "Couldn't load the image.",
     aiMemo: 'AI note',
     waitConsent: 'Saved before AI consent · sort with ✦ (1 use)',
@@ -156,6 +159,7 @@ const S = strings({
     addTag: '+ タグ',
     tagSaveFailed: 'タグを保存できませんでした: ',
     composeFromTag: 'タグでまとめて作る',
+    tapToEdit: 'タップして編集',
     imageFailed: '画像を読み込めませんでした。',
     aiMemo: 'AIメモ',
     waitConsent: 'AI分析の同意前に保存 · ✦で整理 (1件)',
@@ -198,6 +202,7 @@ const S = strings({
     addTag: '+ 标签',
     tagSaveFailed: '标签保存失败：',
     composeFromTag: '按标签汇总生成',
+    tapToEdit: '点按编辑',
     imageFailed: '图片加载失败。',
     aiMemo: 'AI 备注',
     waitConsent: '在同意 AI 分析前保存 · 点 ✦ 整理 (1 次)',
@@ -240,6 +245,7 @@ const S = strings({
     addTag: '+ 標籤',
     tagSaveFailed: '標籤儲存失敗：',
     composeFromTag: '依標籤彙整生成',
+    tapToEdit: '點按編輯',
     imageFailed: '圖片載入失敗。',
     aiMemo: 'AI 備註',
     waitConsent: '在同意 AI 分析前儲存 · 點 ✦ 整理 (1 次)',
@@ -314,6 +320,8 @@ export default function ItemDetailScreen() {
   const [waitReason, setWaitReason] = useState(item.unclassified_reason ?? null);
   // A composed memo's sources, loaded when "원본 N개" is opened (decision Q7).
   const sourceIds = item.composed_from ?? [];
+  const isComposed = sourceIds.length > 0 || !!composedFrom;
+  const [editingBody, setEditingBody] = useState(false);
   const [sources, setSources] = useState<ApiItem[] | null>(null);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const toggleSources = () => {
@@ -519,7 +527,11 @@ export default function ItemDetailScreen() {
       <TextInput
         value={valueOf(field)}
         onChangeText={setterOf(field)}
-        onBlur={() => commit(field)}
+        onBlur={() => {
+          commit(field);
+          if (field === 'rawText') setEditingBody(false);
+        }}
+        autoFocus={field === 'rawText' && editingBody}
         multiline
         scrollEnabled={false}
         blurOnSubmit={field === 'title'}
@@ -859,12 +871,18 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
-          {item.capture_type === 'text' && (
-            <View style={styles.editRow}>
-              <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], S.bodyPlaceholder)}</View>
-              {voiceButton('rawText')}
-            </View>
-          )}
+          {item.capture_type === 'text' &&
+            (isComposed && !editingBody ? (
+              // A 모아서 만들기 memo reads in sections; tap to edit the text.
+              <Pressable onPress={() => setEditingBody(true)} accessibilityHint={S.tapToEdit}>
+                <MemoText text={rawText} theme={theme} style={{ ...(StyleSheet.flatten(styles.body) as TextStyle), color: theme.ink }} />
+              </Pressable>
+            ) : (
+              <View style={styles.editRow}>
+                <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], S.bodyPlaceholder)}</View>
+                {voiceButton('rawText')}
+              </View>
+            ))}
 
           {editError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>{editError}</Text>}
 

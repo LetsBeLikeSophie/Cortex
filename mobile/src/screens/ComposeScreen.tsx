@@ -21,6 +21,7 @@ import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { TagChip } from '../components/Chips';
 import { SparkleIcon } from '../components/Icons';
+import { MemoText } from '../components/MemoText';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { COMMON } from '../i18n/common';
@@ -260,7 +261,9 @@ export default function ComposeScreen() {
           <Heading theme={theme} size={21} style={styles.previewTitle}>
             {draft.draft.title}
           </Heading>
-          <Text style={[styles.previewBody, { color: theme.ink }]}>{draft.draft.body}</Text>
+          <View style={styles.previewBodyBox}>
+            <MemoText text={draft.draft.body} theme={theme} style={{ ...styles.previewBody, color: theme.ink }} />
+          </View>
         </ScrollView>
         <Pressable onPress={() => setPreviewing(false)} disabled={busy} hitSlop={6} style={styles.retryLink}>
           <Text style={[styles.link, { color: theme.ink }]}>
@@ -352,7 +355,8 @@ const styles = StyleSheet.create({
   askInput: { marginTop: 10, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
   previewLabel: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
   previewTitle: { marginTop: 12, paddingHorizontal: 4 },
-  previewBody: { fontSize: 14.5, lineHeight: 23, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  previewBodyBox: { marginTop: 10, paddingHorizontal: 4 },
+  previewBody: { fontSize: 14.5, lineHeight: 23, fontFamily: 'IBMPlexSansKR_400Regular' },
   retryLink: { marginTop: 14, paddingHorizontal: 4 },
   link: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
   error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },

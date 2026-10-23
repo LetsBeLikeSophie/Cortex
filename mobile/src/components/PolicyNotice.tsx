@@ -15,12 +15,12 @@ const S = strings({
 
 // The in-app notice the privacy policy promises for its changes (at least
 // 7 days before they take effect). One notice at a time: shown until
-// dismissed or until two weeks after it takes effect.
+// dismissed or until the change takes effect (after that it's just the policy).
 const NOTICE = {
   id: 'privacy-2026-10-30',
   text: S.text,
   url: PRIVACY_URL,
-  until: Date.parse('2026-11-13T00:00:00+09:00'),
+  until: Date.parse('2026-10-30T00:00:00+09:00'),
 };
 const KEY = 'cortex.notice.dismissed';
 

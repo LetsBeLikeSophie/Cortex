@@ -141,6 +141,9 @@ function hintFor(item: ItemRecord, includeText: boolean): string | undefined {
     includeText && item.title ? `제목: ${item.title}` : null,
     includeText && item.snippet ? `메모: ${item.snippet}` : null,
     item.user_note ? `저장할 때 남긴 말: ${item.user_note}` : null,
+    // Always: the tags the person put on it themselves are a strong read of
+    // what it is to them, and the AI shouldn't hand them back as its own.
+    item.user_tags.length ? `내가 단 태그: ${item.user_tags.join(", ")}` : null,
   ].filter(Boolean);
   return parts.length ? parts.join("\n") : undefined;
 }

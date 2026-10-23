@@ -111,7 +111,13 @@ export async function completeClassification(
   // classifyText, so it lands here rather than as a separate write.
   thumbnailUrl?: string
 ): Promise<void> {
-  const { title, snippet, category, tags, keyText, hasText } = classification;
+  const { title, snippet, category, keyText, hasText } = classification;
+  // An AI tag the person already has on the item as their own would show as
+  // two chips (faint + solid) and outlive removing either one -- read their
+  // tags fresh (they may have added one while this ran) and drop repeats.
+  const { data: current } = await getClient().from("items").select("user_tags").eq("id", itemId).eq("user_id", userId).maybeSingle();
+  const own = new Set(((current?.user_tags ?? []) as string[]).map((t) => t.toLowerCase()));
+  const tags = classification.tags.filter((t) => !own.has(t.toLowerCase()));
   const { error } = await getClient()
     .from("items")
     .update({

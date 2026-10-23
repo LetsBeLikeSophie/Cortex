@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
+import { PolicyNotice } from '../components/PolicyNotice';
 import { parseMehhMarker } from '../native/mehh';
 import { splitLinkText } from '../data/linkText';
 
@@ -382,6 +383,7 @@ export default function HomeScreen() {
             </IconButton>
           </View>
         </View>
+        <PolicyNotice theme={theme} />
 
         {/* No shadow/elevation here -- 'card' (retired) paired elevation
             with overflow:hidden and that's what caused the Android "shadow

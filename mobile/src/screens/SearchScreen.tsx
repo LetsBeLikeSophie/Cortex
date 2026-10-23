@@ -342,11 +342,21 @@ export default function SearchScreen() {
   // 모두/일부 포함 split: the typed words + tag chips for instant search,
   // the interpreted keyword groups for AI search. An explicit date order
   // from the AI is shown as is, without the split.
+  // AI results come back for the sentence alone -- the tag chips (set before
+  // ✦ or changed after) narrow them here, without asking the AI again.
+  const aiTagFiltered = aiMode && tags.includeChips.length + tags.excludeChips.length > 0;
+  const shown = aiTagFiltered
+    ? hits.filter((h) => {
+        const has = new Set([...h.raw.tags, ...h.raw.user_tags]);
+        return tags.includeChips.every((c) => has.has(c.text)) && !tags.excludeChips.some((c) => has.has(c.text));
+      })
+    : hits;
+
   const termCount = aiMode ? (interpretation?.sort ? 0 : interpretation?.keywords.length ?? 0) : include.length;
   const rows: Row[] = [];
   if (termCount > 1) {
-    const all = hits.filter((h) => h.result.matchedCount === termCount);
-    const some = hits.filter((h) => h.result.matchedCount < termCount);
+    const all = shown.filter((h) => h.result.matchedCount === termCount);
+    const some = shown.filter((h) => h.result.matchedCount < termCount);
     if (all.length) {
       rows.push({ kind: 'header', key: 'h-all', title: '모두 포함', count: all.length });
       all.forEach((hit, i) => rows.push({ kind: 'item', key: 'all' + i, hit }));
@@ -356,7 +366,7 @@ export default function SearchScreen() {
       some.forEach((hit, i) => rows.push({ kind: 'item', key: 'some' + i, hit }));
     }
   } else {
-    hits.forEach((hit, i) => rows.push({ kind: 'item', key: 'row' + i, hit }));
+    shown.forEach((hit, i) => rows.push({ kind: 'item', key: 'row' + i, hit }));
   }
 
   const hasQuery = aiMode ? !!interpretation || asking : include.length + exclude.length > 0;
@@ -503,7 +513,7 @@ export default function SearchScreen() {
 
         {hasQuery && (
           <View style={[styles.metaRow, { paddingBottom: boxed ? 4 : 0 }]}>
-            <Text style={metaStyle}>{asking ? 'AI가 문장을 읽는 중...' : loading ? '검색 중...' : txt.hits(hits.length)}</Text>
+            <Text style={metaStyle}>{asking ? 'AI가 문장을 읽는 중...' : loading ? '검색 중...' : txt.hits(shown.length) + (aiTagFiltered ? ' · 태그 조건 적용' : '')}</Text>
             <Text style={metaStyle}>
               {aiMode ? `✦ ${orderLabel} · 1회 사용${aiLeft !== null ? ` · ${aiLeft}회 남음` : ''}` : orderLabel}
             </Text>
@@ -521,10 +531,10 @@ export default function SearchScreen() {
       ) : (
         <AsyncStateView
           theme={theme}
-          loading={loading && hits.length === 0}
+          loading={loading && shown.length === 0}
           error={error}
           onRetry={retry}
-          empty={hits.length === 0}
+          empty={shown.length === 0}
           topOffset={28}
           emptyText={
             <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>

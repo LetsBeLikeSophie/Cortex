@@ -194,16 +194,24 @@ const T = strings({
 
 export const LAYOUTS: Record<LayoutKey, Layout> = {
   line: {
-    label: T.line,
-    note: T.lineNote,
+    get label() {
+      return T.line;
+    },
+    get note() {
+      return T.lineNote;
+    },
     signature: 'paper',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
     cardRadius: 0, btnRadius: 999, pickRadius: 999, list: 'line',
     decor: 'none',
   },
   thinBorder: {
-    label: T.border,
-    note: T.borderNote,
+    get label() {
+      return T.border;
+    },
+    get note() {
+      return T.borderNote;
+    },
     signature: 'sage',
     // Grotesk carries no Hangul (neither does the serif), so Korean titles
     // are the system sans either way -- this changes the big count, Latin
@@ -214,16 +222,24 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     decor: 'none',
   },
   layered: {
-    label: T.layer,
-    note: T.layerNote,
+    get label() {
+      return T.layer;
+    },
+    get note() {
+      return T.layerNote;
+    },
     signature: 'blush',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 20, btnRadius: 14, pickRadius: 12, list: 'layered',
     decor: 'none',
   },
   layeredVintage: {
-    label: T.vintage,
-    note: T.vintageNote,
+    get label() {
+      return T.vintage;
+    },
+    get note() {
+      return T.vintageNote;
+    },
     signature: 'ink',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 6, btnRadius: 3, pickRadius: 3, list: 'layered',
@@ -292,7 +308,9 @@ export function conceptOf(theme: Theme): Concept {
 
 export const PALETTES: Record<PaletteKey, Palette> = {
   paper: {
-    label: 'Paper', note: T.paper,
+    label: 'Paper', get note() {
+      return T.paper;
+    },
     bg: '#fbfaf7', ink: '#14140f', sub: '#6a675e',
     line: '#e4e0d6', soft: '#eeebe2', accent: '#8d5c41',
     // 'transparent' was fine as long as Paper could only ever pair with the
@@ -308,7 +326,9 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: false,
   },
   ink: {
-    label: 'Ink', note: T.ink,
+    label: 'Ink', get note() {
+      return T.ink;
+    },
     bg: '#151417', ink: '#f2efe9', sub: '#a6a29a',
     line: '#2a2930', soft: '#232228', accent: '#d99a6c',
     surface: '#1c1b20', surfaceEdge: '#272630', ghost: '#242329', ghostBar: '#2d2c34',
@@ -318,7 +338,9 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: true,
   },
   neural: {
-    label: 'Neural', note: T.neural,
+    label: 'Neural', get note() {
+      return T.neural;
+    },
     bg: '#14171c', ink: '#eef1f5', sub: '#9aa6b6',
     line: '#22272e', soft: '#1b1f26', accent: '#a8b4ff',
     surface: '#191d23', surfaceEdge: '#22272e', ghost: '#202631', ghostBar: '#2a3038',
@@ -328,7 +350,9 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: true,
   },
   sage: {
-    label: 'Sage', note: T.sage,
+    label: 'Sage', get note() {
+      return T.sage;
+    },
     bg: '#f4f2ec', ink: '#23251f', sub: '#5f6159',
     line: '#ddd9cf', soft: '#ffffff', accent: '#4f7360',
     surface: '#ffffff', surfaceEdge: null, ghost: '#e4e0d6', ghostBar: '#dcd8cf',
@@ -338,7 +362,9 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: false,
   },
   blush: {
-    label: 'Blush', note: T.blush,
+    label: 'Blush', get note() {
+      return T.blush;
+    },
     bg: '#fbf6f4', ink: '#241c1b', sub: '#6d5b58',
     line: '#e8dad6', soft: '#ffffff', accent: '#b0524a',
     surface: '#ffffff', surfaceEdge: null, ghost: '#eadfdb', ghostBar: '#e0d1cd',

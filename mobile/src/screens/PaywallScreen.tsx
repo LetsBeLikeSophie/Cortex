@@ -195,7 +195,6 @@ const S = strings({
   },
 });
 
-const FALLBACK_PRICE: Record<PlanOption, string> = S.fallback;
 
 
 function dateLabel(iso: string): string {
@@ -297,7 +296,7 @@ export default function PaywallScreen() {
                 >
                   <View style={styles.optionHead}>
                     <Text style={[styles.optionLabel, { color: theme.ink }]}>{o.label}</Text>
-                    <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? FALLBACK_PRICE[o.key]}</Text>
+                    <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? (S.fallback as Record<PlanOption, string>)[o.key]}</Text>
                   </View>
                   <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>
                 </Pressable>

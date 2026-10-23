@@ -29,37 +29,49 @@ export interface SourceCatalogEntry {
 export const SOURCE_CATALOG: Record<ItemSource, SourceCatalogEntry> = {
   youtube: {
     id: 'youtube',
-    label: L.youtube,
+    get label() {
+      return L.youtube;
+    },
     labelTech: 'YOUTUBE',
     collects: { title: true, thumbnail: true, description: true },
   },
   instagram: {
     id: 'instagram',
-    label: L.instagram,
+    get label() {
+      return L.instagram;
+    },
     labelTech: 'INSTAGRAM',
     collects: { title: false, thumbnail: false, description: false },
   },
   kakaotalk: {
     id: 'kakaotalk',
-    label: L.kakaotalk,
+    get label() {
+      return L.kakaotalk;
+    },
     labelTech: 'KAKAOTALK',
     collects: { title: false, thumbnail: false, description: false },
   },
   safari: {
     id: 'safari',
-    label: L.safari,
+    get label() {
+      return L.safari;
+    },
     labelTech: 'SAFARI',
     collects: { title: true, thumbnail: true, description: true },
   },
   memo: {
     id: 'memo',
-    label: L.memo,
+    get label() {
+      return L.memo;
+    },
     labelTech: 'MEMO',
     collects: { title: false, thumbnail: false, description: false },
   },
   other: {
     id: 'other',
-    label: L.other,
+    get label() {
+      return L.other;
+    },
     labelTech: 'OTHER',
     collects: { title: false, thumbnail: false, description: false },
   },
@@ -74,7 +86,7 @@ export interface CaptureTypeCatalogEntry {
 }
 
 export const CAPTURE_TYPE_CATALOG: Record<ApiItem['capture_type'], CaptureTypeCatalogEntry> = {
-  link: { id: 'link', label: L.link, labelTech: 'LINK' },
-  text: { id: 'text', label: L.text, labelTech: 'TEXT' },
-  screenshot: { id: 'screenshot', label: L.screenshot, labelTech: 'SCREENSHOT' },
+  link: { id: 'link', get label() { return L.link; }, labelTech: 'LINK' },
+  text: { id: 'text', get label() { return L.text; }, labelTech: 'TEXT' },
+  screenshot: { id: 'screenshot', get label() { return L.screenshot; }, labelTech: 'SCREENSHOT' },
 };

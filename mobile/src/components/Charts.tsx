@@ -128,7 +128,8 @@ export function HorizontalBars({
   );
 }
 
-const { WEEKDAY_LABELS, BAND_LABELS } = strings({
+// Read per render (S.x), so the language picked in the profile applies.
+const L = strings({
   ko: { WEEKDAY_LABELS: ['일', '월', '화', '수', '목', '금', '토'], BAND_LABELS: ['새벽', '아침', '오후', '저녁'] },
   en: { WEEKDAY_LABELS: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], BAND_LABELS: ['Dawn', 'Morn', 'Aft', 'Eve'] },
   ja: { WEEKDAY_LABELS: ['日', '月', '火', '水', '木', '金', '土'], BAND_LABELS: ['早朝', '朝', '午後', '夜'] },
@@ -150,16 +151,16 @@ export function Heatmap({
     <View>
       <View style={styles.heatmapHeaderRow}>
         <View style={styles.heatmapBandLabelSpacer} />
-        {WEEKDAY_LABELS.map((w) => (
+        {L.WEEKDAY_LABELS.map((w) => (
           <Text key={w} style={[styles.heatmapWeekdayLabel, { color: theme.sub }]}>
             {w}
           </Text>
         ))}
       </View>
-      {BAND_LABELS.map((bandLabel, band) => (
+      {L.BAND_LABELS.map((bandLabel, band) => (
         <View key={bandLabel} style={styles.heatmapRow}>
           <Text style={[styles.heatmapBandLabel, { color: theme.sub }]}>{bandLabel}</Text>
-          {WEEKDAY_LABELS.map((_, weekday) => {
+          {L.WEEKDAY_LABELS.map((_, weekday) => {
             const count = at(weekday, band);
             const opacity = count === 0 ? 0 : 0.22 + 0.78 * (count / max);
             return (

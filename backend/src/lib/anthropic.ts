@@ -544,6 +544,9 @@ export function clipInterpretation(q: SearchInterpretation): SearchInterpretatio
       .map((k) => ({ term: clip(k.term.trim(), 30), synonyms: clipTags(k.synonyms, 4, 30) }))
       .filter((k) => k.term),
     exclude: clipTags(q.exclude, 3, 30),
+    // Categories are no longer shown or chosen in the app, and too coarse to
+    // narrow a search by (most items are 기억할 것/기타) -- never filter on one.
+    category: null,
   };
 }
 

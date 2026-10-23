@@ -667,9 +667,25 @@ export async function countItemsSince(userId: string, sinceIso: string): Promise
   return count ?? 0;
 }
 
+// Saved (not trashed) since a moment -- the home card's "이번 주 +N건",
+// counted on the server because the app only loads the newest 50 items.
+export async function countSavedSince(userId: string, sinceIso: string): Promise<number> {
+  const { count, error } = await getClient()
+    .from("items")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .gte("shared_at", sinceIso);
+  if (error) throw new Error(`countSavedSince failed: ${error.message}`);
+  return count ?? 0;
+}
+
 export interface ItemStats {
   total: number;
   byCategory: { category: string; count: number }[];
+  // The person's most-used tags (AI + their own, once per item), top 6 --
+  // what the stats screen shows now that categories aren't in the UI.
+  byTag: { tag: string; count: number }[];
   bySource: { source: string; count: number }[];
   // month as "YYYY-MM", oldest first, zero-filled for the last 6 months
   // (including ones with no saves) so a trend chart has a continuous axis.
@@ -695,13 +711,17 @@ function toKST(iso: string): Date {
 export async function getStats(userId: string): Promise<ItemStats> {
   const { data, error } = await getClient()
     .from("items")
-    .select("category, source, shared_at")
+    .select("category, source, shared_at, tags, user_tags")
     .eq("user_id", userId)
     .is("deleted_at", null)
     .limit(5000);
 
   if (error) throw new Error(`getStats failed: ${error.message}`);
-  const rows = (data ?? []) as Pick<ItemRecord, "category" | "source" | "shared_at">[];
+  const rows = (data ?? []) as Pick<ItemRecord, "category" | "source" | "shared_at" | "tags" | "user_tags">[];
+  const tagCounts = new Map<string, number>();
+  for (const row of rows) {
+    for (const tag of new Set([...(row.tags ?? []), ...(row.user_tags ?? [])])) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+  }
 
   const categoryCounts = new Map<string, number>();
   const sourceCounts = new Map<string, number>();
@@ -743,6 +763,10 @@ export async function getStats(userId: string): Promise<ItemStats> {
   return {
     total: rows.length,
     byCategory: [...categoryCounts.entries()].map(([category, count]) => ({ category, count })),
+    byTag: [...tagCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([tag, count]) => ({ tag, count })),
     bySource: [...sourceCounts.entries()].map(([source, count]) => ({ source, count })),
     byMonth: monthKeys.map((month) => ({ month, count: monthCounts.get(month) ?? 0 })),
     heatmap,

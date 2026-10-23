@@ -279,8 +279,10 @@ export function classifyBacklog() {
   return request<{ started: number; left: number }>('/items/classify-backlog', { method: 'POST' });
 }
 
+// weekCount: saved in the last 7 days, across the whole archive (the list
+// itself is only the newest `limit`). Optional: older servers didn't send it.
 export function fetchRecentItems(limit = 50) {
-  return request<{ items: ApiItem[]; total: number }>(`/items?limit=${limit}`);
+  return request<{ items: ApiItem[]; total: number; weekCount?: number | null }>(`/items?limit=${limit}`);
 }
 
 // The 미분류 tab's items, newest first (the order 'AI로 정리' takes them).
@@ -383,6 +385,8 @@ export function saveScreenshotItem(source: ItemSource, imageBase64: string, note
 export interface ItemStats {
   total: number;
   byCategory: { category: ItemCategory; count: number }[];
+  // Most-used tags, top 6 (optional: older servers didn't send it).
+  byTag?: { tag: string; count: number }[];
   bySource: { source: ItemSource; count: number }[];
   byMonth: { month: string; count: number }[];
   heatmap: { weekday: number; band: number; count: number }[];

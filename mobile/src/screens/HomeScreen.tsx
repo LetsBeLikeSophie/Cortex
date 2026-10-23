@@ -251,6 +251,7 @@ export default function HomeScreen() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [sorting, setSorting] = useState(false);
   const [total, setTotal] = useState(0);
+  const [serverWeekCount, setServerWeekCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Only reachable while a tag tab is active -- "add/remove a keyword
@@ -291,6 +292,7 @@ export default function HomeScreen() {
       .then((res) => {
         setRawItems(res.items);
         setTotal(res.total);
+        setServerWeekCount(res.weekCount ?? null);
         setError(null);
       })
       // Leave whatever was already on screen alone -- a transient failure
@@ -562,7 +564,9 @@ export default function HomeScreen() {
   // Always off the unfiltered list -- the hero card describes the whole
   // archive, not whatever tag tab happens to be active.
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  const weekCount = rawItems.filter((it) => new Date(it.shared_at).getTime() >= weekAgo).length;
+  // The server's count when it has one: rawItems is only the newest 50,
+  // so counting them capped a busy week at 50.
+  const weekCount = serverWeekCount ?? rawItems.filter((it) => new Date(it.shared_at).getTime() >= weekAgo).length;
   const lastSaved = rawItems[0] ? relativeTime(rawItems[0].shared_at) : null;
 
   return (

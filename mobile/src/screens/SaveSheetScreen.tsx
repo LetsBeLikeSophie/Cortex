@@ -906,7 +906,6 @@ export default function SaveSheetScreen() {
                     >
                       {itemTitle(item)}
                     </Text>
-                    {!pending && <Text style={{ fontFamily: MONO, fontSize: 10, color: theme.sub }}>{categoryLabel(item.category)}</Text>}
                   </Card>
                 );
               })}
@@ -996,11 +995,6 @@ export default function SaveSheetScreen() {
                   <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
                     {sourceLabel(saved.source, true)}
                   </Text>
-                  {saved.classification_status !== 'pending' && saved.classification_status !== 'unclassified' && (
-                    <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-                      {categoryLabel(saved.category)}
-                    </Text>
-                  )}
                 </View>
                 {/* The photo that was just saved -- without it a screenshot
                     save reads like a text memo (title/tags only). */}

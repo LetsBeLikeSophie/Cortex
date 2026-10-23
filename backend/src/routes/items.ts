@@ -23,6 +23,7 @@ import {
   getItemForUser,
   insertItem,
   listItemsByIds,
+  countSavedSince,
   listItemsWithTag,
   listUnclassifiedItems,
   updateItemText,
@@ -205,8 +206,12 @@ export async function itemsRoutes(app: FastifyInstance) {
       const items = await listItemsWithTag(userId, parsed.data.tag, parsed.data.limit ?? 100);
       return reply.send({ items, total: items.length });
     }
-    const { items, total } = await listItems(userId, { limit: parsed.data.limit });
-    return reply.send({ items, total });
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const [{ items, total }, weekCount] = await Promise.all([
+      listItems(userId, { limit: parsed.data.limit }),
+      countSavedSince(userId, weekAgo).catch(() => null),
+    ]);
+    return reply.send({ items, total, weekCount });
   });
 
   // Search across title/snippet/raw text for the Search screen.

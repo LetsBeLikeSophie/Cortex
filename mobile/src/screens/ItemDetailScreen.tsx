@@ -654,12 +654,9 @@ export default function ItemDetailScreen() {
         <View style={styles.flexShrink}>
         <ScrollView ref={scrollRef} style={styles.flexShrink} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.metaRow}>
-            {/* Category is the one piece of info this screen only ever shows
-                in this one spot -- source/capture type moved to the footer
-                near the timestamp, see below. */}
-            <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-              {categoryLabel(category)}
-            </Text>
+            {/* Categories left the UI (tags do that job); the spacer keeps
+                the header actions on the right. */}
+            <View />
             <View style={styles.headerActions}>
               {/* Rewrite the title/memo/tags with the person's own words as the
                   guide (see pipeline.ts hintFor). Same ✦ as sentence search. */}

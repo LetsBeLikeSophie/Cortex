@@ -7,8 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchStats, ItemStats, friendlyError } from '../api/client';
 import { sourceLabel, SOURCE_ORDER } from '../api/format';
-import { ALL_CATEGORIES } from '../data/tabs';
-import { DonutChart, BarChart, HorizontalBars, Heatmap } from '../components/Charts';
+import { BarChart, HorizontalBars, Heatmap } from '../components/Charts';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Card, isBoxed, screenGutter } from '../components/Card';
 import { allEdges } from '../theme/themes';
@@ -16,13 +15,12 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
-import { categoryLabel } from '../i18n/common';
 
 const S = strings({
   ko: {
     title: '저장 통계',
     empty: '아직 통계를 보여드릴 만큼 저장된 게 없어요.',
-    byCategory: '카테고리 비율',
+    byTag: '많이 쓴 태그',
     when: '언제 많이 저장했나요',
     whenNote: '요일 × 시간대 저장 빈도',
     where: '어디서 가져왔나요',
@@ -33,7 +31,7 @@ const S = strings({
   en: {
     title: 'Stats',
     empty: 'Not enough saves for stats yet.',
-    byCategory: 'By category',
+    byTag: 'Top tags',
     when: 'When you save',
     whenNote: 'Day × time of day',
     where: 'Where from',
@@ -44,7 +42,7 @@ const S = strings({
   ja: {
     title: '保存の統計',
     empty: '統計を出せるほどの保存がまだありません。',
-    byCategory: 'カテゴリの割合',
+    byTag: 'よく使うタグ',
     when: 'いつよく保存しましたか',
     whenNote: '曜日 × 時間帯の保存頻度',
     where: 'どこから保存しましたか',
@@ -55,7 +53,7 @@ const S = strings({
   'zh-Hans': {
     title: '保存统计',
     empty: '保存的内容还不够生成统计。',
-    byCategory: '分类占比',
+    byTag: '常用标签',
     when: '什么时候保存最多',
     whenNote: '星期 × 时段保存频率',
     where: '从哪里保存的',
@@ -66,7 +64,7 @@ const S = strings({
   'zh-Hant': {
     title: '儲存統計',
     empty: '儲存的內容還不夠產生統計。',
-    byCategory: '分類占比',
+    byTag: '常用標籤',
     when: '什麼時候儲存最多',
     whenNote: '星期 × 時段儲存頻率',
     where: '從哪裡儲存的',
@@ -139,15 +137,11 @@ export default function StatsScreen() {
           contentContainerStyle={{ paddingHorizontal: screenGutter(theme), paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          <Section title={S.byCategory} theme={theme}>
-            <DonutChart
-              theme={theme}
-              segments={ALL_CATEGORIES.map((cat) => ({
-                label: categoryLabel(cat),
-                value: stats?.byCategory.find((c) => c.category === cat)?.count ?? 0,
-              }))}
-            />
-          </Section>
+          {(stats?.byTag?.length ?? 0) > 0 && (
+            <Section title={S.byTag} theme={theme}>
+              <HorizontalBars theme={theme} data={(stats?.byTag ?? []).map((t) => ({ label: t.tag, value: t.count }))} />
+            </Section>
+          )}
 
           <Section title={S.when} note={S.whenNote} theme={theme}>
             <Heatmap theme={theme} cells={stats?.heatmap ?? []} />

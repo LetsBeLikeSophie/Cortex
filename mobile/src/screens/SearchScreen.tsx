@@ -344,15 +344,6 @@ function InterpretationRow({
           onRemove={() => onChange({ ...q, captureType: null })}
         />
       )}
-      {q.category && (
-        <SearchChip
-          label={S.categoryChip(categoryLabel(q.category))}
-          excluded={false}
-          theme={theme}
-          onToggle={noop}
-          onRemove={() => onChange({ ...q, category: null })}
-        />
-      )}
       {q.keywords.map((k, i) => (
         <SearchChip
           key={'k' + i + k.term}

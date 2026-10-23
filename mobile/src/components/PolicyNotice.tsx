@@ -18,8 +18,6 @@ const S = strings({
 // dismissed or until the change takes effect (after that it's just the policy).
 const NOTICE = {
   id: 'privacy-2026-10-30',
-  text: S.text,
-  url: PRIVACY_URL,
   until: Date.parse('2026-10-30T00:00:00+09:00'),
 };
 const KEY = 'cortex.notice.dismissed';
@@ -41,9 +39,9 @@ export function PolicyNotice({ theme }: { theme: Theme }) {
   };
   return (
     <View style={styles.row}>
-      <Pressable onPress={() => Linking.openURL(NOTICE.url).catch(() => {})} hitSlop={6} style={styles.textWrap}>
+      <Pressable onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} hitSlop={6} style={styles.textWrap}>
         <Text style={[styles.text, { color: theme.ink }]} numberOfLines={1}>
-          {NOTICE.text} <Text style={styles.link}>{S.view}</Text>
+          {S.text} <Text style={styles.link}>{S.view}</Text>
         </Text>
       </Pressable>
       <Pressable onPress={dismiss} hitSlop={10} accessibilityLabel={S.close}>

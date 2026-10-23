@@ -21,6 +21,7 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import LoginScreen from './src/screens/LoginScreen';
+import { loadLanguage, onLanguageChange } from './src/i18n';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -69,17 +70,25 @@ export default function App() {
   // read back (ThemeProvider's onReady), so the first frame is the right theme.
   const [themeReady, setThemeReady] = useState(false);
   const onThemeReady = useCallback(() => setThemeReady(true), []);
+  // The language picked in the profile is read before the first frame too,
+  // and a change re-renders the whole app in the new language.
+  const [langReady, setLangReady] = useState(false);
+  const [langVersion, setLangVersion] = useState(0);
+  useEffect(() => {
+    loadLanguage().finally(() => setLangReady(true));
+    return onLanguageChange(() => setLangVersion((v) => v + 1));
+  }, []);
   const onLayoutRootView = useCallback(async () => {
-    if ((fontsLoaded || fontError) && themeReady) {
+    if ((fontsLoaded || fontError) && themeReady && langReady) {
       await SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, fontError, themeReady]);
+  }, [fontsLoaded, fontError, themeReady, langReady]);
 
   useEffect(() => {
     onLayoutRootView();
   }, [onLayoutRootView]);
 
-  if (!fontsLoaded && !fontError) {
+  if ((!fontsLoaded && !fontError) || !langReady) {
     return null;
   }
 
@@ -87,7 +96,7 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <ThemeProvider onReady={onThemeReady}>
-          <AppShell />
+          <AppShell key={langVersion} />
         </ThemeProvider>
       </AuthProvider>
     </SafeAreaProvider>

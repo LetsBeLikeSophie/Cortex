@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "../config.js";
@@ -23,6 +22,7 @@ import {
   getItemForUser,
   insertItem,
   listItemsByIds,
+  getClient,
   countSavedSince,
   listItemsWithTag,
   listUnclassifiedItems,
@@ -54,32 +54,14 @@ const ComposeSchema = z.object({
   instruction: z.string().trim().max(100).optional(),
   // Picked items instead of the whole tag (decision Q5).
   itemIds: z.array(z.string().uuid()).min(2).max(50).optional(),
-  // "다른 형식으로 다시": the draft this one replaces -- free once per draft
-  // chain (decision Q6).
+  // "다른 모양으로 다시": the composed memo to remake in place (its own
+  // materials; free once per memo).
   retryOf: z.string().uuid().optional(),
 });
 
-// A compose result waits here until the person saves it (decision Q6:
-// preview before saving). In memory: a server restart drops unsaved
-// drafts, which the app reports as expired -- nothing was saved yet.
-type ComposeDraft = {
-  userId: string;
-  tag: string;
-  sourceIds: string[];
-  category: string;
-  title: string;
-  body: string;
-  freeRetry: boolean;
-  expiresAt: number;
-};
-const DRAFT_TTL_MS = 60 * 60 * 1000;
-const drafts = new Map<string, ComposeDraft>();
-function takeDraft(id: string, userId: string): ComposeDraft | null {
-  const now = Date.now();
-  for (const [k, d] of drafts) if (d.expiresAt < now) drafts.delete(k);
-  const d = drafts.get(id);
-  return d && d.userId === userId ? d : null;
-}
+// Composed memos that already used their one free remake. In memory: a
+// restart forgets it (the person gets one more free remake at worst).
+const remadeFree = new Set<string>();
 
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -395,9 +377,11 @@ export async function itemsRoutes(app: FastifyInstance) {
     await requireAiConsent(userId);
     const { tag, format, itemIds, retryOf, instruction } = parsed.data;
 
-    // A free retry reuses the same materials; anything else is a new run.
-    const previous = retryOf ? takeDraft(retryOf, userId) : null;
-    const free = !!previous?.freeRetry;
+    // A remake works on an existing composed memo: same materials, same
+    // memo (updated in place), free the first time.
+    const previous = retryOf ? await getItemForUser(userId, retryOf) : null;
+    if (retryOf && (!previous || !previous.composed_from || previous.deleted_at)) return reply.code(404).send({ error: "not found" });
+    const free = !!previous && !remadeFree.has(previous.id);
     if (!free) {
       const ent = await getEntitlement(userId);
       if (remaining(ent, "compose") === 0) {
@@ -406,7 +390,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
     // Earlier composed memos aren't materials -- they'd fold a summary back
     // into the next summary (decision Q7).
-    const picked = previous ? previous.sourceIds : itemIds;
+    const picked = previous ? previous.composed_from! : itemIds;
     const items = (picked ? await listItemsByIds(userId, picked) : await listItemsWithTag(userId, tag)).filter((it) => !it.composed_from);
     if (items.length < 2) return reply.code(400).send({ error: "too_few", count: items.length });
 
@@ -434,37 +418,33 @@ export async function itemsRoutes(app: FastifyInstance) {
       if (reservation !== null) await refundUsage(reservation).catch(() => {});
       throw err;
     }
+    // Saved right away -- the use is counted, so the result must exist even
+    // if the person closed the app while it ran. The order of composed_from
+    // is the order [#N] references count in.
+    const sourceIds = items.map((it) => it.id);
+    if (previous) {
+      remadeFree.add(previous.id);
+      const { error } = await getClient().from("items").update({ title: composed.title, raw_text: composed.body, composed_from: sourceIds }).eq("id", previous.id).eq("user_id", userId);
+      if (error) throw new Error(`compose remake failed: ${error.message}`);
+      const item = await getItemForUser(userId, previous.id);
+      return reply.send({ item, sourceCount: items.length, freeRemake: false });
+    }
     // Filed under the category most of its sources have.
     const counts = new Map<string, number>();
     for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1);
-    const category = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    if (retryOf) drafts.delete(retryOf);
-    const id = randomUUID();
-    // The first run of a chain earns one free retry; the retry itself doesn't.
-    const freeRetry = !previous;
-    drafts.set(id, { userId, tag, sourceIds: items.map((it) => it.id), category, title: composed.title, body: composed.body, freeRetry, expiresAt: Date.now() + DRAFT_TTL_MS });
-    return reply.send({ draft: { id, title: composed.title, body: composed.body }, sourceCount: items.length, freeRetry });
-  });
-
-  // Saves a previewed compose result as a memo that remembers its sources.
-  app.post("/items/compose/:draftId/save", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    const { draftId } = req.params as { draftId: string };
-    const draft = takeDraft(draftId, userId);
-    if (!draft) return reply.code(410).send({ error: "expired" });
+    const category = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0] as (typeof items)[number]["category"];
     const item = await insertItem({
       userId,
       source: "memo",
       captureType: "text",
-      rawText: draft.body,
-      title: draft.title,
-      category: draft.category as Parameters<typeof insertItem>[0]["category"],
-      tags: [draft.tag],
+      rawText: composed.body,
+      title: composed.title,
+      category,
+      tags: [tag],
       classificationStatus: "done",
-      composedFrom: draft.sourceIds,
+      composedFrom: sourceIds,
     });
-    drafts.delete(draftId);
-    return reply.send({ item, sourceCount: draft.sourceIds.length });
+    return reply.send({ item, sourceCount: items.length, freeRemake: true });
   });
 
   // A composed memo's sources (still in the archive), for "원본 N개".

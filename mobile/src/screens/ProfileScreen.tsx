@@ -17,7 +17,7 @@ import { ConfirmCard } from '../components/ConfirmCard';
 import { GhostButton } from '../components/Buttons';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
-import { PRIVACY_URL, TERMS_URL, strings } from '../i18n';
+import { LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
 
 const S = strings({
   ko: {
@@ -44,6 +44,9 @@ const S = strings({
     manageSub: '구독 관리 열기',
     plan: '플랜',
     aiConsent: 'AI 분석 동의',
+    langNote: '메뉴와 AI 메모가 이 언어로 나와요',
+    langDevice: '휴대폰 설정 따르기',
+    language: '언어',
     agreed: '동의함',
     declined: '동의 안 함',
     notYet: '아직 안 함',
@@ -78,6 +81,9 @@ const S = strings({
     manageSub: 'Manage subscription',
     plan: 'Plan',
     aiConsent: 'AI analysis consent',
+    langNote: 'Menus and AI memos use this language',
+    langDevice: 'Same as phone',
+    language: 'Language',
     agreed: 'Agreed',
     declined: 'Declined',
     notYet: 'Not yet',
@@ -112,6 +118,9 @@ const S = strings({
     manageSub: 'サブスク管理を開く',
     plan: 'プラン',
     aiConsent: 'AI分析への同意',
+    langNote: 'メニューとAIメモがこの言語になります',
+    langDevice: '端末の設定に合わせる',
+    language: '言語',
     agreed: '同意済み',
     declined: '同意しない',
     notYet: '未回答',
@@ -146,6 +155,9 @@ const S = strings({
     manageSub: '打开订阅管理',
     plan: '套餐',
     aiConsent: 'AI 分析授权',
+    langNote: '菜单和 AI 笔记都会使用这个语言',
+    langDevice: '跟随手机设置',
+    language: '语言',
     agreed: '已同意',
     declined: '不同意',
     notYet: '尚未选择',
@@ -180,6 +192,9 @@ const S = strings({
     manageSub: '開啟訂閱管理',
     plan: '方案',
     aiConsent: 'AI 分析授權',
+    langNote: '選單和 AI 筆記都會使用這個語言',
+    langDevice: '跟隨手機設定',
+    language: '語言',
     agreed: '已同意',
     declined: '不同意',
     notYet: '尚未選擇',
@@ -198,6 +213,7 @@ export default function ProfileScreen() {
   const { theme, layoutKey, paletteKey } = useTheme();
   const { session, pauseGuest, startLinking } = useAuth();
   const [linking, setLinking] = useState<'kakao' | 'google' | null>(null);
+  const [langOpen, setLangOpen] = useState(false);
   const [linkError, setLinkError] = useState('');
   // A guest signs in with a real account; AuthContext moves the saves over.
   const link = async (method: 'kakao' | 'google') => {
@@ -339,6 +355,43 @@ export default function ProfileScreen() {
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.plan}</Text>
               <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{planLabel}</Text>
             </Pressable>
+            <View>
+              <Pressable
+                onPress={() => setLangOpen((o) => !o)}
+                style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
+              >
+                <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.language}</Text>
+                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                  {LANG_PREF === 'device' ? S.langDevice : LANGUAGE_NAMES[LANG_PREF]}
+                </Text>
+              </Pressable>
+              {langOpen && (
+                <View style={styles.langList}>
+                  {(['device', 'ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'] as LangPref[]).map((pref) => {
+                    const active = LANG_PREF === pref;
+                    return (
+                      <Pressable
+                        key={pref}
+                        onPress={() => {
+                          setLangOpen(false);
+                          if (!active) setLanguage(pref);
+                        }}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: active }}
+                        style={styles.langRow}
+                        hitSlop={4}
+                      >
+                        <Text style={{ fontSize: 14.5, color: active ? theme.ink : theme.sub, fontFamily: active ? 'IBMPlexSansKR_500Medium' : 'IBMPlexSansKR_400Regular' }}>
+                          {pref === 'device' ? S.langDevice : LANGUAGE_NAMES[pref]}
+                          {active ? '  ✓' : ''}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  <Text style={{ fontSize: 12.5, color: theme.sub, marginTop: 4, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.langNote}</Text>
+                </View>
+              )}
+            </View>
             <Pressable
               onPress={() => navigation.navigate('AiConsent')}
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
@@ -400,6 +453,8 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   linkBox: { padding: 16, gap: 8 },
+  langList: { paddingHorizontal: 16, paddingTop: 8, gap: 2 },
+  langRow: { paddingVertical: 8 },
   linkButtons: { flexDirection: 'row', gap: 8, marginTop: 4 },
   subWarning: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_500Medium' },
   subLink: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },

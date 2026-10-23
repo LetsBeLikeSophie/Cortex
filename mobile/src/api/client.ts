@@ -471,28 +471,16 @@ export function verifyGooglePurchase(productId: string, purchaseToken: string) {
 
 export type ComposeFormat = 'auto' | 'course' | 'list' | 'summary';
 
-// A compose result to preview; nothing is saved until saveComposeDraft.
-export interface ComposeDraft {
-  id: string;
-  title: string;
-  body: string;
-}
-
-// "모아서 만들기": a tag's items (or the picked itemIds) -> one memo, as a
-// draft to preview. retryOf = the draft it replaces ("다른 형식으로 다시",
-// free once). 402 (asQuotaError) when none are left.
-export function composeDraft(tag: string, format: ComposeFormat, opts: { itemIds?: string[]; retryOf?: string; instruction?: string } = {}) {
-  return request<{ draft: ComposeDraft; sourceCount: number; freeRetry: boolean }>(
+// "모아서 만들기": a tag's items (or the picked itemIds) -> one memo, saved
+// right away (the use is counted, so the result is kept even if the app
+// closes while it runs). retryOf = a composed memo to remake in place
+// (free the first time). 402 (asQuotaError) when none are left.
+export function composeMemo(tag: string, format: ComposeFormat, opts: { itemIds?: string[]; retryOf?: string; instruction?: string } = {}) {
+  return request<{ item: ApiItem; sourceCount: number; freeRemake: boolean }>(
     '/items/compose',
     { method: 'POST', body: JSON.stringify({ tag, format, ...opts }) },
-    90_000
+    120_000
   );
-}
-
-// 410 (error 'expired') when the draft is gone (an hour passed, or the
-// server restarted) -- make it again.
-export function saveComposeDraft(draftId: string) {
-  return request<{ item: ApiItem; sourceCount: number }>(`/items/compose/${encodeURIComponent(draftId)}/save`, { method: 'POST' });
 }
 
 // The items a composed memo was made from (those still in the archive).

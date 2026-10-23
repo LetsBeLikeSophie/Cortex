@@ -18,11 +18,20 @@ export type RootStackParamList = {
   Trash: undefined;
   // composedFrom: just made by 모아서 만들기 -- the detail says from what
   // (shown once, on arrival; the sources aren't stored with the memo).
-  ItemDetail: { item: ApiItem; composedFrom?: { tag: string; count: number; left?: number } };
+  ItemDetail: { item: ApiItem; composedFrom?: { tag: string; count: number; left?: number; freeRemake?: boolean } };
   // Why it opened -- picks the headline; omitted = opened from the profile.
   Paywall: { reason?: 'classify' | 'search' | 'compose' } | undefined;
   // "모아서 만들기" for one home tag tab.
   // tag: what the memo is filed under; itemIds: picked materials instead of
   // the whole tag; tagChoices: let the sheet pick among the item's tags.
-  Compose: { tag: string; count?: number; suggested?: import('../api/client').ComposeFormat; itemIds?: string[]; tagChoices?: string[] };
+  Compose: {
+    tag: string;
+    count?: number;
+    suggested?: import('../api/client').ComposeFormat;
+    itemIds?: string[];
+    tagChoices?: string[];
+    // Remake this composed memo in place; freeRemake = the first remake is free.
+    retryOf?: string;
+    freeRemake?: boolean;
+  };
 };

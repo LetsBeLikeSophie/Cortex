@@ -197,7 +197,6 @@ const S = strings({
 
 const FALLBACK_PRICE: Record<PlanOption, string> = S.fallback;
 
-const HEADLINES = S.headlines;
 
 function dateLabel(iso: string): string {
   const d = new Date(iso);
@@ -263,7 +262,7 @@ export default function PaywallScreen() {
           pinned, so a small phone never pushes the button off the sheet. */}
       <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false}>
         <Heading theme={theme} size={24} style={styles.heading}>
-          {HEADLINES[reason ?? 'default']}
+          {S.headlines[reason ?? 'default']}
         </Heading>
         {reason && (
           <Text style={[styles.sub, { color: theme.sub }]}>

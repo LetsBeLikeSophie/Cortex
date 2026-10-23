@@ -60,6 +60,7 @@ const S = strings({
     composedFrom: (tag: string, n: number) => `'${tag}' 메모 ${n}개로 만들었어요`,
     composeLeft: (n: number) => ` · 이번 달 ${n}회 남음`,
     otherShape: '다른 모양으로 →',
+    otherShapeFree: '다른 모양으로 다시 · 무료 →',
     hideSources: '원본 메모 접기',
     showSources: (n: number) => `원본 메모 ${n}개 보기`,
     notInMemo: (n: number) => `글에 안 나온 메모 ${n}개`,
@@ -104,6 +105,7 @@ const S = strings({
     composedFrom: (tag: string, n: number) => `Made from ${n} '${tag}' items`,
     composeLeft: (n: number) => ` · ${n} left this month`,
     otherShape: 'Remake in another shape →',
+    otherShapeFree: 'Remake in another shape · free →',
     hideSources: 'Hide source items',
     showSources: (n: number) => `Show ${n} source items`,
     notInMemo: (n: number) => `${n} not in the memo`,
@@ -148,6 +150,7 @@ const S = strings({
     composedFrom: (tag: string, n: number) => `「${tag}」のメモ${n}件から作りました`,
     composeLeft: (n: number) => ` · 今月あと${n}回`,
     otherShape: '別の形で作り直す →',
+    otherShapeFree: '別の形で作り直す · 無料 →',
     hideSources: '元のメモを閉じる',
     showSources: (n: number) => `元のメモ${n}件を見る`,
     notInMemo: (n: number) => `本文にないメモ${n}件`,
@@ -192,6 +195,7 @@ const S = strings({
     composedFrom: (tag: string, n: number) => `由 ${n} 项「${tag}」收藏内容生成`,
     composeLeft: (n: number) => ` · 本月还剩 ${n} 次`,
     otherShape: '换个形式重做 →',
+    otherShapeFree: '换个形式重做 · 免费 →',
     hideSources: '收起原始内容',
     showSources: (n: number) => `查看 ${n} 项原始内容`,
     notInMemo: (n: number) => `正文未提到的 ${n} 项`,
@@ -236,6 +240,7 @@ const S = strings({
     composedFrom: (tag: string, n: number) => `由 ${n} 項「${tag}」收藏內容生成`,
     composeLeft: (n: number) => ` · 本月還剩 ${n} 次`,
     otherShape: '換個形式重做 →',
+    otherShapeFree: '換個形式重做 · 免費 →',
     hideSources: '收起原始內容',
     showSources: (n: number) => `查看 ${n} 項原始內容`,
     notInMemo: (n: number) => `內文未提到的 ${n} 項`,
@@ -718,11 +723,11 @@ export default function ItemDetailScreen() {
                 {composedFrom.left !== undefined ? S.composeLeft(composedFrom.left) : ''}
               </Text>
               <Pressable
-                onPress={() => navigation.replace('Compose', { tag: composedFrom.tag, count: composedFrom.count })}
+                onPress={() => navigation.replace('Compose', { tag: composedFrom.tag, count: composedFrom.count, retryOf: item.id, freeRemake: composedFrom.freeRemake })}
                 hitSlop={8}
                 style={styles.composedAgain}
               >
-                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>{S.otherShape}</Text>
+                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>{composedFrom.freeRemake ? S.otherShapeFree : S.otherShape}</Text>
               </Pressable>
             </View>
           )}

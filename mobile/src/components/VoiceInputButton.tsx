@@ -34,7 +34,7 @@ export function VoiceInputButton({
   theme,
   onResult,
   onStart,
-  lang = DEVICE_LOCALE,
+  lang,
   size = 18,
   variant = 'inField',
 }: {
@@ -83,7 +83,7 @@ export function VoiceInputButton({
       permissionToast(S.mic, perm.canAskAgain);
       return;
     }
-    ExpoSpeechRecognitionModule.start({ lang, interimResults: true, continuous: false });
+    ExpoSpeechRecognitionModule.start({ lang: lang ?? DEVICE_LOCALE, interimResults: true, continuous: false });
   };
 
   return (

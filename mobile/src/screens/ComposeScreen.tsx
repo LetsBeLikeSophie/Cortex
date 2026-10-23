@@ -4,17 +4,8 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import {
-  ApiError,
-  asQuotaError,
-  composeDraft,
-  ComposeDraft,
-  fetchItemsWithTag,
-  fetchPlan,
-  friendlyError,
-  Plan,
-  saveComposeDraft,
-} from '../api/client';
+import { ApiError, asQuotaError, composeMemo, fetchItemsWithTag, fetchPlan, friendlyError, Plan } from '../api/client';
+import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
@@ -23,16 +14,15 @@ import { VoiceInputButton } from '../components/VoiceInputButton';
 import { OUTLINE, allEdges } from '../theme/themes';
 import { TagChip } from '../components/Chips';
 import { SparkleIcon } from '../components/Icons';
-import { MemoText } from '../components/MemoText';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { COMMON } from '../i18n/common';
 
 // "모아서 만들기": a tag's items (or the ones picked in the tag tab) become
-// one memo. The AI picks the shape unless the person says what they want;
-// the chips are just quick ways to say it. Previewed before saving; one
-// remake per run is free.
+// one memo. The AI picks the shape unless the person says what they want.
+// Saved as soon as it's made (closing the sheet doesn't lose it); the memo
+// can then be remade in another shape once for free.
 const S = strings({
   ko: {
     examples: ['코스·동선', '비교표', '체크리스트', '일정표', '요약'],
@@ -53,8 +43,10 @@ const S = strings({
     askLabel: '(선택) 정리 방식 · 안 고르면 AI가 알아서',
     requestLabel: '(선택) 더 바라는 점',
     autoShape: 'AI가 알아서',
-    placeholder: '(선택) 예: 20명 갈 수 있는 곳만, 가격순',
-    working: '정리하는 중 · 10~20초',
+    placeholder: '예: 20명 갈 수 있는 곳만, 가격순',
+    working: '정리하는 중 · 창을 닫아도 계속 만들어요',
+    remakeTitle: '다른 모양으로 다시 만들기',
+    doneToast: (tag: string) => `'${tag}' 모아서 만든 메모를 저장했어요`,
     toPreview: '미리보기로',
     remakeFree: '다시 만들기 · 무료',
     remakePaid: '다시 만들기 · 1회',
@@ -80,8 +72,10 @@ const S = strings({
     askLabel: '(optional) How to arrange it · AI decides if you skip',
     requestLabel: '(optional) Anything else',
     autoShape: 'Let AI decide',
-    placeholder: '(optional) e.g. only places for 20, by price',
-    working: 'Working on it · 10–20 sec',
+    placeholder: 'e.g. only places for 20, by price',
+    working: 'Working · it keeps going if you close this',
+    remakeTitle: 'Remake in another shape',
+    doneToast: (tag: string) => `Saved the combined '${tag}' memo`,
     toPreview: 'Back to preview',
     remakeFree: 'Remake · Free',
     remakePaid: 'Remake · 1 use',
@@ -107,8 +101,10 @@ const S = strings({
     askLabel: '(任意) まとめ方 · 選ばなければAIにおまかせ',
     requestLabel: '(任意) ほかの希望',
     autoShape: 'AIにおまかせ',
-    placeholder: '(任意) 例: 20人で行ける所だけ、価格順',
-    working: 'まとめ中 · 10〜20秒',
+    placeholder: '例: 20人で行ける所だけ、価格順',
+    working: '作成中 · 閉じても続きます',
+    remakeTitle: '別の形で作り直す',
+    doneToast: (tag: string) => `「${tag}」のまとめメモを保存しました`,
     toPreview: 'プレビューへ',
     remakeFree: 'もう一度作る · 無料',
     remakePaid: 'もう一度作る · 1回',
@@ -134,8 +130,10 @@ const S = strings({
     askLabel: '（可选）整理方式 · 不选由 AI 决定',
     requestLabel: '（可选）其他要求',
     autoShape: '交给 AI',
-    placeholder: '（可选）例：只要能容纳 20 人的地方，按价格排序',
-    working: '整理中 · 10~20 秒',
+    placeholder: '例：只要能容纳 20 人的地方，按价格排序',
+    working: '生成中 · 关闭也会继续',
+    remakeTitle: '换个形式重做',
+    doneToast: (tag: string) => `已保存「${tag}」汇总笔记`,
     toPreview: '回到预览',
     remakeFree: '重新生成 · 免费',
     remakePaid: '重新生成 · 1 次',
@@ -161,8 +159,10 @@ const S = strings({
     askLabel: '（選填）整理方式 · 不選由 AI 決定',
     requestLabel: '（選填）其他要求',
     autoShape: '交給 AI',
-    placeholder: '（選填）例：只要能容納 20 人的地方，依價格排序',
-    working: '整理中 · 10~20 秒',
+    placeholder: '例：只要能容納 20 人的地方，依價格排序',
+    working: '產生中 · 關閉也會繼續',
+    remakeTitle: '換個形式重做',
+    doneToast: (tag: string) => `已儲存「${tag}」彙整筆記`,
     toPreview: '回到預覽',
     remakeFree: '重新產生 · 免費',
     remakePaid: '重新產生 · 1 次',
@@ -170,12 +170,11 @@ const S = strings({
     make: '產生 · 1 次',
   },
 });
-const EXAMPLES = S.examples;
 
 export default function ComposeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { tag, count, itemIds, tagChoices } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
+  const { tag, count, itemIds, tagChoices, retryOf, freeRemake } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
   const [pickedTag, setPickedTag] = useState(tagChoices?.[0] ?? tag);
   const [tagCount, setTagCount] = useState<number | null>(count ?? null);
   const [shape, setShape] = useState<string | null>(null);
@@ -184,11 +183,16 @@ export default function ComposeScreen() {
   const askBase = useRef('');
   const [plan, setPlan] = useState<Plan | null>(null);
   const [working, setWorking] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  // The previewed result, and whether remaking it in another shape is free.
-  const [draft, setDraft] = useState<{ draft: ComposeDraft; sourceCount: number; freeRetry: boolean } | null>(null);
-  const [previewing, setPreviewing] = useState(false);
+  // Closing the sheet mid-way doesn't cancel the server's work; when it
+  // finishes after that, say so with a toast instead of navigating.
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    []
+  );
 
   const refreshPlan = () =>
     fetchPlan()
@@ -200,7 +204,7 @@ export default function ComposeScreen() {
 
   // Opened from a detail or search (no count): ask how many the tag has.
   useEffect(() => {
-    if (itemIds || (count !== undefined && pickedTag === tag)) return;
+    if (itemIds || retryOf || (count !== undefined && pickedTag === tag)) return;
     setTagCount(null);
     let cancelled = false;
     fetchItemsWithTag(pickedTag, 50)
@@ -211,26 +215,36 @@ export default function ComposeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [pickedTag, itemIds, count, tag]);
+  }, [pickedTag, itemIds, count, tag, retryOf]);
 
   const close = () => navigation.goBack();
   const left = plan?.compose ? Math.max(0, plan.compose.limit - plan.compose.used) : null;
-  const retryFree = !!draft?.freeRetry;
+  const remakeFree = !!retryOf && !!freeRemake;
   const materials = itemIds ? itemIds.length : tagCount;
 
   const make = async () => {
-    if (!retryFree && left === 0) {
+    if (!remakeFree && left === 0) {
       navigation.replace('Paywall', { reason: 'compose' });
       return;
     }
     setError('');
     setWorking(true);
+    // The memo lives under its tag -- make sure that tag is a home tab
+    // (done first, so it holds even if the sheet is closed meanwhile).
+    const tabs = await loadHomeTabs();
+    if (!tabs.includes(pickedTag)) await saveHomeTabs([...tabs, pickedTag]);
     try {
-      const res = await composeDraft(pickedTag, 'auto', { itemIds, retryOf: draft?.draft.id, instruction: [shape, ask.trim()].filter(Boolean).join(' · ') || undefined });
-      setDraft(res);
-      setPreviewing(true);
-      refreshPlan();
+      const res = await composeMemo(pickedTag, 'auto', { itemIds, retryOf, instruction: [shape, ask.trim()].filter(Boolean).join(' · ') || undefined });
+      if (!mounted.current) {
+        showToast(S.doneToast(pickedTag));
+        return;
+      }
+      navigation.replace('ItemDetail', {
+        item: res.item,
+        composedFrom: { tag: pickedTag, count: res.sourceCount, left: left !== null ? Math.max(0, left - (remakeFree ? 0 : 1)) : undefined, freeRemake: res.freeRemake },
+      });
     } catch (err) {
+      if (!mounted.current) return;
       if (asQuotaError(err)) {
         navigation.replace('Paywall', { reason: 'compose' });
         return;
@@ -240,76 +254,23 @@ export default function ComposeScreen() {
       } else {
         setError(friendlyError(err));
       }
-    } finally {
       setWorking(false);
     }
   };
 
-  const save = async () => {
-    if (!draft) return;
-    setError('');
-    setSaving(true);
-    try {
-      const { item, sourceCount } = await saveComposeDraft(draft.draft.id);
-      // The memo lives under its tag -- make sure that tag is a home tab.
-      const tabs = await loadHomeTabs();
-      if (!tabs.includes(pickedTag)) await saveHomeTabs([...tabs, pickedTag]);
-      navigation.replace('ItemDetail', { item, composedFrom: { tag: pickedTag, count: sourceCount, left: left ?? undefined } });
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 410) {
-        setError(S.expired);
-        setDraft(null);
-        setPreviewing(false);
-      } else {
-        setError(friendlyError(err));
-      }
-      setSaving(false);
-    }
-  };
-
-  const busy = working || saving;
-
-  if (previewing && draft) {
-    return (
-      <ModalSheet theme={theme} onClose={busy ? () => {} : close} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
-        <View style={styles.titleRow}>
-          <SparkleIcon color={theme.accent} size={18} strokeWidth={1.5} />
-          <Text style={[styles.previewLabel, { color: theme.sub }]}>{S.previewLabel(draft.sourceCount)}</Text>
-        </View>
-        <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false}>
-          <Heading theme={theme} size={21} style={styles.previewTitle}>
-            {draft.draft.title}
-          </Heading>
-          <View style={styles.previewBodyBox}>
-            <MemoText text={draft.draft.body} theme={theme} style={{ ...styles.previewBody, color: theme.ink }} />
-          </View>
-        </ScrollView>
-        <Pressable onPress={() => setPreviewing(false)} disabled={busy} hitSlop={6} style={styles.retryLink}>
-          <Text style={[styles.link, { color: theme.ink }]}>
-            {retryFree ? S.retryFree : S.retryPaid(left)}
-          </Text>
-        </Pressable>
-        <Text style={[styles.sub, { color: theme.sub }]}>{S.saveToKeep}</Text>
-        {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
-        <ButtonRow theme={theme} style={styles.buttons}>
-          <GhostButton label={S.discard} theme={theme} onPress={close} disabled={busy} />
-          <SolidButton label={COMMON.save} theme={theme} onPress={save} loading={saving} />
-        </ButtonRow>
-      </ModalSheet>
-    );
-  }
+  const busy = working;
 
   return (
-    <ModalSheet theme={theme} onClose={busy ? () => {} : close} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
+    <ModalSheet theme={theme} onClose={close} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
       <View style={styles.titleRow}>
         <SparkleIcon color={theme.accent} size={18} strokeWidth={1.5} />
         <Heading theme={theme} size={22}>
-          {itemIds ? S.titlePicked(itemIds.length) : S.titleTag(pickedTag)}
+          {retryOf ? S.remakeTitle : itemIds ? S.titlePicked(itemIds.length) : S.titleTag(pickedTag)}
         </Heading>
       </View>
       <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Opened from a detail: which of the item's tags to gather. */}
-        {tagChoices && tagChoices.length > 1 && (
+        {!retryOf && tagChoices && tagChoices.length > 1 && (
           <View style={styles.tagChoices}>
             {tagChoices.map((t) => (
               <Pressable key={t} onPress={() => setPickedTag(t)} disabled={busy} accessibilityRole="radio" accessibilityState={{ selected: t === pickedTag }}>
@@ -324,12 +285,12 @@ export default function ComposeScreen() {
           {materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}
-          {draft ? (retryFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}
+          {retryOf ? (remakeFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}
         </Text>
 
         <Text style={[styles.askLabel, { color: theme.ink }]}>{S.askLabel}</Text>
         <View style={styles.radios} accessibilityRole="radiogroup">
-          {[null, ...EXAMPLES].map((ex) => {
+          {[null, ...S.examples].map((ex) => {
             const active = shape === ex;
             return (
               <Pressable
@@ -377,9 +338,9 @@ export default function ComposeScreen() {
       {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
 
       <ButtonRow theme={theme} style={styles.buttons}>
-        <GhostButton label={draft ? S.toPreview : COMMON.cancel} theme={theme} onPress={draft ? () => setPreviewing(true) : close} disabled={busy} />
+        <GhostButton label={COMMON.cancel} theme={theme} onPress={close} />
         <SolidButton
-          label={draft ? (retryFree ? S.remakeFree : S.remakePaid) : left === 0 ? S.makePro : S.make}
+          label={retryOf ? (remakeFree ? S.remakeFree : S.remakePaid) : left === 0 ? S.makePro : S.make}
           theme={theme}
           onPress={make}
           loading={working}

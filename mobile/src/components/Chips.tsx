@@ -1,16 +1,16 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
-import { PlusIcon } from './Icons';
+import { TuneIcon } from './Icons';
 import type { QueryChip } from '../hooks/useChipQuery';
 import { strings } from '../i18n';
 
 const S = strings({
-  ko: { unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건` },
-  en: { unsorted: 'Unsorted', unsortedCount: (n: number) => `Unsorted, ${n}` },
-  ja: { unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n}件` },
-  'zh-Hans': { unsorted: '未分类', unsortedCount: (n: number) => `未分类 ${n} 条` },
-  'zh-Hant': { unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n} 則` },
+  ko: { tabSettings: '태그 설정', unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건` },
+  en: { tabSettings: 'Tabs', unsorted: 'Unsorted', unsortedCount: (n: number) => `Unsorted, ${n}` },
+  ja: { tabSettings: 'タグ設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n}件` },
+  'zh-Hans': { tabSettings: '标签设置', unsorted: '未分类', unsortedCount: (n: number) => `未分类 ${n} 条` },
+  'zh-Hant': { tabSettings: '標籤設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n} 則` },
 });
 
 // Home tag tabs, per concept: line = underline tabs; border = outlined
@@ -106,8 +106,15 @@ export function PileTabChip({ count, active, theme, onPress }: { count: number; 
 // strip currently renders as underline tabs or pill tabs.
 export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.tabAdd, { borderColor: theme.sub, borderRadius: conceptOf(theme) === 'vintage' ? 3 : 13 }]}>
-      <PlusIcon size={13} color={theme.sub} strokeWidth={1.4} />
+    // Opens the tab picker, which both adds and removes tabs -- so it reads
+    // as "settings", not "+".
+    <Pressable
+      onPress={onPress}
+      accessibilityLabel={S.tabSettings}
+      style={[styles.tabAdd, styles.tabSettings, { borderColor: theme.sub, borderRadius: conceptOf(theme) === 'vintage' ? 3 : 13 }]}
+    >
+      <TuneIcon size={13} color={theme.sub} strokeWidth={1.4} />
+      <Text style={{ fontSize: 12, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.tabSettings}</Text>
     </Pressable>
   );
 }
@@ -249,6 +256,7 @@ const styles = StyleSheet.create({
   chipQueryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
   pileRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   pileDot: { width: 5, height: 5, borderRadius: 3 },
+  tabSettings: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, width: undefined },
   tabAdd: {
     width: 26,
     height: 26,

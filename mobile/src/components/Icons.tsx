@@ -37,6 +37,16 @@ export function PlusIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   );
 }
 
+// Three sliders -- "settings for this list" (the home tag tabs).
+export function TuneIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M3 5h12M3 9h12M3 13h12" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M11.5 3v4M6 7v4M12.5 11v4" stroke={color} strokeWidth={strokeWidth * 1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function CloseIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">

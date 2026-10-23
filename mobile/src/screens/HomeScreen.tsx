@@ -5,7 +5,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 import { PolicyNotice } from '../components/PolicyNotice';
-import { parseMehhMarker } from '../native/mehh';
+import { parseMehhMarker, tellMehhReceived } from '../native/mehh';
+import { drainShareQueue, enqueueSharedImages, useShareQueue } from '../share/shareQueue';
 import { splitLinkText } from '../data/linkText';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -37,6 +38,8 @@ const S = strings({
     quotaUsedUp: '이번 달 AI 정리를 다 썼어요',
     nothingToSort: '정리할 수 있는 항목이 없어요',
     trash: '휴지통',
+    sharedSaving: (n: number) => `사진 ${n}장 저장 중`,
+    sharedCopyFailed: '사진을 받지 못했어요',
     stats: '통계',
     account: '내 계정',
     all: '모두',
@@ -70,6 +73,8 @@ const S = strings({
     quotaUsedUp: "This month's AI sorting is used up",
     nothingToSort: 'Nothing to sort',
     trash: 'Trash',
+    sharedSaving: (n: number) => `Saving ${n} photo${n === 1 ? '' : 's'}`,
+    sharedCopyFailed: "Couldn't receive the photos",
     stats: 'Stats',
     account: 'My account',
     all: 'All',
@@ -103,6 +108,8 @@ const S = strings({
     quotaUsedUp: '今月のAI整理を使い切りました',
     nothingToSort: '整理できる項目がありません',
     trash: 'ゴミ箱',
+    sharedSaving: (n: number) => `写真${n}枚を保存中`,
+    sharedCopyFailed: '写真を受け取れませんでした',
     stats: '統計',
     account: 'マイアカウント',
     all: 'すべて',
@@ -136,6 +143,8 @@ const S = strings({
     quotaUsedUp: '本月 AI 整理次数已用完',
     nothingToSort: '没有可整理的项目',
     trash: '回收站',
+    sharedSaving: (n: number) => `正在保存 ${n} 张照片`,
+    sharedCopyFailed: '没能接收照片',
     stats: '统计',
     account: '我的账户',
     all: '全部',
@@ -169,6 +178,8 @@ const S = strings({
     quotaUsedUp: '本月 AI 整理次數已用完',
     nothingToSort: '沒有可整理的項目',
     trash: '垃圾桶',
+    sharedSaving: (n: number) => `正在儲存 ${n} 張照片`,
+    sharedCopyFailed: '沒能接收照片',
     stats: '統計',
     account: '我的帳戶',
     all: '全部',
@@ -320,6 +331,14 @@ export default function HomeScreen() {
   // pre-filled instead of silently swallowing it or requiring it be typed
   // in again by hand.
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  // Shared photos still being saved in the background; the list refreshes
+  // as they land.
+  const shareQueue = useShareQueue();
+  const lastPending = React.useRef(shareQueue.pending);
+  useEffect(() => {
+    if (shareQueue.pending < lastPending.current) load();
+    lastPending.current = shareQueue.pending;
+  }, [shareQueue.pending, load]);
   useEffect(() => {
     if (!hasShareIntent) return;
     // Several images at once (ACTION_SEND_MULTIPLE, e.g. Mehh's screenshot
@@ -336,6 +355,21 @@ export default function HomeScreen() {
     // counts differ they can't be trusted, and the callback sends a count only.
     const mehh = images.length > 0 ? parseMehhMarker(shareIntent.text) : null;
     const mehhIds = mehh?.ids?.length === files.length ? mehh.ids.filter((_, i) => isImage(files[i])) : undefined;
+    if (mehh) {
+      // "Send and forget": copy into our own queue, tell Mehh which ones we
+      // have, and save them in the background -- no sheet to wait on.
+      resetShareIntent();
+      enqueueSharedImages(images.map((f) => f.path)).then((copied) => {
+        const count = copied.filter(Boolean).length;
+        if (count === 0) {
+          showToast(S.sharedCopyFailed);
+          return;
+        }
+        tellMehhReceived(count, mehhIds?.filter((_, i) => copied[i]));
+        drainShareQueue();
+      });
+      return;
+    }
     // A shared link's surrounding words ("가게 이름 + 링크") were dropped;
     // now they prefill the link's note.
     const linkNote = images.length === 0 && shareIntent.webUrl && shareIntent.text ? splitLinkText(shareIntent.text)?.note : undefined;
@@ -345,8 +379,6 @@ export default function HomeScreen() {
       sharedUrl: images.length > 0 ? undefined : shareIntent.webUrl ?? undefined,
       sharedText: images.length > 0 || shareIntent.webUrl ? undefined : shareIntent.text ?? undefined,
       sharedNote: linkNote || undefined,
-      returnToMehh: mehh ? true : undefined,
-      mehhIds,
     });
     resetShareIntent();
   }, [hasShareIntent, shareIntent, navigation, resetShareIntent]);
@@ -554,6 +586,12 @@ export default function HomeScreen() {
           </View>
         </View>
         <PolicyNotice theme={theme} />
+        {shareQueue.pending > 0 && (
+          <View style={styles.shareQueueRow}>
+            {shareQueue.running && <ActivityIndicator color={theme.sub} size="small" />}
+            <Text style={[styles.shareQueueText, { color: theme.sub }]}>{S.sharedSaving(shareQueue.pending)}</Text>
+          </View>
+        )}
 
         {/* No shadow/elevation here -- 'card' (retired) paired elevation
             with overflow:hidden and that's what caused the Android "shadow
@@ -880,6 +918,8 @@ const styles = StyleSheet.create({
   backlogTitle: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
   backlogSub: { fontSize: 12, marginTop: 2, fontFamily: 'IBMPlexSansKR_400Regular' },
   headPad: {},
+  shareQueueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  shareQueueText: { fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 12.5 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   heroWrap: { position: 'relative' },

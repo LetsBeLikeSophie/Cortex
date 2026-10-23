@@ -31,7 +31,6 @@ import { ModalSheet } from '../components/ModalSheet';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast } from '../native/toast';
-import { tellMehhSaved } from '../native/mehh';
 import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { splitLinkText } from '../data/linkText';
 import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
@@ -41,7 +40,6 @@ import { COMMON, categoryLabel } from '../i18n/common';
 
 const S = strings({
   ko: {
-    backToMehh: 'Mehh로 돌아가기',
     photoAccess: '사진 접근',
     camera: '카메라',
     allFailed: '전부 저장하지 못했어요',
@@ -68,7 +66,6 @@ const S = strings({
     recentDenied: '사진 접근 권한이 꺼져 있어서 최근 스크린샷을 불러올 수 없어요. 설정에서 허용해주세요.',
     notePlaceholder: '왜 저장했는지 한 줄 적어두면 나중에 찾기 쉬워요 (선택)',
     saveFailed: (e: string) => `저장 실패: ${e}`,
-    mehhHint: '저장 후 [Mehh로 돌아가기]로 돌아가요',
     saveN: (n: number) => `${n}장 저장하기`,
     save: '저장하기',
     savedN: (n: number) => `${n}개 저장했어요`,
@@ -90,7 +87,6 @@ const S = strings({
     open: '열어 보기',
   },
   en: {
-    backToMehh: 'Back to Mehh',
     photoAccess: 'Photo',
     camera: 'Camera',
     allFailed: "Couldn't save any of them",
@@ -117,7 +113,6 @@ const S = strings({
     recentDenied: "Photo access is off, so recent screenshots can't load. Allow it in Settings.",
     notePlaceholder: 'Why you saved it, in a line — easier to find later (optional)',
     saveFailed: (e: string) => `Couldn't save: ${e}`,
-    mehhHint: 'After saving, tap [Back to Mehh] to return',
     saveN: (n: number) => `Save ${n}`,
     save: 'Save',
     savedN: (n: number) => `Saved ${n}`,
@@ -139,7 +134,6 @@ const S = strings({
     open: 'Open',
   },
   ja: {
-    backToMehh: 'Mehhに戻る',
     photoAccess: '写真',
     camera: 'カメラ',
     allFailed: 'どれも保存できませんでした',
@@ -166,7 +160,6 @@ const S = strings({
     recentDenied: '写真へのアクセスがオフのため読み込めません。設定で許可してください。',
     notePlaceholder: '保存した理由を一言メモすると後で探しやすいです(任意)',
     saveFailed: (e: string) => `保存できませんでした: ${e}`,
-    mehhHint: '保存後は[Mehhに戻る]で戻れます',
     saveN: (n: number) => `${n}枚を保存`,
     save: '保存する',
     savedN: (n: number) => `${n}件保存しました`,
@@ -188,7 +181,6 @@ const S = strings({
     open: '開く',
   },
   'zh-Hans': {
-    backToMehh: '返回 Mehh',
     photoAccess: '照片访问',
     camera: '相机',
     allFailed: '全部保存失败',
@@ -215,7 +207,6 @@ const S = strings({
     recentDenied: '照片访问权限已关闭，无法加载最近截图。请在设置中允许。',
     notePlaceholder: '写一句为什么保存，以后更好找（可选）',
     saveFailed: (e: string) => `保存失败：${e}`,
-    mehhHint: '保存后点 [返回 Mehh] 即可返回',
     saveN: (n: number) => `保存 ${n} 张`,
     save: '保存',
     savedN: (n: number) => `已保存 ${n} 项`,
@@ -237,7 +228,6 @@ const S = strings({
     open: '打开',
   },
   'zh-Hant': {
-    backToMehh: '返回 Mehh',
     photoAccess: '照片存取',
     camera: '相機',
     allFailed: '全部儲存失敗',
@@ -264,7 +254,6 @@ const S = strings({
     recentDenied: '照片存取權限已關閉，無法載入最近截圖。請在設定中允許。',
     notePlaceholder: '寫一句為什麼儲存，之後更好找（選填）',
     saveFailed: (e: string) => `儲存失敗：${e}`,
-    mehhHint: '儲存後點 [返回 Mehh] 即可返回',
     saveN: (n: number) => `儲存 ${n} 張`,
     save: '儲存',
     savedN: (n: number) => `已儲存 ${n} 項`,
@@ -398,27 +387,7 @@ export default function SaveSheetScreen() {
     setSelectedScreenshots(shots);
   }, [sharedImageUris]);
 
-  // A share from Mehh wants a "saved" callback -- naming the shared images
-  // that made it in, and only once the person has seen the result and
-  // pressed "Mehh로 돌아가기" (decision Q3). Any other way out sends
-  // nothing, so Mehh keeps its originals.
-  const returnToMehh = !!route.params?.returnToMehh;
-  // Shared uri -> Mehh's id for it (HomeScreen keeps mehhIds in the same
-  // order as the shared images); empty when Mehh sent no usable ids.
-  const sharedUris = route.params?.sharedImageUris ?? (route.params?.sharedImageUri ? [route.params.sharedImageUri] : []);
-  const mehhIds = route.params?.mehhIds;
-  const mehhIdOf = new Map(mehhIds?.length === sharedUris.length ? sharedUris.map((uri, i) => [uri, mehhIds[i]] as const) : []);
-  const [mehhSaved, setMehhSaved] = useState<{ count: number; ids?: string[] } | null>(null);
-  const markMehhSaved = (savedUris: string[]) => {
-    if (!returnToMehh || savedUris.length === 0) return;
-    const ids = savedUris.map((uri) => mehhIdOf.get(uri));
-    setMehhSaved({ count: savedUris.length, ids: ids.every((id) => id !== undefined) ? (ids as string[]) : undefined });
-  };
-  const backToMehh = () => {
-    if (mehhSaved) tellMehhSaved(mehhSaved.count, mehhSaved.ids);
-    close();
-  };
-  const doneButton = mehhSaved ? <SolidButton label={S.backToMehh} theme={theme} onPress={backToMehh} /> : <SolidButton label={COMMON.ok} theme={theme} onPress={() => close()} />;
+  const doneButton = <SolidButton label={COMMON.ok} theme={theme} onPress={() => close()} />;
 
   const scrollRef = useRef<ScrollView>(null);
   // Text already in the memo when a voice dictation starts -- live partial
@@ -585,9 +554,6 @@ export default function SaveSheetScreen() {
     const savedShotIds = shots.filter((_, i) => results[i] !== null).map((s) => s.id);
     setSavedBulk({ items, failed, savedShotIds });
     setStatus('done');
-    // Partial is fine: Mehh trashes only the ones named (or, without ids,
-    // nothing unless the count covers all it sent).
-    markMehhSaved(sharedShots.filter((s) => savedShotIds.includes(s.id)).map((s) => s.uri));
   };
 
   const submit = () => {
@@ -613,7 +579,6 @@ export default function SaveSheetScreen() {
       .then((item) => {
         setSaved(item);
         setStatus('done');
-        if (image && image.previewUri === route.params?.sharedImageUri) markMehhSaved([image.previewUri]);
       })
       .catch((err) => {
         setError(friendlyError(err));
@@ -871,9 +836,6 @@ export default function SaveSheetScreen() {
           </View>
 
             {quotaLine !== '' && <Text style={[styles.quotaLine, { color: theme.sub }]}>{quotaLine}</Text>}
-            {returnToMehh && (
-              <Text style={[styles.quotaLine, { color: theme.sub }]}>{S.mehhHint}</Text>
-            )}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
               <GhostButton label={COMMON.cancel} theme={theme} onPress={close} disabled={saving} />

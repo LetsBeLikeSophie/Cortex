@@ -70,7 +70,8 @@
       "./plugins/withDisableAndroidBackup",
       "expo-iap",
       "./plugins/withReleaseSigning",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-background-task"
     ]
   }
 }

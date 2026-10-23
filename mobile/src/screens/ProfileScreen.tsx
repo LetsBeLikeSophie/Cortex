@@ -13,6 +13,7 @@ import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { frameStyle, screenGutter } from '../components/Card';
 import { ConfirmCard } from '../components/ConfirmCard';
+import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
 
 type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'deleteError';
@@ -40,6 +41,7 @@ export default function ProfileScreen() {
           ? `무료 · AI 정리 ${plan.classify.used}/${plan.classify.limit}`
           : '';
 
+  const renewingPro = plan?.tier === 'pro' && !isLifetimePro(plan.proUntil);
   const isGuest = session?.user.is_anonymous ?? false;
   const meta = session?.user.user_metadata as { nickname?: string; avatar_url?: string } | undefined;
   const nickname = isGuest ? '게스트' : meta?.nickname ?? '이름 없음';
@@ -104,7 +106,20 @@ export default function ProfileScreen() {
             error={state === 'deleteError' ? `삭제 실패: ${error}` : undefined}
             onCancel={() => setState('idle')}
             onConfirm={onConfirmDelete}
-          />
+          >
+            {/* Deleting the account doesn't touch the Play subscription --
+                it would keep billing. Say so before, with the way there. */}
+            {renewingPro && (
+              <>
+                <Text style={[styles.subWarning, { color: theme.danger }]}>
+                  Google Play 구독은 탈퇴해도 자동으로 해지되지 않아요. 먼저 Play 스토어에서 해지해 주세요.
+                </Text>
+                <Pressable onPress={() => Linking.openURL(PLAY_SUBSCRIPTIONS_URL).catch(() => {})} hitSlop={6}>
+                  <Text style={[styles.subLink, { color: theme.ink }]}>구독 관리 열기</Text>
+                </Pressable>
+              </>
+            )}
+          </ConfirmCard>
         ) : (
           // Theme sits in its own group, well clear of sign-out/delete --
           // matching borders on adjacent buttons with only a small gap
@@ -168,6 +183,8 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  subWarning: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_500Medium' },
+  subLink: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
   screen: { flex: 1 },
   body: { flex: 1, justifyContent: 'space-between', paddingBottom: 32 },
   identity: { alignItems: 'center', marginTop: 40, gap: 6 },

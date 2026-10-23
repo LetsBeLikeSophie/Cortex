@@ -22,6 +22,7 @@ export function ConfirmCard({
   onCancel,
   onConfirm,
   bare = false,
+  children,
 }: {
   theme: Theme;
   title: string;
@@ -32,11 +33,14 @@ export function ConfirmCard({
   onCancel: () => void;
   onConfirm: () => void;
   bare?: boolean;
+  // Extra lines under the message (a link to act on first, say).
+  children?: React.ReactNode;
 }) {
   return (
     <View style={[styles.card, !bare && frame(theme), bare && styles.bare]}>
       <Text style={[styles.title, { color: theme.ink }]}>{title}</Text>
       {body ? <Text style={[styles.body, { color: theme.sub }]}>{body}</Text> : null}
+      {children}
       {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
       <View style={styles.buttons}>
         <GhostButton label="취소" theme={theme} size="sm" onPress={onCancel} disabled={busy} />

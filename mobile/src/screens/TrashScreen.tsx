@@ -16,7 +16,7 @@ import { ScreenHeader } from '../components/ScreenHeader';
 import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
 
-type RowAction = 'idle' | 'restoring' | 'confirmingPermanent' | 'deletingPermanent';
+type RowAction = 'idle' | 'restoring' | 'restored' | 'confirmingPermanent' | 'deletingPermanent';
 
 // "10월 3일" -- the day it was saved, which is where it returns to in the
 // (newest-first) list when restored.
@@ -25,7 +25,17 @@ function savedDay(iso: string): string {
   return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 }
 
-function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType<typeof useTheme>['theme']; onRemoved: (id: string) => void }) {
+function TrashRow({
+  item,
+  theme,
+  onRemoved,
+  onOpen,
+}: {
+  item: ApiItem;
+  theme: ReturnType<typeof useTheme>['theme'];
+  onRemoved: (id: string) => void;
+  onOpen: (item: ApiItem) => void;
+}) {
   const [action, setAction] = useState<RowAction>('idle');
   const [error, setError] = useState('');
 
@@ -33,8 +43,10 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
     setAction('restoring');
     try {
       await restoreItem(item.id);
-      onRemoved(item.id);
-      showToast(`복원했어요 · ${savedDay(item.shared_at)} 저장한 자리로 돌아갔어요`);
+      // The row stays as a way in: home only lists the latest 50, so an
+      // older item "back in its place" was nowhere to be found from here.
+      setAction('restored');
+      showToast('복원했어요');
     } catch (err) {
       setError(friendlyError(err));
       setAction('idle');
@@ -64,7 +76,14 @@ function TrashRow({ item, theme, onRemoved }: { item: ApiItem; theme: ReturnType
 
       {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>실패: {error}</Text>}
 
-      {action === 'confirmingPermanent' || action === 'deletingPermanent' ? (
+      {action === 'restored' ? (
+        <View style={styles.actionRow}>
+          <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13 }}>복원했어요</Text>
+          <Pressable onPress={() => onOpen({ ...item, deleted_at: null })} hitSlop={6}>
+            <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13, textDecorationLine: 'underline' }}>열기</Text>
+          </Pressable>
+        </View>
+      ) : action === 'confirmingPermanent' || action === 'deletingPermanent' ? (
         <ConfirmCard
           theme={theme}
           bare
@@ -140,7 +159,7 @@ export default function TrashScreen() {
           contentContainerStyle={{ paddingHorizontal: screenGutter(theme), paddingTop: isBoxed(theme) ? 12 : 0, paddingBottom: 24 }}
         >
           {items.map((item) => (
-            <TrashRow key={item.id} item={item} theme={theme} onRemoved={removeFromList} />
+            <TrashRow key={item.id} item={item} theme={theme} onRemoved={removeFromList} onOpen={(it) => navigation.navigate('ItemDetail', { item: it })} />
           ))}
         </ScrollView>
       </AsyncStateView>

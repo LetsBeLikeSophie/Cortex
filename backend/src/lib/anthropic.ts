@@ -119,7 +119,13 @@ never needs to read it.
 
 Never invent facts not present in the given content. If the content is too
 thin to summarize confidently, keep title/snippet minimal and honest rather
-than guessing.`;
+than guessing.
+
+People in images: never work out who someone is from their face or body,
+and never guess or describe sensitive traits (race or ethnicity, religion,
+health, sexual orientation, political views). A person's name is used only
+when it is written in the image or the given text (a caption, a chat name,
+a sign) -- otherwise say "사람", "인물 사진" and the like.`;
 
 export interface ClassifyTextInput {
   source: string;

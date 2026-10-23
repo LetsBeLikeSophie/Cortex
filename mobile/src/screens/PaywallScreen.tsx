@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -11,6 +11,7 @@ import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
+import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { PlanOption, StorePrices } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -36,6 +37,11 @@ const HEADLINES = {
   compose: '이번 달 모아서 만들기를 다 썼어요',
   default: 'Cortex Pro',
 } as const;
+
+function dateLabel(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 function daysLeft(iso: string): number {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
@@ -74,7 +80,9 @@ export default function PaywallScreen() {
     plan?.tier === 'trial'
       ? `무료 체험 중 · ${daysLeft(plan.trialEndsAt)}일 남음`
       : plan?.tier === 'pro'
-        ? 'Pro 이용 중'
+        ? isLifetimePro(plan.proUntil)
+          ? 'Pro 평생 이용 중'
+          : `Pro 이용 중${plan.proUntil ? ` · ${dateLabel(plan.proUntil)}까지` : ''}`
         : plan
           ? `무료 · 이번 달 AI 정리 ${plan.classify.used}/${plan.classify.limit}건 · AI 검색 ${plan.search.used}/${plan.search.limit}회`
           : '';
@@ -85,7 +93,8 @@ export default function PaywallScreen() {
     { key: 'yearly', label: '연간', note: '월 2,417원꼴 · 두 달 넘게 아껴요' },
     ...(lifetimeLeft > 0 ? [{ key: 'lifetime' as const, label: '평생', note: `선착순 · ${lifetimeLeft}개 남음 · 한 번 결제로 계속` }] : []),
   ];
-  const canBuy = Platform.OS === 'android' && !!offers?.enabled && plan?.tier !== 'pro';
+  const isPro = plan?.tier === 'pro';
+  const canBuy = Platform.OS === 'android' && !!offers?.enabled && !isPro;
 
   return (
     <ModalSheet theme={theme} onClose={close} bordered={false} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
@@ -112,27 +121,30 @@ export default function PaywallScreen() {
         </View>
 
         {/* The plans. Prices come from Google Play once the store answers
-            (what the person will actually be charged). */}
-        <View style={styles.options}>
-          {options.map((o) => {
-            const active = selected === o.key;
-            return (
-              <Pressable
-                key={o.key}
-                onPress={() => setSelected(o.key)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: active }}
-                style={[styles.option, { backgroundColor: theme.surface }, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
-              >
-                <View style={styles.optionHead}>
-                  <Text style={[styles.optionLabel, { color: theme.ink }]}>{o.label}</Text>
-                  <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? FALLBACK_PRICE[o.key]}</Text>
-                </View>
-                <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+            (what the person will actually be charged). Hidden for someone
+            already on Pro -- boxes they could tap but never buy. */}
+        {!isPro && (
+          <View style={styles.options}>
+            {options.map((o) => {
+              const active = selected === o.key;
+              return (
+                <Pressable
+                  key={o.key}
+                  onPress={() => setSelected(o.key)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  style={[styles.option, { backgroundColor: theme.surface }, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
+                >
+                  <View style={styles.optionHead}>
+                    <Text style={[styles.optionLabel, { color: theme.ink }]}>{o.label}</Text>
+                    <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? FALLBACK_PRICE[o.key]}</Text>
+                  </View>
+                  <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
         {status !== '' && <Text style={[styles.status, { color: theme.sub }]}>{status}</Text>}
       </ScrollView>
@@ -141,13 +153,20 @@ export default function PaywallScreen() {
         <AndroidPurchase theme={theme} offers={offers} selected={selected} onPrices={setPrices} onPlan={setPlan} onClose={close} />
       ) : (
         <>
-          <Text style={[styles.status, { color: theme.sub }]}>
-            {plan?.tier === 'pro'
-              ? '이미 Pro를 쓰고 있어요.'
-              : Platform.OS !== 'android'
+          {isPro ? (
+            // Where a subscription is changed or cancelled: Play, not here.
+            !isLifetimePro(plan?.proUntil) && (
+              <Pressable onPress={() => Linking.openURL(PLAY_SUBSCRIPTIONS_URL).catch(() => {})} hitSlop={6}>
+                <Text style={[styles.status, styles.manageLink, { color: theme.ink }]}>구독 관리 · 해지 (Play 스토어)</Text>
+              </Pressable>
+            )
+          ) : (
+            <Text style={[styles.status, { color: theme.sub }]}>
+              {Platform.OS !== 'android'
                 ? '결제는 안드로이드 앱(플레이스토어에서 설치)에서 할 수 있어요.'
                 : '결제를 준비하고 있어요. 조금만 기다려 주세요.'}
-          </Text>
+            </Text>
+          )}
           <ButtonRow theme={theme} style={styles.buttons}>
             <SolidButton label="닫기" theme={theme} onPress={close} />
           </ButtonRow>
@@ -173,4 +192,5 @@ const styles = StyleSheet.create({
   optionNote: { fontSize: 12.5, marginTop: 3, fontFamily: 'IBMPlexSansKR_400Regular' },
   status: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   buttons: { marginTop: 18 },
+  manageLink: { fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
 });

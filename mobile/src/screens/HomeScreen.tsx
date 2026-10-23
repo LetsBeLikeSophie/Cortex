@@ -11,7 +11,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
+import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
 import { toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -260,6 +260,36 @@ export default function HomeScreen() {
     load();
   };
 
+  // 미분류 tab's one bulk action: unwanted screenshots go to the trash
+  // together instead of one detail sheet at a time. Restorable from there.
+  const trashSelected = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkApplying(true);
+    const ids = [...selectedIds];
+    const moved: string[] = [];
+    let failed = 0;
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          await deleteItem(id);
+          moved.push(id);
+        } catch {
+          failed++;
+        }
+      })
+    );
+    setWaitingItems((current) => current?.filter((it) => !moved.includes(it.id)) ?? null);
+    showToast(
+      [moved.length ? `${moved.length}개를 휴지통으로 옮겼어요 · 휴지통에서 복원할 수 있어요` : null, failed ? `실패 ${failed}개` : null]
+        .filter(Boolean)
+        .join(' · ')
+    );
+    setBulkApplying(false);
+    setSelectMode(false);
+    setSelectedIds(new Set());
+    load();
+  };
+
   const tagList =
     activeTag && activeTag !== UNCLASSIFIED
       ? tagItems?.tag === activeTag
@@ -472,6 +502,43 @@ export default function HomeScreen() {
             loading={sorting}
             onPress={sortBacklog}
           />
+        </View>
+      )}
+
+      {activeTag === UNCLASSIFIED && items.length > 0 && (
+        <View style={[styles.bulkBar, { paddingHorizontal: boxed ? 24 : 26 }]}>
+          <View style={styles.bulkBarRow}>
+            {selectMode ? (
+              <>
+                <Text style={[styles.bulkBarText, { color: theme.sub }]}>{selectedIds.size}개 선택됨</Text>
+                <View style={styles.bulkBarActions}>
+                  {bulkApplying ? (
+                    <ActivityIndicator color={theme.danger} size="small" />
+                  ) : (
+                    <Pressable onPress={trashSelected} disabled={selectedIds.size === 0}>
+                      <Text style={[styles.bulkBarLink, { color: theme.danger, opacity: selectedIds.size ? 1 : 0.4 }]}>휴지통으로</Text>
+                    </Pressable>
+                  )}
+                  <Pressable
+                    onPress={() => {
+                      setSelectMode(false);
+                      setSelectedIds(new Set());
+                    }}
+                    disabled={bulkApplying}
+                  >
+                    <Text style={[styles.bulkBarLink, { color: theme.sub }]}>취소</Text>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <View />
+                <Pressable onPress={() => setSelectMode(true)} hitSlop={6}>
+                  <Text style={[styles.bulkBarLink, { color: theme.sub }]}>선택</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
         </View>
       )}
 

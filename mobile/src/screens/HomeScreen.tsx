@@ -288,7 +288,13 @@ export default function HomeScreen() {
       const { started, left } = await classifyBacklog();
       showToast(
         started > 0
-          ? [`${started}건 정리를 시작했어요 · '모두'에서 분석 중이에요`, left > 0 ? `${left}건은 아직 기다려요` : null].filter(Boolean).join(' · ')
+          ? [
+              `${started}건 정리를 시작했어요 · '모두'에서 분석 중이에요`,
+              left > 0 ? `${left}건은 아직 기다려요` : null,
+              started >= classifyLeft ? '이번 달 AI 정리를 다 썼어요' : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
           : '정리할 수 있는 항목이 없어요'
       );
     } catch (err) {
@@ -448,10 +454,14 @@ export default function HomeScreen() {
             <Text style={[styles.backlogTitle, { color: theme.ink }]} numberOfLines={1}>
               {unclassifiedCount}건 정리 대기
             </Text>
-            <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={1}>
-              {classifyLeft > 0
-                ? `최근 것부터 ${Math.min(classifyLeft, unclassifiedCount)}건 · 이번 달 AI 정리 ${classifyLeft}건 남음`
-                : `${resetLabel(plan?.resetsAt)}에 다시 생겨요`}
+            {/* When the press would spend the whole month's rest, say so --
+                every save after it waits here until the reset. */}
+            <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={2}>
+              {classifyLeft === 0
+                ? `${resetLabel(plan?.resetsAt)}에 다시 생겨요`
+                : classifyLeft <= unclassifiedCount
+                  ? `남은 ${classifyLeft}건을 모두 써요 · 이후 저장은 ${resetLabel(plan?.resetsAt)}까지 미분류함으로`
+                  : `최근 것부터 ${unclassifiedCount}건 · 이번 달 AI 정리 ${classifyLeft}건 남음`}
             </Text>
           </View>
           <SolidButton

@@ -30,10 +30,10 @@ import type { RootStackParamList } from '../navigation/types';
 // AI thinks fits. The result is previewed first and saved only on 저장;
 // one "다른 형식으로 다시" per run is free (decision Q6, 2026-10-23).
 const FORMATS: { key: ComposeFormat; label: string; note: string }[] = [
-  { key: 'auto', label: 'AI가 알아서', note: '묶음을 보고 코스·목록·요약 중 맞는 형식으로 정리해요' },
-  { key: 'course', label: '코스·동선', note: '가볼 곳을 지역별로 묶고 순서를 짜요' },
-  { key: 'list', label: '목록·비교', note: '항목마다 가격·장소·내 메모를 한 줄로 정리해요' },
-  { key: 'summary', label: '요약 노트', note: '전체 내용을 요점만 모아 정리해요' },
+  { key: 'auto', label: 'AI가 알아서', note: '형식을 AI가 골라요' },
+  { key: 'course', label: '코스·동선', note: '지역별로 묶고 순서를 짜요' },
+  { key: 'list', label: '목록·비교', note: '한 줄씩 나란히 비교해요' },
+  { key: 'summary', label: '요약 노트', note: '요점만 모아요' },
 ];
 
 export default function ComposeScreen() {
@@ -97,7 +97,7 @@ export default function ComposeScreen() {
         return;
       }
       if (err instanceof ApiError && (err.body as { error?: string } | null)?.error === 'too_few') {
-        setError('모아서 만들 메모가 2개 이상 있어야 해요. 이미 모아서 만든 메모는 재료에서 빠져요.');
+        setError('메모가 2개 이상 있어야 해요');
       } else {
         setError(friendlyError(err));
       }
@@ -142,10 +142,10 @@ export default function ComposeScreen() {
         </ScrollView>
         <Pressable onPress={() => setPreviewing(false)} disabled={busy} hitSlop={6} style={styles.retryLink}>
           <Text style={[styles.link, { color: theme.ink }]}>
-            {retryFree ? '다른 형식으로 다시 만들기 · 1회 무료' : `다른 형식으로 다시 만들기 · 1회 사용${left !== null ? ` (${left}회 남음)` : ''}`}
+            {retryFree ? '다른 형식으로 다시 · 무료' : `다른 형식으로 다시 · 1회${left !== null ? ` (${left}회 남음)` : ''}`}
           </Text>
         </Pressable>
-        <Text style={[styles.sub, { color: theme.sub }]}>저장하지 않고 닫으면 이 결과는 사라져요.</Text>
+        <Text style={[styles.sub, { color: theme.sub }]}>저장해야 남아요</Text>
         {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
         <ButtonRow theme={theme} style={styles.buttons}>
           <GhostButton label="버리기" theme={theme} onPress={close} disabled={busy} />
@@ -177,9 +177,10 @@ export default function ComposeScreen() {
           </View>
         )}
         <Text style={[styles.sub, { color: theme.sub }]}>
-          {materials !== null ? `저장한 ${Math.min(materials, 50)}개를` : '저장한 메모를'}
-          {' AI가 한 메모로 정리해요. 저장된 내용 안에서만 쓰고, 없는 정보는 지어내지 않아요. 저장 전에 미리 보여 드려요.'}
-          {draft ? (retryFree ? ' · 이번 다시 만들기는 무료' : '') : left !== null ? ` · 이번 달 ${left}회 남음` : ''}
+          {materials !== null ? `메모 ${Math.min(materials, 50)}개를 한 메모로 정리해요` : '메모를 한 메모로 정리해요'}
+          {/* Retrying: the first run already took this month's 1 -- say
+              so, or the drop in the count reads as the retry's cost. */}
+          {draft ? (retryFree ? ' · 처음 만들 때 1회 썼고, 이번엔 무료' : left !== null ? ` · 1회 (${left}회 남음)` : '') : left !== null ? ` · 이번 달 ${left}회 남음` : ''}
         </Text>
 
         <View style={styles.options}>
@@ -205,13 +206,13 @@ export default function ComposeScreen() {
         </View>
       </ScrollView>
 
-      {working && <Text style={[styles.sub, { color: theme.sub }]}>AI가 정리하고 있어요. 10~20초쯤 걸려요.</Text>}
+      {working && <Text style={[styles.sub, { color: theme.sub }]}>정리하는 중 · 10~20초</Text>}
       {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
 
       <ButtonRow theme={theme} style={styles.buttons}>
         <GhostButton label={draft ? '미리보기로' : '취소'} theme={theme} onPress={draft ? () => setPreviewing(true) : close} disabled={busy} />
         <SolidButton
-          label={draft ? (retryFree ? '다시 만들기 (무료)' : '다시 만들기') : left === 0 ? 'Pro로 만들기' : '만들기'}
+          label={draft ? (retryFree ? '다시 만들기 · 무료' : '다시 만들기 · 1회') : left === 0 ? 'Pro로 만들기' : '만들기 · 1회'}
           theme={theme}
           onPress={make}
           loading={working}

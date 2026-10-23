@@ -149,7 +149,13 @@ export default function PaywallScreen() {
         {status !== '' && <Text style={[styles.status, { color: theme.sub }]}>{status}</Text>}
       </ScrollView>
 
-      {canBuy && offers && AndroidPurchase ? (
+      {/* Android, offers still loading: hold the buy button's place so it
+          doesn't pop in late under a placeholder line. */}
+      {Platform.OS === 'android' && !isPro && offers === null ? (
+        <ButtonRow theme={theme} style={styles.buttons}>
+          <SolidButton label="Pro 시작하기" theme={theme} onPress={() => {}} loading />
+        </ButtonRow>
+      ) : canBuy && offers && AndroidPurchase ? (
         <AndroidPurchase theme={theme} offers={offers} selected={selected} onPrices={setPrices} onPlan={setPlan} onClose={close} />
       ) : (
         <>

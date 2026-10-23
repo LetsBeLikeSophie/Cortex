@@ -9,7 +9,7 @@ export type RootStackParamList = {
   Tabs: undefined;
   // Both optional: present when this sheet was opened via the OS share
   // sheet (expo-share-intent) instead of the in-app "+" button.
-  SaveSheet: { sharedText?: string; sharedUrl?: string; sharedNote?: string; sharedImageUri?: string; sharedImageUris?: string[]; returnToMehh?: boolean } | undefined;
+  SaveSheet: { sharedText?: string; sharedUrl?: string; sharedNote?: string; sharedImageUri?: string; sharedImageUris?: string[]; returnToMehh?: boolean; mehhIds?: string[] } | undefined;
   ThemePicker: undefined;
   TabPicker: undefined;
   Stats: undefined;

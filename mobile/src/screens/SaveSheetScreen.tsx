@@ -148,20 +148,27 @@ export default function SaveSheetScreen() {
     setSelectedScreenshots(shots);
   }, [sharedImageUris]);
 
-  // A share from Mehh wants a "saved" callback -- only when every image it
-  // shared made it in, and only once the person has seen the result and
+  // A share from Mehh wants a "saved" callback -- naming the shared images
+  // that made it in, and only once the person has seen the result and
   // pressed "Mehh로 돌아가기" (decision Q3). Any other way out sends
   // nothing, so Mehh keeps its originals.
   const returnToMehh = !!route.params?.returnToMehh;
-  const [mehhCount, setMehhCount] = useState<number | null>(null);
-  const markMehhSaved = (count: number) => {
-    if (returnToMehh) setMehhCount(count);
+  // Shared uri -> Mehh's id for it (HomeScreen keeps mehhIds in the same
+  // order as the shared images); empty when Mehh sent no usable ids.
+  const sharedUris = route.params?.sharedImageUris ?? (route.params?.sharedImageUri ? [route.params.sharedImageUri] : []);
+  const mehhIds = route.params?.mehhIds;
+  const mehhIdOf = new Map(mehhIds?.length === sharedUris.length ? sharedUris.map((uri, i) => [uri, mehhIds[i]] as const) : []);
+  const [mehhSaved, setMehhSaved] = useState<{ count: number; ids?: string[] } | null>(null);
+  const markMehhSaved = (savedUris: string[]) => {
+    if (!returnToMehh || savedUris.length === 0) return;
+    const ids = savedUris.map((uri) => mehhIdOf.get(uri));
+    setMehhSaved({ count: savedUris.length, ids: ids.every((id) => id !== undefined) ? (ids as string[]) : undefined });
   };
   const backToMehh = () => {
-    if (mehhCount !== null) tellMehhSaved(mehhCount);
+    if (mehhSaved) tellMehhSaved(mehhSaved.count, mehhSaved.ids);
     close();
   };
-  const doneButton = mehhCount !== null ? <SolidButton label="Mehh로 돌아가기" theme={theme} onPress={backToMehh} /> : <SolidButton label="확인" theme={theme} onPress={() => close()} />;
+  const doneButton = mehhSaved ? <SolidButton label="Mehh로 돌아가기" theme={theme} onPress={backToMehh} /> : <SolidButton label="확인" theme={theme} onPress={() => close()} />;
 
   const scrollRef = useRef<ScrollView>(null);
   // Text already in the memo when a voice dictation starts -- live partial
@@ -328,9 +335,9 @@ export default function SaveSheetScreen() {
     const savedShotIds = shots.filter((_, i) => results[i] !== null).map((s) => s.id);
     setSavedBulk({ items, failed, savedShotIds });
     setStatus('done');
-    if (sharedShots.length > 0 && sharedShots.every((s) => savedShotIds.includes(s.id))) {
-      markMehhSaved(sharedShots.length);
-    }
+    // Partial is fine: Mehh trashes only the ones named (or, without ids,
+    // nothing unless the count covers all it sent).
+    markMehhSaved(sharedShots.filter((s) => savedShotIds.includes(s.id)).map((s) => s.uri));
   };
 
   const submit = () => {
@@ -356,7 +363,7 @@ export default function SaveSheetScreen() {
       .then((item) => {
         setSaved(item);
         setStatus('done');
-        if (image && image.previewUri === route.params?.sharedImageUri) markMehhSaved(1);
+        if (image && image.previewUri === route.params?.sharedImageUri) markMehhSaved([image.previewUri]);
       })
       .catch((err) => {
         setError(friendlyError(err));
@@ -611,7 +618,7 @@ export default function SaveSheetScreen() {
 
             {quotaLine !== '' && <Text style={[styles.quotaLine, { color: theme.sub }]}>{quotaLine}</Text>}
             {returnToMehh && (
-              <Text style={[styles.quotaLine, { color: theme.sub }]}>저장한 뒤 [Mehh로 돌아가기]를 누르면 Mehh로 돌아가서 원본을 정리해요</Text>
+              <Text style={[styles.quotaLine, { color: theme.sub }]}>저장 후 [Mehh로 돌아가기]로 돌아가요</Text>
             )}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>

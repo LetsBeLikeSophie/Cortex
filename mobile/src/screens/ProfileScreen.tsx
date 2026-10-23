@@ -112,7 +112,7 @@ export default function ProfileScreen() {
             {renewingPro && (
               <>
                 <Text style={[styles.subWarning, { color: theme.danger }]}>
-                  Google Play 구독은 탈퇴해도 자동으로 해지되지 않아요. 먼저 Play 스토어에서 해지해 주세요.
+                  탈퇴해도 Play 구독은 해지되지 않아요. 먼저 해지해 주세요.
                 </Text>
                 <Pressable onPress={() => Linking.openURL(PLAY_SUBSCRIPTIONS_URL).catch(() => {})} hitSlop={6}>
                   <Text style={[styles.subLink, { color: theme.ink }]}>구독 관리 열기</Text>

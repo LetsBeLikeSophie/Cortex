@@ -163,7 +163,7 @@ export function AndroidPurchase({
         )}
       </Pressable>
       <Text style={[styles.fine, { color: theme.sub }]}>
-        구독은 Google Play 계정으로 결제되고, 해지하지 않으면 자동으로 갱신돼요. 해지는 Play 스토어 › 결제 및 정기 결제에서 할 수 있어요.
+        Google Play로 결제돼요. 해지 전까지 자동 갱신되고, Play 스토어에서 해지할 수 있어요.
       </Text>
     </View>
   );

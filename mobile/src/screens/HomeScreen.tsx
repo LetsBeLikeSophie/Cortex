@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
-import { MEHH_SAVED_URL } from '../native/mehh';
+import { parseMehhMarker } from '../native/mehh';
 import { splitLinkText } from '../data/linkText';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -146,12 +146,16 @@ export default function HomeScreen() {
     // cleanup) go to the sheet's bulk mode; one stays the single-image flow.
     // The native module already copied each one into our cache dir, so the
     // sender trashing its originals afterwards doesn't lose them.
-    const images = (shareIntent.files ?? []).filter((f) => f.path && (f.mimeType ?? 'image/').startsWith('image/'));
+    const files = shareIntent.files ?? [];
+    const isImage = (f: (typeof files)[number]) => !!f.path && (f.mimeType ?? 'image/').startsWith('image/');
+    const images = files.filter(isImage);
     // Mehh tags its screenshot shares with this marker (in EXTRA_TEXT, kept
     // by our expo-share-intent patch): it's a request for a "saved" callback,
     // never a memo. Text riding along with other apps' images stays ignored,
-    // as before.
-    const fromMehh = images.length > 0 && !!shareIntent.text?.includes(MEHH_SAVED_URL);
+    // as before. Its ids line up with the shared files by position; if the
+    // counts differ they can't be trusted, and the callback sends a count only.
+    const mehh = images.length > 0 ? parseMehhMarker(shareIntent.text) : null;
+    const mehhIds = mehh?.ids?.length === files.length ? mehh.ids.filter((_, i) => isImage(files[i])) : undefined;
     // A shared link's surrounding words ("가게 이름 + 링크") were dropped;
     // now they prefill the link's note.
     const linkNote = images.length === 0 && shareIntent.webUrl && shareIntent.text ? splitLinkText(shareIntent.text)?.note : undefined;
@@ -161,7 +165,8 @@ export default function HomeScreen() {
       sharedUrl: images.length > 0 ? undefined : shareIntent.webUrl ?? undefined,
       sharedText: images.length > 0 || shareIntent.webUrl ? undefined : shareIntent.text ?? undefined,
       sharedNote: linkNote || undefined,
-      returnToMehh: fromMehh || undefined,
+      returnToMehh: mehh ? true : undefined,
+      mehhIds,
     });
     resetShareIntent();
   }, [hasShareIntent, shareIntent, navigation, resetShareIntent]);
@@ -280,7 +285,7 @@ export default function HomeScreen() {
     );
     setWaitingItems((current) => current?.filter((it) => !moved.includes(it.id)) ?? null);
     showToast(
-      [moved.length ? `${moved.length}개를 휴지통으로 옮겼어요 · 휴지통에서 복원할 수 있어요` : null, failed ? `실패 ${failed}개` : null]
+      [moved.length ? `${moved.length}개를 휴지통으로 옮겼어요` : null, failed ? `실패 ${failed}개` : null]
         .filter(Boolean)
         .join(' · ')
     );
@@ -490,7 +495,7 @@ export default function HomeScreen() {
               {classifyLeft === 0
                 ? `${resetLabel(plan?.resetsAt)}에 다시 생겨요`
                 : classifyLeft <= unclassifiedCount
-                  ? `남은 ${classifyLeft}건을 모두 써요 · 이후 저장은 ${resetLabel(plan?.resetsAt)}까지 미분류함으로`
+                  ? `남은 ${classifyLeft}건을 다 써요 · 이후 저장은 ${resetLabel(plan?.resetsAt)}까지 대기`
                   : `최근 것부터 ${unclassifiedCount}건 · 이번 달 AI 정리 ${classifyLeft}건 남음`}
             </Text>
           </View>

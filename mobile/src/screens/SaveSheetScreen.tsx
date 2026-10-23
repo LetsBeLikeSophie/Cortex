@@ -148,16 +148,20 @@ export default function SaveSheetScreen() {
     setSelectedScreenshots(shots);
   }, [sharedImageUris]);
 
-  // A share from Mehh wants a "saved" callback -- sent once, and only when
-  // every image it shared made it in. Cancel/close/failure sends nothing,
-  // so Mehh keeps its originals.
+  // A share from Mehh wants a "saved" callback -- only when every image it
+  // shared made it in, and only once the person has seen the result and
+  // pressed "Mehh로 돌아가기" (decision Q3). Any other way out sends
+  // nothing, so Mehh keeps its originals.
   const returnToMehh = !!route.params?.returnToMehh;
-  const toldMehh = useRef(false);
-  const maybeTellMehh = (count: number) => {
-    if (!returnToMehh || toldMehh.current) return;
-    toldMehh.current = true;
-    tellMehhSaved(count);
+  const [mehhCount, setMehhCount] = useState<number | null>(null);
+  const markMehhSaved = (count: number) => {
+    if (returnToMehh) setMehhCount(count);
   };
+  const backToMehh = () => {
+    if (mehhCount !== null) tellMehhSaved(mehhCount);
+    close();
+  };
+  const doneButton = mehhCount !== null ? <SolidButton label="Mehh로 돌아가기" theme={theme} onPress={backToMehh} /> : <SolidButton label="확인" theme={theme} onPress={() => close()} />;
 
   const scrollRef = useRef<ScrollView>(null);
   // Text already in the memo when a voice dictation starts -- live partial
@@ -325,7 +329,7 @@ export default function SaveSheetScreen() {
     setSavedBulk({ items, failed, savedShotIds });
     setStatus('done');
     if (sharedShots.length > 0 && sharedShots.every((s) => savedShotIds.includes(s.id))) {
-      maybeTellMehh(sharedShots.length);
+      markMehhSaved(sharedShots.length);
     }
   };
 
@@ -352,7 +356,7 @@ export default function SaveSheetScreen() {
       .then((item) => {
         setSaved(item);
         setStatus('done');
-        if (image && image.previewUri === route.params?.sharedImageUri) maybeTellMehh(1);
+        if (image && image.previewUri === route.params?.sharedImageUri) markMehhSaved(1);
       })
       .catch((err) => {
         setError(friendlyError(err));
@@ -606,6 +610,9 @@ export default function SaveSheetScreen() {
           </View>
 
             {quotaLine !== '' && <Text style={[styles.quotaLine, { color: theme.sub }]}>{quotaLine}</Text>}
+            {returnToMehh && (
+              <Text style={[styles.quotaLine, { color: theme.sub }]}>저장한 뒤 [Mehh로 돌아가기]를 누르면 Mehh로 돌아가서 원본을 정리해요</Text>
+            )}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
               <GhostButton label="취소" theme={theme} onPress={close} disabled={saving} />
@@ -710,7 +717,7 @@ export default function SaveSheetScreen() {
               {bulkUnclassified > 0 && (
                 <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
               )}
-              <SolidButton label="확인" theme={theme} onPress={close} />
+              {doneButton}
             </ButtonRow>
           </>
         ) : (
@@ -840,7 +847,7 @@ export default function SaveSheetScreen() {
                 ) : (
                   <GhostButton label="열어 보기" theme={theme} onPress={() => navigation.replace('ItemDetail', { item: saved })} />
                 )}
-                <SolidButton label="확인" theme={theme} onPress={close} />
+                {doneButton}
               </ButtonRow>
             </>
           )

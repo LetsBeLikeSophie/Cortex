@@ -11,7 +11,8 @@ MOBILE="$(cd "$(dirname "$0")/.." && pwd)"
 ROOT="$(cd "$MOBILE/.." && pwd)"
 OUT="$ROOT/releases/aab"
 
-read -r VERSION VERSION_CODE < <(python -c "import json,sys; e=json.load(open(sys.argv[1],encoding='utf-8'))['expo']; print(e['version'], e['android']['versionCode'])" "$MOBILE/app.json")
+# tr: Windows Python prints CRLF, and the CR would end up in the file name.
+read -r VERSION VERSION_CODE < <(python -c "import json,sys; e=json.load(open(sys.argv[1],encoding='utf-8'))['expo']; print(e['version'], e['android']['versionCode'])" "$MOBILE/app.json" | tr -d '\r')
 TARGET="$OUT/cortex-$VERSION-vc$VERSION_CODE.aab"
 if [ -e "$TARGET" ]; then
   echo "$TARGET already exists -- raise android.versionCode in app.json first." >&2

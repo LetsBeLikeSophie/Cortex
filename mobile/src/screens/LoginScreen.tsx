@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
@@ -23,6 +24,7 @@ const S = strings({
     guest: '게스트로 시작',
     guestNote: '게스트는 체험 없이 무료로 시작해요. 기록은 이 기기에서만 볼 수 있고, 나중에 계정으로 옮길 수 없어요.',
     google: 'Google로 계속하기',
+    lastUsed: '최근 로그인',
     policyPre: '계속하면 ',
     terms: '이용약관',
     policyAnd: ' 및 ',
@@ -39,6 +41,7 @@ const S = strings({
     guest: 'Start as guest',
     guestNote: "Guests start free, with no trial. Your saves stay on this device only and can't be moved to an account later.",
     google: 'Continue with Google',
+    lastUsed: 'Last used',
     policyPre: 'By continuing, you agree to the ',
     terms: 'Terms',
     policyAnd: ' and ',
@@ -55,6 +58,7 @@ const S = strings({
     guest: 'ゲストで始める',
     guestNote: 'ゲストは体験なしの無料で始まります。記録はこの端末でのみ見られ、後からアカウントへ移せません。',
     google: 'Googleで続ける',
+    lastUsed: '前回のログイン',
     policyPre: '続けると',
     terms: '利用規約',
     policyAnd: 'と',
@@ -71,6 +75,7 @@ const S = strings({
     guest: '以访客身份开始',
     guestNote: '访客免费开始，没有试用。记录只能在这台设备上查看，之后也无法转移到账号。',
     google: '使用 Google 继续',
+    lastUsed: '上次登录',
     policyPre: '继续即表示你同意',
     terms: '使用条款',
     policyAnd: '和',
@@ -87,6 +92,7 @@ const S = strings({
     guest: '以訪客身分開始',
     guestNote: '訪客免費開始，沒有試用。紀錄只能在這台裝置上查看，之後也無法轉移到帳號。',
     google: '使用 Google 繼續',
+    lastUsed: '上次登入',
     policyPre: '繼續即表示你同意',
     terms: '使用條款',
     policyAnd: '和',
@@ -108,17 +114,34 @@ const GOOGLE_OUTLINE = '#747775';
 
 type Status = 'idle' | 'kakaoLoading' | 'googleLoading' | 'guestLoading' | 'error';
 
+// Which way this phone signed in last time -- shown as a small "최근 로그인"
+// bubble on that button, since people forget whether they used Kakao or
+// Google. Kept on the device only.
+type Method = 'kakao' | 'google' | 'guest';
+const LAST_LOGIN_KEY = 'cortex.lastLogin';
+function rememberLogin(method: Method) {
+  AsyncStorage.setItem(LAST_LOGIN_KEY, method).catch(() => {});
+}
+
 export default function LoginScreen() {
   const { theme } = useTheme();
   const { signInAsGuest } = useAuth();
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
+  const [lastMethod, setLastMethod] = useState<Method | null>(null);
+  useEffect(() => {
+    AsyncStorage.getItem(LAST_LOGIN_KEY)
+      .then((v) => setLastMethod(v === 'kakao' || v === 'google' || v === 'guest' ? v : null))
+      .catch(() => {});
+  }, []);
 
   const onPress = async () => {
     setStatus('kakaoLoading');
     setError('');
     try {
+      if (Platform.OS === 'web') rememberLogin('kakao');
       await signInWithKakao();
+      rememberLogin('kakao');
       // Web: the page redirects away here and never reaches this line.
       // Native: a resolved promise means the session is already set, and
       // AuthContext's onAuthStateChange listener flips the app over.
@@ -133,7 +156,9 @@ export default function LoginScreen() {
     setStatus('googleLoading');
     setError('');
     try {
+      if (Platform.OS === 'web') rememberLogin('google');
       await signInWithGoogle();
+      rememberLogin('google');
       // A first Google login gets the same sample item a Kakao signup does
       // (the server only seeds an empty account, so a returning one is safe).
       await seedSampleItem().catch(() => {});
@@ -165,6 +190,7 @@ export default function LoginScreen() {
       setStatus('error');
       return;
     }
+    rememberLogin('guest');
     setStatus('idle');
   };
 
@@ -193,72 +219,87 @@ export default function LoginScreen() {
         )}
         {LANG === 'ko' ? (
           <>
-        <Pressable
-          onPress={onPress}
-          disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.kakaoButton, { borderRadius: theme.btnRadius, opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
-        >
-          {status === 'kakaoLoading' ? (
-            <ActivityIndicator color={KAKAO_TEXT} />
-          ) : (
-            <Text style={styles.kakaoButtonText}>{S.kakao}</Text>
-          )}
-        </Pressable>
-        <Pressable
-          onPress={onGooglePress}
-          disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.googleButton, { borderRadius: theme.btnRadius, opacity: status === 'googleLoading' ? 0.7 : 1 }]}
-        >
-          {status === 'googleLoading' ? (
-            <ActivityIndicator color={GOOGLE_TEXT} />
-          ) : (
-            <View style={styles.googleInner}>
-              <GoogleIcon size={18} />
-              <Text style={styles.googleButtonText}>{S.google}</Text>
-            </View>
-          )}
-        </Pressable>
+        <View style={styles.buttonWrap}>
+          <Pressable
+            onPress={onPress}
+            disabled={status !== 'idle' && status !== 'error'}
+            style={[styles.kakaoButton, { borderRadius: theme.btnRadius, opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
+          >
+            {status === 'kakaoLoading' ? (
+              <ActivityIndicator color={KAKAO_TEXT} />
+            ) : (
+              <Text style={styles.kakaoButtonText}>{S.kakao}</Text>
+            )}
+          </Pressable>
+          {lastMethod === 'kakao' && <LastUsed theme={theme} label={S.lastUsed} />}
+        </View>
+        <View style={styles.buttonWrap}>
+          <Pressable
+            onPress={onGooglePress}
+            disabled={status !== 'idle' && status !== 'error'}
+            style={[styles.googleButton, { borderRadius: theme.btnRadius, opacity: status === 'googleLoading' ? 0.7 : 1 }]}
+          >
+            {status === 'googleLoading' ? (
+              <ActivityIndicator color={GOOGLE_TEXT} />
+            ) : (
+              <View style={styles.googleInner}>
+                <GoogleIcon size={18} />
+                <Text style={styles.googleButtonText}>{S.google}</Text>
+              </View>
+            )}
+          </Pressable>
+          {lastMethod === 'google' && <LastUsed theme={theme} label={S.lastUsed} />}
+        </View>
           </>
         ) : (
           <>
-        <Pressable
-          onPress={onGooglePress}
-          disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.googleButton, { borderRadius: theme.btnRadius, opacity: status === 'googleLoading' ? 0.7 : 1 }]}
-        >
-          {status === 'googleLoading' ? (
-            <ActivityIndicator color={GOOGLE_TEXT} />
-          ) : (
-            <View style={styles.googleInner}>
-              <GoogleIcon size={18} />
-              <Text style={styles.googleButtonText}>{S.google}</Text>
-            </View>
-          )}
-        </Pressable>
-        <Pressable
-          onPress={onPress}
-          disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.kakaoButton, { borderRadius: theme.btnRadius, opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
-        >
-          {status === 'kakaoLoading' ? (
-            <ActivityIndicator color={KAKAO_TEXT} />
-          ) : (
-            <Text style={styles.kakaoButtonText}>{S.kakao}</Text>
-          )}
-        </Pressable>
+        <View style={styles.buttonWrap}>
+          <Pressable
+            onPress={onGooglePress}
+            disabled={status !== 'idle' && status !== 'error'}
+            style={[styles.googleButton, { borderRadius: theme.btnRadius, opacity: status === 'googleLoading' ? 0.7 : 1 }]}
+          >
+            {status === 'googleLoading' ? (
+              <ActivityIndicator color={GOOGLE_TEXT} />
+            ) : (
+              <View style={styles.googleInner}>
+                <GoogleIcon size={18} />
+                <Text style={styles.googleButtonText}>{S.google}</Text>
+              </View>
+            )}
+          </Pressable>
+          {lastMethod === 'google' && <LastUsed theme={theme} label={S.lastUsed} />}
+        </View>
+        <View style={styles.buttonWrap}>
+          <Pressable
+            onPress={onPress}
+            disabled={status !== 'idle' && status !== 'error'}
+            style={[styles.kakaoButton, { borderRadius: theme.btnRadius, opacity: status === 'kakaoLoading' ? 0.7 : 1 }]}
+          >
+            {status === 'kakaoLoading' ? (
+              <ActivityIndicator color={KAKAO_TEXT} />
+            ) : (
+              <Text style={styles.kakaoButtonText}>{S.kakao}</Text>
+            )}
+          </Pressable>
+          {lastMethod === 'kakao' && <LastUsed theme={theme} label={S.lastUsed} />}
+        </View>
           </>
         )}
-        <Pressable
-          onPress={onGuestPress}
-          disabled={status !== 'idle' && status !== 'error'}
-          style={[styles.guestButton, frameStyle(theme), { borderRadius: theme.btnRadius, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
-        >
-          {status === 'guestLoading' ? (
-            <ActivityIndicator color={theme.ink} />
-          ) : (
-            <Text style={[styles.guestButtonText, { color: theme.ink }]}>{S.guest}</Text>
-          )}
-        </Pressable>
+        <View style={styles.buttonWrap}>
+          <Pressable
+            onPress={onGuestPress}
+            disabled={status !== 'idle' && status !== 'error'}
+            style={[styles.guestButton, frameStyle(theme), { borderRadius: theme.btnRadius, opacity: status === 'guestLoading' ? 0.7 : 1 }]}
+          >
+            {status === 'guestLoading' ? (
+              <ActivityIndicator color={theme.ink} />
+            ) : (
+              <Text style={[styles.guestButtonText, { color: theme.ink }]}>{S.guest}</Text>
+            )}
+          </Pressable>
+          {lastMethod === 'guest' && <LastUsed theme={theme} label={S.lastUsed} />}
+        </View>
         <Text style={[styles.guestNote, { color: theme.sub }]}>
           {S.guestNote}
         </Text>
@@ -284,7 +325,19 @@ export default function LoginScreen() {
   );
 }
 
+// The small bubble sitting on the button's top edge.
+function LastUsed({ theme, label }: { theme: ReturnType<typeof useTheme>['theme']; label: string }) {
+  return (
+    <View pointerEvents="none" style={[styles.lastUsed, { backgroundColor: theme.ink, borderRadius: theme.pickRadius }]}>
+      <Text style={[styles.lastUsedText, { color: theme.bg }]}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  buttonWrap: { position: 'relative' },
+  lastUsed: { position: 'absolute', top: -9, right: 14, paddingHorizontal: 8, paddingVertical: 2 },
+  lastUsedText: { fontSize: 11, fontFamily: 'IBMPlexSansKR_500Medium' },
   screen: { flex: 1, paddingHorizontal: 28 },
   body: { flex: 1, justifyContent: 'center' },
   title: { fontSize: 32, lineHeight: 40, letterSpacing: -0.5 },

@@ -30,6 +30,7 @@ export type ItemCaptureType = "link" | "text" | "screenshot";
 // Claude call was made; it waits in the app's 미분류함 until it's
 // classified later (see classifyStoredItem in pipeline.ts).
 export type ClassificationStatus = "pending" | "done" | "failed" | "unclassified";
+export type UnclassifiedReason = "quota" | "failed";
 
 export interface ItemRecord {
   id: string;
@@ -47,6 +48,13 @@ export interface ItemRecord {
   user_tags: string[]; // user-added, freely add/removable
   user_note: string | null; // optional "why I saved this", set at save time
   classification_status: ClassificationStatus;
+  // Why it's in 미분류함: the month's quota ran out, or the AI failed on it
+  // (null when not unclassified, and on rows from before 2026-10-23).
+  unclassified_reason?: UnclassifiedReason | null;
+  // AI tags the person removed -- a re-organize never puts them back.
+  removed_tags?: string[];
+  // A 모아서 만들기 memo: the items it was made from.
+  composed_from?: string[] | null;
   shared_at: string;
   created_at: string;
   deleted_at: string | null;
@@ -70,6 +78,8 @@ export interface NewItem {
   // fully-classified row (e.g. seedSampleItem, which never goes through
   // the async pipeline at all).
   classificationStatus: ClassificationStatus;
+  unclassifiedReason?: UnclassifiedReason;
+  composedFrom?: string[];
 }
 
 export async function insertItem(item: NewItem): Promise<ItemRecord> {
@@ -89,6 +99,8 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
       tags: item.tags,
       user_note: item.userNote ?? null,
       classification_status: item.classificationStatus,
+      ...(item.unclassifiedReason ? { unclassified_reason: item.unclassifiedReason } : null),
+      ...(item.composedFrom ? { composed_from: item.composedFrom } : null),
     })
     .select()
     .single();
@@ -115,8 +127,9 @@ export async function completeClassification(
   // An AI tag the person already has on the item as their own would show as
   // two chips (faint + solid) and outlive removing either one -- read their
   // tags fresh (they may have added one while this ran) and drop repeats.
-  const { data: current } = await getClient().from("items").select("user_tags").eq("id", itemId).eq("user_id", userId).maybeSingle();
-  const own = new Set(((current?.user_tags ?? []) as string[]).map((t) => t.toLowerCase()));
+  // Same for an AI tag they removed before (decision Q4): it stays gone.
+  const { data: current } = await getClient().from("items").select("user_tags, removed_tags").eq("id", itemId).eq("user_id", userId).maybeSingle();
+  const own = new Set([...((current?.user_tags ?? []) as string[]), ...((current?.removed_tags ?? []) as string[])].map((t) => t.toLowerCase()));
   const tags = classification.tags.filter((t) => !own.has(t.toLowerCase()));
   const { error } = await getClient()
     .from("items")
@@ -125,6 +138,7 @@ export async function completeClassification(
       snippet,
       category,
       tags,
+      unclassified_reason: null,
       ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : null),
       // A screenshot has no raw_text of its own; the words Claude read off
       // it go there so search (matchesTerm checks raw_text) can find the
@@ -158,7 +172,7 @@ export async function failClassification(itemId: string, userId: string): Promis
 export async function markClassificationPending(itemId: string, userId: string): Promise<void> {
   const { error } = await getClient()
     .from("items")
-    .update({ classification_status: "pending" satisfies ClassificationStatus })
+    .update({ classification_status: "pending" satisfies ClassificationStatus, unclassified_reason: null })
     .eq("id", itemId)
     .eq("user_id", userId);
   if (error) throw new Error(`markClassificationPending failed: ${error.message}`);
@@ -169,7 +183,7 @@ export async function markClassificationPending(itemId: string, userId: string):
 export async function markUnclassified(itemId: string, userId: string): Promise<void> {
   const { error } = await getClient()
     .from("items")
-    .update({ classification_status: "unclassified" satisfies ClassificationStatus })
+    .update({ classification_status: "unclassified" satisfies ClassificationStatus, unclassified_reason: "failed" satisfies UnclassifiedReason })
     .eq("id", itemId)
     .eq("user_id", userId);
   if (error) throw new Error(`markUnclassified failed: ${error.message}`);
@@ -403,10 +417,13 @@ async function getAiTags(userId: string, itemId: string): Promise<string[]> {
 export async function removeAiTag(userId: string, itemId: string, tag: string): Promise<ItemRecord> {
   const current = await getAiTags(userId, itemId);
   const next = current.filter((t) => t !== tag);
+  // Remembered, so a later re-organize doesn't hand it straight back.
+  const { data: row } = await getClient().from("items").select("removed_tags").eq("id", itemId).eq("user_id", userId).maybeSingle();
+  const removed = (row?.removed_tags ?? []) as string[];
 
   const { data, error } = await getClient()
     .from("items")
-    .update({ tags: next })
+    .update({ tags: next, removed_tags: removed.includes(tag) ? removed : [...removed, tag] })
     .eq("id", itemId)
     .eq("user_id", userId)
     .select()

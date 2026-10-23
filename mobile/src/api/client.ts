@@ -41,6 +41,11 @@ export interface ApiItem {
   category: ItemCategory;
   tags: string[]; // AI-assigned, read-only
   user_tags: string[]; // user-added, freely add/removable
+  // Why it waits in 미분류함 (null/absent: not waiting, or saved before
+  // the server recorded it).
+  unclassified_reason?: 'quota' | 'failed' | null;
+  // A 모아서 만들기 memo: the items it was made from.
+  composed_from?: string[] | null;
   user_note: string | null; // optional "why I saved this", set at save time
   classification_status: ClassificationStatus;
   shared_at: string;

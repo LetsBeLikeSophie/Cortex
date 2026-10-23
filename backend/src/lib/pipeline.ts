@@ -99,7 +99,15 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
     console.error("quota lookup failed, classifying anyway:", err);
   }
   const status: ClassificationStatus = classifyNow ? "pending" : "unclassified";
-  const base = { userId, source: input.source, userNote: input.note, category: PENDING_CATEGORY, tags: [], classificationStatus: status };
+  const base = {
+    userId,
+    source: input.source,
+    userNote: input.note,
+    category: PENDING_CATEGORY,
+    tags: [],
+    classificationStatus: status,
+    unclassifiedReason: classifyNow ? undefined : ("quota" as const),
+  };
 
   let item: ItemRecord;
   let imageBase64: string | undefined;

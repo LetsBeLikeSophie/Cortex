@@ -102,6 +102,7 @@ export default function ItemDetailScreen() {
   // This month's AI organizes left, read while the item waits -- whether it
   // waits because the quota ran out (0) or because the AI failed on it.
   const [classifyLeft, setClassifyLeft] = useState<number | null>(null);
+  const [waitReason, setWaitReason] = useState(item.unclassified_reason ?? null);
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   const [deleteError, setDeleteError] = useState('');
@@ -157,6 +158,7 @@ export default function ItemDetailScreen() {
           if (cancelled || fresh.classification_status === 'pending') return;
           setOrganizing(false);
           setWaiting(fresh.classification_status === 'unclassified');
+          setWaitReason(fresh.unclassified_reason ?? null);
           savedRef.current = { ...savedRef.current, title: fresh.title ?? '', snippet: fresh.snippet ?? '', rawText: fresh.raw_text ?? '' };
           setTitle(fresh.title ?? '');
           setSnippet(fresh.snippet ?? '');
@@ -571,9 +573,13 @@ export default function ItemDetailScreen() {
                   (organizing
                     ? 'AI가 정리하는 중...'
                     : waiting
-                      ? classifyLeft === 0
-                        ? '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
-                        : 'AI 정리가 아직 안 됐어요 · ✦로 다시 정리 (1건)'
+                      ? waitReason === 'failed'
+                        ? 'AI 정리에 실패했어요 · ✦로 다시 정리 (1건)'
+                        : classifyLeft === 0
+                          ? '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
+                          : waitReason === 'quota'
+                            ? 'AI 정리를 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
+                            : 'AI 정리가 아직 안 됐어요 · ✦로 다시 정리 (1건)'
                       : '아직 AI 메모가 없어요')}
               </Text>
             </View>

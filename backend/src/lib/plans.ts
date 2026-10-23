@@ -97,10 +97,14 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
         : "free";
   const paid = tier !== "free";
   const { start, next } = monthWindow();
+  // On the free plan, what the trial used doesn't count: the month's free
+  // share starts fresh the moment the trial ends (decision Q9, 2026-10-23).
+  const trialEnd = new Date(row.trial_ends_at);
+  const since = tier === "free" && trialEnd > start ? trialEnd : start;
   const [classifyUsed, searchUsed, composeUsed, unclassifiedCount] = await Promise.all([
-    countUsage(userId, "classify", start),
-    countUsage(userId, "search", start),
-    countUsage(userId, "compose", start),
+    countUsage(userId, "classify", since),
+    countUsage(userId, "search", since),
+    countUsage(userId, "compose", since),
     countUnclassified(userId),
   ]);
   return {

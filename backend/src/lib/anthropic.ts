@@ -469,7 +469,8 @@ export interface ComposeSource {
   title: string | null;
   memo: string | null;
   myMemo: string | null;
-  keyText: string | null;
+  keyText: string | null; // words read off a screenshot
+  body: string | null; // a text memo's own body -- the person's writing
   category: string;
   tags: string[];
   url: string | null;
@@ -498,9 +499,12 @@ Rules:
   addresses, ratings or anything else that isn't there. If something useful
   is missing, don't fill it in.
 - Mention each item by its own name/title so the person recognizes it.
-- The person's own notes ("내 메모") matter most -- keep what they said.
+- The person's own notes ("내 메모") and their own writing ("본문") matter most -- keep what they said.
 - Terse memo style, no greetings or filler. Plain text: line breaks, "-"
   bullets, "1." numbering. No markdown headings, no emoji.`;
+
+const COMPOSE_BODY_MAX = 1500;
+const COMPOSE_BODY_TOTAL = 20000;
 
 export async function composeFromItems(
   tag: string,
@@ -508,11 +512,22 @@ export async function composeFromItems(
   items: ComposeSource[],
   userId?: string
 ): Promise<{ title: string; body: string }> {
+  // A text memo's body is the person's own writing (a review, a list) --
+  // sent up to COMPOSE_BODY_MAX each, within a total budget spent newest
+  // first (items arrive newest first), so the oldest are cut short first.
+  let bodyBudget = COMPOSE_BODY_TOTAL;
+  const bodies = items.map((it) => {
+    if (!it.body) return null;
+    const take = Math.min(it.body.length, COMPOSE_BODY_MAX, bodyBudget);
+    bodyBudget -= take;
+    return take > 0 ? it.body.slice(0, take) : null;
+  });
   const lines = items.map((it, i) =>
     [
       `#${i + 1} [${it.category}] ${it.title ?? "(제목 없음)"}`,
       it.memo ? `  AI 메모: ${it.memo}` : null,
       it.myMemo ? `  내 메모: ${it.myMemo}` : null,
+      bodies[i] ? `  본문: ${bodies[i]}` : null,
       it.keyText ? `  사진 속 글자: ${it.keyText.slice(0, 300)}` : null,
       it.tags.length ? `  태그: ${it.tags.join(", ")}` : null,
       it.url ? `  링크: ${it.url}` : null,

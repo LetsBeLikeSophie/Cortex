@@ -32,8 +32,238 @@ import { fieldStyle } from '../components/Fields';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { useChipQuery } from '../hooks/useChipQuery';
-import { looksLikeSentenceWord } from '../data/sentenceDetect';
+import { looksLikeSentence as looksLikeSentenceText } from '../data/sentenceDetect';
 import type { RootStackParamList } from '../navigation/types';
+import { strings } from '../i18n';
+import { categoryLabel, COMMON } from '../i18n/common';
+
+const S = strings({
+  ko: {
+    after: (d: string) => `${d} 이후`,
+    before: (d: string) => `${d} 이전`,
+    noReading: '찾을 조건을 못 읽었어요 · 최근에 저장한 순서로 보여줘요',
+    sortChip: (order: string) => `순서 · ${order}`,
+    dateChip: (range: string) => `기간 · ${range}`,
+    sourceChip: (source: string) => `출처 · ${source}`,
+    typeChip: (type: string) => `형태 · ${type}`,
+    categoryChip: (category: string) => `분류 · ${category}`,
+    synonyms: (term: string, n: number) => `${term} 외 ${n}`,
+    oldest: '오래된 순',
+    newest: '최신 순',
+    relevance: '관련순',
+    allMatch: '모두 포함',
+    someMatch: '일부 포함',
+    placeholder: '단어로 바로 찾기 · ✦는 문장으로',
+    askAi: 'AI로 찾기',
+    tagConditions: (n: number) => `태그 조건 ${n}개`,
+    narrowByTag: '태그로 좁히기',
+    clear: '지우기',
+    tagPlaceholder: '태그 입력 · -태그는 제외',
+    tagHelp: '태그를 누르면 제외로 바뀌어요. ×는 빼기.',
+    quotaUsed: (limit: number) => `이번 달 AI 검색 ${limit}회를 다 썼어요. 단어로 찾은 결과예요.`,
+    seePro: 'Pro 보기',
+    aiFailed: 'AI 검색이 실패해서 단어로 찾은 결과예요.',
+    interpretHelp: 'AI가 읽은 조건 · 단어를 누르면 제외, ×는 빼기 (다시 AI를 쓰지 않아요)',
+    quotaOut: '이번 달 AI 검색을 다 썼어요',
+    looksLikeSentence: '문장처럼 보여요 → ',
+    costLeft: (n: number) => ` (1회 · ${n}회 남음)`,
+    costOne: ' (1회)',
+    aiReading: 'AI가 문장을 읽는 중...',
+    searching: '검색 중...',
+    tagFiltered: ' · 태그 조건 적용',
+    usedOne: '1회 사용',
+    left: (n: number) => `${n}회 남음`,
+    compose: (tag: string) => `'${tag}' 모아서 만들기`,
+    help1: '단어를 치는 대로 바로 찾아요. 앞에 -를 붙이면 빼고 찾아요.',
+    help2: '기억이 흐릿하면 문장으로 쓰고 ✦를 눌러 보세요.',
+    example: '예: 지난달 인스타에서 본 성수 카페',
+    aiLeftMonth: (n: number) => `AI 검색은 이번 달 ${n}회 남았어요.`,
+    noResults: '결과가 없어요.',
+    relaxed: (n: number) => `기간·출처 같은 조건을 빼면 ${n}건 있어요. 조건 빼고 보기`,
+    clearAbove: '위 조건을 ×로 지워 보세요.',
+    trySentence: '기억나는 대로 문장으로 쓰고 ✦를 눌러 보세요.',
+  },
+  en: {
+    after: (d: string) => `after ${d}`,
+    before: (d: string) => `before ${d}`,
+    noReading: "Couldn't read any conditions · showing newest first",
+    sortChip: (order: string) => `Order · ${order}`,
+    dateChip: (range: string) => `Date · ${range}`,
+    sourceChip: (source: string) => `From · ${source}`,
+    typeChip: (type: string) => `Type · ${type}`,
+    categoryChip: (category: string) => `Category · ${category}`,
+    synonyms: (term: string, n: number) => `${term} +${n} more`,
+    oldest: 'Oldest',
+    newest: 'Newest',
+    relevance: 'Relevance',
+    allMatch: 'All match',
+    someMatch: 'Partial match',
+    placeholder: 'Type words · ✦ for a sentence',
+    askAi: 'Search with AI',
+    tagConditions: (n: number) => (n === 1 ? '1 tag filter' : `${n} tag filters`),
+    narrowByTag: 'Filter by tag',
+    clear: 'Clear',
+    tagPlaceholder: 'Add a tag · -tag to exclude',
+    tagHelp: 'Tap a tag to exclude it. × removes it.',
+    quotaUsed: (limit: number) => `You've used all ${limit} AI searches this month. Showing word results.`,
+    seePro: 'See Pro',
+    aiFailed: 'AI search failed. Showing word results.',
+    interpretHelp: 'What the AI read · tap to exclude, × to remove (no extra AI use)',
+    quotaOut: "You've used this month's AI searches",
+    looksLikeSentence: 'Looks like a sentence → ',
+    costLeft: (n: number) => ` (1 use · ${n} left)`,
+    costOne: ' (1 use)',
+    aiReading: 'AI is reading...',
+    searching: 'Searching...',
+    tagFiltered: ' · tag filter on',
+    usedOne: '1 used',
+    left: (n: number) => `${n} left`,
+    compose: (tag: string) => `Combine '${tag}'`,
+    help1: 'Results show up as you type. Put - before a word to exclude it.',
+    help2: "Can't quite remember? Write a sentence and tap ✦.",
+    example: 'e.g. that café I saw on Instagram last month',
+    aiLeftMonth: (n: number) => `${n} AI searches left this month.`,
+    noResults: 'No results.',
+    relaxed: (n: number) => `${n} found without the date/source filters. Show them`,
+    clearAbove: 'Try removing a condition above with ×.',
+    trySentence: 'Write what you remember as a sentence and tap ✦.',
+  },
+  ja: {
+    after: (d: string) => `${d}以降`,
+    before: (d: string) => `${d}以前`,
+    noReading: '条件を読み取れませんでした · 新しい順に表示します',
+    sortChip: (order: string) => `並び · ${order}`,
+    dateChip: (range: string) => `期間 · ${range}`,
+    sourceChip: (source: string) => `出どころ · ${source}`,
+    typeChip: (type: string) => `形式 · ${type}`,
+    categoryChip: (category: string) => `分類 · ${category}`,
+    synonyms: (term: string, n: number) => `${term} ほか${n}`,
+    oldest: '古い順',
+    newest: '新しい順',
+    relevance: '関連順',
+    allMatch: 'すべて含む',
+    someMatch: '一部を含む',
+    placeholder: '単語ですぐ検索 · ✦で文章検索',
+    askAi: 'AIで検索',
+    tagConditions: (n: number) => `タグ条件 ${n}件`,
+    narrowByTag: 'タグで絞り込む',
+    clear: 'クリア',
+    tagPlaceholder: 'タグを入力 · -タグで除外',
+    tagHelp: 'タグをタップで除外に切り替え。×で外します。',
+    quotaUsed: (limit: number) => `今月のAI検索${limit}回を使い切りました。単語での検索結果です。`,
+    seePro: 'Proを見る',
+    aiFailed: 'AI検索に失敗したため、単語での検索結果です。',
+    interpretHelp: 'AIが読んだ条件 · タップで除外、×で外す（AIは再使用しません）',
+    quotaOut: '今月のAI検索を使い切りました',
+    looksLikeSentence: '文章のようです → ',
+    costLeft: (n: number) => `（1回 · 残り${n}回）`,
+    costOne: '（1回）',
+    aiReading: 'AIが文章を読んでいます...',
+    searching: '検索中...',
+    tagFiltered: ' · タグ条件あり',
+    usedOne: '1回使用',
+    left: (n: number) => `残り${n}回`,
+    compose: (tag: string) => `「${tag}」をまとめて作る`,
+    help1: '入力するとすぐ検索します。前に - を付けると除外します。',
+    help2: 'うろ覚えなら、文章で書いて ✦ を押してみてください。',
+    example: '例: 先月インスタで見た下北沢のカフェ',
+    aiLeftMonth: (n: number) => `今月のAI検索は残り${n}回です。`,
+    noResults: '結果がありません。',
+    relaxed: (n: number) => `期間・出どころの条件を外すと${n}件あります。条件を外して見る`,
+    clearAbove: '上の条件を × で外してみてください。',
+    trySentence: '覚えていることを文章で書いて ✦ を押してみてください。',
+  },
+  'zh-Hans': {
+    after: (d: string) => `${d} 之后`,
+    before: (d: string) => `${d} 之前`,
+    noReading: '没读出搜索条件 · 按最近保存显示',
+    sortChip: (order: string) => `顺序 · ${order}`,
+    dateChip: (range: string) => `时间 · ${range}`,
+    sourceChip: (source: string) => `来源 · ${source}`,
+    typeChip: (type: string) => `形式 · ${type}`,
+    categoryChip: (category: string) => `分类 · ${category}`,
+    synonyms: (term: string, n: number) => `${term} 等${n}个`,
+    oldest: '最早',
+    newest: '最新',
+    relevance: '相关度',
+    allMatch: '全部包含',
+    someMatch: '部分包含',
+    placeholder: '输入词语即搜 · ✦ 用句子搜',
+    askAi: '用 AI 搜索',
+    tagConditions: (n: number) => `${n} 个标签条件`,
+    narrowByTag: '按标签筛选',
+    clear: '清除',
+    tagPlaceholder: '输入标签 · -标签 为排除',
+    tagHelp: '点标签切换为排除，× 移除。',
+    quotaUsed: (limit: number) => `本月 ${limit} 次 AI 搜索已用完。以下是按词语搜索的结果。`,
+    seePro: '查看 Pro',
+    aiFailed: 'AI 搜索失败，以下是按词语搜索的结果。',
+    interpretHelp: 'AI 读出的条件 · 点击排除，× 移除（不会再用 AI）',
+    quotaOut: '本月 AI 搜索已用完',
+    looksLikeSentence: '像是一句话 → ',
+    costLeft: (n: number) => `（1 次 · 剩 ${n} 次）`,
+    costOne: '（1 次）',
+    aiReading: 'AI 正在读句子...',
+    searching: '搜索中...',
+    tagFiltered: ' · 已按标签筛选',
+    usedOne: '用了 1 次',
+    left: (n: number) => `剩 ${n} 次`,
+    compose: (tag: string) => `汇总生成「${tag}」`,
+    help1: '边输入边搜索。词前加 - 可排除。',
+    help2: '记不太清？用一句话描述，再点 ✦。',
+    example: '例：上个月在 IG 看到的加东咖啡店',
+    aiLeftMonth: (n: number) => `本月还剩 ${n} 次 AI 搜索。`,
+    noResults: '没有结果。',
+    relaxed: (n: number) => `去掉时间、来源等条件有 ${n} 条。去掉条件查看`,
+    clearAbove: '试试用 × 去掉上面的条件。',
+    trySentence: '把记得的内容写成一句话，再点 ✦。',
+  },
+  'zh-Hant': {
+    after: (d: string) => `${d} 之後`,
+    before: (d: string) => `${d} 之前`,
+    noReading: '沒讀出搜尋條件 · 依最近儲存顯示',
+    sortChip: (order: string) => `順序 · ${order}`,
+    dateChip: (range: string) => `時間 · ${range}`,
+    sourceChip: (source: string) => `來源 · ${source}`,
+    typeChip: (type: string) => `形式 · ${type}`,
+    categoryChip: (category: string) => `分類 · ${category}`,
+    synonyms: (term: string, n: number) => `${term} 等${n}個`,
+    oldest: '最舊',
+    newest: '最新',
+    relevance: '相關度',
+    allMatch: '全部包含',
+    someMatch: '部分包含',
+    placeholder: '輸入詞語即搜 · ✦ 用句子搜',
+    askAi: '用 AI 搜尋',
+    tagConditions: (n: number) => `${n} 個標籤條件`,
+    narrowByTag: '依標籤篩選',
+    clear: '清除',
+    tagPlaceholder: '輸入標籤 · -標籤 為排除',
+    tagHelp: '點標籤切換為排除，× 移除。',
+    quotaUsed: (limit: number) => `本月 ${limit} 次 AI 搜尋已用完。以下是依詞語搜尋的結果。`,
+    seePro: '查看 Pro',
+    aiFailed: 'AI 搜尋失敗，以下是依詞語搜尋的結果。',
+    interpretHelp: 'AI 讀出的條件 · 點一下排除，× 移除（不會再用 AI）',
+    quotaOut: '本月 AI 搜尋已用完',
+    looksLikeSentence: '看起來像一句話 → ',
+    costLeft: (n: number) => `（1 次 · 剩 ${n} 次）`,
+    costOne: '（1 次）',
+    aiReading: 'AI 正在讀句子...',
+    searching: '搜尋中...',
+    tagFiltered: ' · 已依標籤篩選',
+    usedOne: '用了 1 次',
+    left: (n: number) => `剩 ${n} 次`,
+    compose: (tag: string) => `彙整生成「${tag}」`,
+    help1: '邊輸入邊搜尋。詞前加 - 可排除。',
+    help2: '記不太清楚？用一句話描述，再點 ✦。',
+    example: '例：上個月在 IG 看到的赤峰街咖啡廳',
+    aiLeftMonth: (n: number) => `本月還剩 ${n} 次 AI 搜尋。`,
+    noResults: '沒有結果。',
+    relaxed: (n: number) => `拿掉時間、來源等條件有 ${n} 筆。拿掉條件查看`,
+    clearAbove: '試試用 × 拿掉上面的條件。',
+    trySentence: '把記得的內容寫成一句話，再點 ✦。',
+  },
+});
 
 interface Hit {
   result: SearchResult;
@@ -51,8 +281,8 @@ function shortDate(iso: string): string {
 
 function dateRangeLabel(from: string | null, to: string | null): string {
   if (from && to) return from === to ? shortDate(from) : `${shortDate(from)} – ${shortDate(to)}`;
-  if (from) return `${shortDate(from)} 이후`;
-  return `${shortDate(to!)} 이전`;
+  if (from) return S.after(shortDate(from));
+  return S.before(shortDate(to!));
 }
 
 // The LLM's reading of a search sentence, as the same toggle/× chips the
@@ -74,13 +304,13 @@ function InterpretationRow({
   // The AI found no condition in the sentence -- say so, instead of an empty
   // chip row above a list that seems to come from nowhere.
   if (nothingRead) {
-    return <Text style={[styles.noReading, { color: theme.sub }]}>찾을 조건을 못 읽었어요 · 최근에 저장한 순서로 보여줘요</Text>;
+    return <Text style={[styles.noReading, { color: theme.sub }]}>{S.noReading}</Text>;
   }
   return (
     <View style={styles.chipRow}>
       {q.sort && (
         <SearchChip
-          label={`순서 · ${q.sort === 'oldest' ? '오래된 순' : '최신 순'}`}
+          label={S.sortChip(q.sort === 'oldest' ? S.oldest : S.newest)}
           excluded={false}
           theme={theme}
           onToggle={noop}
@@ -89,7 +319,7 @@ function InterpretationRow({
       )}
       {(q.dateFrom || q.dateTo) && (
         <SearchChip
-          label={`기간 · ${dateRangeLabel(q.dateFrom, q.dateTo)}`}
+          label={S.dateChip(dateRangeLabel(q.dateFrom, q.dateTo))}
           excluded={false}
           theme={theme}
           onToggle={noop}
@@ -98,7 +328,7 @@ function InterpretationRow({
       )}
       {q.source && (
         <SearchChip
-          label={`출처 · ${sourceLabel(q.source, false)}`}
+          label={S.sourceChip(sourceLabel(q.source, false))}
           excluded={false}
           theme={theme}
           onToggle={noop}
@@ -107,7 +337,7 @@ function InterpretationRow({
       )}
       {q.captureType && (
         <SearchChip
-          label={`형태 · ${captureTypeLabel(q.captureType, false)}`}
+          label={S.typeChip(captureTypeLabel(q.captureType, false))}
           excluded={false}
           theme={theme}
           onToggle={noop}
@@ -116,7 +346,7 @@ function InterpretationRow({
       )}
       {q.category && (
         <SearchChip
-          label={`분류 · ${q.category}`}
+          label={S.categoryChip(categoryLabel(q.category))}
           excluded={false}
           theme={theme}
           onToggle={noop}
@@ -127,7 +357,7 @@ function InterpretationRow({
         <SearchChip
           key={'k' + i + k.term}
           // "+3" read as a count of results; "외 3" says it's 3 more words.
-          label={k.synonyms.length ? `${k.term} 외 ${k.synonyms.length}` : k.term}
+          label={k.synonyms.length ? S.synonyms(k.term, k.synonyms.length) : k.term}
           excluded={false}
           theme={theme}
           onToggle={() =>
@@ -358,11 +588,11 @@ export default function SearchScreen() {
     const all = shown.filter((h) => h.result.matchedCount === termCount);
     const some = shown.filter((h) => h.result.matchedCount < termCount);
     if (all.length) {
-      rows.push({ kind: 'header', key: 'h-all', title: '모두 포함', count: all.length });
+      rows.push({ kind: 'header', key: 'h-all', title: S.allMatch, count: all.length });
       all.forEach((hit, i) => rows.push({ kind: 'item', key: 'all' + i, hit }));
     }
     if (some.length) {
-      rows.push({ kind: 'header', key: 'h-some', title: '일부 포함', count: some.length });
+      rows.push({ kind: 'header', key: 'h-some', title: S.someMatch, count: some.length });
       some.forEach((hit, i) => rows.push({ kind: 'item', key: 'some' + i, hit }));
     }
   } else {
@@ -372,7 +602,7 @@ export default function SearchScreen() {
   const hasQuery = aiMode ? !!interpretation || asking : include.length + exclude.length > 0;
   // Reads like a sentence ("지난달에", "봤던") but is being searched word by
   // word -- point at ✦ rather than leave a thin result unexplained.
-  const looksLikeSentence = !aiMode && words.some(looksLikeSentenceWord);
+  const looksLikeSentence = !aiMode && looksLikeSentenceText(trimmed);
 
   // Tag filter autocomplete: saved tags containing what's typed there, minus
   // ones already chipped. A "-" prefix carries over to an excluded chip.
@@ -393,7 +623,7 @@ export default function SearchScreen() {
     letterSpacing: emToTracking(0.01, 12.5),
     color: theme.sub,
   };
-  const orderLabel = aiMode && interpretation?.sort ? (interpretation.sort === 'oldest' ? '오래된 순' : '최신 순') : '관련순';
+  const orderLabel = aiMode && interpretation?.sort ? (interpretation.sort === 'oldest' ? S.oldest : S.newest) : S.relevance;
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
@@ -412,7 +642,7 @@ export default function SearchScreen() {
               returnKeyType="done"
               style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
               selectionColor={theme.accent}
-              placeholder="단어로 바로 찾기 · ✦는 문장으로"
+              placeholder={S.placeholder}
               placeholderTextColor={theme.sub}
             />
             {/* The mic only types: what was said lands in the box and is
@@ -424,7 +654,7 @@ export default function SearchScreen() {
               disabled={!trimmed || asking || aiMode}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="AI로 찾기"
+              accessibilityLabel={S.askAi}
               style={[styles.aiButton, { opacity: trimmed && !aiMode ? 1 : 0.4 }]}
             >
               {asking ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon color={theme.accent} size={17} strokeWidth={1.5} />}
@@ -438,12 +668,12 @@ export default function SearchScreen() {
           <Pressable onPress={() => setFilterOpen((v) => !v)} hitSlop={8} style={styles.filterToggle}>
             <HashIcon color={tags.chips.length ? theme.ink : theme.sub} size={13} strokeWidth={1.4} />
             <Text style={[styles.filterLabel, { color: tags.chips.length ? theme.ink : theme.sub }]}>
-              {tags.chips.length ? `태그 조건 ${tags.chips.length}개` : '태그로 좁히기'} {filterOpen ? '▴' : '▾'}
+              {tags.chips.length ? S.tagConditions(tags.chips.length) : S.narrowByTag} {filterOpen ? '▴' : '▾'}
             </Text>
           </Pressable>
           {tags.chips.length > 0 && (
             <Pressable onPress={tags.clearChips} hitSlop={8}>
-              <Text style={[styles.filterLabel, { color: theme.sub }]}>지우기</Text>
+              <Text style={[styles.filterLabel, { color: theme.sub }]}>{S.clear}</Text>
             </Pressable>
           )}
         </View>
@@ -456,7 +686,7 @@ export default function SearchScreen() {
               onKeyPress={tags.onKeyPress}
               blurOnSubmit={false}
               returnKeyType="done"
-              placeholder="태그 입력 · -태그는 제외"
+              placeholder={S.tagPlaceholder}
               placeholderTextColor={theme.sub}
               style={[styles.tagInput, fieldStyle(theme), { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
             />
@@ -470,23 +700,23 @@ export default function SearchScreen() {
                 ))}
               </View>
             )}
-            <Text style={[styles.filterHelp, { color: theme.sub }]}>태그를 누르면 제외로 바뀌어요. ×는 빼기.</Text>
+            <Text style={[styles.filterHelp, { color: theme.sub }]}>{S.tagHelp}</Text>
           </View>
         )}
 
         {quotaHit && quotaQuery === trimmed && (
           <View style={styles.notice}>
-            <Text style={[styles.noticeText, { color: theme.ink }]}>이번 달 AI 검색 {quotaHit.limit}회를 다 썼어요. 단어로 찾은 결과예요.</Text>
+            <Text style={[styles.noticeText, { color: theme.ink }]}>{S.quotaUsed(quotaHit.limit)}</Text>
             <Pressable onPress={() => navigation.navigate('Paywall', { reason: 'search' })} hitSlop={6}>
-              <Text style={[styles.noticeLink, { color: theme.accent }]}>Pro 보기</Text>
+              <Text style={[styles.noticeLink, { color: theme.accent }]}>{S.seePro}</Text>
             </Pressable>
           </View>
         )}
         {aiError && aiError.query === trimmed && (
           <View style={styles.notice}>
-            <Text style={[styles.noticeText, { color: theme.danger }]}>AI 검색이 실패해서 단어로 찾은 결과예요.</Text>
+            <Text style={[styles.noticeText, { color: theme.danger }]}>{S.aiFailed}</Text>
             <Pressable onPress={() => ask()} hitSlop={6}>
-              <Text style={[styles.noticeLink, { color: theme.ink }]}>다시 시도</Text>
+              <Text style={[styles.noticeLink, { color: theme.ink }]}>{COMMON.retry}</Text>
             </Pressable>
           </View>
         )}
@@ -497,7 +727,7 @@ export default function SearchScreen() {
             {/* Tapping a chip flips it to excluded -- say so, and that editing
                 these never spends another AI search. */}
             <Text style={[styles.interpretHelp, { color: theme.sub }]}>
-              AI가 읽은 조건 · 단어를 누르면 제외, ×는 빼기 (다시 AI를 쓰지 않아요)
+              {S.interpretHelp}
             </Text>
           </>
         )}
@@ -506,23 +736,23 @@ export default function SearchScreen() {
         {looksLikeSentence &&
           (aiLeft === 0 ? (
             <View style={styles.suggestLine}>
-              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>이번 달 AI 검색을 다 썼어요</Text>
+              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.quotaOut}</Text>
             </View>
           ) : (
             <Pressable onPress={() => ask()} hitSlop={6} style={styles.suggestLine}>
               <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
               <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-                문장처럼 보여요 → <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>AI로 찾기</Text>
-                {aiLeft !== null ? ` (1회 · ${aiLeft}회 남음)` : ' (1회)'}
+                {S.looksLikeSentence}<Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.askAi}</Text>
+                {aiLeft !== null ? S.costLeft(aiLeft) : S.costOne}
               </Text>
             </Pressable>
           ))}
 
         {hasQuery && (
           <View style={[styles.metaRow, { paddingBottom: boxed ? 4 : 0 }]}>
-            <Text style={metaStyle}>{asking ? 'AI가 문장을 읽는 중...' : loading ? '검색 중...' : txt.hits(shown.length) + (aiTagFiltered ? ' · 태그 조건 적용' : '')}</Text>
+            <Text style={metaStyle}>{asking ? S.aiReading : loading ? S.searching : txt.hits(shown.length) + (aiTagFiltered ? S.tagFiltered : '')}</Text>
             <Text style={metaStyle}>
-              {aiMode ? `✦ ${orderLabel} · 1회 사용${aiLeft !== null ? ` · ${aiLeft}회 남음` : ''}` : orderLabel}
+              {aiMode ? `✦ ${orderLabel} · ${S.usedOne}${aiLeft !== null ? ` · ${S.left(aiLeft)}` : ''}` : orderLabel}
             </Text>
           </View>
         )}
@@ -536,17 +766,17 @@ export default function SearchScreen() {
             style={styles.suggestLine}
           >
             <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
-            <Text style={{ fontSize: 13, color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>{`'${tags.includeChips[0].text}' 모아서 만들기`}</Text>
+            <Text style={{ fontSize: 13, color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.compose(tags.includeChips[0].text)}</Text>
           </Pressable>
         )}
       </View>
 
       {!hasQuery ? (
         <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
-          <Text style={[styles.help, { color: theme.sub }]}>단어를 치는 대로 바로 찾아요. 앞에 -를 붙이면 빼고 찾아요.</Text>
-          <Text style={[styles.help, { color: theme.sub }]}>기억이 흐릿하면 문장으로 쓰고 ✦를 눌러 보세요.</Text>
-          <Text style={[styles.help, { color: theme.sub }]}>예: 지난달 인스타에서 본 성수 카페</Text>
-          {aiLeft !== null && <Text style={[styles.help, { color: theme.sub }]}>AI 검색은 이번 달 {aiLeft}회 남았어요.</Text>}
+          <Text style={[styles.help, { color: theme.sub }]}>{S.help1}</Text>
+          <Text style={[styles.help, { color: theme.sub }]}>{S.help2}</Text>
+          <Text style={[styles.help, { color: theme.sub }]}>{S.example}</Text>
+          {aiLeft !== null && <Text style={[styles.help, { color: theme.sub }]}>{S.aiLeftMonth(aiLeft)}</Text>}
         </View>
       ) : (
         <AsyncStateView
@@ -558,16 +788,16 @@ export default function SearchScreen() {
           topOffset={28}
           emptyText={
             <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
-              <Text style={[styles.help, { color: theme.sub }]}>결과가 없어요.</Text>
+              <Text style={[styles.help, { color: theme.sub }]}>{S.noResults}</Text>
               {aiMode && interpretation && relaxedCount ? (
                 <Pressable onPress={() => reSearch({ ...interpretation, ...NO_FILTERS })} hitSlop={6}>
                   <Text style={[styles.help, { color: theme.accent }]}>
-                    기간·출처 같은 조건을 빼면 {relaxedCount}건 있어요. 조건 빼고 보기
+                    {S.relaxed(relaxedCount)}
                   </Text>
                 </Pressable>
               ) : (
                 <Text style={[styles.help, { color: theme.sub }]}>
-                  {aiMode ? '위 조건을 ×로 지워 보세요.' : '기억나는 대로 문장으로 쓰고 ✦를 눌러 보세요.'}
+                  {aiMode ? S.clearAbove : S.trySentence}
                 </Text>
               )}
             </View>

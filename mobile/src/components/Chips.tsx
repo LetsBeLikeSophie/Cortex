@@ -3,6 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
 import { PlusIcon } from './Icons';
 import type { QueryChip } from '../hooks/useChipQuery';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: { unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건` },
+  en: { unsorted: 'Unsorted', unsortedCount: (n: number) => `Unsorted, ${n}` },
+  ja: { unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n}件` },
+  'zh-Hans': { unsorted: '未分类', unsortedCount: (n: number) => `未分类 ${n} 条` },
+  'zh-Hant': { unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n} 則` },
+});
 
 // Home tag tabs, per concept: line = underline tabs; border = outlined
 // pills; layer = filled paper pills (active one inked); vintage = underline
@@ -83,10 +92,10 @@ export function PileTabChip({ count, active, theme, onPress }: { count: number; 
   const fg = pill && active ? theme.bg : theme.accent;
   const font = concept === 'vintage' ? MONO : 'IBMPlexSansKR_500Medium';
   return (
-    <Pressable onPress={onPress} style={shell} accessibilityLabel={`미분류 ${count}건`}>
+    <Pressable onPress={onPress} style={shell} accessibilityLabel={S.unsortedCount(count)}>
       {/* Always rendered (just recolored) so selecting it doesn't shrink the tab. */}
       <View style={[styles.pileDot, { backgroundColor: fg }]} />
-      <Text style={{ fontSize: pill ? 12.5 : 13, color: fg, fontFamily: font }}>미분류</Text>
+      <Text style={{ fontSize: pill ? 12.5 : 13, color: fg, fontFamily: font }}>{S.unsorted}</Text>
       <Text style={{ fontSize: pill ? 11.5 : 12, color: fg, fontFamily: MONO, opacity: 0.85 }}>{count}</Text>
     </Pressable>
   );

@@ -1,4 +1,13 @@
 import type { ApiItem, ItemSource } from '../api/client';
+import { strings } from '../i18n';
+
+const L = strings({
+  ko: { youtube: '유튜브', instagram: '인스타그램', kakaotalk: '카카오톡', safari: '사파리', memo: '메모', other: '기타', link: '링크', text: '메모', screenshot: '사진' },
+  en: { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: 'Safari', memo: 'Note', other: 'Other', link: 'Link', text: 'Note', screenshot: 'Photo' },
+  ja: { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'カカオトーク', safari: 'Safari', memo: 'メモ', other: 'その他', link: 'リンク', text: 'メモ', screenshot: '写真' },
+  'zh-Hans': { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: 'Safari', memo: '备注', other: '其他', link: '链接', text: '备注', screenshot: '照片' },
+  'zh-Hant': { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: 'Safari', memo: '備註', other: '其他', link: '連結', text: '備註', screenshot: '照片' },
+});
 
 // The single place that knows about each channel (source) and method
 // (capture_type) -- label text and what we can realistically expect to
@@ -20,37 +29,37 @@ export interface SourceCatalogEntry {
 export const SOURCE_CATALOG: Record<ItemSource, SourceCatalogEntry> = {
   youtube: {
     id: 'youtube',
-    label: '유튜브',
+    label: L.youtube,
     labelTech: 'YOUTUBE',
     collects: { title: true, thumbnail: true, description: true },
   },
   instagram: {
     id: 'instagram',
-    label: '인스타그램',
+    label: L.instagram,
     labelTech: 'INSTAGRAM',
     collects: { title: false, thumbnail: false, description: false },
   },
   kakaotalk: {
     id: 'kakaotalk',
-    label: '카카오톡',
+    label: L.kakaotalk,
     labelTech: 'KAKAOTALK',
     collects: { title: false, thumbnail: false, description: false },
   },
   safari: {
     id: 'safari',
-    label: '사파리',
+    label: L.safari,
     labelTech: 'SAFARI',
     collects: { title: true, thumbnail: true, description: true },
   },
   memo: {
     id: 'memo',
-    label: '메모',
+    label: L.memo,
     labelTech: 'MEMO',
     collects: { title: false, thumbnail: false, description: false },
   },
   other: {
     id: 'other',
-    label: '기타',
+    label: L.other,
     labelTech: 'OTHER',
     collects: { title: false, thumbnail: false, description: false },
   },
@@ -65,7 +74,7 @@ export interface CaptureTypeCatalogEntry {
 }
 
 export const CAPTURE_TYPE_CATALOG: Record<ApiItem['capture_type'], CaptureTypeCatalogEntry> = {
-  link: { id: 'link', label: '링크', labelTech: 'LINK' },
-  text: { id: 'text', label: '메모', labelTech: 'TEXT' },
-  screenshot: { id: 'screenshot', label: '사진', labelTech: 'SCREENSHOT' },
+  link: { id: 'link', label: L.link, labelTech: 'LINK' },
+  text: { id: 'text', label: L.text, labelTech: 'TEXT' },
+  screenshot: { id: 'screenshot', label: L.screenshot, labelTech: 'SCREENSHOT' },
 };

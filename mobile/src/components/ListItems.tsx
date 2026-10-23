@@ -7,6 +7,15 @@ import { captureTypeLabel } from '../api/format';
 import { SourceIcon, CheckIcon } from './Icons';
 import { LayeredBack } from './Decor';
 import { LAYERED_BACK_OFFSET, cardShellStyle } from './Card';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: { inTrash: '휴지통에 있음', missing: (terms: string) => `${terms} 없음`, restore: '복원' },
+  en: { inTrash: 'In trash', missing: (terms: string) => `No ${terms}`, restore: 'Restore' },
+  ja: { inTrash: 'ゴミ箱にあります', missing: (terms: string) => `${terms} なし`, restore: '復元' },
+  'zh-Hans': { inTrash: '在回收站', missing: (terms: string) => `无 ${terms}`, restore: '恢复' },
+  'zh-Hant': { inTrash: '在垃圾桶', missing: (terms: string) => `無 ${terms}`, restore: '還原' },
+});
 
 // e.g. "▶ 링크 · 3분전" -- the channel reads as its icon (a text label per
 // source would crowd this line), the method and time stay as text.
@@ -148,7 +157,7 @@ export function ResultRow({
     >
       {trashed && (
         <View style={[styles.trashBadge, { backgroundColor: theme.soft }]}>
-          <Text style={{ fontSize: 11, color: theme.sub, fontFamily: 'IBMPlexSansKR_500Medium' }}>휴지통에 있음</Text>
+          <Text style={{ fontSize: 11, color: theme.sub, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.inTrash}</Text>
         </View>
       )}
       <HighlightText
@@ -172,14 +181,14 @@ export function ResultRow({
           {item.missingTerms.length > 0 && (
             <View style={[styles.missingBadge, { borderColor: theme.sub }]}>
               <Text style={{ fontSize: 11.5, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-                {item.missingTerms.join(', ')} 없음
+                {S.missing(item.missingTerms.join(', '))}
               </Text>
             </View>
           )}
         </View>
         {trashed && (
           <Pressable onPress={onRestore} hitSlop={8} style={[styles.restoreButton, { borderColor: theme.line }]}>
-            <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium' }}>복원</Text>
+            <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.restore}</Text>
           </Pressable>
         )}
       </View>

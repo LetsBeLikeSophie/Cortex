@@ -23,6 +23,15 @@ import { onAiConsentRequired } from '../api/client';
 import PaywallScreen from '../screens/PaywallScreen';
 import ComposeScreen from '../screens/ComposeScreen';
 import type { RootStackParamList, TabParamList } from './types';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: { home: '보관함', search: '검색', add: '추가' },
+  en: { home: 'Archive', search: 'Search', add: 'Add' },
+  ja: { home: 'アーカイブ', search: '検索', add: '追加' },
+  'zh-Hans': { home: '收藏', search: '搜索', add: '添加' },
+  'zh-Hant': { home: '收藏', search: '搜尋', add: '新增' },
+});
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -40,8 +49,8 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
   const tech = vintage;
 
   const items: { key: string; route: keyof TabParamList; label: string; Icon: typeof ArchiveIcon }[] = [
-    { key: 'Home', route: 'Home', label: '보관함', Icon: ArchiveIcon },
-    { key: 'Search', route: 'Search', label: '검색', Icon: SearchIcon },
+    { key: 'Home', route: 'Home', label: S.home, Icon: ArchiveIcon },
+    { key: 'Search', route: 'Search', label: S.search, Icon: SearchIcon },
   ];
 
   const activeRouteName = state.routes[state.index].name;
@@ -90,7 +99,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
             opacity: 0.75,
           }}
         >
-          추가
+          {S.add}
         </Text>
       </Pressable>
     </View>

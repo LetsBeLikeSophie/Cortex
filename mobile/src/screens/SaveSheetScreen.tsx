@@ -36,6 +36,256 @@ import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { splitLinkText } from '../data/linkText';
 import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
+import { strings } from '../i18n';
+import { COMMON, categoryLabel } from '../i18n/common';
+
+const S = strings({
+  ko: {
+    backToMehh: 'Mehh로 돌아가기',
+    photoAccess: '사진 접근',
+    camera: '카메라',
+    allFailed: '전부 저장하지 못했어요',
+    quotaNoConsent: 'AI 분석 동의 전이라 미분류함에 들어가요 (저장은 돼요)',
+    quotaBulk: (n: number) => `AI가 한 장씩 제목·태그를 달아요 · 이번 달 ${n}건 남음`,
+    quotaOver: (n: number) => `${n}장은 미분류함에 들어가요 (저장은 돼요)`,
+    quotaUsedUp: '이번 달 AI 정리를 다 써서 미분류함에 들어가요 (저장은 돼요)',
+    quotaLeft: (n: number) => `이번 달 AI 정리 ${n}건 남음`,
+    heading: '무엇을 저장할까요?',
+    intro: '다른 앱에서 공유하거나, 텍스트를 붙여넣거나 사진을 골라서 저장해요.',
+    repickPhoto: '사진 지우고 다시 선택',
+    clearLink: '지우고 직접 입력',
+    memoBulkPlaceholder: '고른 사진들에 같이 남길 메모 (선택) — 예: 제주 여행 맛집들',
+    memoPlaceholder: '예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래',
+    pickAlbum: '앨범에서 선택',
+    takePhoto: '카메라로 촬영',
+    selectedCount: (n: number) => `${n}장 선택됨`,
+    recentMulti: '최근 스크린샷 · 여러 장 선택 가능',
+    clearSelection: '선택 취소',
+    savingProgress: (done: number, total: number) => `${done}/${total}장 저장 중...`,
+    loadRecent: '최근 스크린샷 불러오기',
+    noRecent: '최근 스크린샷이 없어요. 앨범에서 선택해 주세요.',
+    recent: '최근 스크린샷',
+    recentDenied: '사진 접근 권한이 꺼져 있어서 최근 스크린샷을 불러올 수 없어요. 설정에서 허용해주세요.',
+    notePlaceholder: '왜 저장했는지 한 줄 적어두면 나중에 찾기 쉬워요 (선택)',
+    saveFailed: (e: string) => `저장 실패: ${e}`,
+    mehhHint: '저장 후 [Mehh로 돌아가기]로 돌아가요',
+    saveN: (n: number) => `${n}장 저장하기`,
+    save: '저장하기',
+    savedN: (n: number) => `${n}개 저장했어요`,
+    failedN: (n: number) => `${n}개는 저장하지 못했어요.`,
+    unclassifiedConsentN: (n: number) => `${n}개는 AI 분석 동의 전이라 미분류함에 넣어뒀어요`,
+    unclassifiedQuotaN: (n: number) => `${n}개는 이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요`,
+    originalsDeleted: '원본 사진을 지웠어요. 저장한 건 Cortex에 그대로 있어요.',
+    deleteOriginalsQ: (n: number) => `정리한 원본 사진 ${n}장을 지울까요?`,
+    failedKept: (n: number) => `저장에 실패한 ${n}장은 지우지 않아요.`,
+    galleryOnly: '갤러리에서만 지워지고, Cortex에는 그대로 남아요.',
+    keep: '그대로 두기',
+    deleteOriginals: '원본 지우기',
+    aiConsent: 'AI 분석 동의',
+    proNow: 'Pro로 바로 정리',
+    findLater: '단어 하나만 적으면 다시 꺼내 드려요.',
+    analyzingTags: '제목·태그를 분석하고 있어요',
+    unclassifiedConsent: 'AI 분석 동의 전이라 미분류함에 넣어뒀어요',
+    unclassifiedQuota: '이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요',
+    open: '열어 보기',
+  },
+  en: {
+    backToMehh: 'Back to Mehh',
+    photoAccess: 'Photo',
+    camera: 'Camera',
+    allFailed: "Couldn't save any of them",
+    quotaNoConsent: 'No AI consent yet, so it goes to Unsorted (still saved)',
+    quotaBulk: (n: number) => `AI titles and tags each photo · ${n} left this month`,
+    quotaOver: (n: number) => `${n} will go to Unsorted (still saved)`,
+    quotaUsedUp: "This month's AI sorting is used up, so it goes to Unsorted (still saved)",
+    quotaLeft: (n: number) => `${n} AI sorts left this month`,
+    heading: 'What do you want to save?',
+    intro: 'Share from another app, paste text, or pick a photo.',
+    repickPhoto: 'Remove photo and pick again',
+    clearLink: 'Clear and type instead',
+    memoBulkPlaceholder: 'A note for all these photos (optional) — e.g. Jeju food spots',
+    memoPlaceholder: 'e.g. That new croffle place in Seongsu is amazing',
+    pickAlbum: 'Pick from album',
+    takePhoto: 'Take a photo',
+    selectedCount: (n: number) => `${n} selected`,
+    recentMulti: 'Recent screenshots · pick several',
+    clearSelection: 'Clear',
+    savingProgress: (done: number, total: number) => `Saving ${done}/${total}...`,
+    loadRecent: 'Load recent screenshots',
+    noRecent: 'No recent screenshots. Pick from your album.',
+    recent: 'Recent screenshots',
+    recentDenied: "Photo access is off, so recent screenshots can't load. Allow it in Settings.",
+    notePlaceholder: 'Why you saved it, in a line — easier to find later (optional)',
+    saveFailed: (e: string) => `Couldn't save: ${e}`,
+    mehhHint: 'After saving, tap [Back to Mehh] to return',
+    saveN: (n: number) => `Save ${n}`,
+    save: 'Save',
+    savedN: (n: number) => `Saved ${n}`,
+    failedN: (n: number) => `${n} couldn't be saved.`,
+    unclassifiedConsentN: (n: number) => `${n} went to Unsorted (no AI consent yet)`,
+    unclassifiedQuotaN: (n: number) => `${n} went to Unsorted (AI sorting used up this month)`,
+    originalsDeleted: 'Originals deleted. Your saves are still in Cortex.',
+    deleteOriginalsQ: (n: number) => (n === 1 ? 'Delete the original photo?' : `Delete the ${n} original photos?`),
+    failedKept: (n: number) => `The ${n} that failed to save won't be deleted.`,
+    galleryOnly: 'Only removed from your gallery — they stay in Cortex.',
+    keep: 'Keep',
+    deleteOriginals: 'Delete originals',
+    aiConsent: 'Allow AI',
+    proNow: 'Sort now with Pro',
+    findLater: 'Just type one word to bring it back.',
+    analyzingTags: 'Working out title and tags',
+    unclassifiedConsent: 'Put in Unsorted (no AI consent yet)',
+    unclassifiedQuota: "Put in Unsorted (this month's AI sorting is used up)",
+    open: 'Open',
+  },
+  ja: {
+    backToMehh: 'Mehhに戻る',
+    photoAccess: '写真',
+    camera: 'カメラ',
+    allFailed: 'どれも保存できませんでした',
+    quotaNoConsent: 'AI分析に未同意のため未分類に入ります(保存はされます)',
+    quotaBulk: (n: number) => `AIが1枚ずつタイトル・タグを付けます · 今月残り${n}件`,
+    quotaOver: (n: number) => `${n}枚は未分類に入ります(保存はされます)`,
+    quotaUsedUp: '今月のAI整理を使い切ったので未分類に入ります(保存はされます)',
+    quotaLeft: (n: number) => `今月のAI整理 残り${n}件`,
+    heading: '何を保存しますか?',
+    intro: '他のアプリから共有、テキストを貼り付け、または写真を選んで保存します。',
+    repickPhoto: '写真を消して選び直す',
+    clearLink: '消して直接入力',
+    memoBulkPlaceholder: '選んだ写真に付けるメモ(任意) — 例: 済州旅行のグルメ',
+    memoPlaceholder: '例: 聖水にできたクロッフルの店、すごく美味しいらしい',
+    pickAlbum: 'アルバムから選ぶ',
+    takePhoto: 'カメラで撮る',
+    selectedCount: (n: number) => `${n}枚選択中`,
+    recentMulti: '最近のスクリーンショット · 複数選択OK',
+    clearSelection: '選択解除',
+    savingProgress: (done: number, total: number) => `${done}/${total}枚 保存中...`,
+    loadRecent: '最近のスクリーンショットを読み込む',
+    noRecent: '最近のスクリーンショットはありません。アルバムから選んでください。',
+    recent: '最近のスクリーンショット',
+    recentDenied: '写真へのアクセスがオフのため読み込めません。設定で許可してください。',
+    notePlaceholder: '保存した理由を一言メモすると後で探しやすいです(任意)',
+    saveFailed: (e: string) => `保存できませんでした: ${e}`,
+    mehhHint: '保存後は[Mehhに戻る]で戻れます',
+    saveN: (n: number) => `${n}枚を保存`,
+    save: '保存する',
+    savedN: (n: number) => `${n}件保存しました`,
+    failedN: (n: number) => `${n}件は保存できませんでした。`,
+    unclassifiedConsentN: (n: number) => `${n}件はAI分析に未同意のため未分類に入れました`,
+    unclassifiedQuotaN: (n: number) => `${n}件は今月のAI整理を使い切ったため未分類に入れました`,
+    originalsDeleted: '元の写真を削除しました。保存したものはCortexに残っています。',
+    deleteOriginalsQ: (n: number) => `整理した元の写真${n}枚を削除しますか?`,
+    failedKept: (n: number) => `保存に失敗した${n}枚は削除しません。`,
+    galleryOnly: 'ギャラリーから消えるだけで、Cortexには残ります。',
+    keep: 'そのままにする',
+    deleteOriginals: '元の写真を削除',
+    aiConsent: 'AI分析に同意',
+    proNow: 'Proですぐ整理',
+    findLater: '単語ひとつで、また呼び出せます。',
+    analyzingTags: 'タイトルとタグを分析中です',
+    unclassifiedConsent: 'AI分析に未同意のため未分類に入れました',
+    unclassifiedQuota: '今月のAI整理を使い切ったため未分類に入れました',
+    open: '開く',
+  },
+  'zh-Hans': {
+    backToMehh: '返回 Mehh',
+    photoAccess: '照片访问',
+    camera: '相机',
+    allFailed: '全部保存失败',
+    quotaNoConsent: '尚未同意 AI 分析，将放入未分类（照样保存）',
+    quotaBulk: (n: number) => `AI 会逐张添加标题和标签 · 本月剩余 ${n} 次`,
+    quotaOver: (n: number) => `${n} 张将放入未分类（照样保存）`,
+    quotaUsedUp: '本月 AI 整理已用完，将放入未分类（照样保存）',
+    quotaLeft: (n: number) => `本月 AI 整理剩余 ${n} 次`,
+    heading: '要保存什么？',
+    intro: '从其他应用分享、粘贴文字，或选张照片来保存。',
+    repickPhoto: '删除照片并重选',
+    clearLink: '清除并手动输入',
+    memoBulkPlaceholder: '给所选照片一起加备注（可选）— 例：济州旅行美食',
+    memoPlaceholder: '例：圣水洞新开的可颂华夫店超好吃',
+    pickAlbum: '从相册选择',
+    takePhoto: '拍照',
+    selectedCount: (n: number) => `已选 ${n} 张`,
+    recentMulti: '最近截图 · 可多选',
+    clearSelection: '取消选择',
+    savingProgress: (done: number, total: number) => `正在保存 ${done}/${total} 张...`,
+    loadRecent: '加载最近截图',
+    noRecent: '没有最近截图，请从相册选择。',
+    recent: '最近截图',
+    recentDenied: '照片访问权限已关闭，无法加载最近截图。请在设置中允许。',
+    notePlaceholder: '写一句为什么保存，以后更好找（可选）',
+    saveFailed: (e: string) => `保存失败：${e}`,
+    mehhHint: '保存后点 [返回 Mehh] 即可返回',
+    saveN: (n: number) => `保存 ${n} 张`,
+    save: '保存',
+    savedN: (n: number) => `已保存 ${n} 项`,
+    failedN: (n: number) => `${n} 项保存失败。`,
+    unclassifiedConsentN: (n: number) => `${n} 项因尚未同意 AI 分析，已放入未分类`,
+    unclassifiedQuotaN: (n: number) => `${n} 项因本月 AI 整理已用完，已放入未分类`,
+    originalsDeleted: '原图已删除，保存的内容仍在 Cortex 中。',
+    deleteOriginalsQ: (n: number) => `删除已整理的 ${n} 张原图？`,
+    failedKept: (n: number) => `保存失败的 ${n} 张不会删除。`,
+    galleryOnly: '只从相册删除，Cortex 中仍会保留。',
+    keep: '保留',
+    deleteOriginals: '删除原图',
+    aiConsent: '同意 AI 分析',
+    proNow: '用 Pro 立即整理',
+    findLater: '只需输入一个词，就能再找回来。',
+    analyzingTags: '正在分析标题和标签',
+    unclassifiedConsent: '尚未同意 AI 分析，已放入未分类',
+    unclassifiedQuota: '本月 AI 整理已用完，已放入未分类',
+    open: '打开',
+  },
+  'zh-Hant': {
+    backToMehh: '返回 Mehh',
+    photoAccess: '照片存取',
+    camera: '相機',
+    allFailed: '全部儲存失敗',
+    quotaNoConsent: '尚未同意 AI 分析，將放入未分類（照樣儲存）',
+    quotaBulk: (n: number) => `AI 會逐張加上標題和標籤 · 本月剩餘 ${n} 次`,
+    quotaOver: (n: number) => `${n} 張將放入未分類（照樣儲存）`,
+    quotaUsedUp: '本月 AI 整理已用完，將放入未分類（照樣儲存）',
+    quotaLeft: (n: number) => `本月 AI 整理剩餘 ${n} 次`,
+    heading: '要儲存什麼？',
+    intro: '從其他 App 分享、貼上文字，或選張照片來儲存。',
+    repickPhoto: '刪除照片並重選',
+    clearLink: '清除並手動輸入',
+    memoBulkPlaceholder: '為所選照片一起加備註（選填）— 例：濟州旅行美食',
+    memoPlaceholder: '例：聖水洞新開的可頌鬆餅店超好吃',
+    pickAlbum: '從相簿選擇',
+    takePhoto: '拍照',
+    selectedCount: (n: number) => `已選 ${n} 張`,
+    recentMulti: '最近截圖 · 可多選',
+    clearSelection: '取消選擇',
+    savingProgress: (done: number, total: number) => `正在儲存 ${done}/${total} 張...`,
+    loadRecent: '載入最近截圖',
+    noRecent: '沒有最近截圖，請從相簿選擇。',
+    recent: '最近截圖',
+    recentDenied: '照片存取權限已關閉，無法載入最近截圖。請在設定中允許。',
+    notePlaceholder: '寫一句為什麼儲存，之後更好找（選填）',
+    saveFailed: (e: string) => `儲存失敗：${e}`,
+    mehhHint: '儲存後點 [返回 Mehh] 即可返回',
+    saveN: (n: number) => `儲存 ${n} 張`,
+    save: '儲存',
+    savedN: (n: number) => `已儲存 ${n} 項`,
+    failedN: (n: number) => `${n} 項儲存失敗。`,
+    unclassifiedConsentN: (n: number) => `${n} 項因尚未同意 AI 分析，已放入未分類`,
+    unclassifiedQuotaN: (n: number) => `${n} 項因本月 AI 整理已用完，已放入未分類`,
+    originalsDeleted: '原圖已刪除，儲存的內容仍在 Cortex 中。',
+    deleteOriginalsQ: (n: number) => `刪除已整理的 ${n} 張原圖？`,
+    failedKept: (n: number) => `儲存失敗的 ${n} 張不會刪除。`,
+    galleryOnly: '只從相簿刪除，Cortex 中仍會保留。',
+    keep: '保留',
+    deleteOriginals: '刪除原圖',
+    aiConsent: '同意 AI 分析',
+    proNow: '用 Pro 立即整理',
+    findLater: '只要輸入一個詞，就能再找回來。',
+    analyzingTags: '正在分析標題和標籤',
+    unclassifiedConsent: '尚未同意 AI 分析，已放入未分類',
+    unclassifiedQuota: '本月 AI 整理已用完，已放入未分類',
+    open: '打開',
+  },
+});
 
 // Android's OS share sheet lands here now (expo-share-intent, see
 // HomeScreen's handler) with sharedText/sharedUrl/sharedImageUri route
@@ -168,7 +418,7 @@ export default function SaveSheetScreen() {
     if (mehhSaved) tellMehhSaved(mehhSaved.count, mehhSaved.ids);
     close();
   };
-  const doneButton = mehhSaved ? <SolidButton label="Mehh로 돌아가기" theme={theme} onPress={backToMehh} /> : <SolidButton label="확인" theme={theme} onPress={() => close()} />;
+  const doneButton = mehhSaved ? <SolidButton label={S.backToMehh} theme={theme} onPress={backToMehh} /> : <SolidButton label={COMMON.ok} theme={theme} onPress={() => close()} />;
 
   const scrollRef = useRef<ScrollView>(null);
   // Text already in the memo when a voice dictation starts -- live partial
@@ -200,7 +450,7 @@ export default function SaveSheetScreen() {
   const pickFromLibrary = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      permissionToast('사진 접근', perm.canAskAgain);
+      permissionToast(S.photoAccess, perm.canAskAgain);
       return;
     }
     // No base64 / re-encode on native: asking the picker for both made it
@@ -242,7 +492,7 @@ export default function SaveSheetScreen() {
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      permissionToast('카메라', perm.canAskAgain);
+      permissionToast(S.camera, perm.canAskAgain);
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.8 });
@@ -327,7 +577,7 @@ export default function SaveSheetScreen() {
     const items = results.filter((item): item is ApiItem => item !== null);
     const failed = results.length - items.length;
     if (items.length === 0) {
-      setError(lastError ? friendlyError(lastError) : '전부 저장하지 못했어요');
+      setError(lastError ? friendlyError(lastError) : S.allFailed);
       setStatus('error');
       return;
     }
@@ -387,15 +637,15 @@ export default function SaveSheetScreen() {
     aiLeft === null
       ? ''
       : noConsent
-        ? 'AI 분석 동의 전이라 미분류함에 들어가요 (저장은 돼요)'
+        ? S.quotaNoConsent
         : saveCount > 1
-        ? [`AI가 한 장씩 제목·태그를 달아요 · 이번 달 ${aiLeft}건 남음`, saveCount > aiLeft ? `${saveCount - aiLeft}장은 미분류함에 들어가요 (저장은 돼요)` : null]
+        ? [S.quotaBulk(aiLeft), saveCount > aiLeft ? S.quotaOver(saveCount - aiLeft) : null]
             .filter(Boolean)
             .join('\n')
         : aiLeft === 0
-          ? '이번 달 AI 정리를 다 써서 미분류함에 들어가요 (저장은 돼요)'
+          ? S.quotaUsedUp
           : aiLeft <= 10
-            ? `이번 달 AI 정리 ${aiLeft}건 남음`
+            ? S.quotaLeft(aiLeft)
             : '';
 
   const bulkUnclassified = savedBulk ? savedBulk.items.filter((it) => it.classification_status === 'unclassified').length : 0;
@@ -435,10 +685,10 @@ export default function SaveSheetScreen() {
           <View style={styles.flexShrink}>
           <ScrollView ref={scrollRef} style={styles.flexShrink} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Heading theme={theme} offset={2}>
-              무엇을 저장할까요?
+              {S.heading}
             </Heading>
             <Text style={[styles.savedSub, { color: theme.sub }]}>
-              다른 앱에서 공유하거나, 텍스트를 붙여넣거나 사진을 골라서 저장해요.
+              {S.intro}
             </Text>
 
             {image ? (
@@ -446,7 +696,7 @@ export default function SaveSheetScreen() {
                 <Image source={{ uri: image.previewUri }} style={[styles.imagePreview, { borderColor: theme.line }]} />
                 <Pressable onPress={() => setImage(null)} disabled={status === 'saving'}>
                   <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5, marginTop: 10 }}>
-                    사진 지우고 다시 선택
+                    {S.repickPhoto}
                   </Text>
                 </Pressable>
               </View>
@@ -457,7 +707,7 @@ export default function SaveSheetScreen() {
                 </Text>
                 <Pressable onPress={() => setLinkUrl(null)} disabled={status === 'saving'}>
                   <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, marginTop: 10 }}>
-                    지우고 직접 입력
+                    {S.clearLink}
                   </Text>
                 </Pressable>
               </View>
@@ -472,8 +722,8 @@ export default function SaveSheetScreen() {
                   onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50)}
                   placeholder={
                     selectedScreenshots.length > 0
-                      ? '고른 사진들에 같이 남길 메모 (선택) — 예: 제주 여행 맛집들'
-                      : '예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래'
+                      ? S.memoBulkPlaceholder
+                      : S.memoPlaceholder
                   }
                   placeholderTextColor={theme.sub}
                   style={[
@@ -513,7 +763,7 @@ export default function SaveSheetScreen() {
                     style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
                   >
                     <Text style={pickTextStyle(theme)}>
-                      앨범에서 선택
+                      {S.pickAlbum}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -522,7 +772,7 @@ export default function SaveSheetScreen() {
                     style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
                   >
                     <Text style={pickTextStyle(theme)}>
-                      카메라로 촬영
+                      {S.takePhoto}
                     </Text>
                   </Pressable>
                 </View>
@@ -532,8 +782,8 @@ export default function SaveSheetScreen() {
                     <View style={styles.bulkHeader}>
                       <Text style={[styles.screenshotLabel, { color: theme.sub, marginBottom: 0 }]}>
                         {selectedScreenshots.length > 0
-                          ? `${selectedScreenshots.length}장 선택됨`
-                          : '최근 스크린샷 · 여러 장 선택 가능'}
+                          ? S.selectedCount(selectedScreenshots.length)
+                          : S.recentMulti}
                       </Text>
                       {selectedScreenshots.length > 0 && (
                         <Pressable
@@ -543,7 +793,7 @@ export default function SaveSheetScreen() {
                           disabled={status === 'saving'}
                         >
                           <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 12.5 }}>
-                            선택 취소
+                            {S.clearSelection}
                           </Text>
                         </Pressable>
                       )}
@@ -551,7 +801,7 @@ export default function SaveSheetScreen() {
                     {screenshotGrid}
                     {status === 'saving' && bulkProgress && (
                       <Text style={[styles.screenshotLabel, { color: theme.sub, marginTop: 10 }]}>
-                        {bulkProgress.done}/{bulkProgress.total}장 저장 중...
+                        {S.savingProgress(bulkProgress.done, bulkProgress.total)}
                       </Text>
                     )}
                   </View>
@@ -562,21 +812,21 @@ export default function SaveSheetScreen() {
                       <ActivityIndicator size="small" color={theme.accent} style={{ alignSelf: 'flex-start' }} />
                     ) : (
                       <Pressable onPress={requestScreenshotAccess} hitSlop={6}>
-                        <Text style={[styles.permissionHintText, { color: theme.accent }]}>최근 스크린샷 불러오기</Text>
+                        <Text style={[styles.permissionHintText, { color: theme.accent }]}>{S.loadRecent}</Text>
                       </Pressable>
                     )}
                   </View>
                 ) : screenshotsEmpty ? (
                   <View style={styles.screenshotSection}>
-                    <Text style={[styles.screenshotLabel, { color: theme.sub }]}>최근 스크린샷이 없어요. 앨범에서 선택해 주세요.</Text>
+                    <Text style={[styles.screenshotLabel, { color: theme.sub }]}>{S.noRecent}</Text>
                   </View>
                 ) : (
                   screenshotsPermissionDenied && (
                     <View style={styles.screenshotSection}>
-                      <Text style={[styles.screenshotLabel, { color: theme.sub }]}>최근 스크린샷</Text>
+                      <Text style={[styles.screenshotLabel, { color: theme.sub }]}>{S.recent}</Text>
                       <Pressable onPress={() => Linking.openSettings()}>
                         <Text style={[styles.permissionHintText, { color: theme.accent }]}>
-                          사진 접근 권한이 꺼져 있어서 최근 스크린샷을 불러올 수 없어요. 설정에서 허용해주세요.
+                          {S.recentDenied}
                         </Text>
                       </Pressable>
                     </View>
@@ -592,7 +842,7 @@ export default function SaveSheetScreen() {
                   onChangeText={setNote}
                   editable={status !== 'saving'}
                   maxLength={200}
-                  placeholder="왜 저장했는지 한 줄 적어두면 나중에 찾기 쉬워요 (선택)"
+                  placeholder={S.notePlaceholder}
                   placeholderTextColor={theme.sub}
                   style={[
                     styles.input,
@@ -614,7 +864,7 @@ export default function SaveSheetScreen() {
 
             {status === 'error' && (
               <Text style={{ color: theme.danger, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-                저장 실패: {error}
+                {S.saveFailed(error)}
               </Text>
             )}
           </ScrollView>
@@ -622,13 +872,13 @@ export default function SaveSheetScreen() {
 
             {quotaLine !== '' && <Text style={[styles.quotaLine, { color: theme.sub }]}>{quotaLine}</Text>}
             {returnToMehh && (
-              <Text style={[styles.quotaLine, { color: theme.sub }]}>저장 후 [Mehh로 돌아가기]로 돌아가요</Text>
+              <Text style={[styles.quotaLine, { color: theme.sub }]}>{S.mehhHint}</Text>
             )}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
-              <GhostButton label="취소" theme={theme} onPress={close} disabled={saving} />
+              <GhostButton label={COMMON.cancel} theme={theme} onPress={close} disabled={saving} />
               <SolidButton
-                label={selectedScreenshots.length > 1 ? `${selectedScreenshots.length}장 저장하기` : '저장하기'}
+                label={selectedScreenshots.length > 1 ? S.saveN(selectedScreenshots.length) : S.save}
                 theme={theme}
                 onPress={submit}
                 loading={status === 'saving'}
@@ -663,16 +913,16 @@ export default function SaveSheetScreen() {
                   {txt.savedLabel}
                 </Text>
                 <Heading theme={theme} offset={2} style={{ marginTop: 8 }}>
-                  {savedBulk.items.length}개 저장했어요
+                  {S.savedN(savedBulk.items.length)}
                 </Heading>
                 {savedBulk.failed > 0 && (
-                  <Text style={[styles.savedSub, { color: theme.danger }]}>{savedBulk.failed}개는 저장하지 못했어요.</Text>
+                  <Text style={[styles.savedSub, { color: theme.danger }]}>{S.failedN(savedBulk.failed)}</Text>
                 )}
                 {bulkUnclassified > 0 && (
                   <Text style={[styles.savedSub, { color: theme.sub }]}>
                     {bulkConsent
-                      ? `${bulkUnclassified}개는 AI 분석 동의 전이라 미분류함에 넣어뒀어요`
-                      : `${bulkUnclassified}개는 이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요`}
+                      ? S.unclassifiedConsentN(bulkUnclassified)
+                      : S.unclassifiedQuotaN(bulkUnclassified)}
                   </Text>
                 )}
               </View>
@@ -694,7 +944,7 @@ export default function SaveSheetScreen() {
                     >
                       {itemTitle(item)}
                     </Text>
-                    {!pending && <Text style={{ fontFamily: MONO, fontSize: 10, color: theme.sub }}>{item.category}</Text>}
+                    {!pending && <Text style={{ fontFamily: MONO, fontSize: 10, color: theme.sub }}>{categoryLabel(item.category)}</Text>}
                   </Card>
                 );
               })}
@@ -706,20 +956,20 @@ export default function SaveSheetScreen() {
             {savedBulk && deletableIds(savedBulk.savedShotIds).length > 0 && deleteOriginalState !== 'kept' && (
               <View style={[styles.deleteOriginalCard, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
                 {deleteOriginalState === 'done' ? (
-                  <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>원본 사진을 지웠어요. 저장한 건 Cortex에 그대로 있어요.</Text>
+                  <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>{S.originalsDeleted}</Text>
                 ) : (
                   <>
                     <Text style={[styles.deleteOriginalTitle, { color: theme.ink }]}>
-                      {`정리한 원본 사진 ${deletableIds(savedBulk.savedShotIds).length}장을 지울까요?`}
+                      {S.deleteOriginalsQ(deletableIds(savedBulk.savedShotIds).length)}
                     </Text>
                     <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>
                       {savedBulk.failed > 0
-                        ? `저장에 실패한 ${savedBulk.failed}장은 지우지 않아요.`
-                        : '갤러리에서만 지워지고, Cortex에는 그대로 남아요.'}
+                        ? S.failedKept(savedBulk.failed)
+                        : S.galleryOnly}
                     </Text>
                     <View style={styles.deleteOriginalButtons}>
-                      <GhostButton label="그대로 두기" theme={theme} size="sm" onPress={() => setDeleteOriginalState('kept')} disabled={deleteOriginalState === 'deleting'} />
-                      <SolidButton label="원본 지우기" theme={theme} size="sm" flex={1} variant="danger" onPress={deleteOriginalScreenshots} loading={deleteOriginalState === 'deleting'} />
+                      <GhostButton label={S.keep} theme={theme} size="sm" onPress={() => setDeleteOriginalState('kept')} disabled={deleteOriginalState === 'deleting'} />
+                      <SolidButton label={S.deleteOriginals} theme={theme} size="sm" flex={1} variant="danger" onPress={deleteOriginalScreenshots} loading={deleteOriginalState === 'deleting'} />
                     </View>
                   </>
                 )}
@@ -729,9 +979,9 @@ export default function SaveSheetScreen() {
             <ButtonRow theme={theme} style={styles.buttonRow}>
               {bulkUnclassified > 0 &&
                 (bulkConsent ? (
-                  <GhostButton label="AI 분석 동의" theme={theme} onPress={() => navigation.replace('AiConsent')} />
+                  <GhostButton label={S.aiConsent} theme={theme} onPress={() => navigation.replace('AiConsent')} />
                 ) : (
-                  <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+                  <GhostButton label={S.proNow} theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
                 ))}
               {doneButton}
             </ButtonRow>
@@ -767,7 +1017,7 @@ export default function SaveSheetScreen() {
                   <Heading theme={theme} offset={2} style={{ marginTop: 8 }}>
                     {txt.savedTitle}
                   </Heading>
-                  <Text style={[styles.savedSub, { color: theme.sub }]}>단어 하나만 적으면 다시 꺼내 드려요.</Text>
+                  <Text style={[styles.savedSub, { color: theme.sub }]}>{S.findLater}</Text>
                 </View>
               </View>
 
@@ -786,7 +1036,7 @@ export default function SaveSheetScreen() {
                   </Text>
                   {saved.classification_status !== 'pending' && saved.classification_status !== 'unclassified' && (
                     <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-                      {saved.category}
+                      {categoryLabel(saved.category)}
                     </Text>
                   )}
                 </View>
@@ -811,7 +1061,7 @@ export default function SaveSheetScreen() {
                     <View style={styles.analyzingRow}>
                       <ActivityIndicator size="small" color={theme.accent} />
                       <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
-                        제목·태그를 분석하고 있어요
+                        {S.analyzingTags}
                       </Text>
                     </View>
                   </>
@@ -821,7 +1071,7 @@ export default function SaveSheetScreen() {
                   <>
                     {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]}>{saved.raw_text}</Text>}
                     <Text style={[styles.snippet, { color: theme.sub }]}>
-                      {saved.unclassified_reason === 'consent' ? 'AI 분석 동의 전이라 미분류함에 넣어뒀어요' : '이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요'}
+                      {saved.unclassified_reason === 'consent' ? S.unclassifiedConsent : S.unclassifiedQuota}
                     </Text>
                   </>
                 ) : (
@@ -860,12 +1110,12 @@ export default function SaveSheetScreen() {
                     tags ready to fix -- no hunting for it on home. */}
                 {saved.classification_status === 'unclassified' ? (
                   saved.unclassified_reason === 'consent' ? (
-                    <GhostButton label="AI 분석 동의" theme={theme} onPress={() => navigation.replace('AiConsent')} />
+                    <GhostButton label={S.aiConsent} theme={theme} onPress={() => navigation.replace('AiConsent')} />
                   ) : (
-                    <GhostButton label="Pro로 바로 정리" theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
+                    <GhostButton label={S.proNow} theme={theme} onPress={() => navigation.replace('Paywall', { reason: 'classify' })} />
                   )
                 ) : (
-                  <GhostButton label="열어 보기" theme={theme} onPress={() => navigation.replace('ItemDetail', { item: saved })} />
+                  <GhostButton label={S.open} theme={theme} onPress={() => navigation.replace('ItemDetail', { item: saved })} />
                 )}
                 {doneButton}
               </ButtonRow>

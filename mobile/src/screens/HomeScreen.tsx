@@ -22,6 +22,176 @@ import { IconButton, SolidButton } from '../components/Buttons';
 import { SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
+import { strings } from '../i18n';
+import { COMMON, TIME } from '../i18n/common';
+
+const S = strings({
+  ko: {
+    tagAdded: (n: number, tag: string) => `${n}개에 '${tag}'를 붙였어요`,
+    tagRemoved: (n: number, tag: string) => `${n}개에서 '${tag}'를 뺐어요`,
+    tagAbsent: (n: number) => `${n}개는 원래 없었어요`,
+    failed: (n: number) => `실패 ${n}개`,
+    movedToTrash: (n: number) => `${n}개를 휴지통으로 옮겼어요`,
+    sortStarted: (n: number) => `${n}건 정리를 시작했어요 · '모두'에서 분석 중이에요`,
+    sortLeft: (n: number) => `${n}건은 아직 기다려요`,
+    quotaUsedUp: '이번 달 AI 정리를 다 썼어요',
+    nothingToSort: '정리할 수 있는 항목이 없어요',
+    trash: '휴지통',
+    stats: '통계',
+    account: '내 계정',
+    all: '모두',
+    waitingCount: (n: number) => `${n}건 정리 대기`,
+    refillsOn: (date: string) => `${date}에 다시 생겨요`,
+    usesRest: (n: number, date: string) => `남은 ${n}건을 다 써요 · 이후 저장은 ${date}까지 대기`,
+    recentFirst: (n: number, left: number) => `최근 것부터 ${n}건 · 이번 달 AI 정리 ${left}건 남음`,
+    sortWithAi: (n: number) => `AI로 정리 (${n})`,
+    sortWithPro: 'Pro로 정리',
+    selected: (n: number) => `${n}개 선택됨`,
+    toTrash: '휴지통으로',
+    select: '선택',
+    composeSelected: '✦ 모아서 만들기',
+    compose: '모아서 만들기',
+    addTag: '태그 추가',
+    removeTag: '태그 제거',
+    tagToAdd: '추가할 태그',
+    tagToRemove: '제거할 태그',
+    apply: '적용',
+    empty: '아직 저장된 기억이 없어요.',
+    nextMonth: '다음 달 1일',
+  },
+  en: {
+    tagAdded: (n: number, tag: string) => `Added '${tag}' to ${n}`,
+    tagRemoved: (n: number, tag: string) => `Removed '${tag}' from ${n}`,
+    tagAbsent: (n: number) => `${n} didn't have it`,
+    failed: (n: number) => `${n} failed`,
+    movedToTrash: (n: number) => `Moved ${n} to trash`,
+    sortStarted: (n: number) => `Sorting ${n} · see 'All'`,
+    sortLeft: (n: number) => `${n} still waiting`,
+    quotaUsedUp: "This month's AI sorting is used up",
+    nothingToSort: 'Nothing to sort',
+    trash: 'Trash',
+    stats: 'Stats',
+    account: 'My account',
+    all: 'All',
+    waitingCount: (n: number) => `${n} waiting to sort`,
+    refillsOn: (date: string) => `Refills on ${date}`,
+    usesRest: (n: number, date: string) => `Uses your last ${n} · new saves wait until ${date}`,
+    recentFirst: (n: number, left: number) => `${n}, newest first · ${left} AI sorts left this month`,
+    sortWithAi: (n: number) => `Sort with AI (${n})`,
+    sortWithPro: 'Sort with Pro',
+    selected: (n: number) => `${n} selected`,
+    toTrash: 'Move to trash',
+    select: 'Select',
+    composeSelected: '✦ Combine',
+    compose: 'Combine',
+    addTag: 'Add tag',
+    removeTag: 'Remove tag',
+    tagToAdd: 'Tag to add',
+    tagToRemove: 'Tag to remove',
+    apply: 'Apply',
+    empty: 'Nothing saved yet.',
+    nextMonth: 'the 1st of next month',
+  },
+  ja: {
+    tagAdded: (n: number, tag: string) => `${n}件に「${tag}」を付けました`,
+    tagRemoved: (n: number, tag: string) => `${n}件から「${tag}」を外しました`,
+    tagAbsent: (n: number) => `${n}件は元々ありませんでした`,
+    failed: (n: number) => `失敗 ${n}件`,
+    movedToTrash: (n: number) => `${n}件をゴミ箱に移しました`,
+    sortStarted: (n: number) => `${n}件の整理を始めました · 「すべて」で分析中です`,
+    sortLeft: (n: number) => `${n}件はまだ待機中です`,
+    quotaUsedUp: '今月のAI整理を使い切りました',
+    nothingToSort: '整理できる項目がありません',
+    trash: 'ゴミ箱',
+    stats: '統計',
+    account: 'マイアカウント',
+    all: 'すべて',
+    waitingCount: (n: number) => `${n}件 整理待ち`,
+    refillsOn: (date: string) => `${date}に回復します`,
+    usesRest: (n: number, date: string) => `残り${n}件を使い切ります · 以降の保存は${date}まで待機`,
+    recentFirst: (n: number, left: number) => `新しい順に${n}件 · 今月のAI整理 残り${left}件`,
+    sortWithAi: (n: number) => `AIで整理 (${n})`,
+    sortWithPro: 'Proで整理',
+    selected: (n: number) => `${n}件選択中`,
+    toTrash: 'ゴミ箱へ',
+    select: '選択',
+    composeSelected: '✦ まとめて作る',
+    compose: 'まとめて作る',
+    addTag: 'タグ追加',
+    removeTag: 'タグ削除',
+    tagToAdd: '追加するタグ',
+    tagToRemove: '削除するタグ',
+    apply: '適用',
+    empty: 'まだ保存されたものがありません。',
+    nextMonth: '来月1日',
+  },
+  'zh-Hans': {
+    tagAdded: (n: number, tag: string) => `已给 ${n} 项加上「${tag}」`,
+    tagRemoved: (n: number, tag: string) => `已从 ${n} 项移除「${tag}」`,
+    tagAbsent: (n: number) => `${n} 项原本就没有`,
+    failed: (n: number) => `失败 ${n} 项`,
+    movedToTrash: (n: number) => `已将 ${n} 项移到回收站`,
+    sortStarted: (n: number) => `开始整理 ${n} 项 · 在「全部」中分析`,
+    sortLeft: (n: number) => `${n} 项仍在等待`,
+    quotaUsedUp: '本月 AI 整理次数已用完',
+    nothingToSort: '没有可整理的项目',
+    trash: '回收站',
+    stats: '统计',
+    account: '我的账户',
+    all: '全部',
+    waitingCount: (n: number) => `${n} 项待整理`,
+    refillsOn: (date: string) => `${date}恢复`,
+    usesRest: (n: number, date: string) => `将用完剩余 ${n} 次 · 之后的保存等到${date}`,
+    recentFirst: (n: number, left: number) => `从最新开始 ${n} 项 · 本月 AI 整理剩 ${left} 次`,
+    sortWithAi: (n: number) => `用 AI 整理 (${n})`,
+    sortWithPro: '用 Pro 整理',
+    selected: (n: number) => `已选 ${n} 项`,
+    toTrash: '移到回收站',
+    select: '选择',
+    composeSelected: '✦ 汇总生成',
+    compose: '汇总生成',
+    addTag: '添加标签',
+    removeTag: '移除标签',
+    tagToAdd: '要添加的标签',
+    tagToRemove: '要移除的标签',
+    apply: '应用',
+    empty: '还没有保存任何内容。',
+    nextMonth: '下月1日',
+  },
+  'zh-Hant': {
+    tagAdded: (n: number, tag: string) => `已為 ${n} 項加上「${tag}」`,
+    tagRemoved: (n: number, tag: string) => `已從 ${n} 項移除「${tag}」`,
+    tagAbsent: (n: number) => `${n} 項原本就沒有`,
+    failed: (n: number) => `失敗 ${n} 項`,
+    movedToTrash: (n: number) => `已將 ${n} 項移到垃圾桶`,
+    sortStarted: (n: number) => `開始整理 ${n} 項 · 在「全部」中分析`,
+    sortLeft: (n: number) => `${n} 項仍在等待`,
+    quotaUsedUp: '本月 AI 整理次數已用完',
+    nothingToSort: '沒有可整理的項目',
+    trash: '垃圾桶',
+    stats: '統計',
+    account: '我的帳戶',
+    all: '全部',
+    waitingCount: (n: number) => `${n} 項待整理`,
+    refillsOn: (date: string) => `${date}恢復`,
+    usesRest: (n: number, date: string) => `將用完剩餘 ${n} 次 · 之後的儲存等到${date}`,
+    recentFirst: (n: number, left: number) => `從最新開始 ${n} 項 · 本月 AI 整理剩 ${left} 次`,
+    sortWithAi: (n: number) => `用 AI 整理 (${n})`,
+    sortWithPro: '用 Pro 整理',
+    selected: (n: number) => `已選 ${n} 項`,
+    toTrash: '移到垃圾桶',
+    select: '選擇',
+    composeSelected: '✦ 彙整生成',
+    compose: '彙整生成',
+    addTag: '新增標籤',
+    removeTag: '移除標籤',
+    tagToAdd: '要新增的標籤',
+    tagToRemove: '要移除的標籤',
+    apply: '套用',
+    empty: '還沒有儲存任何內容。',
+    nextMonth: '下月1日',
+  },
+});
 
 // The hero stat box's own front-layer fill -- mirrors cardShellStyle in
 // ListItems.tsx (line/bordered/card unchanged there, layered here reuses
@@ -260,9 +430,9 @@ export default function HomeScreen() {
     );
     showToast(
       [
-        bulkEditing === 'add' ? `${done}개에 '${tag}'를 붙였어요` : `${done}개에서 '${tag}'를 뺐어요`,
-        absent ? `${absent}개는 원래 없었어요` : null,
-        failed ? `실패 ${failed}개` : null,
+        bulkEditing === 'add' ? S.tagAdded(done, tag) : S.tagRemoved(done, tag),
+        absent ? S.tagAbsent(absent) : null,
+        failed ? S.failed(failed) : null,
       ]
         .filter(Boolean)
         .join(' · ')
@@ -295,7 +465,7 @@ export default function HomeScreen() {
     );
     setWaitingItems((current) => current?.filter((it) => !moved.includes(it.id)) ?? null);
     showToast(
-      [moved.length ? `${moved.length}개를 휴지통으로 옮겼어요` : null, failed ? `실패 ${failed}개` : null]
+      [moved.length ? S.movedToTrash(moved.length) : null, failed ? S.failed(failed) : null]
         .filter(Boolean)
         .join(' · ')
     );
@@ -334,13 +504,13 @@ export default function HomeScreen() {
       showToast(
         started > 0
           ? [
-              `${started}건 정리를 시작했어요 · '모두'에서 분석 중이에요`,
-              left > 0 ? `${left}건은 아직 기다려요` : null,
-              started >= classifyLeft ? '이번 달 AI 정리를 다 썼어요' : null,
+              S.sortStarted(started),
+              left > 0 ? S.sortLeft(left) : null,
+              started >= classifyLeft ? S.quotaUsedUp : null,
             ]
               .filter(Boolean)
               .join(' · ')
-          : '정리할 수 있는 항목이 없어요'
+          : S.nothingToSort
       );
     } catch (err) {
       showToast(friendlyError(err));
@@ -372,13 +542,13 @@ export default function HomeScreen() {
             CORTEX
           </Text>
           <View style={styles.brandRowActions}>
-            <IconButton theme={theme} onPress={() => navigation.navigate('Trash')} label="휴지통">
+            <IconButton theme={theme} onPress={() => navigation.navigate('Trash')} label={S.trash}>
               <TrashIcon size={14} color={theme.ink} strokeWidth={1.3} />
             </IconButton>
-            <IconButton theme={theme} onPress={() => navigation.navigate('Stats')} label="통계">
+            <IconButton theme={theme} onPress={() => navigation.navigate('Stats')} label={S.stats}>
               <StatsIcon size={15} color={theme.ink} strokeWidth={1.4} />
             </IconButton>
-            <IconButton theme={theme} onPress={() => navigation.navigate('Profile')} label="내 계정">
+            <IconButton theme={theme} onPress={() => navigation.navigate('Profile')} label={S.account}>
               <ProfileIcon size={15} color={theme.ink} strokeWidth={1.4} />
             </IconButton>
           </View>
@@ -481,7 +651,7 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <TabChip label="모두" active={activeTag === null} theme={theme} onPress={() => changeTag(null)} />
+        <TabChip label={S.all} active={activeTag === null} theme={theme} onPress={() => changeTag(null)} />
         {/* Fixed, not removable: the pile of saves the month's AI quota
             didn't cover. Its growing count is the point -- see Paywall. */}
         {unclassifiedCount > 0 && (
@@ -498,20 +668,20 @@ export default function HomeScreen() {
         <View style={[styles.backlog, { paddingHorizontal: boxed ? 24 : 26 }]}>
           <View style={styles.backlogText}>
             <Text style={[styles.backlogTitle, { color: theme.ink }]} numberOfLines={1}>
-              {unclassifiedCount}건 정리 대기
+              {S.waitingCount(unclassifiedCount)}
             </Text>
             {/* When the press would spend the whole month's rest, say so --
                 every save after it waits here until the reset. */}
             <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={2}>
               {classifyLeft === 0
-                ? `${resetLabel(plan?.resetsAt)}에 다시 생겨요`
+                ? S.refillsOn(resetLabel(plan?.resetsAt))
                 : classifyLeft <= unclassifiedCount
-                  ? `남은 ${classifyLeft}건을 다 써요 · 이후 저장은 ${resetLabel(plan?.resetsAt)}까지 대기`
-                  : `최근 것부터 ${unclassifiedCount}건 · 이번 달 AI 정리 ${classifyLeft}건 남음`}
+                  ? S.usesRest(classifyLeft, resetLabel(plan?.resetsAt))
+                  : S.recentFirst(unclassifiedCount, classifyLeft)}
             </Text>
           </View>
           <SolidButton
-            label={classifyLeft > 0 ? `AI로 정리 (${Math.min(classifyLeft, unclassifiedCount)})` : 'Pro로 정리'}
+            label={classifyLeft > 0 ? S.sortWithAi(Math.min(classifyLeft, unclassifiedCount)) : S.sortWithPro}
             theme={theme}
             size="sm"
             flex={0}
@@ -526,13 +696,13 @@ export default function HomeScreen() {
           <View style={styles.bulkBarRow}>
             {selectMode ? (
               <>
-                <Text style={[styles.bulkBarText, { color: theme.sub }]}>{selectedIds.size}개 선택됨</Text>
+                <Text style={[styles.bulkBarText, { color: theme.sub }]}>{S.selected(selectedIds.size)}</Text>
                 <View style={styles.bulkBarActions}>
                   {bulkApplying ? (
                     <ActivityIndicator color={theme.danger} size="small" />
                   ) : (
                     <Pressable onPress={trashSelected} disabled={selectedIds.size === 0}>
-                      <Text style={[styles.bulkBarLink, { color: theme.danger, opacity: selectedIds.size ? 1 : 0.4 }]}>휴지통으로</Text>
+                      <Text style={[styles.bulkBarLink, { color: theme.danger, opacity: selectedIds.size ? 1 : 0.4 }]}>{S.toTrash}</Text>
                     </Pressable>
                   )}
                   <Pressable
@@ -542,7 +712,7 @@ export default function HomeScreen() {
                     }}
                     disabled={bulkApplying}
                   >
-                    <Text style={[styles.bulkBarLink, { color: theme.sub }]}>취소</Text>
+                    <Text style={[styles.bulkBarLink, { color: theme.sub }]}>{COMMON.cancel}</Text>
                   </Pressable>
                 </View>
               </>
@@ -550,7 +720,7 @@ export default function HomeScreen() {
               <>
                 <View />
                 <Pressable onPress={() => setSelectMode(true)} hitSlop={6}>
-                  <Text style={[styles.bulkBarLink, { color: theme.sub }]}>선택</Text>
+                  <Text style={[styles.bulkBarLink, { color: theme.sub }]}>{S.select}</Text>
                 </Pressable>
               </>
             )}
@@ -563,7 +733,7 @@ export default function HomeScreen() {
           {selectMode ? (
             <>
               <View style={styles.bulkBarRow}>
-                <Text style={[styles.bulkBarText, { color: theme.sub }]}>{selectedIds.size}개 선택됨</Text>
+                <Text style={[styles.bulkBarText, { color: theme.sub }]}>{S.selected(selectedIds.size)}</Text>
                 <View style={styles.bulkBarActions}>
                   {/* Only the picked ones as materials (decision Q5). */}
                   {selectedIds.size >= 2 && (
@@ -575,17 +745,17 @@ export default function HomeScreen() {
                         navigation.navigate('Compose', { tag: activeTag, count: ids.length, itemIds: ids, suggested: suggestFormat(listSource.filter((it) => ids.includes(it.id))) });
                       }}
                     >
-                      <Text style={[styles.bulkBarLink, { color: theme.accent }]}>✦ 모아서 만들기</Text>
+                      <Text style={[styles.bulkBarLink, { color: theme.accent }]}>{S.composeSelected}</Text>
                     </Pressable>
                   )}
                   <Pressable onPress={() => setBulkEditing('add')} disabled={selectedIds.size === 0}>
                     <Text style={[styles.bulkBarLink, { color: theme.accent, opacity: selectedIds.size ? 1 : 0.4 }]}>
-                      태그 추가
+                      {S.addTag}
                     </Text>
                   </Pressable>
                   <Pressable onPress={() => setBulkEditing('remove')} disabled={selectedIds.size === 0}>
                     <Text style={[styles.bulkBarLink, { color: theme.accent, opacity: selectedIds.size ? 1 : 0.4 }]}>
-                      태그 제거
+                      {S.removeTag}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -596,7 +766,7 @@ export default function HomeScreen() {
                       setBulkTagDraft('');
                     }}
                   >
-                    <Text style={[styles.bulkBarLink, { color: theme.sub }]}>취소</Text>
+                    <Text style={[styles.bulkBarLink, { color: theme.sub }]}>{COMMON.cancel}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -607,7 +777,7 @@ export default function HomeScreen() {
                     onChangeText={setBulkTagDraft}
                     autoFocus
                     editable={!bulkApplying}
-                    placeholder={bulkEditing === 'add' ? '추가할 태그' : '제거할 태그'}
+                    placeholder={bulkEditing === 'add' ? S.tagToAdd : S.tagToRemove}
                     placeholderTextColor={theme.sub}
                     onSubmitEditing={applyBulkTag}
                     style={{ flex: 1, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5, padding: 0, outlineWidth: 0 }}
@@ -617,7 +787,7 @@ export default function HomeScreen() {
                   ) : (
                     <Pressable onPress={applyBulkTag} disabled={!bulkTagDraft.trim()}>
                       <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>
-                        적용
+                        {S.apply}
                       </Text>
                     </Pressable>
                   )}
@@ -634,13 +804,13 @@ export default function HomeScreen() {
                   style={styles.composeLink}
                 >
                   <SparkleIcon color={theme.accent} size={13} strokeWidth={1.5} />
-                  <Text style={[styles.bulkBarLink, { color: theme.accent }]}>모아서 만들기</Text>
+                  <Text style={[styles.bulkBarLink, { color: theme.accent }]}>{S.compose}</Text>
                 </Pressable>
               ) : (
                 <View />
               )}
               <Pressable onPress={() => setSelectMode(true)} hitSlop={6}>
-                <Text style={[styles.bulkBarLink, { color: theme.sub }]}>선택</Text>
+                <Text style={[styles.bulkBarLink, { color: theme.sub }]}>{S.select}</Text>
               </Pressable>
             </View>
           )}
@@ -653,7 +823,7 @@ export default function HomeScreen() {
         error={items.length === 0 ? error : null}
         onRetry={load}
         empty={items.length === 0}
-        emptyText="아직 저장된 기억이 없어요."
+        emptyText={S.empty}
       >
         <FlatList
           // Android's default clips each row to its measured frame, which
@@ -698,9 +868,9 @@ const UNCLASSIFIED = '__unclassified__';
 
 // "다음 달 1일" style label for when the monthly quota resets.
 function resetLabel(iso?: string): string {
-  if (!iso) return '다음 달 1일';
+  if (!iso) return S.nextMonth;
   const d = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000); // Korea time
-  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+  return TIME.monthDay(d.getUTCMonth() + 1, d.getUTCDate());
 }
 
 const styles = StyleSheet.create({

@@ -1,3 +1,4 @@
+import { DEVICE_LOCALE, strings } from '../i18n';
 import { Platform } from 'react-native';
 import { supabase } from '../auth/supabase';
 
@@ -106,24 +107,87 @@ export interface QuotaError {
   resetsAt: string;
 }
 
+const ERR = strings({
+  ko: {
+    aiConsent: 'AI 분석 동의가 필요해요.',
+    aiUnavailable: 'AI가 잠시 쉬고 있어요. 잠시 후 다시 시도해 주세요.',
+    quota: '이번 달 사용량을 다 썼어요.',
+    tooMany: '요청이 많아요. 잠시 후 다시 시도해 주세요.',
+    signedOut: '로그인이 풀렸어요. 다시 로그인해 주세요.',
+    tooLarge: '사진이 너무 커요.',
+    server: '서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요.',
+    generic: '요청을 처리하지 못했어요.',
+    timeout: '응답이 늦어요. 연결을 확인하고 다시 시도해 주세요.',
+    offline: '인터넷 연결을 확인해 주세요.',
+  },
+  en: {
+    aiConsent: 'AI analysis consent is needed.',
+    aiUnavailable: 'AI is taking a short break. Please try again shortly.',
+    quota: "You've used up this month's limit.",
+    tooMany: 'Too many requests. Please try again shortly.',
+    signedOut: "You've been logged out. Please log in again.",
+    tooLarge: 'The photo is too large.',
+    server: 'Something went wrong on our server. Please try again shortly.',
+    generic: "Couldn't process the request.",
+    timeout: 'Taking too long. Check your connection and try again.',
+    offline: 'Please check your internet connection.',
+  },
+  ja: {
+    aiConsent: 'AI分析への同意が必要です。',
+    aiUnavailable: 'AIが一時的に休止中です。しばらくしてからもう一度お試しください。',
+    quota: '今月の利用回数を使い切りました。',
+    tooMany: 'リクエストが多すぎます。しばらくしてからもう一度お試しください。',
+    signedOut: 'ログインが切れました。もう一度ログインしてください。',
+    tooLarge: '写真が大きすぎます。',
+    server: 'サーバーで問題が発生しました。しばらくしてからもう一度お試しください。',
+    generic: 'リクエストを処理できませんでした。',
+    timeout: '応答が遅れています。接続を確認してもう一度お試しください。',
+    offline: 'インターネット接続を確認してください。',
+  },
+  'zh-Hans': {
+    aiConsent: '需要先同意 AI 分析。',
+    aiUnavailable: 'AI 暂时休息中，请稍后再试。',
+    quota: '本月用量已用完。',
+    tooMany: '请求太多，请稍后再试。',
+    signedOut: '登录已失效，请重新登录。',
+    tooLarge: '照片太大了。',
+    server: '服务器出了点问题，请稍后再试。',
+    generic: '无法处理请求。',
+    timeout: '响应太慢，请检查网络后重试。',
+    offline: '请检查网络连接。',
+  },
+  'zh-Hant': {
+    aiConsent: '需要先同意 AI 分析。',
+    aiUnavailable: 'AI 暫時休息中，請稍後再試。',
+    quota: '本月用量已用完。',
+    tooMany: '請求太多，請稍後再試。',
+    signedOut: '登入已失效，請重新登入。',
+    tooLarge: '照片太大了。',
+    server: '伺服器出了點問題，請稍後再試。',
+    generic: '無法處理請求。',
+    timeout: '回應太慢，請檢查網路後重試。',
+    offline: '請檢查網路連線。',
+  },
+});
+
 // One readable sentence for any failure, instead of the raw
 // "GET /items failed (503): {...}" text (which still goes to the console).
 export function friendlyError(err: unknown): string {
   console.warn(err);
   if (err instanceof ApiError) {
     const code = (err.body as { error?: string } | null)?.error;
-    if (err.status === 403 && code === 'ai_consent') return 'AI 분석 동의가 필요해요.';
-    if (err.status === 503 && code === 'ai_unavailable') return 'AI가 잠시 쉬고 있어요. 잠시 후 다시 시도해 주세요.';
-    if (err.status === 402) return '이번 달 사용량을 다 썼어요.';
-    if (err.status === 429) return '요청이 많아요. 잠시 후 다시 시도해 주세요.';
-    if (err.status === 401) return '로그인이 풀렸어요. 다시 로그인해 주세요.';
-    if (err.status === 413) return '사진이 너무 커요.';
-    if (err.status >= 500) return '서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요.';
-    return '요청을 처리하지 못했어요.';
+    if (err.status === 403 && code === 'ai_consent') return ERR.aiConsent;
+    if (err.status === 503 && code === 'ai_unavailable') return ERR.aiUnavailable;
+    if (err.status === 402) return ERR.quota;
+    if (err.status === 429) return ERR.tooMany;
+    if (err.status === 401) return ERR.signedOut;
+    if (err.status === 413) return ERR.tooLarge;
+    if (err.status >= 500) return ERR.server;
+    return ERR.generic;
   }
   const message = err instanceof Error ? err.message : String(err);
-  if (/abort/i.test(message)) return '응답이 늦어요. 연결을 확인하고 다시 시도해 주세요.';
-  if (/network|failed to fetch/i.test(message)) return '인터넷 연결을 확인해 주세요.';
+  if (/abort/i.test(message)) return ERR.timeout;
+  if (/network|failed to fetch/i.test(message)) return ERR.offline;
   return message;
 }
 
@@ -170,7 +234,8 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
         // was sending before this check existed.
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        'X-Cortex-Lang': DEVICE_LANG,
+        // AI output follows the device language (see i18n DEVICE_LOCALE).
+        'X-Cortex-Lang': DEVICE_LOCALE,
       },
       signal: controller.signal,
       ...init,
@@ -204,17 +269,6 @@ export function onAiConsentRequired(fn: (() => void) | null) {
 export function setAiConsent(agree: boolean) {
   return request<Plan>('/me/ai-consent', { method: 'POST', body: JSON.stringify({ agree }) });
 }
-
-// The device language (e.g. "ko-KR", "ja-JP"): the server writes AI
-// titles, memos and tags in it. Intl reflects the phone's setting on
-// Android (Hermes) and the browser's on web.
-const DEVICE_LANG = (() => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
-  } catch {
-    return 'ko';
-  }
-})();
 
 export function fetchPlan() {
   return request<Plan>('/me/plan');

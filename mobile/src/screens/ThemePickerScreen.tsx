@@ -9,6 +9,15 @@ import { CheckIcon, LayoutIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: { title: '테마', layout: '레이아웃', color: '색' },
+  en: { title: 'Theme', layout: 'Layout', color: 'Color' },
+  ja: { title: 'テーマ', layout: 'レイアウト', color: 'カラー' },
+  'zh-Hans': { title: '主题', layout: '布局', color: '颜色' },
+  'zh-Hant': { title: '主題', layout: '版面', color: '顏色' },
+});
 
 // Picks layout (card shape) and color (palette) independently. Layout is a
 // row of icon "radio buttons" -- each icon draws the one visual trait that
@@ -34,11 +43,11 @@ export default function ThemePickerScreen() {
       maxHeightRatio={0.7}
     >
       <Heading theme={theme} size={20} style={styles.heading}>
-        테마
+        {S.title}
       </Heading>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.flexShrink}>
-        <Text style={[styles.sectionLabel, { color: theme.sub }]}>레이아웃</Text>
+        <Text style={[styles.sectionLabel, { color: theme.sub }]}>{S.layout}</Text>
         <View style={styles.layoutRow}>
           {LAYOUT_ORDER.map((key: LayoutKey) => {
             const active = key === layoutKey;
@@ -78,7 +87,7 @@ export default function ThemePickerScreen() {
         </View>
         <Text style={[styles.layoutCaption, { color: theme.sub }]}>{activeLayout.label}</Text>
 
-        <Text style={[styles.sectionLabel, styles.colorSectionLabel, { color: theme.sub }]}>색</Text>
+        <Text style={[styles.sectionLabel, styles.colorSectionLabel, { color: theme.sub }]}>{S.color}</Text>
         <View style={styles.swatchRow}>
           {PALETTE_ORDER.map((key: PaletteKey) => {
             const p = PALETTES[key];

@@ -8,6 +8,15 @@ import { MicIcon } from './Icons';
 import { Theme } from '../theme/themes';
 import { addChipShell } from './Chips';
 import { permissionToast } from '../native/toast';
+import { DEVICE_LOCALE, strings } from '../i18n';
+
+const S = strings({
+  ko: { mic: '마이크', stop: '음성 입력 멈추기', start: '음성으로 입력' },
+  en: { mic: 'Microphone', stop: 'Stop voice input', start: 'Voice input' },
+  ja: { mic: 'マイク', stop: '音声入力を停止', start: '音声で入力' },
+  'zh-Hans': { mic: '麦克风', stop: '停止语音输入', start: '语音输入' },
+  'zh-Hant': { mic: '麥克風', stop: '停止語音輸入', start: '語音輸入' },
+});
 
 // One mic button shared by every place that can take spoken input instead
 // of typing (save-sheet memo, tag correction, search). Speech recognition
@@ -25,7 +34,7 @@ export function VoiceInputButton({
   theme,
   onResult,
   onStart,
-  lang = 'ko-KR',
+  lang = DEVICE_LOCALE,
   size = 18,
   variant = 'inField',
 }: {
@@ -71,7 +80,7 @@ export function VoiceInputButton({
       // Silently doing nothing read as "the mic button is broken" -- a
       // short toast says why (tapping again re-prompts while Android still
       // allows it).
-      permissionToast('마이크', perm.canAskAgain);
+      permissionToast(S.mic, perm.canAskAgain);
       return;
     }
     ExpoSpeechRecognitionModule.start({ lang, interimResults: true, continuous: false });
@@ -81,7 +90,7 @@ export function VoiceInputButton({
     <Pressable
       onPress={toggle}
       hitSlop={8}
-      accessibilityLabel={recording ? '음성 입력 멈추기' : '음성으로 입력'}
+      accessibilityLabel={recording ? S.stop : S.start}
       style={[
         styles.button,
         variant === 'chip'

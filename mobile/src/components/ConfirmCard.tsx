@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { OUTLINE, Theme, allEdges, conceptOf } from '../theme/themes';
 import { GhostButton, SolidButton } from './Buttons';
+import { COMMON } from '../i18n/common';
 
 // The one "are you sure?" for destructive actions -- item delete (detail),
 // permanent delete (trash), account/guest delete (profile). Message, an
@@ -43,7 +44,7 @@ export function ConfirmCard({
       {children}
       {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
       <View style={styles.buttons}>
-        <GhostButton label="취소" theme={theme} size="sm" onPress={onCancel} disabled={busy} />
+        <GhostButton label={COMMON.cancel} theme={theme} size="sm" onPress={onCancel} disabled={busy} />
         <SolidButton label={confirmLabel} theme={theme} size="sm" flex={1} variant="danger" onPress={onConfirm} loading={busy} />
       </View>
     </View>

@@ -1,6 +1,16 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Theme } from '../theme/themes';
+import { COMMON } from '../i18n/common';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: { failed: '불러오지 못했어요.' },
+  en: { failed: "Couldn't load." },
+  ja: { failed: '読み込めませんでした。' },
+  'zh-Hans': { failed: '加载失败。' },
+  'zh-Hant': { failed: '載入失敗。' },
+});
 
 // The loading/error/empty branch every fetch-backed screen was repeating
 // verbatim (Home, Search, Stats each had their own copy of the same "불러오지
@@ -35,11 +45,11 @@ export function AsyncStateView({
     return (
       <View style={{ marginTop: topOffset, alignItems: 'center', paddingHorizontal: 24 }}>
         <Text style={[styles.message, { color: theme.sub }]}>
-          불러오지 못했어요.{'\n'}
+          {S.failed}{'\n'}
           {error}
         </Text>
         <Pressable onPress={onRetry} style={[styles.retryButton, { borderColor: theme.line }]}>
-          <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>다시 시도</Text>
+          <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>{COMMON.retry}</Text>
         </Pressable>
       </View>
     );

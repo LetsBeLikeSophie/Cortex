@@ -1,6 +1,7 @@
 import type { ApiItem, ItemSource, SearchInterpretation, SmartHit } from './client';
 import type { RecentItem, SearchResult } from '../data/content';
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG, SOURCE_ORDER } from '../data/sourceCatalog';
+import { COMMON, TIME } from '../i18n/common';
 
 // Re-exported so existing call sites (e.g. StatsScreen) don't need to know
 // the labels moved into a shared catalog -- see sourceCatalog.ts, the single
@@ -22,18 +23,18 @@ export function captureTypeLabel(captureType: ApiItem['capture_type'], tech: boo
 export function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return '방금';
-  if (minutes < 60) return `${minutes}분 전`;
+  if (minutes < 1) return TIME.justNow;
+  if (minutes < 60) return TIME.minutes(minutes);
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}시간 전`;
+  if (hours < 24) return TIME.hours(hours);
   const days = Math.floor(hours / 24);
-  if (days === 1) return '어제';
-  if (days < 7) return `${days}일 전`;
+  if (days === 1) return TIME.yesterday;
+  if (days < 7) return TIME.days(days);
   const weeks = Math.floor(days / 7);
-  if (weeks < 5) return `${weeks}주 전`;
+  if (weeks < 5) return TIME.weeks(weeks);
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months}개월 전`;
-  return `${Math.floor(days / 365)}년 전`;
+  if (months < 12) return TIME.months(months);
+  return TIME.years(Math.floor(days / 365));
 }
 
 // An item saved past the month's AI quota has no title -- it reads as
@@ -41,11 +42,11 @@ export function relativeTime(iso: string): string {
 // these looks visibly unsorted next to classified rows (the upgrade nudge).
 export function itemTitle(item: ApiItem): string {
   if (item.classification_status === 'unclassified') {
-    const hint = item.user_note ?? item.raw_text?.slice(0, 28) ?? item.raw_url ?? (item.capture_type === 'screenshot' ? '사진' : null);
-    return hint ? `정리 대기 · ${hint}` : '정리 대기';
+    const hint = item.user_note ?? item.raw_text?.slice(0, 28) ?? item.raw_url ?? (item.capture_type === 'screenshot' ? COMMON.photo : null);
+    return hint ? `${COMMON.waiting} · ${hint}` : COMMON.waiting;
   }
   const pending = item.classification_status === 'pending';
-  return item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? '분석 중...' : '(제목 없음)');
+  return item.title ?? item.raw_text?.slice(0, 40) ?? (pending ? COMMON.analyzing : COMMON.untitled);
 }
 
 export function toRecentItem(item: ApiItem, index: number): RecentItem {

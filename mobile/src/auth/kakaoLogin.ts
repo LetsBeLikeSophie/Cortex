@@ -3,6 +3,35 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import { API_BASE_URL } from '../api/client';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: {
+    exchangeFailed: (status: number, body: string) => `카카오 로그인 처리 실패 (${status}): ${body}`,
+    cancelled: '로그인이 취소됐어요',
+    noCode: '카카오 인가 코드를 받지 못했어요',
+  },
+  en: {
+    exchangeFailed: (status: number, body: string) => `Kakao login failed (${status}): ${body}`,
+    cancelled: 'Login was cancelled',
+    noCode: "Didn't get a code from Kakao",
+  },
+  ja: {
+    exchangeFailed: (status: number, body: string) => `Kakaoログイン処理に失敗 (${status}): ${body}`,
+    cancelled: 'ログインがキャンセルされました',
+    noCode: 'Kakaoの認可コードを受け取れませんでした',
+  },
+  'zh-Hans': {
+    exchangeFailed: (status: number, body: string) => `Kakao 登录处理失败 (${status})：${body}`,
+    cancelled: '已取消登录',
+    noCode: '未收到 Kakao 授权码',
+  },
+  'zh-Hant': {
+    exchangeFailed: (status: number, body: string) => `Kakao 登入處理失敗 (${status})：${body}`,
+    cancelled: '已取消登入',
+    noCode: '未收到 Kakao 授權碼',
+  },
+});
 
 // Kakao's REST API key is the public/client-facing half of the pair (like a
 // standard OAuth client id) -- fine to ship in the app. The Client Secret
@@ -39,7 +68,7 @@ async function exchangeCodeForSession(code: string, redirectUri: string): Promis
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`카카오 로그인 처리 실패 (${res.status}): ${body}`);
+    throw new Error(S.exchangeFailed(res.status, body));
   }
   const session = await res.json();
   const { error } = await supabase.auth.setSession({
@@ -85,10 +114,10 @@ export async function signInWithKakao(): Promise<void> {
   const redirectUri = Linking.createURL('auth-callback');
   const result = await WebBrowser.openAuthSessionAsync(authorizeUrl(redirectUri), redirectUri);
   if (result.type !== 'success' || !result.url) {
-    throw new Error('로그인이 취소됐어요');
+    throw new Error(S.cancelled);
   }
   const code = Linking.parse(result.url).queryParams?.code;
-  if (typeof code !== 'string') throw new Error('카카오 인가 코드를 받지 못했어요');
+  if (typeof code !== 'string') throw new Error(S.noCode);
 
   await exchangeCodeForSession(code, redirectUri);
 }

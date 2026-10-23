@@ -1,3 +1,5 @@
+import { LANG } from '../i18n';
+
 // Decides, one typed word at a time, whether the search box is getting a
 // keyword list ("제주 카페") or a half-remembered sentence ("지난달 인스타에서
 // 본 카페"). Runs on-device at every space -- no LLM call just to decide
@@ -25,4 +27,32 @@ export function looksLikeSentenceWord(raw: string): boolean {
   // that they only count on a longer word (카페에, 저장한).
   if (word.length >= 3 && /(에|한)$/.test(word)) return true;
   return false;
+}
+
+// The whole search box. Korean (the Korean UI, or any Hangul) goes word by word through
+// the rules above, exactly as before. Other languages get rougher, equally
+// conservative rules:
+// - Japanese / Chinese (no spaces): a time or question word, a particle on
+//   a 6+ character text, or simply 8+ characters.
+// - Space-separated (English etc.): 4+ words, a question, or a time phrase.
+const HANGUL = /[가-힣ㄱ-ㆎ]/;
+const CJK = /[぀-ヿ一-鿿]/;
+const CJK_TIME_OR_QUESTION =
+  /(先月|先週|去年|昨日|一昨日|最近|この前|前に|いつ|どこ|なに|何か|だっけ|上个月|上個月|上周|上週|昨天|前几天|前幾天|之前|什么|什麼|哪里|哪裡|哪个|哪個|吗|嗎|谁|誰)/;
+const CJK_PARTICLE = /(の|で|に|を|が|から|まで|た|的|在|了|过|過|看到|买|買)/;
+const LATIN_TIME = /\b(last (week|month|year|time)|yesterday|ago|recently|the other day)\b/i;
+
+export function looksLikeSentence(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  const words = trimmed.split(/\s+/);
+  if (words.some(looksLikeSentenceWord)) return true;
+  if (LANG === 'ko' || HANGUL.test(trimmed)) return false;
+  if (CJK.test(trimmed)) {
+    const compact = trimmed.replace(/\s+/g, '');
+    if (CJK_TIME_OR_QUESTION.test(compact)) return true;
+    if (compact.length >= 6 && CJK_PARTICLE.test(compact)) return true;
+    return compact.length >= 8;
+  }
+  return words.length >= 4 || LATIN_TIME.test(trimmed);
 }

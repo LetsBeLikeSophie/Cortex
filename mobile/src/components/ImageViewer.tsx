@@ -16,6 +16,45 @@ import { Directory, File, Paths } from 'expo-file-system';
 import MediaLibrary from '../native/mediaLibrary';
 import { permissionToast, showToast } from '../native/toast';
 import { CloseIcon, DownloadIcon } from './Icons';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: {
+    savePhotoPerm: '사진 저장',
+    saved: '앨범에 저장했어요',
+    saveFailed: '저장하지 못했어요. 잠시 후 다시 시도해 주세요',
+    saveToAlbum: '앨범에 저장',
+    hint: '두 손가락으로 확대 · 확대하면 끌어서 이동 · 탭하면 닫혀요',
+  },
+  en: {
+    savePhotoPerm: 'Photo saving',
+    saved: 'Saved to album',
+    saveFailed: "Couldn't save. Try again in a bit",
+    saveToAlbum: 'Save to album',
+    hint: 'Pinch to zoom · drag when zoomed · tap to close',
+  },
+  ja: {
+    savePhotoPerm: '写真の保存',
+    saved: 'アルバムに保存しました',
+    saveFailed: '保存できませんでした。少ししてからお試しください',
+    saveToAlbum: 'アルバムに保存',
+    hint: '2本指でズーム · ズーム中はドラッグで移動 · タップで閉じる',
+  },
+  'zh-Hans': {
+    savePhotoPerm: '保存照片',
+    saved: '已保存到相册',
+    saveFailed: '保存失败，请稍后再试',
+    saveToAlbum: '保存到相册',
+    hint: '双指缩放 · 放大后可拖动 · 点按关闭',
+  },
+  'zh-Hant': {
+    savePhotoPerm: '儲存照片',
+    saved: '已儲存到相簿',
+    saveFailed: '儲存失敗，請稍後再試',
+    saveToAlbum: '儲存到相簿',
+    hint: '雙指縮放 · 放大後可拖曳 · 點按關閉',
+  },
+});
 
 const { width, height } = Dimensions.get('window');
 const IMAGE_W = width;
@@ -185,16 +224,16 @@ export function ImageViewer({ uri, onClose }: { uri: string | null; onClose: () 
     try {
       const perm = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
       if (!perm.granted) {
-        permissionToast('사진 저장', perm.canAskAgain);
+        permissionToast(S.savePhotoPerm, perm.canAskAgain);
         return;
       }
       const dir = new Directory(Paths.cache, 'viewer');
       if (!dir.exists) dir.create();
       const file = await File.downloadFileAsync(uri, dir, { idempotent: true });
       await MediaLibrary.Asset.create(file.uri);
-      showToast('앨범에 저장했어요');
+      showToast(S.saved);
     } catch {
-      showToast('저장하지 못했어요. 잠시 후 다시 시도해 주세요');
+      showToast(S.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -211,7 +250,7 @@ export function ImageViewer({ uri, onClose }: { uri: string | null; onClose: () 
               ) : (
                 <DownloadIcon size={16} color="#fff" strokeWidth={1.6} />
               )}
-              <Text style={styles.saveText}>앨범에 저장</Text>
+              <Text style={styles.saveText}>{S.saveToAlbum}</Text>
             </Pressable>
           ) : (
             <View />
@@ -241,7 +280,7 @@ export function ImageViewer({ uri, onClose }: { uri: string | null; onClose: () 
             />
           )}
         </View>
-        <Text style={styles.hint}>두 손가락으로 확대 · 확대하면 끌어서 이동 · 탭하면 닫혀요</Text>
+        <Text style={styles.hint}>{S.hint}</Text>
       </SafeAreaView>
     </Modal>
   );

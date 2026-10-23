@@ -30,6 +30,8 @@ import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
 import type { ApiItem } from '../api/client';
 import type { RootStackParamList } from '../navigation/types';
+import { strings } from '../i18n';
+import { COMMON, categoryLabel } from '../i18n/common';
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
 // snippet (the AI memo) isn't typed into -- it's only ever replaced by the
@@ -39,13 +41,220 @@ type EditField = 'title' | 'snippet' | 'rawText' | 'userNote';
 const REORGANIZE_POLL_MS = 2000;
 const SNACK_MS = 6000;
 
-// "<field>을/를 바꿨어요" for the undo bar after a manual edit.
-const EDITED_MESSAGE: Record<EditField, string> = {
-  title: '제목을 바꿨어요',
-  snippet: 'AI 메모를 바꿨어요',
-  rawText: '본문을 바꿨어요',
-  userNote: '내 메모를 바꿨어요',
-};
+// S.edited: "<field>을/를 바꿨어요" for the undo bar after a manual edit.
+
+const S = strings({
+  ko: {
+    edited: { title: '제목을 바꿨어요', snippet: 'AI 메모를 바꿨어요', rawText: '본문을 바꿨어요', userNote: '내 메모를 바꿨어요' } as Record<EditField, string>,
+    organizeFailed: 'AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.',
+    taggedText: 'AI가 제목·태그를 달았어요',
+    taggedFull: 'AI가 제목·메모·태그를 달았어요',
+    reorganizedText: 'AI가 제목·태그를 다시 정리했어요',
+    reorganizedFull: 'AI가 제목·메모·태그를 다시 정리했어요',
+    leftThisMonth: (n: number) => ` · 이번 달 ${n}건 남음`,
+    reorganize: 'AI로 다시 정리',
+    myNoteShare: (note: string) => `내 메모: ${note}`,
+    share: '공유',
+    moveToTrash: '휴지통으로 이동',
+    composedFrom: (tag: string, n: number) => `'${tag}' 메모 ${n}개로 만들었어요`,
+    composeLeft: (n: number) => ` · 이번 달 ${n}회 남음`,
+    otherShape: '다른 모양으로 →',
+    hideSources: '원본 메모 접기',
+    showSources: (n: number) => `원본 메모 ${n}개 보기`,
+    loading: '불러오는 중...',
+    sourcesDeleted: (n: number) => `${n}개는 지워졌어요`,
+    trashTitle: '휴지통으로 이동할까요?',
+    trashBody: '나중에 홈 위쪽 휴지통에서 복원할 수 있어요.',
+    deleteFailed: (e: string) => `삭제 실패: ${e}`,
+    organizing: 'AI가 정리하는 중...',
+    noTitle: '제목 없음',
+    newTag: '새 태그',
+    addTag: '+ 태그',
+    tagSaveFailed: '태그 저장 실패: ',
+    composeFromTag: '이 태그로 모아서 만들기',
+    imageFailed: '이미지를 불러오지 못했어요.',
+    aiMemo: 'AI 메모',
+    waitConsent: 'AI 분석 동의 전에 저장됨 · ✦로 정리 (1건)',
+    waitFailed: 'AI 정리에 실패했어요 · ✦로 다시 정리 (1건)',
+    waitQuotaOut: '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)',
+    waitQuota: 'AI 정리를 기다리는 중이에요 · ✦로 이것만 정리 (1건)',
+    waitOther: 'AI 정리가 아직 안 됐어요 · ✦로 다시 정리 (1건)',
+    noAiMemo: '아직 AI 메모가 없어요',
+    myNotePlaceholder: '내 메모 — 말하거나 눌러서 적어요',
+    bodyPlaceholder: '본문 — 말하거나 눌러서 적어요',
+    saved: (when: string) => `${when} 저장됨`,
+    undo: '되돌리기',
+    openLink: '링크 열기',
+  },
+  en: {
+    edited: { title: 'Title changed', snippet: 'AI note changed', rawText: 'Text changed', userNote: 'My note changed' },
+    organizeFailed: "AI couldn't sort this. Try again in a bit.",
+    taggedText: 'AI added a title and tags',
+    taggedFull: 'AI added a title, note and tags',
+    reorganizedText: 'AI redid the title and tags',
+    reorganizedFull: 'AI redid the title, note and tags',
+    leftThisMonth: (n: number) => ` · ${n} left this month`,
+    reorganize: 'Sort again with AI',
+    myNoteShare: (note: string) => `My note: ${note}`,
+    share: 'Share',
+    moveToTrash: 'Move to trash',
+    composedFrom: (tag: string, n: number) => `Made from ${n} '${tag}' items`,
+    composeLeft: (n: number) => ` · ${n} left this month`,
+    otherShape: 'Remake in another shape →',
+    hideSources: 'Hide source items',
+    showSources: (n: number) => `Show ${n} source items`,
+    loading: 'Loading...',
+    sourcesDeleted: (n: number) => `${n} deleted`,
+    trashTitle: 'Move to trash?',
+    trashBody: 'You can restore it from the trash at the top of Home.',
+    deleteFailed: (e: string) => `Couldn't delete: ${e}`,
+    organizing: 'AI is sorting...',
+    noTitle: 'Untitled',
+    newTag: 'New tag',
+    addTag: '+ Tag',
+    tagSaveFailed: "Couldn't save tag: ",
+    composeFromTag: 'Combine items with this tag',
+    imageFailed: "Couldn't load the image.",
+    aiMemo: 'AI note',
+    waitConsent: 'Saved before AI consent · sort with ✦ (1 use)',
+    waitFailed: "AI couldn't sort this · retry with ✦ (1 use)",
+    waitQuotaOut: 'Waiting: AI quota used up this month · sort just this with ✦ (1 use)',
+    waitQuota: 'Waiting for AI · sort just this with ✦ (1 use)',
+    waitOther: 'Not sorted by AI yet · retry with ✦ (1 use)',
+    noAiMemo: 'No AI note yet',
+    myNotePlaceholder: 'My note — speak or tap to write',
+    bodyPlaceholder: 'Text — speak or tap to write',
+    saved: (when: string) => `saved ${when}`,
+    undo: 'Undo',
+    openLink: 'Open link',
+  },
+  ja: {
+    edited: { title: 'タイトルを変更しました', snippet: 'AIメモを変更しました', rawText: '本文を変更しました', userNote: '自分のメモを変更しました' },
+    organizeFailed: 'AIの整理に失敗しました。少ししてからもう一度お試しください。',
+    taggedText: 'AIがタイトルとタグを付けました',
+    taggedFull: 'AIがタイトル・メモ・タグを付けました',
+    reorganizedText: 'AIがタイトルとタグを整理し直しました',
+    reorganizedFull: 'AIがタイトル・メモ・タグを整理し直しました',
+    leftThisMonth: (n: number) => ` · 今月あと${n}件`,
+    reorganize: 'AIで整理し直す',
+    myNoteShare: (note: string) => `自分のメモ: ${note}`,
+    share: '共有',
+    moveToTrash: 'ゴミ箱に移動',
+    composedFrom: (tag: string, n: number) => `「${tag}」のメモ${n}件から作りました`,
+    composeLeft: (n: number) => ` · 今月あと${n}回`,
+    otherShape: '別の形で作り直す →',
+    hideSources: '元のメモを閉じる',
+    showSources: (n: number) => `元のメモ${n}件を見る`,
+    loading: '読み込み中...',
+    sourcesDeleted: (n: number) => `${n}件は削除されました`,
+    trashTitle: 'ゴミ箱に移動しますか？',
+    trashBody: 'あとでホーム上部のゴミ箱から復元できます。',
+    deleteFailed: (e: string) => `削除できませんでした: ${e}`,
+    organizing: 'AIが整理中...',
+    noTitle: 'タイトルなし',
+    newTag: '新しいタグ',
+    addTag: '+ タグ',
+    tagSaveFailed: 'タグを保存できませんでした: ',
+    composeFromTag: 'このタグでまとめて作る',
+    imageFailed: '画像を読み込めませんでした。',
+    aiMemo: 'AIメモ',
+    waitConsent: 'AI分析の同意前に保存 · ✦で整理 (1件)',
+    waitFailed: 'AIの整理に失敗しました · ✦で再整理 (1件)',
+    waitQuotaOut: '今月のAI整理を使い切ったため待機中 · ✦でこれだけ整理 (1件)',
+    waitQuota: 'AIの整理待ちです · ✦でこれだけ整理 (1件)',
+    waitOther: 'まだAIで整理されていません · ✦で再整理 (1件)',
+    noAiMemo: 'AIメモはまだありません',
+    myNotePlaceholder: '自分のメモ — 話すかタップして入力',
+    bodyPlaceholder: '本文 — 話すかタップして入力',
+    saved: (when: string) => `${when}に保存`,
+    undo: '元に戻す',
+    openLink: 'リンクを開く',
+  },
+  'zh-Hans': {
+    edited: { title: '标题已修改', snippet: 'AI 备注已修改', rawText: '正文已修改', userNote: '我的备注已修改' },
+    organizeFailed: 'AI 整理失败了，请稍后再试。',
+    taggedText: 'AI 已添加标题和标签',
+    taggedFull: 'AI 已添加标题、备注和标签',
+    reorganizedText: 'AI 已重新整理标题和标签',
+    reorganizedFull: 'AI 已重新整理标题、备注和标签',
+    leftThisMonth: (n: number) => ` · 本月还剩 ${n} 次`,
+    reorganize: '用 AI 重新整理',
+    myNoteShare: (note: string) => `我的备注：${note}`,
+    share: '分享',
+    moveToTrash: '移到回收站',
+    composedFrom: (tag: string, n: number) => `由 ${n} 项「${tag}」收藏内容生成`,
+    composeLeft: (n: number) => ` · 本月还剩 ${n} 次`,
+    otherShape: '换个形式重做 →',
+    hideSources: '收起原始内容',
+    showSources: (n: number) => `查看 ${n} 项原始内容`,
+    loading: '加载中...',
+    sourcesDeleted: (n: number) => `${n} 项已删除`,
+    trashTitle: '移到回收站？',
+    trashBody: '之后可以在首页上方的回收站恢复。',
+    deleteFailed: (e: string) => `删除失败：${e}`,
+    organizing: 'AI 整理中...',
+    noTitle: '无标题',
+    newTag: '新标签',
+    addTag: '+ 标签',
+    tagSaveFailed: '标签保存失败：',
+    composeFromTag: '用这个标签汇总生成',
+    imageFailed: '图片加载失败。',
+    aiMemo: 'AI 备注',
+    waitConsent: '在同意 AI 分析前保存 · 点 ✦ 整理 (1 次)',
+    waitFailed: 'AI 整理失败了 · 点 ✦ 重新整理 (1 次)',
+    waitQuotaOut: '本月 AI 整理次数已用完，等待中 · 点 ✦ 只整理这条 (1 次)',
+    waitQuota: '等待 AI 整理 · 点 ✦ 只整理这条 (1 次)',
+    waitOther: '还没被 AI 整理 · 点 ✦ 重新整理 (1 次)',
+    noAiMemo: '还没有 AI 备注',
+    myNotePlaceholder: '我的备注 — 说话或点按输入',
+    bodyPlaceholder: '正文 — 说话或点按输入',
+    saved: (when: string) => `${when}保存`,
+    undo: '撤销',
+    openLink: '打开链接',
+  },
+  'zh-Hant': {
+    edited: { title: '標題已修改', snippet: 'AI 備註已修改', rawText: '內文已修改', userNote: '我的備註已修改' },
+    organizeFailed: 'AI 整理失敗了，請稍後再試。',
+    taggedText: 'AI 已加上標題和標籤',
+    taggedFull: 'AI 已加上標題、備註和標籤',
+    reorganizedText: 'AI 已重新整理標題和標籤',
+    reorganizedFull: 'AI 已重新整理標題、備註和標籤',
+    leftThisMonth: (n: number) => ` · 本月還剩 ${n} 次`,
+    reorganize: '用 AI 重新整理',
+    myNoteShare: (note: string) => `我的備註：${note}`,
+    share: '分享',
+    moveToTrash: '移到垃圾桶',
+    composedFrom: (tag: string, n: number) => `由 ${n} 項「${tag}」收藏內容生成`,
+    composeLeft: (n: number) => ` · 本月還剩 ${n} 次`,
+    otherShape: '換個形式重做 →',
+    hideSources: '收起原始內容',
+    showSources: (n: number) => `查看 ${n} 項原始內容`,
+    loading: '載入中...',
+    sourcesDeleted: (n: number) => `${n} 項已刪除`,
+    trashTitle: '移到垃圾桶？',
+    trashBody: '之後可以在首頁上方的垃圾桶還原。',
+    deleteFailed: (e: string) => `刪除失敗：${e}`,
+    organizing: 'AI 整理中...',
+    noTitle: '無標題',
+    newTag: '新標籤',
+    addTag: '+ 標籤',
+    tagSaveFailed: '標籤儲存失敗：',
+    composeFromTag: '用這個標籤彙整生成',
+    imageFailed: '圖片載入失敗。',
+    aiMemo: 'AI 備註',
+    waitConsent: '在同意 AI 分析前儲存 · 點 ✦ 整理 (1 次)',
+    waitFailed: 'AI 整理失敗了 · 點 ✦ 重新整理 (1 次)',
+    waitQuotaOut: '本月 AI 整理次數已用完，等待中 · 點 ✦ 只整理這則 (1 次)',
+    waitQuota: '等待 AI 整理 · 點 ✦ 只整理這則 (1 次)',
+    waitOther: '還沒被 AI 整理 · 點 ✦ 重新整理 (1 次)',
+    noAiMemo: '還沒有 AI 備註',
+    myNotePlaceholder: '我的備註 — 說話或點按輸入',
+    bodyPlaceholder: '內文 — 說話或點按輸入',
+    saved: (when: string) => `${when}儲存`,
+    undo: '復原',
+    openLink: '開啟連結',
+  },
+});
 
 export default function ItemDetailScreen() {
   const { theme } = useTheme();
@@ -181,20 +390,20 @@ export default function ItemDetailScreen() {
           if (fresh.classification_status === 'unclassified') {
             // Where the AI memo shows, its waiting line says this already --
             // one reason on screen, not two that disagree.
-            if (item.capture_type === 'text' || fresh.snippet) setEditError('AI 정리에 실패했어요. 잠시 후 다시 시도해 주세요.');
+            if (item.capture_type === 'text' || fresh.snippet) setEditError(S.organizeFailed);
             return;
           }
           // No snapshot = this was the item's first organize (opened while
           // still 분석 중), not a ✦ re-organize: nothing to undo or recount.
           const before = beforeAiRef.current;
           if (!before) {
-            showSnack(item.capture_type === 'text' ? 'AI가 제목·태그를 달았어요' : 'AI가 제목·메모·태그를 달았어요', null);
+            showSnack(item.capture_type === 'text' ? S.taggedText : S.taggedFull, null);
             return;
           }
-          const what = item.capture_type === 'text' ? '제목·태그를' : '제목·메모·태그를';
+          const what = item.capture_type === 'text' ? S.reorganizedText : S.reorganizedFull;
           fetchPlan()
-            .then((p) => `AI가 ${what} 다시 정리했어요 · 이번 달 ${Math.max(0, p.classify.limit - p.classify.used)}건 남음`)
-            .catch(() => `AI가 ${what} 다시 정리했어요`)
+            .then((p) => what + S.leftThisMonth(Math.max(0, p.classify.limit - p.classify.used)))
+            .catch(() => what)
             .then((message) => showSnack(message, () => undoAi(before)));
         })
         .catch(() => {});
@@ -259,7 +468,7 @@ export default function ItemDetailScreen() {
     if (next === savedRef.current[field]) return;
     setEditError('');
     save(field, next, (previous) =>
-      showSnack(EDITED_MESSAGE[field], () => {
+      showSnack(S.edited[field], () => {
         hideSnack();
         save(field, previous);
       })
@@ -400,7 +609,7 @@ export default function ItemDetailScreen() {
   };
 
   const sparkleButton = (
-    <IconButton theme={theme} on="sheet" onPress={reorganize} label="AI로 다시 정리">
+    <IconButton theme={theme} on="sheet" onPress={reorganize} label={S.reorganize}>
       {organizing ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon size={15} color={theme.accent} strokeWidth={1.4} />}
     </IconButton>
   );
@@ -412,7 +621,7 @@ export default function ItemDetailScreen() {
     const body =
       item.capture_type === 'text'
         ? rawText
-        : [snippet, userNote ? `내 메모: ${userNote}` : null, item.raw_url].filter(Boolean).join('\n\n');
+        : [snippet, userNote ? S.myNoteShare(userNote) : null, item.raw_url].filter(Boolean).join('\n\n');
     const message = [title.trim(), body.trim()].filter(Boolean).join('\n\n');
     if (!message) return;
     Share.share({ message }).catch(() => {});
@@ -449,7 +658,7 @@ export default function ItemDetailScreen() {
                 in this one spot -- source/capture type moved to the footer
                 near the timestamp, see below. */}
             <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-              {category}
+              {categoryLabel(category)}
             </Text>
             <View style={styles.headerActions}>
               {/* Rewrite the title/memo/tags with the person's own words as the
@@ -458,10 +667,10 @@ export default function ItemDetailScreen() {
                   organize) read as "make it again" -- that's the 다른 형식으로
                   link under the title instead. */}
               {item.capture_type === 'text' && !composedFrom && sparkleButton}
-              <IconButton theme={theme} on="sheet" onPress={share} label="공유">
+              <IconButton theme={theme} on="sheet" onPress={share} label={S.share}>
                 <ShareIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
-              <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label="휴지통으로 이동">
+              <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label={S.moveToTrash}>
                 <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
             </View>
@@ -471,15 +680,15 @@ export default function ItemDetailScreen() {
             <View style={styles.composedNote}>
               <SparkleIcon size={13} color={theme.accent} strokeWidth={1.5} />
               <Text style={[styles.composedText, { color: theme.sub }]}>
-                {`'${composedFrom.tag}' 메모 ${composedFrom.count}개로 만들었어요`}
-                {composedFrom.left !== undefined ? ` · 이번 달 ${composedFrom.left}회 남음` : ''}
+                {S.composedFrom(composedFrom.tag, composedFrom.count)}
+                {composedFrom.left !== undefined ? S.composeLeft(composedFrom.left) : ''}
               </Text>
               <Pressable
                 onPress={() => navigation.replace('Compose', { tag: composedFrom.tag, count: composedFrom.count })}
                 hitSlop={8}
                 style={styles.composedAgain}
               >
-                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>다른 모양으로 →</Text>
+                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>{S.otherShape}</Text>
               </Pressable>
             </View>
           )}
@@ -488,12 +697,12 @@ export default function ItemDetailScreen() {
             <View style={styles.sourcesBox}>
               <Pressable onPress={toggleSources} hitSlop={6}>
                 <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>
-                  {sourcesOpen ? '원본 메모 접기' : `원본 메모 ${sourceIds.length}개 보기`}
+                  {sourcesOpen ? S.hideSources : S.showSources(sourceIds.length)}
                 </Text>
               </Pressable>
               {sourcesOpen &&
                 (sources === null ? (
-                  <Text style={[styles.composedText, { color: theme.sub }]}>불러오는 중...</Text>
+                  <Text style={[styles.composedText, { color: theme.sub }]}>{S.loading}</Text>
                 ) : (
                   <>
                     {sources.map((src) => (
@@ -504,7 +713,7 @@ export default function ItemDetailScreen() {
                       </Pressable>
                     ))}
                     {sources.length < sourceIds.length && (
-                      <Text style={[styles.composedText, { color: theme.sub }]}>{`${sourceIds.length - sources.length}개는 지워졌어요`}</Text>
+                      <Text style={[styles.composedText, { color: theme.sub }]}>{S.sourcesDeleted(sourceIds.length - sources.length)}</Text>
                     )}
                   </>
                 ))}
@@ -514,11 +723,11 @@ export default function ItemDetailScreen() {
           {deleteState !== 'idle' && (
             <ConfirmCard
               theme={theme}
-              title="휴지통으로 이동할까요?"
-              body="나중에 홈 위쪽 휴지통에서 복원할 수 있어요."
-              confirmLabel="삭제"
+              title={S.trashTitle}
+              body={S.trashBody}
+              confirmLabel={COMMON.delete}
               busy={deleteState === 'deleting'}
-              error={deleteError ? `삭제 실패: ${deleteError}` : undefined}
+              error={deleteError ? S.deleteFailed(deleteError) : undefined}
               onCancel={() => setDeleteState('idle')}
               onConfirm={confirmDelete}
             />
@@ -526,7 +735,7 @@ export default function ItemDetailScreen() {
 
           <View style={styles.editRow}>
             <View style={styles.flex1}>
-              {inlineInput('title', headingStyle, organizing ? 'AI가 정리하는 중...' : rawText.slice(0, 40) || '제목 없음')}
+              {inlineInput('title', headingStyle, organizing ? S.organizing : rawText.slice(0, 40) || S.noTitle)}
             </View>
           </View>
 
@@ -556,16 +765,16 @@ export default function ItemDetailScreen() {
                   onFocus={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
                   onSubmitEditing={submitNewTag}
                   onBlur={submitNewTag}
-                  placeholder="새 태그"
+                  placeholder={S.newTag}
                   placeholderTextColor={theme.sub}
                   style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, padding: 0, minWidth: 60, outlineWidth: 0 }}
                 />
               </View>
             ) : (
-              <TagAddChip label="+ 태그" theme={theme} onPress={openTagInput} />
+              <TagAddChip label={S.addTag} theme={theme} onPress={openTagInput} />
             )}
           </ScrollView>
-          {tagError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>태그 저장 실패: {tagError}</Text>}
+          {tagError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>{S.tagSaveFailed}{tagError}</Text>}
           {/* Another way into 모아서 만들기 (decision Q8): gather what shares
               this item's tags. Not on a composed memo itself. */}
           {aiTags.length + userTags.length > 0 && sourceIds.length === 0 && !composedFrom && (
@@ -578,7 +787,7 @@ export default function ItemDetailScreen() {
               style={styles.composeEntry}
             >
               <SparkleIcon size={12} color={theme.accent} strokeWidth={1.5} />
-              <Text style={[styles.composedText, { color: theme.accent }]}>이 태그로 모아서 만들기</Text>
+              <Text style={[styles.composedText, { color: theme.accent }]}>{S.composeFromTag}</Text>
             </Pressable>
           )}
 
@@ -586,7 +795,7 @@ export default function ItemDetailScreen() {
             <View style={[styles.imageBox, { backgroundColor: theme.soft, borderColor: theme.line }]}>
               {imageError ? (
                 <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', padding: 24 }}>
-                  이미지를 불러오지 못했어요.
+                  {S.imageFailed}
                 </Text>
               ) : imageUrl ? (
                 // The box below crops to a square ("cover") so the list of
@@ -618,25 +827,25 @@ export default function ItemDetailScreen() {
           {item.capture_type !== 'text' && (
             <View style={styles.aiMemo}>
               <View style={styles.aiMemoHead}>
-                <Text style={[styles.aiMemoLabel, { color: theme.sub }]}>AI 메모</Text>
+                <Text style={[styles.aiMemoLabel, { color: theme.sub }]}>{S.aiMemo}</Text>
                 {sparkleButton}
               </View>
               {/* Empty/working state in sub italic -- theme.line was ~1.1-1.3:1, unreadable. */}
               <Text style={[styles.body, styles.aiMemoText, { color: theme.sub, fontStyle: snippet ? 'normal' : 'italic' }]}>
                 {snippet ||
                   (organizing
-                    ? 'AI가 정리하는 중...'
+                    ? S.organizing
                     : waiting
                       ? waitReason === 'consent'
-                        ? 'AI 분석 동의 전에 저장됨 · ✦로 정리 (1건)'
+                        ? S.waitConsent
                         : waitReason === 'failed'
-                        ? 'AI 정리에 실패했어요 · ✦로 다시 정리 (1건)'
+                        ? S.waitFailed
                         : classifyLeft === 0
-                          ? '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
+                          ? S.waitQuotaOut
                           : waitReason === 'quota'
-                            ? 'AI 정리를 기다리는 중이에요 · ✦로 이것만 정리 (1건)'
-                            : 'AI 정리가 아직 안 됐어요 · ✦로 다시 정리 (1건)'
-                      : '아직 AI 메모가 없어요')}
+                            ? S.waitQuota
+                            : S.waitOther
+                      : S.noAiMemo)}
               </Text>
             </View>
           )}
@@ -647,7 +856,7 @@ export default function ItemDetailScreen() {
             <View style={styles.editRow}>
               <View style={styles.flex1}>
                 {/* The person's own words: ink (accent is reserved for AI/status). */}
-                {inlineInput('userNote', [styles.body, { color: theme.ink, fontStyle: 'italic' }], '내 메모 — 말하거나 눌러서 적어요')}
+                {inlineInput('userNote', [styles.body, { color: theme.ink, fontStyle: 'italic' }], S.myNotePlaceholder)}
               </View>
               {voiceButton('userNote')}
             </View>
@@ -655,7 +864,7 @@ export default function ItemDetailScreen() {
 
           {item.capture_type === 'text' && (
             <View style={styles.editRow}>
-              <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], '본문 — 말하거나 눌러서 적어요')}</View>
+              <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], S.bodyPlaceholder)}</View>
               {voiceButton('rawText')}
             </View>
           )}
@@ -681,7 +890,7 @@ export default function ItemDetailScreen() {
           <View style={styles.footerMeta}>
             <SourceIcon source={item.source} size={11} color={theme.sub} strokeWidth={1.3} />
             <Text style={[styles.timestamp, styles.footerMetaText, { color: theme.sub }]}>
-              {channelMetaLabel} · {relativeTime(item.shared_at)} 저장됨
+              {channelMetaLabel} · {S.saved(relativeTime(item.shared_at))}
             </Text>
           </View>
         </ScrollView>
@@ -694,7 +903,7 @@ export default function ItemDetailScreen() {
             </Text>
             {snack.undo && (
               <Pressable onPress={snack.undo} hitSlop={10}>
-                <Text style={[styles.snackAction, { color: theme.bg }]}>되돌리기</Text>
+                <Text style={[styles.snackAction, { color: theme.bg }]}>{S.undo}</Text>
               </Pressable>
             )}
           </View>
@@ -703,11 +912,11 @@ export default function ItemDetailScreen() {
         <ButtonRow theme={theme} style={styles.buttonRow}>
           {item.raw_url ? (
             <>
-              <GhostButton label="닫기" theme={theme} onPress={close} />
-              <SolidButton label="링크 열기" theme={theme} onPress={() => Linking.openURL(item.raw_url!)} />
+              <GhostButton label={COMMON.close} theme={theme} onPress={close} />
+              <SolidButton label={S.openLink} theme={theme} onPress={() => Linking.openURL(item.raw_url!)} />
             </>
           ) : (
-            <SolidButton label="닫기" theme={theme} onPress={close} />
+            <SolidButton label={COMMON.close} theme={theme} onPress={close} />
           )}
         </ButtonRow>
     </ModalSheet>

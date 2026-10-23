@@ -1,3 +1,5 @@
+import { strings } from '../i18n';
+
 // Ported from the Claude Design handoff (`project/Cortex Themed.dc.html`, THEMES const),
 // then split into two independent axes per product discussion: a palette only
 // carries color (plus whether it's a light or dark set), and a layout carries
@@ -112,18 +114,96 @@ export const BODY_KR_MEDIUM = 'IBMPlexSansKR_500Medium';
 // quatrefoil pattern on the back card, the faint grid wallpaper behind
 // everything -- components/Decor.tsx). lineTone was folded into line: the
 // two read the same on screen and its per-tag color scheme never landed.
+const T = strings({
+  ko: {
+    line: '라인',
+    lineNote: '잡지처럼. 가는 선과 세리프 제목, 시트도 각진 윗변에 실선 한 줄이에요.',
+    border: '테두리',
+    borderNote: '미니멀 노트처럼. 산세리프 숫자·제목에, 카드·시트·버튼 모두 둥근 모서리에 1px 테두리예요.',
+    layer: '레이어',
+    layerNote: '겹쳐 놓은 종이처럼. 카드·시트·버튼 뒤로 진한 종이가 한 장씩 삐져나와요.',
+    vintage: '빈티지',
+    vintageNote: '도서관 카드 목록처럼. 줄 쳐진 색인카드, 타자기체 라벨, 바탕엔 옅은 격자무늬예요.',
+    paper: '종이빛 크림 + 점토색',
+    ink: '어두운 잉크 블랙 + 앰버',
+    neural: '그래파이트 + 아이스 라벤더',
+    sage: '밝은 세이지 + 흰 카드',
+    blush: '따뜻한 로즈',
+  },
+  en: {
+    line: 'Line',
+    lineNote: 'Like a magazine. Thin rules, serif titles, and sheets with one sharp top line.',
+    border: 'Border',
+    borderNote: 'Like a minimal notebook. Sans-serif numbers and titles, 1px borders with rounded corners everywhere.',
+    layer: 'Layer',
+    layerNote: 'Like stacked paper. A darker sheet peeks out behind every card, sheet and button.',
+    vintage: 'Vintage',
+    vintageNote: 'Like a library card catalog. Ruled index cards, typewriter labels, a faint grid behind.',
+    paper: 'Paper cream + clay',
+    ink: 'Dark ink black + amber',
+    neural: 'Graphite + ice lavender',
+    sage: 'Light sage + white cards',
+    blush: 'Warm rose',
+  },
+  ja: {
+    line: 'ライン',
+    lineNote: '雑誌のように。細い線とセリフの見出し、シートも角ばった上辺に実線1本です。',
+    border: 'ボーダー',
+    borderNote: 'ミニマルなノートのように。サンセリフの数字と見出し、どれも角丸に1pxの枠線です。',
+    layer: 'レイヤー',
+    layerNote: '重ねた紙のように。カード・シート・ボタンの後ろから濃い紙が1枚ずつのぞきます。',
+    vintage: 'ヴィンテージ',
+    vintageNote: '図書館のカード目録のように。罫線入りの索引カード、タイプライター体のラベル、背景に薄い格子柄。',
+    paper: '紙色クリーム + テラコッタ',
+    ink: '濃いインクブラック + アンバー',
+    neural: 'グラファイト + アイスラベンダー',
+    sage: '明るいセージ + 白いカード',
+    blush: '温かいローズ',
+  },
+  'zh-Hans': {
+    line: '线条',
+    lineNote: '像杂志。细线和衬线标题，面板顶边方正，只有一条实线。',
+    border: '边框',
+    borderNote: '像极简笔记本。无衬线数字和标题，卡片、面板、按钮都是圆角 1px 边框。',
+    layer: '叠层',
+    layerNote: '像叠放的纸。卡片、面板、按钮后面各露出一张深色的纸。',
+    vintage: '复古',
+    vintageNote: '像图书馆卡片目录。带横线的索引卡、打字机字体标签，背景是浅浅的格纹。',
+    paper: '纸色奶油 + 陶土色',
+    ink: '深墨黑 + 琥珀色',
+    neural: '石墨灰 + 冰薰衣草',
+    sage: '浅鼠尾草绿 + 白卡片',
+    blush: '温暖玫瑰色',
+  },
+  'zh-Hant': {
+    line: '線條',
+    lineNote: '像雜誌。細線和襯線標題，面板頂邊方正，只有一條實線。',
+    border: '邊框',
+    borderNote: '像極簡筆記本。無襯線數字和標題，卡片、面板、按鈕都是圓角 1px 邊框。',
+    layer: '疊層',
+    layerNote: '像疊放的紙。卡片、面板、按鈕後面各露出一張深色的紙。',
+    vintage: '復古',
+    vintageNote: '像圖書館卡片目錄。有橫線的索引卡、打字機字體標籤，背景是淡淡的格紋。',
+    paper: '紙色奶油 + 陶土色',
+    ink: '深墨黑 + 琥珀色',
+    neural: '石墨灰 + 冰薰衣草',
+    sage: '淺鼠尾草綠 + 白卡片',
+    blush: '溫暖玫瑰色',
+  },
+});
+
 export const LAYOUTS: Record<LayoutKey, Layout> = {
   line: {
-    label: '라인',
-    note: '잡지처럼. 가는 선과 세리프 제목, 시트도 각진 윗변에 실선 한 줄이에요.',
+    label: T.line,
+    note: T.lineNote,
     signature: 'paper',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 78, numTrackEm: -0.035,
     cardRadius: 0, btnRadius: 999, pickRadius: 999, list: 'line',
     decor: 'none',
   },
   thinBorder: {
-    label: '테두리',
-    note: '미니멀 노트처럼. 산세리프 숫자·제목에, 카드·시트·버튼 모두 둥근 모서리에 1px 테두리예요.',
+    label: T.border,
+    note: T.borderNote,
     signature: 'sage',
     // Grotesk carries no Hangul (neither does the serif), so Korean titles
     // are the system sans either way -- this changes the big count, Latin
@@ -134,16 +214,16 @@ export const LAYOUTS: Record<LayoutKey, Layout> = {
     decor: 'none',
   },
   layered: {
-    label: '레이어',
-    note: '겹쳐 놓은 종이처럼. 카드·시트·버튼 뒤로 진한 종이가 한 장씩 삐져나와요.',
+    label: T.layer,
+    note: T.layerNote,
     signature: 'blush',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 20, btnRadius: 14, pickRadius: 12, list: 'layered',
     decor: 'none',
   },
   layeredVintage: {
-    label: '빈티지',
-    note: '도서관 카드 목록처럼. 줄 쳐진 색인카드, 타자기체 라벨, 바탕엔 옅은 격자무늬예요.',
+    label: T.vintage,
+    note: T.vintageNote,
     signature: 'ink',
     headFamily: SERIF, headWeight: '400', headSize: 38, numSize: 70, numTrackEm: -0.035,
     cardRadius: 6, btnRadius: 3, pickRadius: 3, list: 'layered',
@@ -212,7 +292,7 @@ export function conceptOf(theme: Theme): Concept {
 
 export const PALETTES: Record<PaletteKey, Palette> = {
   paper: {
-    label: 'Paper', note: '종이빛 크림 + 점토색',
+    label: 'Paper', note: T.paper,
     bg: '#fbfaf7', ink: '#14140f', sub: '#6a675e',
     line: '#e4e0d6', soft: '#eeebe2', accent: '#8d5c41',
     // 'transparent' was fine as long as Paper could only ever pair with the
@@ -228,7 +308,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: false,
   },
   ink: {
-    label: 'Ink', note: '어두운 잉크 블랙 + 앰버',
+    label: 'Ink', note: T.ink,
     bg: '#151417', ink: '#f2efe9', sub: '#a6a29a',
     line: '#2a2930', soft: '#232228', accent: '#d99a6c',
     surface: '#1c1b20', surfaceEdge: '#272630', ghost: '#242329', ghostBar: '#2d2c34',
@@ -238,7 +318,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: true,
   },
   neural: {
-    label: 'Neural', note: '그래파이트 + 아이스 라벤더',
+    label: 'Neural', note: T.neural,
     bg: '#14171c', ink: '#eef1f5', sub: '#9aa6b6',
     line: '#22272e', soft: '#1b1f26', accent: '#a8b4ff',
     surface: '#191d23', surfaceEdge: '#22272e', ghost: '#202631', ghostBar: '#2a3038',
@@ -248,7 +328,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: true,
   },
   sage: {
-    label: 'Sage', note: '밝은 세이지 + 흰 카드',
+    label: 'Sage', note: T.sage,
     bg: '#f4f2ec', ink: '#23251f', sub: '#5f6159',
     line: '#ddd9cf', soft: '#ffffff', accent: '#4f7360',
     surface: '#ffffff', surfaceEdge: null, ghost: '#e4e0d6', ghostBar: '#dcd8cf',
@@ -258,7 +338,7 @@ export const PALETTES: Record<PaletteKey, Palette> = {
     dark: false,
   },
   blush: {
-    label: 'Blush', note: '따뜻한 로즈',
+    label: 'Blush', note: T.blush,
     bg: '#fbf6f4', ink: '#241c1b', sub: '#6d5b58',
     line: '#e8dad6', soft: '#ffffff', accent: '#b0524a',
     surface: '#ffffff', surfaceEdge: null, ghost: '#eadfdb', ghostBar: '#e0d1cd',

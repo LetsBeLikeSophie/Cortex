@@ -18,6 +18,45 @@ import { fetchTags } from '../api/client';
 import { CheckIcon, SearchIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { fieldStyle } from '../components/Fields';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: {
+    title: '홈 화면 탭',
+    sub: '보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.',
+    search: '태그 검색',
+    noTags: '아직 저장된 태그가 없어요.',
+    noMatch: '일치하는 태그가 없어요.',
+  },
+  en: {
+    title: 'Home tabs',
+    sub: 'Search and pick tags to show. Favorites always stays.',
+    search: 'Search tags',
+    noTags: 'No tags yet.',
+    noMatch: 'No matching tags.',
+  },
+  ja: {
+    title: 'ホームのタブ',
+    sub: '表示するタグを検索して選んでください。お気に入りタブは常に残ります。',
+    search: 'タグを検索',
+    noTags: 'まだタグがありません。',
+    noMatch: '一致するタグがありません。',
+  },
+  'zh-Hans': {
+    title: '首页标签页',
+    sub: '搜索并选择要显示的标签。星标标签页会一直保留。',
+    search: '搜索标签',
+    noTags: '还没有标签。',
+    noMatch: '没有匹配的标签。',
+  },
+  'zh-Hant': {
+    title: '首頁分頁',
+    sub: '搜尋並選擇要顯示的標籤。星號分頁會一直保留。',
+    search: '搜尋標籤',
+    noTags: '還沒有標籤。',
+    noMatch: '沒有符合的標籤。',
+  },
+});
 import { Heading } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -68,9 +107,9 @@ export default function TabPickerScreen() {
       <View style={styles.flexShrink}>
         <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
           <Heading theme={theme} size={20} style={styles.heading}>
-            홈 화면 탭
+            {S.title}
           </Heading>
-          <Text style={[styles.sub, { color: theme.sub }]}>보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.</Text>
+          <Text style={[styles.sub, { color: theme.sub }]}>{S.sub}</Text>
         </View>
 
         <View style={[styles.searchBox, fieldStyle(theme)]}>
@@ -78,7 +117,7 @@ export default function TabPickerScreen() {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="태그 검색"
+            placeholder={S.search}
             placeholderTextColor={theme.sub}
             style={{ flex: 1, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 14.5, padding: 0, outlineWidth: 0 }}
           />
@@ -93,9 +132,9 @@ export default function TabPickerScreen() {
           {loading ? (
             <ActivityIndicator color={theme.accent} style={{ marginTop: 24 }} />
           ) : allTags.length === 0 ? (
-            <Text style={[styles.emptyText, { color: theme.sub }]}>아직 저장된 태그가 없어요.</Text>
+            <Text style={[styles.emptyText, { color: theme.sub }]}>{S.noTags}</Text>
           ) : visible.length === 0 ? (
-            <Text style={[styles.emptyText, { color: theme.sub }]}>일치하는 태그가 없어요.</Text>
+            <Text style={[styles.emptyText, { color: theme.sub }]}>{S.noMatch}</Text>
           ) : (
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {visible.map((tag) => {

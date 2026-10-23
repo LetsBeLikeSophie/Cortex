@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { Theme, MONO } from '../theme/themes';
+import { strings } from '../i18n';
 
 // Every chart here is monochrome-on-purpose: each theme defines exactly one
 // accent color, so "categorical" color (donut segments, bar shades) comes
@@ -127,8 +128,13 @@ export function HorizontalBars({
   );
 }
 
-const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
-const BAND_LABELS = ['새벽', '아침', '오후', '저녁'];
+const { WEEKDAY_LABELS, BAND_LABELS } = strings({
+  ko: { WEEKDAY_LABELS: ['일', '월', '화', '수', '목', '금', '토'], BAND_LABELS: ['새벽', '아침', '오후', '저녁'] },
+  en: { WEEKDAY_LABELS: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], BAND_LABELS: ['Dawn', 'Morn', 'Aft', 'Eve'] },
+  ja: { WEEKDAY_LABELS: ['日', '月', '火', '水', '木', '金', '土'], BAND_LABELS: ['早朝', '朝', '午後', '夜'] },
+  'zh-Hans': { WEEKDAY_LABELS: ['日', '一', '二', '三', '四', '五', '六'], BAND_LABELS: ['凌晨', '早上', '下午', '晚上'] },
+  'zh-Hant': { WEEKDAY_LABELS: ['日', '一', '二', '三', '四', '五', '六'], BAND_LABELS: ['凌晨', '早上', '下午', '晚上'] },
+});
 
 export function Heatmap({
   cells,

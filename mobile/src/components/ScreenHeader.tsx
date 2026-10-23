@@ -5,13 +5,22 @@ import { IconButton } from './Buttons';
 import { Theme } from '../theme/themes';
 import { BackIcon } from './Icons';
 import { Heading } from './Typography';
+import { strings } from '../i18n';
+
+const S = strings({
+  ko: { back: '뒤로' },
+  en: { back: 'Back' },
+  ja: { back: '戻る' },
+  'zh-Hans': { back: '返回' },
+  'zh-Hant': { back: '返回' },
+});
 
 // The back-button + title row Stats, Profile, and Trash were each hand-
 // copying verbatim (same circular back button, same heading formula).
 export function ScreenHeader({ title, theme, onBack }: { title: string; theme: Theme; onBack: () => void }) {
   return (
     <View style={[styles.header, { paddingHorizontal: screenGutter(theme) }]}>
-      <IconButton theme={theme} onPress={onBack} label="뒤로">
+      <IconButton theme={theme} onPress={onBack} label={S.back}>
         <BackIcon size={16} color={theme.ink} strokeWidth={1.5} />
       </IconButton>
       <Heading theme={theme} offset={8}>

@@ -14,7 +14,7 @@ export interface RecentScreenshot {
 // title to the device's language (e.g. "스크린샷" on a Korean-language
 // device), so a plain English lookup silently finds nothing there -- try
 // each known title before giving up.
-const ALBUM_TITLES = ['Screenshots', '스크린샷'];
+const ALBUM_TITLES = ['Screenshots', '스크린샷', 'スクリーンショット', '截屏', '截图', '屏幕截图', '螢幕截圖', '截圖', '螢幕擷取畫面'];
 
 export interface RecentScreenshotsState {
   screenshots: RecentScreenshot[];

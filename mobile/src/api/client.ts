@@ -170,6 +170,7 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
         // was sending before this check existed.
         ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        'X-Cortex-Lang': DEVICE_LANG,
       },
       signal: controller.signal,
       ...init,
@@ -203,6 +204,17 @@ export function onAiConsentRequired(fn: (() => void) | null) {
 export function setAiConsent(agree: boolean) {
   return request<Plan>('/me/ai-consent', { method: 'POST', body: JSON.stringify({ agree }) });
 }
+
+// The device language (e.g. "ko-KR", "ja-JP"): the server writes AI
+// titles, memos and tags in it. Intl reflects the phone's setting on
+// Android (Hermes) and the browser's on web.
+const DEVICE_LANG = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale || 'ko';
+  } catch {
+    return 'ko';
+  }
+})();
 
 export function fetchPlan() {
   return request<Plan>('/me/plan');

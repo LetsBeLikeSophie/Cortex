@@ -163,7 +163,7 @@ function hintFor(item: ItemRecord, includeText: boolean): string | undefined {
   return parts.length ? parts.join("\n") : undefined;
 }
 
-async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEditsAsHint = false) {
+async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEditsAsHint = false, lang?: string) {
   const hint = hintFor(item, useEditsAsHint);
   // Best effort: without the list the item still classifies, just without
   // the nudge toward existing tags.
@@ -187,6 +187,7 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
         hint,
         knownTags,
         userId: item.user_id,
+        lang,
       })),
       keyText: undefined,
       hasText: undefined,
@@ -196,11 +197,11 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
     thumbnailUrl = meta.imageUrl;
   } else if (item.capture_type === "screenshot" && item.image_path) {
     const b64 = imageBase64 ?? (await downloadScreenshot(item.image_path)).toString("base64");
-    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg", hint, knownTags, userId: item.user_id });
+    classification = await classifyImage({ source: item.source, imageBase64: b64, mediaType: "image/jpeg", hint, knownTags, userId: item.user_id, lang });
   } else {
     // keyText is a screenshot-only field -- dropped here so a text memo's
     // own raw_text can never be overwritten by it.
-    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, knownTags, userId: item.user_id })), keyText: undefined, hasText: undefined };
+    classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, knownTags, userId: item.user_id, lang })), keyText: undefined, hasText: undefined };
   }
   await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
   return classification.category;
@@ -277,17 +278,15 @@ async function runJob(job: ClassificationJob): Promise<void> {
   const { item } = job;
   // Last gate before anything leaves for the AI: consent may have been
   // withdrawn since the job was queued (or before a restart re-queued it).
-  const consented = await getEntitlement(item.user_id)
-    .then((ent) => ent.aiConsent === "agreed")
-    .catch(() => false);
-  if (!consented) {
+  const ent = await getEntitlement(item.user_id).catch(() => null);
+  if (ent?.aiConsent !== "agreed") {
     if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
     await markUnclassified(item.id, item.user_id, "consent").catch((e) => console.error("markUnclassified failed:", e));
     return;
   }
   for (let attempt = 0; ; attempt++) {
     try {
-      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64, job.useEditsAsHint));
+      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64, job.useEditsAsHint, ent.lang));
       await job.onDone?.(category).catch((err) => console.error("classification onDone failed:", err));
       return;
     } catch (err) {

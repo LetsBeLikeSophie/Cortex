@@ -13,3 +13,7 @@ alter table user_plans add column if not exists ai_consent_version text;
 alter table items drop constraint if exists items_unclassified_reason_check;
 alter table items add constraint items_unclassified_reason_check
   check (unclassified_reason is null or unclassified_reason in ('quota', 'failed', 'consent'));
+
+-- The person's app language (device setting, sent by the app): AI titles,
+-- memos and tags are written in it. null = Korean (the default).
+alter table user_plans add column if not exists lang text;

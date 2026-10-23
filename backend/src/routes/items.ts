@@ -4,7 +4,8 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
-import { AiConsentRequiredError, getEntitlement, recordUsage, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent } from "../lib/plans.js";
+import { AiConsentRequiredError, getEntitlement, recordUsage, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang } from "../lib/plans.js";
+import { normalizeLang, DEFAULT_LANG } from "../lib/anthropic.js";
 import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
@@ -257,6 +258,8 @@ export async function itemsRoutes(app: FastifyInstance) {
   // Plan + this month's AI usage, for the app's quota/미분류함 UI.
   app.get("/me/plan", async (req, reply) => {
     const userId = await resolveUserId(req);
+    // The app sends its device language here; AI output follows it.
+    await syncLang(userId, normalizeLang(req.headers["x-cortex-lang"])).catch((err) => req.log.warn(err));
     return reply.send(await getEntitlement(userId));
   });
 
@@ -419,7 +422,8 @@ export async function itemsRoutes(app: FastifyInstance) {
           url: it.raw_url,
         })),
         userId,
-        instruction || undefined
+        instruction || undefined,
+        normalizeLang(req.headers["x-cortex-lang"]) ?? (await getEntitlement(userId)).lang ?? DEFAULT_LANG
       );
     } catch (err) {
       if (reservation !== null) await refundUsage(reservation).catch(() => {});

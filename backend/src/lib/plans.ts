@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { DEFAULT_LANG } from "./anthropic.js";
 import { getClient } from "./supabase.js";
 
 // Free vs Pro, and the monthly AI quotas behind them. Saving is never
@@ -20,6 +21,8 @@ export const AI_CONSENT_VERSION = "2026-10-30";
 export interface Entitlement {
   tier: Tier;
   aiConsent: AiConsent;
+  // The language AI output is written in (device language; 'ko' default).
+  lang: string;
   trialEndsAt: string;
   proUntil: string | null;
   classify: { used: number; limit: number };
@@ -49,9 +52,9 @@ function monthWindow(now = new Date()): { start: Date; next: Date } {
 // row is created with its trial already over. Guests can't be upgraded to
 // Kakao in place (a Kakao login is a separate account), so this is decided
 // once, at creation.
-async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_until: string | null; ai_consent: AiConsent }> {
+async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_until: string | null; ai_consent: AiConsent; lang: string | null }> {
   const client = getClient();
-  const { data, error } = await client.from("user_plans").select("trial_ends_at, pro_until, ai_consent").eq("user_id", userId).maybeSingle();
+  const { data, error } = await client.from("user_plans").select("trial_ends_at, pro_until, ai_consent, lang").eq("user_id", userId).maybeSingle();
   if (error) throw new Error(`getPlanRow failed: ${error.message}`);
   if (data) return data;
 
@@ -66,7 +69,7 @@ async function getPlanRow(userId: string): Promise<{ trial_ends_at: string; pro_
     .upsert({ user_id: userId, trial_ends_at: trialEndsAt }, { onConflict: "user_id", ignoreDuplicates: true });
   if (insertError) throw new Error(`getPlanRow insert failed: ${insertError.message}`);
   // Re-read so a concurrent first request that won the insert wins here too.
-  const { data: row, error: rereadError } = await client.from("user_plans").select("trial_ends_at, pro_until, ai_consent").eq("user_id", userId).single();
+  const { data: row, error: rereadError } = await client.from("user_plans").select("trial_ends_at, pro_until, ai_consent, lang").eq("user_id", userId).single();
   if (rereadError) throw new Error(`getPlanRow reread failed: ${rereadError.message}`);
   return row;
 }
@@ -117,6 +120,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
   return {
     tier,
     aiConsent: row.ai_consent ?? null,
+    lang: row.lang ?? DEFAULT_LANG,
     trialEndsAt: row.trial_ends_at,
     proUntil: row.pro_until,
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
@@ -126,6 +130,15 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     resetsAt: next.toISOString(),
     unclassifiedCount,
   };
+}
+
+// Keeps the stored language in step with the device; only writes on change.
+export async function syncLang(userId: string, lang: string | null): Promise<void> {
+  if (!lang) return;
+  const row = await getPlanRow(userId);
+  if (row.lang === lang) return;
+  const { error } = await getClient().from("user_plans").update({ lang }).eq("user_id", userId);
+  if (error) throw new Error(`syncLang failed: ${error.message}`);
 }
 
 export async function setAiConsent(userId: string, agree: boolean): Promise<void> {

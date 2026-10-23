@@ -34,13 +34,41 @@ export function isAiUnavailable(err: unknown): boolean {
 // "low" keeps that short, and max_tokens leaves room for it.
 const MODEL = process.env.CLASSIFY_MODEL ?? "claude-haiku-5-5";
 
+// The language the person uses the app in (their device language, sent by
+// the app): every title, memo, tag and composed memo is written in it.
+// Korean keeps its tuned house style; other languages get the same rules
+// in their own natural note-taking style.
+export const DEFAULT_LANG = "ko";
+
+export function normalizeLang(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const tag = raw.trim().replace(/_/g, "-");
+  if (!/^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,2}$/.test(tag)) return null;
+  try {
+    return Intl.getCanonicalLocales(tag)[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function languageName(lang: string): string {
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "language" }).of(lang);
+    return name && name !== lang ? name : "Korean";
+  } catch {
+    return "Korean";
+  }
+}
+
+const isKorean = (lang: string) => lang === "ko" || lang.startsWith("ko-");
+
 const ClassificationSchema = z.object({
-  title: z.string().describe("Short list-item title (under ~60 characters), in Korean, plain wording"),
-  snippet: z.string().describe("A 1-2 sentence searchable note-to-self (under ~160 characters), in Korean"),
+  title: z.string().describe("Short list-item title (under ~60 characters), in the person's language, plain wording"),
+  snippet: z.string().describe("A 1-2 sentence searchable note-to-self (under ~160 characters), in the person's language"),
   category: z.enum(CATEGORIES),
   tags: z
     .array(z.string())
-    .describe("4-8 short keyword tags someone would later type to find this, in Korean (keep proper nouns as written)"),
+    .describe("4-8 short keyword tags someone would later type to find this, in the person's language (keep proper nouns as written)"),
   keyText: z
     .string()
     .describe("Screenshots only: the key words actually visible in the image (names, places, prices, dates, product/menu names); empty string otherwise"),
@@ -51,19 +79,22 @@ const ClassificationSchema = z.object({
 
 export type Classification = z.infer<typeof ClassificationSchema>;
 
-const SYSTEM_PROMPT = `You catalog items for "Cortex", a personal archive app people
+function classifySystem(lang: string): string {
+  const L = languageName(lang);
+  const ko = isKorean(lang);
+  return `You catalog items for "Cortex", a personal archive app people
 share things into from Instagram/KakaoTalk/a browser/YouTube so they can find
 them again later by searching.
 
-Language: the title, snippet and tags are ALWAYS written in Korean, whatever
-language the content is in -- an English video, a Japanese menu, a Spanish
-article all get a Korean title and memo (translate the meaning). The person
-reads and searches this app in Korean. Only proper nouns (names, brands,
-product or song titles) may stay as written in the source.
+Language: the title, snippet and tags are ALWAYS written in ${L}, whatever
+language the content is in -- a video, menu or article in any other language
+gets a ${L} title and memo (translate the meaning). The person reads and
+searches this app in ${L}. Only proper nouns (names, brands, product or song
+titles) may stay as written in the source.
 
 For each item, produce:
-- title: a short, plain title for a list row (Korean, no hashtags, no quotes)
-- snippet: a 1-2 sentence note-to-self in Korean, written so the person can
+- title: a short, plain title for a list row (${L}, no hashtags, no quotes)
+- snippet: a 1-2 sentence note-to-self in ${L}, written so the person can
   find this again by searching months later: what it is, plus every concrete
   detail actually present -- names (place, store, product, person, channel),
   area or address, price, date/time/deadline, quantities, and who or what
@@ -83,7 +114,7 @@ For each item, produce:
   months from now, half-remembering it. Mix three kinds:
   - the specific names in it: place/store, brand, product, person, group,
     dish, app -- as written, plus the other common spelling when there is
-    one (Korean/English, e.g. 블루보틀 + Blue Bottle)
+    one (the ${L} and the original/English spelling, e.g. 블루보틀 + Blue Bottle)
   - the broader word they'd reach for when the name escapes them
     (a café's name -> 카페; a sneaker model -> 운동화)
   - where it is / what it's for when stated (성수, 제주, 선물, 다이어트)
@@ -92,7 +123,7 @@ For each item, produce:
   if the kind matters, add it as its own tag ("캐릭터", "조형물"). When the
   person's existing tags are listed, reuse one exactly as written whenever
   it means the same thing, instead of a variant spelling or a longer form.
-  Korean spellings are Hangul only -- never mix in Japanese kana or Hanja.
+  ${ko ? "Korean spellings are Hangul only -- never mix in Japanese kana or Hanja." : "Write each word in one script -- never mix scripts inside a word."}
 - keyText: for screenshots only, the important words visible in the image,
   copied as they appear (names, addresses, prices, dates, menu or product
   names) -- this is what lets someone find the screenshot by a word that was
@@ -104,13 +135,18 @@ For each item, produce:
 Title and snippet should carry the findable specifics too (the place or
 product name, the area, the price or date if given) rather than generic
 wording like "맛집 정보" or "좋은 글". In title and snippet, write names
-exactly as the source does (Rick Astley stays Rick Astley) -- the Hangul
+exactly as the source does (Rick Astley stays Rick Astley) -- the ${L}
 spelling of a foreign name belongs in tags only.
 
-Write title and snippet as a terse memo, always in the same style: end each
+${ko
+  ? `Write title and snippet as a terse memo, always in the same style: end each
 sentence with a noun or a noun-form ending (~함, ~음, ~것, or just the noun),
 e.g. "성수동 크로플 맛집. 평일 웨이팅 30분, 5월까지 한정 메뉴 있음." Never
-해요체 or 합니다체 ("~예요", "~입니다").
+해요체 or 합니다체 ("~예요", "~입니다").`
+  : `Write title and snippet as a terse memo in the natural note-taking style of
+${L}: short fragments, no greetings, no polite filler, the same style every
+time. (Examples elsewhere in these instructions are Korean; follow their
+content rules, not their language.)`}
 
 Describe what IS there. Never write that something is absent -- no
 "글자는 보이지 않음", "텍스트 없음", "설명 없음" or the like in the title,
@@ -125,7 +161,8 @@ People in images: never work out who someone is from their face or body,
 and never guess or describe sensitive traits (race or ethnicity, religion,
 health, sexual orientation, political views). A person's name is used only
 when it is written in the image or the given text (a caption, a chat name,
-a sign) -- otherwise say "사람", "인물 사진" and the like.`;
+a sign) -- otherwise use a plain word for "person" in ${L}.`;
+}
 
 export interface ClassifyTextInput {
   source: string;
@@ -146,6 +183,8 @@ export interface ClassifyTextInput {
   knownTags?: string[];
   // For the per-call usage log (aiLog.ts).
   userId?: string;
+  // The person's app language (see normalizeLang); Korean when unknown.
+  lang?: string;
 }
 
 function knownTagsLine(tags?: string[]): string | null {
@@ -164,7 +203,7 @@ function hintLine(hint?: string): string | null {
 
 function formatDuration(sec: number): string {
   const m = Math.floor(sec / 60);
-  return m > 0 ? `${m}분 ${sec % 60}초` : `${sec}초`;
+  return m > 0 ? `${m} min ${sec % 60} s` : `${sec} s`;
 }
 
 export async function classifyText(input: ClassifyTextInput): Promise<Classification> {
@@ -191,7 +230,7 @@ export async function classifyText(input: ClassifyTextInput): Promise<Classifica
       .parse({
       model: MODEL,
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: classifySystem(input.lang ?? DEFAULT_LANG),
       messages: [
         {
           role: "user",
@@ -228,13 +267,14 @@ export interface ClassifyImageInput {
   hint?: string;
   knownTags?: string[];
   userId?: string;
+  lang?: string;
 }
 
 export async function classifyImage(input: ClassifyImageInput): Promise<Classification> {
   const response = await classifyClient.messages.parse({
     model: MODEL,
     max_tokens: 2048,
-    system: SYSTEM_PROMPT,
+    system: classifySystem(input.lang ?? DEFAULT_LANG),
     messages: [
       {
         role: "user",
@@ -333,7 +373,7 @@ function requireParsed(response: { parsed_output: Classification | null }): Clas
 }
 
 const TagFromTextSchema = z.object({
-  tag: z.string().describe("A single short freeform keyword tag, in Korean"),
+  tag: z.string().describe("A single short freeform keyword tag, in the same language as the transcript"),
 });
 
 const TAG_SYSTEM_PROMPT = `You turn one spoken sentence into a single short keyword
@@ -376,10 +416,10 @@ export const SearchInterpretationSchema = z.object({
   keywords: z
     .array(
       z.object({
-        term: z.string().describe("The core keyword, in Korean, as the user would expect it to appear"),
+        term: z.string().describe("The core keyword, in the language of the search sentence, as the user would expect it to appear in their saved items"),
         synonyms: z
           .array(z.string())
-          .describe("Close alternatives the same saved item might use instead (Korean/English spellings, near-synonyms)"),
+          .describe("Close alternatives the same saved item might use instead (local/English spellings, near-synonyms)"),
       })
     )
     .describe("Up to 5 keyword groups"),
@@ -483,8 +523,8 @@ export interface ComposeSource {
 }
 
 const ComposeSchema = z.object({
-  title: z.string().describe("Short title for the new memo, in Korean"),
-  body: z.string().describe("The composed memo, in Korean, plain text with simple line breaks and '-' bullets"),
+  title: z.string().describe("Short title for the new memo, in the person's language"),
+  body: z.string().describe("The composed memo, in the person's language, plain text with simple line breaks and '-' bullets"),
 });
 
 const COMPOSE_FORMATS: Record<Exclude<ComposeFormat, "auto">, string> = {
@@ -500,7 +540,7 @@ const COMPOSE_SYSTEM = `You turn a set of saved items from "Cortex" (a personal 
 into one useful memo for the person who saved them.
 
 Rules:
-- Write everything in Korean. Names and brands may stay as written.
+- Write everything in the person's language (given with the request). Names and brands may stay as written.
 - Use ONLY facts present in the items. Never add opening hours, prices,
   addresses, ratings or anything else that isn't there. If something useful
   is missing, don't fill it in.
@@ -525,7 +565,8 @@ export async function composeFromItems(
   items: ComposeSource[],
   userId?: string,
   // The person's own one-line ask ("비교표로, 가격순") -- shapes the memo.
-  instruction?: string
+  instruction?: string,
+  lang: string = DEFAULT_LANG
 ): Promise<{ title: string; body: string }> {
   const ask = instruction
     ? `\nThe person asked for: ${instruction}\n(Follow this for the shape and focus; it overrides the format above where they differ. Still use only what the items say.)`
@@ -560,7 +601,7 @@ export async function composeFromItems(
     messages: [
       {
         role: "user",
-        content: `Tag: ${tag}\nFormat: ${formatLine(format)}${ask}\n\nItems (${items.length}):\n${lines.join("\n\n")}`,
+        content: `Language: ${languageName(lang)}\nTag: ${tag}\nFormat: ${formatLine(format)}${ask}\n\nItems (${items.length}):\n${lines.join("\n\n")}`,
       },
     ],
     output_config: { effort: "medium", format: zodOutputFormat(ComposeSchema) },

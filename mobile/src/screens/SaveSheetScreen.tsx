@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -14,7 +13,6 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
-import MediaLibrary from '../native/mediaLibrary';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -33,14 +31,13 @@ import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast } from '../native/toast';
 import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { splitLinkText } from '../data/linkText';
-import { useRecentScreenshots, RecentScreenshot } from '../hooks/useRecentScreenshots';
+import type { RecentScreenshot } from '../hooks/useRecentScreenshots';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { COMMON, categoryLabel } from '../i18n/common';
 
 const S = strings({
   ko: {
-    photoAccess: '사진 접근',
     camera: '카메라',
     allFailed: '전부 저장하지 못했어요',
     quotaNoConsent: 'AI 분석 동의 전이라 미분류함에 들어가요 (저장은 돼요)',
@@ -57,13 +54,8 @@ const S = strings({
     pickAlbum: '앨범에서 선택',
     takePhoto: '카메라로 촬영',
     selectedCount: (n: number) => `${n}장 선택됨`,
-    recentMulti: '최근 스크린샷 · 여러 장 선택 가능',
     clearSelection: '선택 취소',
     savingProgress: (done: number, total: number) => `${done}/${total}장 저장 중...`,
-    loadRecent: '최근 스크린샷 불러오기',
-    noRecent: '최근 스크린샷이 없어요. 앨범에서 선택해 주세요.',
-    recent: '최근 스크린샷',
-    recentDenied: '사진 접근 권한이 꺼져 있어서 최근 스크린샷을 불러올 수 없어요. 설정에서 허용해주세요.',
     notePlaceholder: '왜 저장했는지 한 줄 적어두면 나중에 찾기 쉬워요 (선택)',
     saveFailed: (e: string) => `저장 실패: ${e}`,
     saveN: (n: number) => `${n}장 저장하기`,
@@ -72,12 +64,6 @@ const S = strings({
     failedN: (n: number) => `${n}개는 저장하지 못했어요.`,
     unclassifiedConsentN: (n: number) => `${n}개는 AI 분석 동의 전이라 미분류함에 넣어뒀어요`,
     unclassifiedQuotaN: (n: number) => `${n}개는 이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요`,
-    originalsDeleted: '원본 사진을 지웠어요. 저장한 건 Cortex에 그대로 있어요.',
-    deleteOriginalsQ: (n: number) => `정리한 원본 사진 ${n}장을 지울까요?`,
-    failedKept: (n: number) => `저장에 실패한 ${n}장은 지우지 않아요.`,
-    galleryOnly: '갤러리에서만 지워지고, Cortex에는 그대로 남아요.',
-    keep: '그대로 두기',
-    deleteOriginals: '원본 지우기',
     aiConsent: 'AI 분석 동의',
     proNow: 'Pro로 바로 정리',
     findLater: '단어 하나만 적으면 다시 꺼내 드려요.',
@@ -87,7 +73,6 @@ const S = strings({
     open: '열어 보기',
   },
   en: {
-    photoAccess: 'Photo',
     camera: 'Camera',
     allFailed: "Couldn't save any of them",
     quotaNoConsent: 'No AI consent yet, so it goes to Unsorted (still saved)',
@@ -104,13 +89,8 @@ const S = strings({
     pickAlbum: 'Pick from album',
     takePhoto: 'Take a photo',
     selectedCount: (n: number) => `${n} selected`,
-    recentMulti: 'Recent screenshots · pick several',
     clearSelection: 'Clear',
     savingProgress: (done: number, total: number) => `Saving ${done}/${total}...`,
-    loadRecent: 'Load recent screenshots',
-    noRecent: 'No recent screenshots. Pick from your album.',
-    recent: 'Recent screenshots',
-    recentDenied: "Photo access is off, so recent screenshots can't load. Allow it in Settings.",
     notePlaceholder: 'Why you saved it, in a line — easier to find later (optional)',
     saveFailed: (e: string) => `Couldn't save: ${e}`,
     saveN: (n: number) => `Save ${n}`,
@@ -119,12 +99,6 @@ const S = strings({
     failedN: (n: number) => `${n} couldn't be saved.`,
     unclassifiedConsentN: (n: number) => `${n} went to Unsorted (no AI consent yet)`,
     unclassifiedQuotaN: (n: number) => `${n} went to Unsorted (AI sorting used up this month)`,
-    originalsDeleted: 'Originals deleted. Your saves are still in Cortex.',
-    deleteOriginalsQ: (n: number) => (n === 1 ? 'Delete the original photo?' : `Delete the ${n} original photos?`),
-    failedKept: (n: number) => `The ${n} that failed to save won't be deleted.`,
-    galleryOnly: 'Only removed from your gallery — they stay in Cortex.',
-    keep: 'Keep',
-    deleteOriginals: 'Delete originals',
     aiConsent: 'Allow AI',
     proNow: 'Sort now with Pro',
     findLater: 'Just type one word to bring it back.',
@@ -134,7 +108,6 @@ const S = strings({
     open: 'Open',
   },
   ja: {
-    photoAccess: '写真',
     camera: 'カメラ',
     allFailed: 'どれも保存できませんでした',
     quotaNoConsent: 'AI分析に未同意のため未分類に入ります(保存はされます)',
@@ -151,13 +124,8 @@ const S = strings({
     pickAlbum: 'アルバムから選ぶ',
     takePhoto: 'カメラで撮る',
     selectedCount: (n: number) => `${n}枚選択中`,
-    recentMulti: '最近のスクリーンショット · 複数選択OK',
     clearSelection: '選択解除',
     savingProgress: (done: number, total: number) => `${done}/${total}枚 保存中...`,
-    loadRecent: '最近のスクリーンショットを読み込む',
-    noRecent: '最近のスクリーンショットはありません。アルバムから選んでください。',
-    recent: '最近のスクリーンショット',
-    recentDenied: '写真へのアクセスがオフのため読み込めません。設定で許可してください。',
     notePlaceholder: '保存した理由を一言メモすると後で探しやすいです(任意)',
     saveFailed: (e: string) => `保存できませんでした: ${e}`,
     saveN: (n: number) => `${n}枚を保存`,
@@ -166,12 +134,6 @@ const S = strings({
     failedN: (n: number) => `${n}件は保存できませんでした。`,
     unclassifiedConsentN: (n: number) => `${n}件はAI分析に未同意のため未分類に入れました`,
     unclassifiedQuotaN: (n: number) => `${n}件は今月のAI整理を使い切ったため未分類に入れました`,
-    originalsDeleted: '元の写真を削除しました。保存したものはCortexに残っています。',
-    deleteOriginalsQ: (n: number) => `整理した元の写真${n}枚を削除しますか?`,
-    failedKept: (n: number) => `保存に失敗した${n}枚は削除しません。`,
-    galleryOnly: 'ギャラリーから消えるだけで、Cortexには残ります。',
-    keep: 'そのままにする',
-    deleteOriginals: '元の写真を削除',
     aiConsent: 'AI分析に同意',
     proNow: 'Proですぐ整理',
     findLater: '単語ひとつで、また呼び出せます。',
@@ -181,7 +143,6 @@ const S = strings({
     open: '開く',
   },
   'zh-Hans': {
-    photoAccess: '照片访问',
     camera: '相机',
     allFailed: '全部保存失败',
     quotaNoConsent: '尚未同意 AI 分析，将放入未分类（照样保存）',
@@ -198,13 +159,8 @@ const S = strings({
     pickAlbum: '从相册选择',
     takePhoto: '拍照',
     selectedCount: (n: number) => `已选 ${n} 张`,
-    recentMulti: '最近截图 · 可多选',
     clearSelection: '取消选择',
     savingProgress: (done: number, total: number) => `正在保存 ${done}/${total} 张...`,
-    loadRecent: '加载最近截图',
-    noRecent: '没有最近截图，请从相册选择。',
-    recent: '最近截图',
-    recentDenied: '照片访问权限已关闭，无法加载最近截图。请在设置中允许。',
     notePlaceholder: '写一句为什么保存，以后更好找（可选）',
     saveFailed: (e: string) => `保存失败：${e}`,
     saveN: (n: number) => `保存 ${n} 张`,
@@ -213,12 +169,6 @@ const S = strings({
     failedN: (n: number) => `${n} 项保存失败。`,
     unclassifiedConsentN: (n: number) => `${n} 项因尚未同意 AI 分析，已放入未分类`,
     unclassifiedQuotaN: (n: number) => `${n} 项因本月 AI 整理已用完，已放入未分类`,
-    originalsDeleted: '原图已删除，保存的内容仍在 Cortex 中。',
-    deleteOriginalsQ: (n: number) => `删除已整理的 ${n} 张原图？`,
-    failedKept: (n: number) => `保存失败的 ${n} 张不会删除。`,
-    galleryOnly: '只从相册删除，Cortex 中仍会保留。',
-    keep: '保留',
-    deleteOriginals: '删除原图',
     aiConsent: '同意 AI 分析',
     proNow: '用 Pro 立即整理',
     findLater: '只需输入一个词，就能再找回来。',
@@ -228,7 +178,6 @@ const S = strings({
     open: '打开',
   },
   'zh-Hant': {
-    photoAccess: '照片存取',
     camera: '相機',
     allFailed: '全部儲存失敗',
     quotaNoConsent: '尚未同意 AI 分析，將放入未分類（照樣儲存）',
@@ -245,13 +194,8 @@ const S = strings({
     pickAlbum: '從相簿選擇',
     takePhoto: '拍照',
     selectedCount: (n: number) => `已選 ${n} 張`,
-    recentMulti: '最近截圖 · 可多選',
     clearSelection: '取消選擇',
     savingProgress: (done: number, total: number) => `正在儲存 ${done}/${total} 張...`,
-    loadRecent: '載入最近截圖',
-    noRecent: '沒有最近截圖，請從相簿選擇。',
-    recent: '最近截圖',
-    recentDenied: '照片存取權限已關閉，無法載入最近截圖。請在設定中允許。',
     notePlaceholder: '寫一句為什麼儲存，之後更好找（選填）',
     saveFailed: (e: string) => `儲存失敗：${e}`,
     saveN: (n: number) => `儲存 ${n} 張`,
@@ -260,12 +204,6 @@ const S = strings({
     failedN: (n: number) => `${n} 項儲存失敗。`,
     unclassifiedConsentN: (n: number) => `${n} 項因尚未同意 AI 分析，已放入未分類`,
     unclassifiedQuotaN: (n: number) => `${n} 項因本月 AI 整理已用完，已放入未分類`,
-    originalsDeleted: '原圖已刪除，儲存的內容仍在 Cortex 中。',
-    deleteOriginalsQ: (n: number) => `刪除已整理的 ${n} 張原圖？`,
-    failedKept: (n: number) => `儲存失敗的 ${n} 張不會刪除。`,
-    galleryOnly: '只從相簿刪除，Cortex 中仍會保留。',
-    keep: '保留',
-    deleteOriginals: '刪除原圖',
     aiConsent: '同意 AI 分析',
     proNow: '用 Pro 立即整理',
     findLater: '只要輸入一個詞，就能再找回來。',
@@ -286,13 +224,6 @@ type Status = 'input' | 'saving' | 'done' | 'error';
 // No reliable way to know which app a share came from (Android's generic
 // ACTION_SEND doesn't carry the sender's identity), but a link's own domain
 // is a good enough guess to avoid dumping every URL into 'other'.
-// Gallery asset ids MediaLibrary can delete. An album pick that came back
-// without an assetId uses its file uri as the id (pickFromLibrary) -- there
-// is nothing to delete through the media library for those.
-function deletableIds(ids: string[]): string[] {
-  return ids.filter((id) => !id.includes('://') && !id.startsWith('/'));
-}
-
 function guessSourceFromUrl(url: string): ItemSource {
   let host = '';
   try {
@@ -331,7 +262,7 @@ export default function SaveSheetScreen() {
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
 
-  // Picking any screenshot from the "최근 스크린샷" row below switches this
+  // Several photos (an album multi-pick or a multi-share) switch this
   // sheet into a dedicated multi-select mode (mutually exclusive with the
   // text/link/single-image flow above it) -- tapping thumbnails toggles
   // them, and submit saves every selected one. One tile behaves the same as
@@ -341,15 +272,6 @@ export default function SaveSheetScreen() {
   // savedShotIds: the photos whose save went through -- the only ones the
   // "지울까요?" step may delete (a failed one is still only in the gallery).
   const [savedBulk, setSavedBulk] = useState<{ items: ApiItem[]; failed: number; savedShotIds: string[] } | null>(null);
-  const [deleteOriginalState, setDeleteOriginalState] = useState<'idle' | 'deleting' | 'done' | 'kept'>('idle');
-  const {
-    screenshots: recentScreenshots,
-    needsPermission: screenshotsNeedPermission,
-    permissionDenied: screenshotsPermissionDenied,
-    empty: screenshotsEmpty,
-    loading: screenshotsLoading,
-    requestAccess: requestScreenshotAccess,
-  } = useRecentScreenshots();
 
   // The share sheet only ever hands us a content:// / file:// URI for an
   // image, never the bytes directly -- read it into base64 once, here,
@@ -375,9 +297,7 @@ export default function SaveSheetScreen() {
   }, [route.params?.sharedImageUri]);
 
   // Several images shared at once land straight in bulk mode, already
-  // selected -- each is a cache-dir copy, read to base64 at save time like a
-  // recent-screenshot tile. Their ids are file:// uris, so deletableIds keeps
-  // the "원본 지울까요?" step away from them (the sender owns the originals).
+  // selected -- each is a cache-dir copy, read to base64 at save time.
   const sharedImageUris = route.params?.sharedImageUris;
   const [sharedShots, setSharedShots] = useState<RecentScreenshot[]>([]);
   useEffect(() => {
@@ -411,17 +331,11 @@ export default function SaveSheetScreen() {
   // Picking a photo and typing a memo are mutually exclusive in this sheet
   // -- picking one clears the others rather than trying to send several.
   // allowsMultipleSelection lets the OS picker itself offer multi-select;
-  // when more than one actually comes back, this routes into the same
-  // bulk-save path "최근 스크린샷"'s multi-select already uses (submitBulk
-  // only ever needs .uri per item, read fresh via File().base64() there,
-  // so a picked asset's uri works exactly like a recent-screenshot's)
-  // instead of only ever keeping assets[0] and silently dropping the rest.
+  // when more than one actually comes back, this routes into the bulk-save
+  // path (submitBulk only ever needs .uri per item, read fresh via
+  // File().base64() there) instead of only ever keeping assets[0].
+  // The system photo picker needs no photo permission -- Cortex holds none.
   const pickFromLibrary = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      permissionToast(S.photoAccess, perm.canAskAgain);
-      return;
-    }
     // No base64 / re-encode on native: asking the picker for both made it
     // decode and re-compress every selected photo before returning, so a
     // 30-photo pick sat on the picker for a long while. The file is read
@@ -475,8 +389,7 @@ export default function SaveSheetScreen() {
     setImage({ base64: asset.base64, previewUri: asset.uri });
   };
 
-  // Tapping a "최근 스크린샷" thumbnail toggles it in/out of the batch --
-  // selecting the first one is what switches the sheet into bulk mode.
+  // Tapping a thumbnail in the batch toggles it in/out.
   const toggleScreenshot = (shot: RecentScreenshot) => {
     // The memo box stays: with photos selected it's their shared note.
     setLinkUrl(null);
@@ -485,22 +398,6 @@ export default function SaveSheetScreen() {
     setSelectedScreenshots((current) =>
       current.some((s) => s.id === shot.id) ? current.filter((s) => s.id !== shot.id) : [...current, shot]
     );
-  };
-
-  const deleteOriginalScreenshots = async () => {
-    const ids = savedBulk ? deletableIds(savedBulk.savedShotIds) : [];
-    if (ids.length === 0 || !MediaLibrary) return;
-    setDeleteOriginalState('deleting');
-    try {
-      await MediaLibrary.Asset.delete(ids.map((id) => new MediaLibrary!.Asset(id)));
-      setDeleteOriginalState('done');
-    } catch (err) {
-      // Android's own delete-confirmation dialog rejects this promise when
-      // the user taps Cancel -- that's not a failure worth a scary "failed,
-      // retry" message, just back to the original ask so they can tap it
-      // again whenever they actually want to.
-      setDeleteOriginalState('idle');
-    }
   };
 
   // A handful at a time, not all at once or strictly one-by-one -- mostly
@@ -586,10 +483,9 @@ export default function SaveSheetScreen() {
       });
   };
 
-  // Shared-in photos and album picks that aren't in the recent row lead it,
-  // so the batch is always visible (shared ones stay after a deselect).
+  // Shared-in photos and album picks; shared ones stay after a deselect.
   const gridScreenshots: RecentScreenshot[] = [];
-  for (const shot of [...sharedShots, ...selectedScreenshots, ...recentScreenshots]) {
+  for (const shot of [...sharedShots, ...selectedScreenshots]) {
     if (!gridScreenshots.some((g) => g.id === shot.id)) gridScreenshots.push(shot);
   }
   // What this save will do to the month's AI organize count: for several
@@ -746,9 +642,7 @@ export default function SaveSheetScreen() {
                   <View style={styles.screenshotSection}>
                     <View style={styles.bulkHeader}>
                       <Text style={[styles.screenshotLabel, { color: theme.sub, marginBottom: 0 }]}>
-                        {selectedScreenshots.length > 0
-                          ? S.selectedCount(selectedScreenshots.length)
-                          : S.recentMulti}
+                        {S.selectedCount(selectedScreenshots.length)}
                       </Text>
                       {selectedScreenshots.length > 0 && (
                         <Pressable
@@ -770,33 +664,7 @@ export default function SaveSheetScreen() {
                       </Text>
                     )}
                   </View>
-                ) : screenshotsNeedPermission ? (
-                  // Asked only when tapped -- not the moment the sheet opens.
-                  <View style={styles.screenshotSection}>
-                    {screenshotsLoading ? (
-                      <ActivityIndicator size="small" color={theme.accent} style={{ alignSelf: 'flex-start' }} />
-                    ) : (
-                      <Pressable onPress={requestScreenshotAccess} hitSlop={6}>
-                        <Text style={[styles.permissionHintText, { color: theme.accent }]}>{S.loadRecent}</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                ) : screenshotsEmpty ? (
-                  <View style={styles.screenshotSection}>
-                    <Text style={[styles.screenshotLabel, { color: theme.sub }]}>{S.noRecent}</Text>
-                  </View>
-                ) : (
-                  screenshotsPermissionDenied && (
-                    <View style={styles.screenshotSection}>
-                      <Text style={[styles.screenshotLabel, { color: theme.sub }]}>{S.recent}</Text>
-                      <Pressable onPress={() => Linking.openSettings()}>
-                        <Text style={[styles.permissionHintText, { color: theme.accent }]}>
-                          {S.recentDenied}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  )
-                )}
+                ) : null}
               </>
             )}
 
@@ -910,32 +778,6 @@ export default function SaveSheetScreen() {
                 );
               })}
             </ScrollView>
-
-            {/* Clearing the gallery is usually why the photos were brought
-                in -- so once they're safely saved, ask plainly. Only the ones
-                that actually saved can go (Android adds its own confirm). */}
-            {savedBulk && deletableIds(savedBulk.savedShotIds).length > 0 && deleteOriginalState !== 'kept' && (
-              <View style={[styles.deleteOriginalCard, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
-                {deleteOriginalState === 'done' ? (
-                  <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>{S.originalsDeleted}</Text>
-                ) : (
-                  <>
-                    <Text style={[styles.deleteOriginalTitle, { color: theme.ink }]}>
-                      {S.deleteOriginalsQ(deletableIds(savedBulk.savedShotIds).length)}
-                    </Text>
-                    <Text style={[styles.deleteOriginalText, { color: theme.sub }]}>
-                      {savedBulk.failed > 0
-                        ? S.failedKept(savedBulk.failed)
-                        : S.galleryOnly}
-                    </Text>
-                    <View style={styles.deleteOriginalButtons}>
-                      <GhostButton label={S.keep} theme={theme} size="sm" onPress={() => setDeleteOriginalState('kept')} disabled={deleteOriginalState === 'deleting'} />
-                      <SolidButton label={S.deleteOriginals} theme={theme} size="sm" flex={1} variant="danger" onPress={deleteOriginalScreenshots} loading={deleteOriginalState === 'deleting'} />
-                    </View>
-                  </>
-                )}
-              </View>
-            )}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
               {bulkUnclassified > 0 &&
@@ -1136,8 +978,4 @@ const styles = StyleSheet.create({
   bulkResultList: { marginTop: 18, maxHeight: 220 },
   bulkResultRow: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
   bulkResultTitle: { flex: 1, fontSize: 13.5, fontFamily: 'IBMPlexSansKR_400Regular' },
-  deleteOriginalCard: { marginTop: 16, padding: 16, gap: 6 },
-  deleteOriginalTitle: { fontSize: 14.5, fontFamily: 'IBMPlexSansKR_500Medium' },
-  deleteOriginalButtons: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  deleteOriginalText: { fontSize: 12.5, lineHeight: 18, fontFamily: 'IBMPlexSansKR_400Regular' },
 });

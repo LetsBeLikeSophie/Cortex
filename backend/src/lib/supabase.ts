@@ -55,6 +55,8 @@ export interface ItemRecord {
   removed_tags?: string[];
   // A 모아서 만들기 memo: the items it was made from.
   composed_from?: string[] | null;
+  // Opens only with the device PIN; left out of AI search and compose.
+  locked?: boolean;
   shared_at: string;
   created_at: string;
   deleted_at: string | null;
@@ -367,6 +369,16 @@ export async function trashItem(userId: string, itemId: string): Promise<void> {
   if (!count) throw new Error("item not found");
 }
 
+export async function setItemLocked(userId: string, itemId: string, locked: boolean): Promise<void> {
+  const { error, count } = await getClient()
+    .from("items")
+    .update({ locked }, { count: "exact" })
+    .eq("id", itemId)
+    .eq("user_id", userId);
+  if (error) throw new Error(`setItemLocked failed: ${error.message}`);
+  if (!count) throw new Error("item not found");
+}
+
 // A person flags what the AI wrote for one of their items (Play's
 // AI-generated content policy). Keeps a copy of the output as it was.
 export async function reportAiOutput(userId: string, itemId: string): Promise<void> {
@@ -541,6 +553,45 @@ export async function listTags(userId: string): Promise<string[]> {
     for (const tag of row.user_tags) set.add(tag);
   }
   return [...set].sort((a, b) => a.localeCompare(b, "ko"));
+}
+
+// How many live items use each tag -- what 태그 정리하기 sends to the AI.
+export async function listTagCounts(userId: string): Promise<{ name: string; count: number }[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select("tags, user_tags")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .limit(2000);
+  if (error) throw new Error(`listTagCounts failed: ${error.message}`);
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { tags: string[]; user_tags: string[] }[]) {
+    for (const tag of new Set([...row.tags, ...row.user_tags])) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  }
+  return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+}
+
+// Applies the groups the person ticked: every item (trash included, so a
+// restore doesn't bring an old name back) gets the merged names replaced
+// by keep, in both AI tags and the person's own. Returns items changed.
+export async function mergeTags(userId: string, groups: { keep: string; merge: string[] }[]): Promise<number> {
+  const rename = new Map<string, string>();
+  for (const g of groups) for (const m of g.merge) if (m !== g.keep) rename.set(m, g.keep);
+  if (rename.size === 0) return 0;
+  const { data, error } = await getClient().from("items").select("id, tags, user_tags").eq("user_id", userId).limit(5000);
+  if (error) throw new Error(`mergeTags read failed: ${error.message}`);
+  const swap = (list: string[]) => [...new Set(list.map((t) => rename.get(t) ?? t))];
+  let changed = 0;
+  for (const row of (data ?? []) as { id: string; tags: string[]; user_tags: string[] }[]) {
+    if (![...row.tags, ...row.user_tags].some((t) => rename.has(t))) continue;
+    const tags = swap(row.tags);
+    // A tag the AI already gives it isn't repeated among the person's own.
+    const userTags = swap(row.user_tags).filter((t) => !tags.includes(t));
+    const { error: upErr } = await getClient().from("items").update({ tags, user_tags: userTags }).eq("id", row.id).eq("user_id", userId);
+    if (upErr) throw new Error(`mergeTags update failed: ${upErr.message}`);
+    changed++;
+  }
+  return changed;
 }
 
 // Everything (not trashed) carrying this tag, AI-assigned or added by the

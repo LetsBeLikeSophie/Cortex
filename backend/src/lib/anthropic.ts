@@ -618,6 +618,62 @@ function formatLine(format: ComposeFormat): string {
 const COMPOSE_BODY_MAX = 1500;
 const COMPOSE_BODY_TOTAL = 20000;
 
+// "태그 정리하기": only the tag names and how often each is used go to the
+// AI (no memo content). It proposes groups of tags that mean the same
+// thing; the person ticks the ones to merge, so a wrong guess costs nothing.
+const TagCleanupSchema = z.object({
+  groups: z
+    .array(
+      z.object({
+        keep: z.string().describe("The one name the group becomes -- usually the most-used member, written as the person writes tags"),
+        merge: z.array(z.string()).describe("The other tags of the group, folded into keep (exact names from the list)"),
+      })
+    )
+    .describe("Up to 20 groups, the clearest first; empty when nothing should merge"),
+});
+
+const TAG_CLEANUP_SYSTEM = `You tidy the tags of "Cortex", a personal archive app. You get one person's tags with how many items use each.
+Propose groups of tags that should become one tag because they mean the same thing for finding things later:
+- spelling or spacing variants, singular/plural, the same word in two languages or scripts (카페 / cafe / カフェ)
+- a narrow tag that only repeats a broader one with a filler word (카페투어 -> 카페)
+Never merge tags that are related but different (카페 and 디저트, 서울 and 성수동, 2024 and 2025, a person and their group).
+Use exact tag names from the list in merge. Prefer the most-used member as keep. When unsure, leave it out.`;
+
+export async function suggestTagMerges(
+  tags: { name: string; count: number }[],
+  userId?: string,
+  lang: string = DEFAULT_LANG
+): Promise<{ keep: string; merge: string[] }[]> {
+  const known = new Set(tags.map((t) => t.name));
+  const response = await classifyClient.messages.parse({
+    model: MODEL,
+    max_tokens: 4096,
+    system: TAG_CLEANUP_SYSTEM,
+    messages: [
+      {
+        role: "user",
+        content: `Language of new names (if any): ${languageName(lang)}\nTags (${tags.length}):\n${tags.map((t) => `${t.name} (${t.count})`).join("\n")}`,
+      },
+    ],
+    output_config: { effort: "low", format: zodOutputFormat(TagCleanupSchema) },
+  });
+  logAiCall("tag_cleanup", MODEL, response.usage, userId);
+  const out = response.parsed_output;
+  if (!out) throw new Error("Claude response did not parse against the tag cleanup schema");
+  // Only real tags, no tag in two groups, and at least one to merge.
+  const used = new Set<string>();
+  const groups: { keep: string; merge: string[] }[] = [];
+  for (const g of out.groups.slice(0, 20)) {
+    const keep = clip(g.keep.trim(), 30);
+    const merge = [...new Set(g.merge.map((m) => m.trim()))].filter((m) => known.has(m) && m !== keep && !used.has(m));
+    if (!keep || merge.length === 0 || used.has(keep)) continue;
+    used.add(keep);
+    merge.forEach((m) => used.add(m));
+    groups.push({ keep, merge });
+  }
+  return groups;
+}
+
 export async function composeFromItems(
   tag: string,
   format: ComposeFormat,

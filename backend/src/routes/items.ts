@@ -5,7 +5,7 @@ import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
 import { AiConsentRequiredError, getEntitlement, recordUsage, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang } from "../lib/plans.js";
 import { normalizeLang, DEFAULT_LANG } from "../lib/anthropic.js";
-import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
+import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, suggestTagMerges, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -30,6 +30,9 @@ import {
   searchItemsSmart,
   trashItem,
   reportAiOutput,
+  setItemLocked,
+  listTagCounts,
+  mergeTags,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
@@ -239,7 +242,8 @@ export async function itemsRoutes(app: FastifyInstance) {
       const interpretation = await interpretSearch(parsed.data.query, todayInKorea(), userId);
       await recordUsage(userId, "search").catch((err) => req.log.error(err));
       const result = await searchItemsSmart(userId, interpretation);
-      return reply.send({ interpretation, ...result });
+      // Locked memos stay out of AI search.
+      return reply.send({ interpretation, ...result, items: result.items.filter((it) => !it.locked) });
     }
   );
 
@@ -359,6 +363,8 @@ export async function itemsRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const item = await getItemForUser(userId, id);
     if (!item) return reply.code(404).send({ error: "not found" });
+    // A locked memo stays away from the AI until it is unlocked.
+    if (item.locked) return reply.code(409).send({ error: "locked" });
     if (item.classification_status === "pending") return reply.code(409).send({ error: "already organizing" });
     const started = await reorganizeItem(userId, item);
     if (!started) {
@@ -392,7 +398,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     // Earlier composed memos aren't materials -- they'd fold a summary back
     // into the next summary (decision Q7).
     const picked = previous ? previous.composed_from! : itemIds;
-    const items = (picked ? await listItemsByIds(userId, picked) : await listItemsWithTag(userId, tag)).filter((it) => !it.composed_from);
+    const items = (picked ? await listItemsByIds(userId, picked) : await listItemsWithTag(userId, tag)).filter((it) => !it.composed_from && !it.locked);
     if (items.length < 2) return reply.code(400).send({ error: "too_few", count: items.length });
 
     const reservation = free ? null : await reserveUsage(userId, "compose");
@@ -468,6 +474,59 @@ export async function itemsRoutes(app: FastifyInstance) {
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "delete failed" });
     }
+  });
+
+  // Memo lock: the PIN lives on the device; the server only keeps the flag
+  // (so AI search and compose can leave the memo out).
+  app.post("/items/:id/lock", async (req, reply) => {
+    const parsed = z.object({ locked: z.boolean() }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    try {
+      await setItemLocked(userId, id, parsed.data.locked);
+      return reply.send({ ok: true, locked: parsed.data.locked });
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "lock failed" });
+    }
+  });
+
+  // 태그 정리하기, step 1: the AI proposes groups from tag names only.
+  // Metered; nothing changes until step 2.
+  app.post("/tags/cleanup/suggest", { config: { rateLimit: {} } }, async (req, reply) => {
+    const userId = await resolveUserId(req);
+    await requireAiConsent(userId);
+    const ent = await getEntitlement(userId);
+    if (remaining(ent, "tag_cleanup") === 0) {
+      return reply.code(402).send({ error: "quota", kind: "tag_cleanup", limit: ent.tag_cleanup.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+    }
+    const tags = await listTagCounts(userId);
+    if (tags.length < 2) return reply.send({ groups: [], left: remaining(ent, "tag_cleanup") });
+    const reservation = await reserveUsage(userId, "tag_cleanup");
+    try {
+      const groups = await suggestTagMerges(tags.slice(0, 400), userId, normalizeLang(req.headers["x-cortex-lang"]) ?? ent.lang ?? DEFAULT_LANG);
+      // Nothing to tidy -> the use is handed back.
+      if (groups.length === 0) await refundUsage(reservation).catch(() => {});
+      const counts = new Map(tags.map((t) => [t.name, t.count]));
+      return reply.send({
+        groups: groups.map((g) => ({ ...g, counts: Object.fromEntries([g.keep, ...g.merge].map((n) => [n, counts.get(n) ?? 0])) })),
+        left: remaining(ent, "tag_cleanup") - (groups.length === 0 ? 0 : 1),
+      });
+    } catch (err) {
+      await refundUsage(reservation).catch(() => {});
+      throw err;
+    }
+  });
+
+  // 태그 정리하기, step 2: merge the groups the person ticked (free).
+  app.post("/tags/cleanup/apply", async (req, reply) => {
+    const parsed = z
+      .object({ groups: z.array(z.object({ keep: z.string().trim().min(1).max(30), merge: z.array(z.string().trim().min(1).max(60)).min(1).max(50) })).min(1).max(20) })
+      .safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+    const userId = await resolveUserId(req);
+    const changed = await mergeTags(userId, parsed.data.groups);
+    return reply.send({ ok: true, changed });
   });
 
   // "AI 결과 신고": flags the AI-written title/memo/tags of one item.

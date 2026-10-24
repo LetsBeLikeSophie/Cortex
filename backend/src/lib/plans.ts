@@ -10,7 +10,7 @@ import { getClient, logAnalyticsEvent } from "./supabase.js";
 // guest trial could be re-taken endlessly).
 
 export type Tier = "free" | "trial" | "pro";
-export type UsageKind = "classify" | "search" | "compose";
+export type UsageKind = "classify" | "search" | "compose" | "tag_cleanup";
 
 // Whether saved content may go to the AI provider abroad (asked once in
 // the app). Anything but 'agreed' means no AI call at all.
@@ -28,10 +28,12 @@ export interface Entitlement {
   classify: { used: number; limit: number };
   // What Pro includes, so the paywall states the real monthly ceilings
   // instead of "unlimited".
-  proLimits: { classify: number; search: number; compose: number };
+  proLimits: { classify: number; search: number; compose: number; tag_cleanup: number };
   search: { used: number; limit: number };
   // "모아서 만들기" (compose) runs this month.
   compose: { used: number; limit: number };
+  // "태그 정리하기" runs this month.
+  tag_cleanup: { used: number; limit: number };
   // When this month's quota resets (start of next month, Korea time).
   resetsAt: string;
   unclassifiedCount: number;
@@ -117,10 +119,11 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
   // share starts fresh the moment the trial ends (decision Q9, 2026-10-23).
   const trialEnd = new Date(row.trial_ends_at);
   const since = tier === "free" && trialEnd > start ? trialEnd : start;
-  const [classifyUsed, searchUsed, composeUsed, unclassifiedCount] = await Promise.all([
+  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount] = await Promise.all([
     countUsage(userId, "classify", since),
     countUsage(userId, "search", since),
     countUsage(userId, "compose", since),
+    countUsage(userId, "tag_cleanup", since),
     countUnclassified(userId),
   ]);
   return {
@@ -132,7 +135,8 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
     search: { used: searchUsed, limit: paid ? config.proSearchMonthly : config.freeSearchMonthly },
     compose: { used: composeUsed, limit: paid ? config.proComposeMonthly : config.freeComposeMonthly },
-    proLimits: { classify: config.proClassifyMonthly, search: config.proSearchMonthly, compose: config.proComposeMonthly },
+    tag_cleanup: { used: tagCleanupUsed, limit: paid ? config.proTagCleanupMonthly : config.freeTagCleanupMonthly },
+    proLimits: { classify: config.proClassifyMonthly, search: config.proSearchMonthly, compose: config.proComposeMonthly, tag_cleanup: config.proTagCleanupMonthly },
     resetsAt: next.toISOString(),
     unclassifiedCount,
   };

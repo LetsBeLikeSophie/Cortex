@@ -42,6 +42,10 @@ export const config = {
   // summary memo. A taste on Free, plenty on Pro.
   freeComposeMonthly: Number(optional("FREE_COMPOSE_MONTHLY") ?? 2),
   proComposeMonthly: Number(optional("PRO_COMPOSE_MONTHLY") ?? 100),
+  // "태그 정리하기": AI proposes merging look-alike tags (only tag names are
+  // sent). Once a month on Free, 10 on Pro (decided 2026-10-24).
+  freeTagCleanupMonthly: Number(optional("FREE_TAG_CLEANUP_MONTHLY") ?? 1),
+  proTagCleanupMonthly: Number(optional("PRO_TAG_CLEANUP_MONTHLY") ?? 10),
 
   // Google Play billing (src/lib/googlePlay.ts, src/lib/billing.ts).
   // GOOGLE_PLAY_SERVICE_ACCOUNT: path to the service account's JSON key

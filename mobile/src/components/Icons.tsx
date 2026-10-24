@@ -90,6 +90,16 @@ export function TrashIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   );
 }
 
+// A padlock -- memo lock. Closed shackle when locked, open when not.
+export function LockIcon({ size = 18, color, strokeWidth = 1.3, open = false }: IconProps & { open?: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M4.5 8.5h9a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1Z" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+      <Path d={open ? "M6 8.5V5.8a3 3 0 0 1 5.8-1.1" : "M6 8.5V5.8a3 3 0 0 1 6 0v2.7"} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 // A warning triangle with "!" -- "report this" (AI output that's wrong or
 // offensive). A flag read as "bookmark".
 export function ReportIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {

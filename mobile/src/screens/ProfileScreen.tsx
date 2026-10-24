@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -9,7 +9,8 @@ import { LAYOUTS, PALETTES, allEdges, conceptOf } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signInWithKakao, signOut } from '../auth/kakaoLogin';
 import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
-import { deleteAccount, fetchPlan, Plan, friendlyError } from '../api/client';
+import { deleteAccount, fetchPlan, Plan, friendlyError, unlockAllItems } from '../api/client';
+import { LOCK_SUPPORTED, askPin, biometricAvailable, biometricOn, clearPin, hasPin, setBiometricOn } from '../lock/memoLock';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { frameStyle, screenGutter } from '../components/Card';
@@ -18,6 +19,7 @@ import { GhostButton } from '../components/Buttons';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
 import { LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
+import { COMMON } from '../i18n/common';
 
 const S = strings({
   ko: {
@@ -44,6 +46,15 @@ const S = strings({
     manageSub: '구독 관리 열기',
     plan: '플랜',
     aiConsent: 'AI 분석 동의',
+    bioPromptP: '메모 잠금 확인',
+    lockNote: '비밀번호는 이 휴대폰에만 저장돼요. 메모 화면의 🔒로 잠가요.',
+    lockTurnOff: '잠금 끄기 (모든 메모 잠금 풀림)',
+    lockBio: '지문·얼굴로 열기',
+    lockChange: '비밀번호 바꾸기',
+    lockSet: '비밀번호 정하기',
+    lockOff: '꺼짐',
+    lockOn: '켜짐',
+    memoLock: '메모 잠금',
     langNote: '메뉴와 AI 메모가 이 언어로 나와요',
     langDevice: '휴대폰 설정 따르기',
     language: '언어',
@@ -81,6 +92,15 @@ const S = strings({
     manageSub: 'Manage subscription',
     plan: 'Plan',
     aiConsent: 'AI analysis consent',
+    bioPromptP: 'Confirm memo lock',
+    lockNote: 'The PIN stays on this phone. Lock a memo with 🔒 on its screen.',
+    lockTurnOff: 'Turn off (unlocks every memo)',
+    lockBio: 'Open with fingerprint or face',
+    lockChange: 'Change PIN',
+    lockSet: 'Set a PIN',
+    lockOff: 'Off',
+    lockOn: 'On',
+    memoLock: 'Memo lock',
     langNote: 'Menus and AI memos use this language',
     langDevice: 'Same as phone',
     language: 'Language',
@@ -118,6 +138,15 @@ const S = strings({
     manageSub: 'サブスク管理を開く',
     plan: 'プラン',
     aiConsent: 'AI分析への同意',
+    bioPromptP: 'メモロックの確認',
+    lockNote: '暗証番号はこの端末にだけ保存されます。メモ画面の🔒でロックします。',
+    lockTurnOff: 'ロックをオフ(すべてのメモを解除)',
+    lockBio: '指紋・顔で開く',
+    lockChange: '暗証番号を変更',
+    lockSet: '暗証番号を設定',
+    lockOff: 'オフ',
+    lockOn: 'オン',
+    memoLock: 'メモロック',
     langNote: 'メニューとAIメモがこの言語になります',
     langDevice: '端末の設定に合わせる',
     language: '言語',
@@ -155,6 +184,15 @@ const S = strings({
     manageSub: '打开订阅管理',
     plan: '套餐',
     aiConsent: 'AI 分析授权',
+    bioPromptP: '确认笔记锁',
+    lockNote: '密码只保存在这部手机上。在笔记页面点 🔒 即可锁定。',
+    lockTurnOff: '关闭（解除所有笔记的锁定）',
+    lockBio: '用指纹或面容打开',
+    lockChange: '更改密码',
+    lockSet: '设置密码',
+    lockOff: '已关闭',
+    lockOn: '已开启',
+    memoLock: '笔记锁',
     langNote: '菜单和 AI 笔记都会使用这个语言',
     langDevice: '跟随手机设置',
     language: '语言',
@@ -192,6 +230,15 @@ const S = strings({
     manageSub: '開啟訂閱管理',
     plan: '方案',
     aiConsent: 'AI 分析授權',
+    bioPromptP: '確認筆記鎖',
+    lockNote: '密碼只儲存在這支手機上。在筆記頁面點 🔒 即可鎖定。',
+    lockTurnOff: '關閉（解除所有筆記的鎖定）',
+    lockBio: '用指紋或臉部開啟',
+    lockChange: '變更密碼',
+    lockSet: '設定密碼',
+    lockOff: '已關閉',
+    lockOn: '已開啟',
+    memoLock: '筆記鎖',
     langNote: '選單和 AI 筆記都會使用這個語言',
     langDevice: '跟隨手機設定',
     language: '語言',
@@ -214,6 +261,38 @@ export default function ProfileScreen() {
   const { session, pauseGuest, startLinking } = useAuth();
   const [linking, setLinking] = useState<'kakao' | 'google' | null>(null);
   const [langOpen, setLangOpen] = useState(false);
+  // Memo lock: whether a PIN exists, and the fingerprint/face option.
+  const [lockOn, setLockOn] = useState(false);
+  const [lockOpen, setLockOpen] = useState(false);
+  const [bioAvail, setBioAvail] = useState(false);
+  const [bio, setBio] = useState(false);
+  const refreshLock = () => {
+    hasPin().then(setLockOn);
+    biometricAvailable().then(setBioAvail);
+    biometricOn().then(setBio);
+  };
+  useEffect(refreshLock, []);
+  const bioPrompt = { prompt: S.bioPromptP, cancel: COMMON.cancel };
+  const lockAction = async (what: 'set' | 'change' | 'bio' | 'off') => {
+    if (what === 'set') {
+      if (await askPin('set')) refreshLock();
+      return;
+    }
+    if (!(await askPin('check', bioPrompt))) return;
+    if (what === 'change') await askPin('set');
+    if (what === 'bio') await setBiometricOn(!bio);
+    if (what === 'off') {
+      try {
+        await unlockAllItems();
+      } catch (err) {
+        setError(friendlyError(err));
+        return;
+      }
+      await clearPin();
+      setLockOpen(false);
+    }
+    refreshLock();
+  };
   const [linkError, setLinkError] = useState('');
   // A guest signs in with a real account; AuthContext moves the saves over.
   const link = async (method: 'kakao' | 'google') => {
@@ -392,6 +471,35 @@ export default function ProfileScreen() {
                 </View>
               )}
             </View>
+            {LOCK_SUPPORTED && (
+              <View>
+                <Pressable
+                  onPress={() => (lockOn ? setLockOpen((o) => !o) : lockAction('set'))}
+                  style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
+                >
+                  <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.memoLock}</Text>
+                  <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{lockOn ? S.lockOn : S.lockOff}</Text>
+                </Pressable>
+                {lockOpen && lockOn && (
+                  <View style={styles.langList}>
+                    <Pressable onPress={() => lockAction('change')} style={styles.langRow} hitSlop={4}>
+                      <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.lockChange}</Text>
+                    </Pressable>
+                    {bioAvail && (
+                      <Pressable onPress={() => lockAction('bio')} style={styles.langRow} hitSlop={4} accessibilityRole="switch" accessibilityState={{ checked: bio }}>
+                        <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                          {S.lockBio}  <Text style={{ color: theme.sub }}>{bio ? S.lockOn : S.lockOff}</Text>
+                        </Text>
+                      </Pressable>
+                    )}
+                    <Pressable onPress={() => lockAction('off')} style={styles.langRow} hitSlop={4}>
+                      <Text style={{ fontSize: 14.5, color: theme.danger, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.lockTurnOff}</Text>
+                    </Pressable>
+                    <Text style={{ fontSize: 12.5, color: theme.sub, marginTop: 4, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.lockNote}</Text>
+                  </View>
+                )}
+              </View>
+            )}
             <Pressable
               onPress={() => navigation.navigate('AiConsent')}
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}

@@ -31,6 +31,7 @@ import {
   trashItem,
   reportAiOutput,
   setItemLocked,
+  unlockAllItems,
   listTagCounts,
   mergeTags,
 } from "../lib/supabase.js";
@@ -489,6 +490,11 @@ export async function itemsRoutes(app: FastifyInstance) {
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "lock failed" });
     }
+  });
+
+  app.post("/items/unlock-all", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    return reply.send({ ok: true, changed: await unlockAllItems(userId) });
   });
 
   // 태그 정리하기, step 1: the AI proposes groups from tag names only.

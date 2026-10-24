@@ -24,6 +24,7 @@ const S = strings({
   ko: {
     title: '홈 화면 탭',
     sub: '보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.',
+    cleanup: '✦ 태그 정리하기',
     search: '태그 검색',
     noTags: '아직 저장된 태그가 없어요.',
     noMatch: '일치하는 태그가 없어요.',
@@ -31,6 +32,7 @@ const S = strings({
   en: {
     title: 'Home tabs',
     sub: 'Search and pick tags to show. Favorites always stays.',
+    cleanup: '✦ Tidy up tags',
     search: 'Search tags',
     noTags: 'No tags yet.',
     noMatch: 'No matching tags.',
@@ -38,6 +40,7 @@ const S = strings({
   ja: {
     title: 'ホームのタブ',
     sub: '表示するタグを検索して選んでください。お気に入りタブは常に残ります。',
+    cleanup: '✦ タグを整理',
     search: 'タグを検索',
     noTags: 'まだタグがありません。',
     noMatch: '一致するタグがありません。',
@@ -45,6 +48,7 @@ const S = strings({
   'zh-Hans': {
     title: '首页标签页',
     sub: '搜索并选择要显示的标签。星标标签页会一直保留。',
+    cleanup: '✦ 整理标签',
     search: '搜索标签',
     noTags: '还没有标签。',
     noMatch: '没有匹配的标签。',
@@ -52,6 +56,7 @@ const S = strings({
   'zh-Hant': {
     title: '首頁分頁',
     sub: '搜尋並選擇要顯示的標籤。星號分頁會一直保留。',
+    cleanup: '✦ 整理標籤',
     search: '搜尋標籤',
     noTags: '還沒有標籤。',
     noMatch: '沒有符合的標籤。',
@@ -113,6 +118,11 @@ export default function TabPickerScreen() {
             {S.title}
           </Heading>
           <Text style={[styles.sub, { color: theme.sub }]}>{S.sub}</Text>
+          {listed.length > 1 && (
+            <Pressable onPress={() => navigation.navigate('TagCleanup')} hitSlop={6} style={styles.cleanup}>
+              <Text style={[styles.cleanupText, { color: theme.accent }]}>{S.cleanup}</Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={[styles.searchBox, fieldStyle(theme)]}>
@@ -162,6 +172,8 @@ export default function TabPickerScreen() {
 }
 
 const styles = StyleSheet.create({
+  cleanup: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 4 },
+  cleanupText: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
   flexShrink: { flexShrink: 1 },
   heading: { marginBottom: 6, paddingHorizontal: 4 },
   sub: { fontSize: 13, marginBottom: 16, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular', lineHeight: 19 },

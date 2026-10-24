@@ -20,7 +20,11 @@ export type RootStackParamList = {
   // (shown once, on arrival; the sources aren't stored with the memo).
   ItemDetail: { item: ApiItem; composedFrom?: { tag: string; count: number; left?: number; freeRemake?: boolean } };
   // Why it opened -- picks the headline; omitted = opened from the profile.
-  Paywall: { reason?: 'classify' | 'search' | 'compose' } | undefined;
+  Paywall: { reason?: 'classify' | 'search' | 'compose' | 'tag_cleanup' } | undefined;
+  // Memo-lock PIN pad: 'check' opens a locked memo, 'set' makes a new PIN.
+  Pin: { mode: 'set' | 'check' };
+  // 태그 정리하기, from tag settings.
+  TagCleanup: undefined;
   // "모아서 만들기" for one home tag tab.
   // tag: what the memo is filed under; itemIds: picked materials instead of
   // the whole tag; tagChoices: let the sheet pick among the item's tags.

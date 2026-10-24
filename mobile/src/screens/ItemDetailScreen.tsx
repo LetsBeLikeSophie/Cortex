@@ -18,11 +18,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, asQuotaError, deleteItem, reportAiOutput, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
+import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
-import { ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
+import { LockIcon, ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
@@ -33,6 +33,7 @@ import type { ApiItem } from '../api/client';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { COMMON, categoryLabel } from '../i18n/common';
+import { LOCK_SUPPORTED, askPin, hasPin } from '../lock/memoLock';
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
 // snippet (the AI memo) isn't typed into -- it's only ever replaced by the
@@ -69,6 +70,13 @@ const S = strings({
     trashTitle: '휴지통으로 이동할까요?',
     trashBody: '나중에 홈 위쪽 휴지통에서 복원할 수 있어요.',
     deleteFailed: (e: string) => `삭제 실패: ${e}`,
+    lockFailed: (e: string) => `잠금을 바꾸지 못했어요: ${e}`,
+    bioPrompt: '잠긴 메모 열기',
+    open: '열기',
+    lockedBody: '비밀번호나 지문으로 열 수 있어요. 잠긴 메모는 AI 검색과 모아서 만들기에서 빠져요.',
+    lockedTitle: '잠긴 메모예요',
+    unlock: '잠금 풀기',
+    lock: '메모 잠그기',
     reportFailed: (e: string) => `신고하지 못했어요: ${e}`,
     reported: '신고했어요. 확인할게요.',
     reportSend: '신고',
@@ -120,6 +128,13 @@ const S = strings({
     trashTitle: 'Move to trash?',
     trashBody: 'You can restore it from the trash at the top of Home.',
     deleteFailed: (e: string) => `Couldn't delete: ${e}`,
+    lockFailed: (e: string) => `Couldn't change the lock: ${e}`,
+    bioPrompt: 'Open locked memo',
+    open: 'Open',
+    lockedBody: 'Open it with your PIN or fingerprint. Locked memos are left out of AI search and Combine.',
+    lockedTitle: 'This memo is locked',
+    unlock: 'Unlock memo',
+    lock: 'Lock memo',
     reportFailed: (e: string) => `Couldn't report: ${e}`,
     reported: "Reported. Thanks, we'll take a look.",
     reportSend: 'Report',
@@ -171,6 +186,13 @@ const S = strings({
     trashTitle: 'ゴミ箱に移動しますか？',
     trashBody: 'あとでホーム上部のゴミ箱から復元できます。',
     deleteFailed: (e: string) => `削除できませんでした: ${e}`,
+    lockFailed: (e: string) => `ロックを変更できませんでした: ${e}`,
+    bioPrompt: 'ロックされたメモを開く',
+    open: '開く',
+    lockedBody: '暗証番号か指紋で開けます。ロック中のメモはAI検索と「まとめて作る」から外れます。',
+    lockedTitle: 'ロックされたメモです',
+    unlock: 'ロックを解除',
+    lock: 'メモをロック',
     reportFailed: (e: string) => `報告できませんでした: ${e}`,
     reported: '報告しました。確認します。',
     reportSend: '報告',
@@ -222,6 +244,13 @@ const S = strings({
     trashTitle: '移到回收站？',
     trashBody: '之后可以在首页上方的回收站恢复。',
     deleteFailed: (e: string) => `删除失败：${e}`,
+    lockFailed: (e: string) => `无法更改锁定：${e}`,
+    bioPrompt: '打开锁定的笔记',
+    open: '打开',
+    lockedBody: '可用密码或指纹打开。锁定的笔记不会用于 AI 搜索和汇总生成。',
+    lockedTitle: '这条笔记已锁定',
+    unlock: '解除锁定',
+    lock: '锁定笔记',
     reportFailed: (e: string) => `举报失败：${e}`,
     reported: '已举报，我们会查看。',
     reportSend: '举报',
@@ -273,6 +302,13 @@ const S = strings({
     trashTitle: '移到垃圾桶？',
     trashBody: '之後可以在首頁上方的垃圾桶還原。',
     deleteFailed: (e: string) => `刪除失敗：${e}`,
+    lockFailed: (e: string) => `無法變更鎖定：${e}`,
+    bioPrompt: '開啟鎖定的筆記',
+    open: '開啟',
+    lockedBody: '可用密碼或指紋開啟。鎖定的筆記不會用於 AI 搜尋和彙整生成。',
+    lockedTitle: '這則筆記已鎖定',
+    unlock: '解除鎖定',
+    lock: '鎖定筆記',
     reportFailed: (e: string) => `檢舉失敗：${e}`,
     reported: '已檢舉，我們會查看。',
     reportSend: '檢舉',
@@ -394,6 +430,30 @@ export default function ItemDetailScreen() {
   const refY = useRef(new Map<number, number>());
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
+  // Memo lock: a locked memo opens behind the device PIN / fingerprint.
+  const [locked, setLocked] = useState(!!item.locked);
+  const [opened, setOpened] = useState(!item.locked);
+  const [lockError, setLockError] = useState('');
+  const openLocked = async () => {
+    if (await askPin('check', { prompt: S.bioPrompt, cancel: COMMON.cancel })) setOpened(true);
+  };
+  useEffect(() => {
+    if (!opened) openLocked();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const toggleLock = async () => {
+    setLockError('');
+    const next = !locked;
+    if (next && !(await hasPin()) && !(await askPin('set'))) return;
+    setLocked(next);
+    try {
+      await setItemLocked(item.id, next);
+    } catch (err) {
+      setLocked(!next);
+      setLockError(S.lockFailed(friendlyError(err)));
+    }
+  };
+
   // "AI 결과 신고" (Play's AI-generated content policy): flag the AI output.
   const [reportState, setReportState] = useState<'idle' | 'confirming' | 'sending' | 'done'>('idle');
   const [reportError, setReportError] = useState('');
@@ -725,6 +785,24 @@ export default function ItemDetailScreen() {
     }
   };
 
+  if (!opened) {
+    return (
+      <ModalSheet theme={theme} onClose={close} paddingBottom={24} paddingHorizontal={20}>
+        <View style={styles.lockedGate}>
+          <LockIcon size={22} color={theme.sub} strokeWidth={1.4} />
+          <Heading theme={theme} size={20} style={styles.lockedTitle}>
+            {itemTitle(item)}
+          </Heading>
+          <Text style={[styles.composedText, { color: theme.sub, textAlign: 'center' }]}>{S.lockedBody}</Text>
+        </View>
+        <ButtonRow theme={theme} style={{ marginTop: 18 }}>
+          <GhostButton label={COMMON.cancel} theme={theme} onPress={close} />
+          <SolidButton label={S.open} theme={theme} onPress={openLocked} />
+        </ButtonRow>
+      </ModalSheet>
+    );
+  }
+
   return (
     <>
     <ModalSheet theme={theme} onClose={close} paddingBottom={24} maxHeightRatio={0.82} grabberMarginBottom={20} liftForKeyboard>
@@ -750,7 +828,12 @@ export default function ItemDetailScreen() {
               {/* On a fresh 모아서 만들기 result the header ✦ ("re-tag", 1 AI
                   organize) read as "make it again" -- that's the 다른 형식으로
                   link under the title instead. */}
-              {item.capture_type === 'text' && !isComposed && sparkleButton}
+              {item.capture_type === 'text' && !isComposed && !locked && sparkleButton}
+              {LOCK_SUPPORTED && (
+                <IconButton theme={theme} on="sheet" onPress={toggleLock} label={locked ? S.unlock : S.lock}>
+                  <LockIcon size={14} color={locked ? theme.ink : theme.sub} strokeWidth={1.3} open={!locked} />
+                </IconButton>
+              )}
               <IconButton theme={theme} on="sheet" onPress={share} label={S.share}>
                 <ShareIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
@@ -784,6 +867,7 @@ export default function ItemDetailScreen() {
             </View>
           )}
 
+          {lockError !== '' && <Text style={[styles.composedText, { color: theme.danger, marginBottom: 12 }]}>{lockError}</Text>}
           {(reportState === 'confirming' || reportState === 'sending') && (
             <ConfirmCard
               theme={theme}
@@ -1075,6 +1159,8 @@ export default function ItemDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  lockedGate: { alignItems: 'center', gap: 10, paddingTop: 8 },
+  lockedTitle: { textAlign: 'center' },
   sourcesBox: { gap: 6, marginTop: 8 },
   composeEntry: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 8 },
   flexShrink: { flexShrink: 1 },

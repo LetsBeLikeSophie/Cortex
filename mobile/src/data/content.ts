@@ -13,6 +13,8 @@ export interface RecentItem {
   pending?: boolean;
   // Made by 모아서 만들기 -- marked with ✦ in lists.
   composed?: boolean;
+  // Memo lock: marked with 🔒, title only.
+  locked?: boolean;
 }
 
 export interface SearchResult {

@@ -114,6 +114,7 @@ export function RecentRow({
       <View style={styles.rowBody}>
         <Text style={[styles.title, { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal' }]}>
           {item.composed ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
+          {item.locked ? <Text style={{ color: theme.sub }}>🔒 </Text> : null}
           {item.title}
         </Text>
         <View style={{ marginTop: 7 }}>

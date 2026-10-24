@@ -59,6 +59,7 @@ export function toRecentItem(item: ApiItem, index: number): RecentItem {
     timeLabel: relativeTime(item.shared_at),
     pending,
     composed: (item.composed_from?.length ?? 0) > 0,
+    locked: !!item.locked,
   };
 }
 
@@ -89,7 +90,7 @@ export function toSmartSearchResult(item: SmartHit, keywords: SearchInterpretati
   const missing = keywords.filter((k) => ![k.term, ...k.synonyms].some((w) => fieldMatches(item, w)));
   return {
     title: itemTitle(item),
-    snippet: item.snippet ?? item.raw_text ?? '',
+    snippet: item.locked ? '' : item.snippet ?? item.raw_text ?? '',
     terms: keywords.flatMap((k) => [k.term, ...k.synonyms]),
     matchedCount: keywords.length - missing.length,
     missingTerms: missing.map((k) => k.term),
@@ -105,7 +106,7 @@ export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
   const pending = item.classification_status === 'pending';
   return {
     title: itemTitle(item),
-    snippet: item.snippet ?? item.raw_text ?? '',
+    snippet: item.locked ? '' : item.snippet ?? item.raw_text ?? '',
     terms: include,
     matchedCount: got.length,
     missingTerms: include.filter((w) => !got.includes(w)),

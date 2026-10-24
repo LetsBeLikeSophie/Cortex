@@ -74,7 +74,8 @@
       "expo-iap",
       "./plugins/withReleaseSigning",
       "@react-native-google-signin/google-signin",
-      "expo-background-task"
+      "expo-background-task",
+      "expo-secure-store"
     ]
   }
 }

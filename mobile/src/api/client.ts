@@ -26,8 +26,10 @@ export interface Plan {
   search: { used: number; limit: number };
   // "모아서 만들기" this month (optional: older servers didn't send it).
   compose?: { used: number; limit: number };
+  // "태그 정리하기" this month (optional: older servers didn't send it).
+  tag_cleanup?: { used: number; limit: number };
   // Pro's monthly ceilings (optional: older servers didn't send it).
-  proLimits?: { classify: number; search: number; compose?: number };
+  proLimits?: { classify: number; search: number; compose?: number; tag_cleanup?: number };
   resetsAt: string;
   unclassifiedCount: number;
 }
@@ -49,6 +51,8 @@ export interface ApiItem {
   unclassified_reason?: 'quota' | 'failed' | 'consent' | null;
   // A 모아서 만들기 memo: the items it was made from.
   composed_from?: string[] | null;
+  // Opens only with the device PIN; left out of AI search and compose.
+  locked?: boolean;
   user_note: string | null; // optional "why I saved this", set at save time
   classification_status: ClassificationStatus;
   shared_at: string;
@@ -101,7 +105,7 @@ export class ApiError extends Error {
 // What a 402 from a metered route says (see POST /items/search/ask).
 export interface QuotaError {
   error: 'quota';
-  kind: 'classify' | 'search' | 'compose';
+  kind: 'classify' | 'search' | 'compose' | 'tag_cleanup';
   limit: number;
   tier: Tier;
   resetsAt: string;
@@ -496,6 +500,29 @@ export function reorganizeItem(itemId: string) {
 
 export function fetchTrash() {
   return request<{ items: ApiItem[] }>('/items/trash');
+}
+
+export function setItemLocked(itemId: string, locked: boolean) {
+  return request<{ ok: true; locked: boolean }>(`/items/${encodeURIComponent(itemId)}/lock`, { method: 'POST', body: JSON.stringify({ locked }) });
+}
+
+// Turning the memo lock off opens every locked memo.
+export function unlockAllItems() {
+  return request<{ ok: true; changed: number }>('/items/unlock-all', { method: 'POST' });
+}
+
+export interface TagMergeGroup {
+  keep: string;
+  merge: string[];
+  counts: Record<string, number>;
+}
+
+export function suggestTagCleanup() {
+  return request<{ groups: TagMergeGroup[]; left: number }>('/tags/cleanup/suggest', { method: 'POST' });
+}
+
+export function applyTagCleanup(groups: { keep: string; merge: string[] }[]) {
+  return request<{ ok: true; changed: number }>('/tags/cleanup/apply', { method: 'POST', body: JSON.stringify({ groups }) });
 }
 
 // Flags what the AI wrote for this item ("AI 결과 신고").

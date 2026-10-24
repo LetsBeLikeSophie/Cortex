@@ -379,6 +379,13 @@ export async function setItemLocked(userId: string, itemId: string, locked: bool
   if (!count) throw new Error("item not found");
 }
 
+// Turning the memo lock off (the PIN is gone) opens every locked memo.
+export async function unlockAllItems(userId: string): Promise<number> {
+  const { error, count } = await getClient().from("items").update({ locked: false }, { count: "exact" }).eq("user_id", userId).eq("locked", true);
+  if (error) throw new Error(`unlockAllItems failed: ${error.message}`);
+  return count ?? 0;
+}
+
 // A person flags what the AI wrote for one of their items (Play's
 // AI-generated content policy). Keeps a copy of the output as it was.
 export async function reportAiOutput(userId: string, itemId: string): Promise<void> {

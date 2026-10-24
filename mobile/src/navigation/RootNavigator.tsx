@@ -22,6 +22,9 @@ import AiConsentScreen from '../screens/AiConsentScreen';
 import { onAiConsentRequired } from '../api/client';
 import PaywallScreen from '../screens/PaywallScreen';
 import ComposeScreen from '../screens/ComposeScreen';
+import PinScreen from '../screens/PinScreen';
+import TagCleanupScreen from '../screens/TagCleanupScreen';
+import { registerPinOpener } from '../lock/memoLock';
 import type { RootStackParamList, TabParamList } from './types';
 import { strings } from '../i18n';
 
@@ -125,6 +128,10 @@ export default function RootNavigator() {
     onAiConsentRequired(() => {
       if (navigationRef.isReady() && navigationRef.getCurrentRoute()?.name !== 'AiConsent') navigationRef.navigate('AiConsent');
     });
+    // The memo-lock PIN pad opens from anywhere (see lock/memoLock.ts).
+    registerPinOpener((mode) => {
+      if (navigationRef.isReady()) navigationRef.navigate('Pin', { mode });
+    });
     return () => onAiConsentRequired(null);
   }, []);
   return (
@@ -142,6 +149,8 @@ export default function RootNavigator() {
           <Stack.Screen name="Paywall" component={PaywallScreen} />
           <Stack.Screen name="Compose" component={ComposeScreen} />
           <Stack.Screen name="AiConsent" component={AiConsentScreen} />
+          <Stack.Screen name="Pin" component={PinScreen} />
+          <Stack.Screen name="TagCleanup" component={TagCleanupScreen} />
         </Stack.Group>
       </Stack.Navigator>
     </NavigationContainer>

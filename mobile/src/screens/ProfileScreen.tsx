@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -369,7 +369,9 @@ export default function ProfileScreen() {
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.bg }]} edges={['top']}>
       <ScreenHeader title={S.title} theme={theme} onBack={() => navigation.goBack()} />
 
-      <View style={[styles.body, { paddingHorizontal: screenGutter(theme) }]}>
+      {/* Scrolls: with the language and memo-lock rows the list outgrows
+          a small screen. */}
+      <ScrollView contentContainerStyle={[styles.body, { paddingHorizontal: screenGutter(theme) }]} showsVerticalScrollIndicator={false}>
         <View style={styles.identity}>
           {avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={[styles.avatar, { backgroundColor: theme.soft }]} />
@@ -554,7 +556,7 @@ export default function ProfileScreen() {
             </View>
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -567,7 +569,7 @@ const styles = StyleSheet.create({
   subWarning: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_500Medium' },
   subLink: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
   screen: { flex: 1 },
-  body: { flex: 1, justifyContent: 'space-between', paddingBottom: 32 },
+  body: { flexGrow: 1, justifyContent: 'space-between', gap: 28, paddingBottom: 32 },
   identity: { alignItems: 'center', marginTop: 40, gap: 6 },
   avatar: { width: 76, height: 76, borderRadius: 38 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },

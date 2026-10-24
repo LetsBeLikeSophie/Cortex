@@ -29,7 +29,7 @@ const S = strings({
     lastUsed: '최근 로그인',
     guestTitle: '게스트로 시작할까요?',
     guestStart: '시작',
-    guestLines: ['체험 없이 무료로 시작해요 (로그인하면 7일 체험)', '기록은 이 기기에만 남아요', '나중에 설정에서 계정을 연결하면 기록을 옮길 수 있어요'],
+    guestLines: ['체험 없이 무료로 시작해요', '기록은 이 기기에만 남아요', '나중에 설정에서 계정을 연결하면 기록을 옮길 수 있어요'],
     policyPre: '계속하면 ',
     terms: '이용약관',
     policyAnd: ' 및 ',
@@ -49,7 +49,7 @@ const S = strings({
     lastUsed: 'Last used',
     guestTitle: 'Start as a guest?',
     guestStart: 'Start',
-    guestLines: ['Free, without the trial (sign in for 7 days of Pro)', 'Your saves stay on this device', 'Link an account later in settings to keep them'],
+    guestLines: ['Starts free, without the trial', 'Your saves stay on this device', 'Link an account in settings later to keep them'],
     policyPre: 'By continuing, you agree to the ',
     terms: 'Terms',
     policyAnd: ' and ',
@@ -69,7 +69,7 @@ const S = strings({
     lastUsed: '前回のログイン',
     guestTitle: 'ゲストで始めますか?',
     guestStart: '始める',
-    guestLines: ['体験なしの無料で始まります(ログインで7日間体験)', '記録はこの端末にだけ残ります', 'あとで設定からアカウントを連携すれば記録を移せます'],
+    guestLines: ['体験なしの無料で始まります', '記録はこの端末にだけ残ります', 'あとで設定からアカウントを連携すれば記録を移せます'],
     policyPre: '続けると',
     terms: '利用規約',
     policyAnd: 'と',
@@ -89,7 +89,7 @@ const S = strings({
     lastUsed: '上次登录',
     guestTitle: '以访客身份开始？',
     guestStart: '开始',
-    guestLines: ['免费开始，没有试用（登录可试用 7 天）', '记录只保存在这台设备上', '之后在设置中关联账号即可转移记录'],
+    guestLines: ['免费开始，不含试用', '记录只保存在这台设备上', '之后在设置中关联账号即可转移记录'],
     policyPre: '继续即表示你同意',
     terms: '使用条款',
     policyAnd: '和',
@@ -109,7 +109,7 @@ const S = strings({
     lastUsed: '上次登入',
     guestTitle: '以訪客身分開始？',
     guestStart: '開始',
-    guestLines: ['免費開始，沒有試用（登入可試用 7 天）', '紀錄只保存在這台裝置上', '之後在設定中連結帳號即可轉移紀錄'],
+    guestLines: ['免費開始，不含試用', '紀錄只保存在這台裝置上', '之後在設定中連結帳號即可轉移紀錄'],
     policyPre: '繼續即表示你同意',
     terms: '使用條款',
     policyAnd: '和',
@@ -322,9 +322,10 @@ export default function LoginScreen() {
           <View style={[styles.guestConfirm, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
             <Text style={[styles.guestConfirmTitle, { color: theme.ink }]}>{S.guestTitle}</Text>
             {S.guestLines.map((line) => (
-              <Text key={line} style={[styles.guestNote, { color: theme.sub }]}>
-                {line}
-              </Text>
+              <View key={line} style={styles.guestLine}>
+                <Text style={[styles.guestNote, { color: theme.sub }]}>•</Text>
+                <Text style={[styles.guestNote, styles.flex1, { color: theme.sub }]}>{line}</Text>
+              </View>
             ))}
             <ButtonRow theme={theme} style={{ marginTop: 6 }}>
               <GhostButton label={COMMON.cancel} theme={theme} size="sm" onPress={() => setConfirmGuest(false)} disabled={status === 'guestLoading'} />
@@ -384,6 +385,7 @@ const styles = StyleSheet.create({
   footer: { paddingBottom: 32, gap: 12 },
   errorText: { fontSize: 13, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' },
   kakaoButton: {
+    minHeight: 56,
     backgroundColor: KAKAO_YELLOW,
     paddingVertical: 16,
     alignItems: 'center',
@@ -391,6 +393,7 @@ const styles = StyleSheet.create({
   },
   kakaoButtonText: { color: KAKAO_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
   googleButton: {
+    minHeight: 56,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: GOOGLE_OUTLINE,
@@ -401,12 +404,15 @@ const styles = StyleSheet.create({
   googleInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   googleButtonText: { color: GOOGLE_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
   guestButton: {
+    minHeight: 56,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
   guestButtonText: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
-  guestNote: { fontSize: 12.5, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' },
+  guestLine: { flexDirection: 'row', gap: 6 },
+  flex1: { flex: 1 },
+  guestNote: { fontSize: 12.5, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
   policyNote: { fontSize: 11.5, textAlign: 'center', marginTop: 4, lineHeight: 17, fontFamily: 'IBMPlexSansKR_400Regular' },
   policyLink: { textDecorationLine: 'underline' },
 });

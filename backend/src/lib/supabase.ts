@@ -306,6 +306,17 @@ export async function trashItem(userId: string, itemId: string): Promise<void> {
   if (!count) throw new Error("item not found");
 }
 
+// A person flags what the AI wrote for one of their items (Play's
+// AI-generated content policy). Keeps a copy of the output as it was.
+export async function reportAiOutput(userId: string, itemId: string): Promise<void> {
+  const item = await getItemForUser(userId, itemId);
+  if (!item) throw new Error("item not found");
+  const { error } = await getClient()
+    .from("ai_reports")
+    .insert({ user_id: userId, item_id: itemId, title: item.title, snippet: item.snippet, tags: item.tags ?? [] });
+  if (error) throw new Error(`reportAiOutput failed: ${error.message}`);
+}
+
 export async function restoreItem(userId: string, itemId: string): Promise<void> {
   const { error, count } = await getClient()
     .from("items")
@@ -820,6 +831,8 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   if (planError) throw new Error(`failed to delete plan: ${planError.message}`);
   const { error: usageError } = await client.from("ai_usage").delete().eq("user_id", userId);
   if (usageError) throw new Error(`failed to delete usage log: ${usageError.message}`);
+  const { error: reportsError } = await client.from("ai_reports").delete().eq("user_id", userId);
+  if (reportsError) throw new Error(`failed to delete AI reports: ${reportsError.message}`);
   // Per-call cost log: keep the rows (aggregate cost), drop who made them.
   const { error: callsError } = await client.from("ai_calls").update({ user_id: null }).eq("user_id", userId);
   if (callsError) console.error(`failed to detach ai_calls: ${callsError.message}`);

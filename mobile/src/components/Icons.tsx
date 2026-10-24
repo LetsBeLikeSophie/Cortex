@@ -90,6 +90,16 @@ export function TrashIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   );
 }
 
+// A small flag on a pole -- "report this" (AI output that's wrong or offensive).
+export function FlagIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
+      <Path d="M4 15.5V3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M4 3.5h8.5l-2 3 2 3H4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // Box with an arrow out of the top -- "send this elsewhere" (share sheet).
 export function ShareIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   return (

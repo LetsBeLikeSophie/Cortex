@@ -18,11 +18,11 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking } from '../theme/themes';
-import { addTag, asQuotaError, deleteItem, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
+import { addTag, asQuotaError, deleteItem, reportAiOutput, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
-import { ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
+import { FlagIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
@@ -69,6 +69,12 @@ const S = strings({
     trashTitle: '휴지통으로 이동할까요?',
     trashBody: '나중에 홈 위쪽 휴지통에서 복원할 수 있어요.',
     deleteFailed: (e: string) => `삭제 실패: ${e}`,
+    reportFailed: (e: string) => `신고하지 못했어요: ${e}`,
+    reported: '신고했어요. 확인할게요.',
+    reportSend: '신고',
+    reportBody: '부적절하거나 잘못된 제목·메모·태그를 알려주세요. 운영자가 확인해요.',
+    reportTitle: 'AI가 만든 내용을 신고할까요?',
+    report: 'AI 결과 신고',
     organizing: 'AI가 정리하는 중...',
     noTitle: '제목 없음',
     newTag: '새 태그',
@@ -114,6 +120,12 @@ const S = strings({
     trashTitle: 'Move to trash?',
     trashBody: 'You can restore it from the trash at the top of Home.',
     deleteFailed: (e: string) => `Couldn't delete: ${e}`,
+    reportFailed: (e: string) => `Couldn't report: ${e}`,
+    reported: "Reported. Thanks, we'll take a look.",
+    reportSend: 'Report',
+    reportBody: 'Tell us if a title, memo or tag is wrong or inappropriate. We review every report.',
+    reportTitle: 'Report what the AI wrote?',
+    report: 'Report AI result',
     organizing: 'AI is sorting...',
     noTitle: 'Untitled',
     newTag: 'New tag',
@@ -159,6 +171,12 @@ const S = strings({
     trashTitle: 'ゴミ箱に移動しますか？',
     trashBody: 'あとでホーム上部のゴミ箱から復元できます。',
     deleteFailed: (e: string) => `削除できませんでした: ${e}`,
+    reportFailed: (e: string) => `報告できませんでした: ${e}`,
+    reported: '報告しました。確認します。',
+    reportSend: '報告',
+    reportBody: '不適切・誤ったタイトル、メモ、タグをお知らせください。運営が確認します。',
+    reportTitle: 'AIが作った内容を報告しますか？',
+    report: 'AI結果を報告',
     organizing: 'AIが整理中...',
     noTitle: 'タイトルなし',
     newTag: '新しいタグ',
@@ -204,6 +222,12 @@ const S = strings({
     trashTitle: '移到回收站？',
     trashBody: '之后可以在首页上方的回收站恢复。',
     deleteFailed: (e: string) => `删除失败：${e}`,
+    reportFailed: (e: string) => `举报失败：${e}`,
+    reported: '已举报，我们会查看。',
+    reportSend: '举报',
+    reportBody: '如果标题、笔记或标签不当或有误，请告诉我们。我们会逐一查看。',
+    reportTitle: '要举报 AI 生成的内容吗？',
+    report: '举报 AI 结果',
     organizing: 'AI 整理中...',
     noTitle: '无标题',
     newTag: '新标签',
@@ -249,6 +273,12 @@ const S = strings({
     trashTitle: '移到垃圾桶？',
     trashBody: '之後可以在首頁上方的垃圾桶還原。',
     deleteFailed: (e: string) => `刪除失敗：${e}`,
+    reportFailed: (e: string) => `檢舉失敗：${e}`,
+    reported: '已檢舉，我們會查看。',
+    reportSend: '檢舉',
+    reportBody: '如果標題、筆記或標籤不當或有誤，請告訴我們。我們會逐一查看。',
+    reportTitle: '要檢舉 AI 產生的內容嗎？',
+    report: '檢舉 AI 結果',
     organizing: 'AI 整理中...',
     noTitle: '無標題',
     newTag: '新標籤',
@@ -364,6 +394,9 @@ export default function ItemDetailScreen() {
   const refY = useRef(new Map<number, number>());
 
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
+  // "AI 결과 신고" (Play's AI-generated content policy): flag the AI output.
+  const [reportState, setReportState] = useState<'idle' | 'confirming' | 'sending' | 'done'>('idle');
+  const [reportError, setReportError] = useState('');
   const [deleteError, setDeleteError] = useState('');
 
   const scrollRef = useRef<ScrollView>(null);
@@ -669,6 +702,18 @@ export default function ItemDetailScreen() {
     Share.share({ message }).catch(() => {});
   };
 
+  const confirmReport = async () => {
+    setReportState('sending');
+    setReportError('');
+    try {
+      await reportAiOutput(item.id);
+      setReportState('done');
+    } catch (err) {
+      setReportError(friendlyError(err));
+      setReportState('confirming');
+    }
+  };
+
   const confirmDelete = async () => {
     setDeleteState('deleting');
     try {
@@ -706,6 +751,11 @@ export default function ItemDetailScreen() {
                   organize) read as "make it again" -- that's the 다른 형식으로
                   link under the title instead. */}
               {item.capture_type === 'text' && !composedFrom && sparkleButton}
+              {(item.classification_status === 'done' || composedFrom) && (
+                <IconButton theme={theme} on="sheet" onPress={() => setReportState('confirming')} label={S.report}>
+                  <FlagIcon size={14} color={theme.sub} strokeWidth={1.3} />
+                </IconButton>
+              )}
               <IconButton theme={theme} on="sheet" onPress={share} label={S.share}>
                 <ShareIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
@@ -731,6 +781,20 @@ export default function ItemDetailScreen() {
               </Pressable>
             </View>
           )}
+
+          {(reportState === 'confirming' || reportState === 'sending') && (
+            <ConfirmCard
+              theme={theme}
+              title={S.reportTitle}
+              body={S.reportBody}
+              confirmLabel={S.reportSend}
+              busy={reportState === 'sending'}
+              error={reportError ? S.reportFailed(reportError) : undefined}
+              onCancel={() => setReportState('idle')}
+              onConfirm={confirmReport}
+            />
+          )}
+          {reportState === 'done' && <Text style={[styles.composedText, { color: theme.sub, marginBottom: 12 }]}>{S.reported}</Text>}
 
           {deleteState !== 'idle' && (
             <ConfirmCard

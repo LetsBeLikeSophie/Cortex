@@ -498,6 +498,11 @@ export function fetchTrash() {
   return request<{ items: ApiItem[] }>('/items/trash');
 }
 
+// Flags what the AI wrote for this item ("AI 결과 신고").
+export function reportAiOutput(itemId: string) {
+  return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/report`, { method: 'POST' });
+}
+
 export function restoreItem(itemId: string) {
   return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/restore`, { method: 'POST' });
 }

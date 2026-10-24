@@ -29,6 +29,7 @@ import {
   updateItemText,
   searchItemsSmart,
   trashItem,
+  reportAiOutput,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
@@ -466,6 +467,18 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(200).send({ ok: true });
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "delete failed" });
+    }
+  });
+
+  // "AI 결과 신고": flags the AI-written title/memo/tags of one item.
+  app.post("/items/:id/report", { config: { rateLimit: {} } }, async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const { id } = req.params as { id: string };
+    try {
+      await reportAiOutput(userId, id);
+      return reply.code(200).send({ ok: true });
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : "report failed" });
     }
   });
 

@@ -637,6 +637,8 @@ Propose groups of tags that should become one tag because they mean the same thi
 - spelling or spacing variants, singular/plural, the same word in two languages or scripts (카페 / cafe / カフェ)
 - a narrow tag that only repeats a broader one with a filler word (카페투어 -> 카페)
 Never merge tags that are related but different (카페 and 디저트, 서울 and 성수동, 2024 and 2025, a person and their group).
+Never fold a proper name (a specific place, shop, product, brand, person or work) into a general word (카페 오브제 stays, it is not 카페; 오사카 is not 오사카 여행).
+keep is written in the language most of the person's tags use (타코야키, not Takoyaki, when the tags are mostly Korean).
 Use exact tag names from the list in merge. Prefer the most-used member as keep. When unsure, leave it out.`;
 
 export async function suggestTagMerges(

@@ -107,7 +107,8 @@ export default function TagCleanupScreen() {
     try {
       const res = await suggestTagCleanup();
       setGroups(res.groups);
-      setPicked(new Set(res.groups.map((_, i) => i)));
+      // Nothing is merged unless the person ticks it.
+      setPicked(new Set());
       setLeft(res.left);
       setStep('pick');
     } catch (err) {

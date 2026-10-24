@@ -90,7 +90,10 @@ export default function TabPickerScreen() {
     saveHomeTabs(next);
   };
 
-  const visible = allTags.filter((tag) => tag.toLowerCase().includes(query.trim().toLowerCase()));
+  // A home tab whose tag no longer has any saved item (all of them in the
+  // trash, say) still has to be listed, or it could never be switched off.
+  const listed = [...selected.filter((t) => !allTags.includes(t)), ...allTags];
+  const visible = listed.filter((tag) => tag.toLowerCase().includes(query.trim().toLowerCase()));
 
   return (
     <ModalSheet
@@ -131,7 +134,7 @@ export default function TabPickerScreen() {
         <View style={styles.resultsBox}>
           {loading ? (
             <ActivityIndicator color={theme.accent} style={{ marginTop: 24 }} />
-          ) : allTags.length === 0 ? (
+          ) : listed.length === 0 ? (
             <Text style={[styles.emptyText, { color: theme.sub }]}>{S.noTags}</Text>
           ) : visible.length === 0 ? (
             <Text style={[styles.emptyText, { color: theme.sub }]}>{S.noMatch}</Text>

@@ -50,7 +50,7 @@ a { color: var(--accent); }
 <div class="wrap">
   <div class="wordmark">CORTEX</div>
   <h1>Privacy Policy</h1>
-  <div class="meta">Published October 23, 2026 · Effective October 30, 2026</div>
+  <div class="meta">Published October 24, 2026 · Effective October 31, 2026</div>
   <div class="crosslink"><a href="terms-en.html">Terms of Service →</a> &nbsp; <a href="privacy.html">한국어</a> &nbsp; <a href="privacy-en-20261023.html">Previous version (Oct 23, 2026)</a></div>
 
   <article>
@@ -66,10 +66,12 @@ a { color: var(--accent); }
       <tr><th>Search</th><td>When you use AI search (✦), the sentence you type or say. It is used only to interpret your search and is not stored. Plain word search is not sent anywhere.</td></tr>
       <tr><th>Voice input (microphone)</th><td>Microphone and speech-recognition permission is requested only when you tap a mic button. Your device's speech-recognition service (Google, on Android) turns speech into text; we never receive or store the audio, only the resulting text.</td></tr>
       <tr><th>Camera</th><td>Camera permission is requested only when you tap "take a photo", and only photos you choose to save are stored.</td></tr>
-      <tr><th>Photo library</th><td>To show the "recent screenshots" list on the save screen we ask for photo access (photos only — no videos or audio). That list is shown <b>on your device only</b> and is never sent to our servers; only the pictures you pick and save are uploaded. After a multi-photo save you can delete the originals; only photos that saved successfully are deleted, with your device's own confirmation. If you allow "selected photos only", only those are visible. When you save an image back to your device ("save to album"), we request write-only access and do not read your other photos.</td></tr>
+      <tr><th>Choosing photos</th><td>Photos come in only through your device's own photo picker or another app's "share" button. We do not ask for access to your whole photo library; only the photos you pick are uploaded and saved. When you save an image back to your device ("save to album"), we request write-only access and do not read your other photos.</td></tr>
       <tr><th>Content shared from other apps</th><td>Photos, links and text sent to Cortex with another app's "Share" — only what you choose to save is stored. If it came from the photo-cleanup app Mehh, Cortex tells Mehh on your device how many photos were saved, only when you tap [Back to Mehh] on the result screen.</td></tr>
       <tr><th>AI consent record</th><td>Whether you agreed to AI processing (transfer abroad), when you answered, and which version of the notice you answered.</td></tr>
       <tr><th>Paid plan (Pro)</th><td>Google Play purchase details: product, purchase token, order number, payment state and expiry, and the other details Google returns when we verify a purchase. Card numbers and other payment-method details are handled by Google; we never receive them.</td></tr>
+      <tr><th>AI result reports</th><td>When you report something the AI made, we keep that memo's AI-made title, memo and tags and the time of the report — used only to improve AI results and check inappropriate ones.</td></tr>
+      <tr><th>Memo lock</th><td>Your memo-lock PIN is stored encrypted <b>on your device only</b> and never sent to us. Fingerprint or face checks are handled by your device; we never receive biometric data. Our server only stores whether each memo is locked, and locked memos are left out of AI search, "compose" and "re-organize with AI".</td></tr>
       <tr><th>AI usage records</th><td>Which AI feature was used, when, and how much was processed — used to apply monthly limits and manage costs. They do not include your content.</td></tr>
       <tr><th>Access logs</th><td>IP address, request time and path, and device/browser information (User-Agent) recorded automatically when you reach our server — used only for security and troubleshooting.</td></tr>
       <tr><th>Generated during use</th><td>Pseudonymized usage statistics (a one-way hash that cannot identify your account, event type, category, time). The actual content you save (titles, text, tags) is never part of these statistics.</td></tr>
@@ -90,7 +92,7 @@ a { color: var(--accent); }
     <ol>
       <li>When you delete your account, your account data (nickname or name, email, profile picture URL, Kakao or Google identifier) and all saved content (including image files) are <b>deleted without delay</b>.</li>
       <li>Pseudonymized statistics cannot identify you and may be kept after deletion for statistical purposes only, as permitted by Article 28-2 of Korea's Personal Information Protection Act.</li>
-      <li>Your AI consent record and AI usage records are deleted with your account. AI cost records (time and amount) are kept only after your account identifier is removed, so they can no longer be linked to you.</li>
+      <li>Your AI consent record, AI result reports and AI usage records are deleted with your account. AI cost records (time and amount) are kept only after your account identifier is removed, so they can no longer be linked to you.</li>
       <li>Payment records are kept for <b>5 years</b> as required by Korea's Act on Consumer Protection in Electronic Commerce, including after account deletion, and then deleted.</li>
       <li>Access logs are deleted automatically after <b>14 days</b>.</li>
       <li>Where another law requires us to keep certain records, we keep them for the period the law specifies and then delete them.</li>
@@ -108,7 +110,7 @@ a { color: var(--accent); }
       <tr><td>Supabase, Inc.</td><td>Database, file (image) storage, authentication. Seoul region, Republic of Korea.</td></tr>
       <tr><td>Kakao Corp.</td><td>Sign-in with a Kakao account. Republic of Korea.</td></tr>
       <tr><td>Oracle Corporation (Oracle Cloud)</td><td>Hosting of our API server and website. Tokyo region, Japan.</td></tr>
-      <tr><td>Anthropic PBC</td><td>AI processing (Claude API), United States — <b>only after you agree in the app</b>: text (including the body of text memos), images, link titles/descriptions, your "my memo" notes (including dictated ones), the list of tags you already use (up to 150, to keep tagging consistent), AI-search sentences, spoken tag sentences, and the request you type for "compose". Sent over an encrypted connection (HTTPS) when you save, use "re-organize with AI", run an AI search, or use "compose" — used to generate titles, AI memos, categories and tags, to interpret searches, and to write one memo from the items you compose (up to 50). The AI is instructed never to identify people by their face or infer sensitive traits. Under Anthropic's commercial terms your data is <b>not used to train its models</b>, and it is deleted from Anthropic's servers <b>within 30 days</b> (unless longer retention is needed to enforce its usage policy or comply with law).</td></tr>
+      <tr><td>Anthropic PBC</td><td>AI processing (Claude API), United States — <b>only after you agree in the app</b>: text (including the body of text memos), images, link titles/descriptions, your "my memo" notes (including dictated ones), the list of tags you already use (up to 150, to keep tagging consistent), AI-search sentences, spoken tag sentences, the request you type for "compose", and for "tidy up tags" your tag names and how many memos use each (no memo content). Sent over an encrypted connection (HTTPS) when you save, use "re-organize with AI", run an AI search, or use "compose" or "tidy up tags" — used to generate titles, AI memos, categories and tags, to interpret searches, and to write one memo from the items you compose (up to 50). The AI is instructed never to identify people by their face or infer sensitive traits. Under Anthropic's commercial terms your data is <b>not used to train its models</b>, and it is deleted from Anthropic's servers <b>within 30 days</b> (unless longer retention is needed to enforce its usage policy or comply with law).</td></tr>
       <tr><td>Google LLC (Google sign-in, Google Play billing, Google Cloud Pub/Sub)</td><td>United States: sign-in credentials when you sign in with Google; the purchase token and product ID when we verify a Pro purchase, and Google's notices about subscription changes — to confirm your identity, check that purchases are valid and keep your plan up to date. Handled under Google's privacy policy and Google Play's billing terms.</td></tr>
     </table>
     <p style="font-size:13px;color:var(--sub)">Sending your content to Anthropic (AI processing) needs <b>your separate consent in the app</b>. If you don't agree, or withdraw later, you can still save and search by word — only AI features are turned off. You can change this any time under My account › "AI consent". Transfers to Oracle (hosting) and Google (purchase verification) are necessary to run the service and process payments; if you object to them, you cannot use the service or buy Pro.</p>
@@ -147,7 +149,7 @@ a { color: var(--accent); }
 
     <h3>12. Changes</h3>
     <p>We announce changes to this policy in the service at least 7 days before they take effect.</p>
-    <p style="margin-top:28px; color:var(--sub); font-size:13px;">Published October 23, 2026 / Effective October 30, 2026. This replaces the revision published on October 22, 2026 (which was to take effect on October 29).</p>
+    <p style="margin-top:28px; color:var(--sub); font-size:13px;">Published October 24, 2026 / Effective October 31, 2026. This replaces the revision published on October 23, 2026 (which was to take effect on October 30). Main changes: photo-library access removed (replaced by the photo picker); AI result reports, memo lock and "tidy up tags" added.</p>
   </article>
 
   <footer>Cortex · Contact: cortex@itssophie.dev</footer>

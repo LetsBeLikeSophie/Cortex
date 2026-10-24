@@ -29,7 +29,7 @@ const AndroidPurchase: typeof import('../billing/AndroidPurchase').AndroidPurcha
 
 const S = strings({
   ko: {
-    fallback: { monthly: '월 3,900원', yearly: '연 29,000원', lifetime: '39,000원' },
+    fallback: { monthly: '월 5,900원', yearly: '연 49,000원', lifetime: '79,000원' },
     headlines: {
       classify: '이번 달 AI 정리를 다 썼어요',
       search: '이번 달 AI 검색을 다 썼어요',
@@ -53,7 +53,7 @@ const S = strings({
     monthly: '월간',
     monthlyNote: '매달 자동 갱신 · 언제든 해지할 수 있어요',
     yearly: '연간',
-    yearlyNote: '매년 자동 갱신 · 월 2,417원꼴',
+    yearlyNote: '매년 자동 갱신 · 월간보다 31% 저렴',
     lifetime: '평생',
     lifetimeNote: (n: number) => `선착순 · ${n}개 남음 · 한 번 결제로 계속`,
     ranOut: '저장은 계속 돼요. AI 기능은 다음 달에 다시 생기거나, Pro로 바로 이어서 쓸 수 있어요.',
@@ -63,7 +63,7 @@ const S = strings({
     preparing: '결제를 준비하고 있어요. 조금만 기다려 주세요.',
   },
   en: {
-    fallback: { monthly: 'KRW 3,900/mo', yearly: 'KRW 29,000/yr', lifetime: 'KRW 39,000' },
+    fallback: { monthly: 'KRW 5,900/mo', yearly: 'KRW 49,000/yr', lifetime: 'KRW 79,000' },
     headlines: {
       classify: "You've used this month's AI sorting",
       search: "You've used this month's AI search",
@@ -87,7 +87,7 @@ const S = strings({
     monthly: 'Monthly',
     monthlyNote: 'Renews monthly · cancel anytime',
     yearly: 'Yearly',
-    yearlyNote: 'Renews yearly · about KRW 2,417/mo',
+    yearlyNote: 'Renews yearly · 31% less than monthly',
     lifetime: 'Lifetime',
     lifetimeNote: (n: number) => `Limited · ${n} left · pay once, keep it`,
     ranOut: 'Saving still works. AI features come back next month, or keep going now with Pro.',
@@ -97,7 +97,7 @@ const S = strings({
     preparing: 'Getting checkout ready. Just a moment.',
   },
   ja: {
-    fallback: { monthly: '月額 3,900ウォン', yearly: '年額 29,000ウォン', lifetime: '39,000ウォン' },
+    fallback: { monthly: '月額 5,900ウォン', yearly: '年額 49,000ウォン', lifetime: '79,000ウォン' },
     headlines: {
       classify: '今月のAI整理を使い切りました',
       search: '今月のAI検索を使い切りました',
@@ -121,7 +121,7 @@ const S = strings({
     monthly: '月額',
     monthlyNote: '毎月自動更新 · いつでも解約できます',
     yearly: '年額',
-    yearlyNote: '毎年自動更新 · 月あたり約2,417ウォン',
+    yearlyNote: '毎年自動更新 · 月額より31%お得',
     lifetime: '買い切り',
     lifetimeNote: (n: number) => `先着順 · 残り${n}個 · 1回の支払いでずっと`,
     ranOut: '保存はそのまま使えます。AI機能は来月また使えるようになるか、Proですぐに続けられます。',
@@ -131,7 +131,7 @@ const S = strings({
     preparing: '決済を準備しています。少々お待ちください。',
   },
   'zh-Hans': {
-    fallback: { monthly: '₩3,900/月', yearly: '₩29,000/年', lifetime: '₩39,000' },
+    fallback: { monthly: '₩5,900/月', yearly: '₩49,000/年', lifetime: '₩79,000' },
     headlines: {
       classify: '本月的 AI 整理已用完',
       search: '本月的 AI 搜索已用完',
@@ -155,7 +155,7 @@ const S = strings({
     monthly: '月付',
     monthlyNote: '每月自动续订 · 随时可取消',
     yearly: '年付',
-    yearlyNote: '每年自动续订 · 约 ₩2,417/月',
+    yearlyNote: '每年自动续订 · 比按月便宜 31%',
     lifetime: '终身',
     lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 一次付款永久使用`,
     ranOut: '保存照常可用。AI 功能下个月会恢复，也可以用 Pro 马上继续。',
@@ -165,7 +165,7 @@ const S = strings({
     preparing: '正在准备付款，请稍候。',
   },
   'zh-Hant': {
-    fallback: { monthly: '₩3,900/月', yearly: '₩29,000/年', lifetime: '₩39,000' },
+    fallback: { monthly: '₩5,900/月', yearly: '₩49,000/年', lifetime: '₩79,000' },
     headlines: {
       classify: '本月的 AI 整理已用完',
       search: '本月的 AI 搜尋已用完',
@@ -189,7 +189,7 @@ const S = strings({
     monthly: '月繳',
     monthlyNote: '每月自動續訂 · 隨時可取消',
     yearly: '年繳',
-    yearlyNote: '每年自動續訂 · 約 ₩2,417/月',
+    yearlyNote: '每年自動續訂 · 比按月便宜 31%',
     lifetime: '終身',
     lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 一次付款永久使用`,
     ranOut: '儲存照常可用。AI 功能下個月會恢復，也可以用 Pro 馬上繼續。',

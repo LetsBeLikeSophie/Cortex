@@ -3,6 +3,7 @@ import { z } from "zod";
 import { deleteAccount, loginWithKakaoCode } from "../lib/kakaoAuth.js";
 import { verifyAccessToken } from "../lib/auth.js";
 import { recomputeProUntil } from "../lib/billing.js";
+import { normalizeLang } from "../lib/anthropic.js";
 import { claimGuestAccount, countItemsSince, getClient, seedSampleItem } from "../lib/supabase.js";
 
 const KakaoLoginSchema = z.object({
@@ -91,7 +92,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     try {
       const existing = await countItemsSince(userId, new Date(0).toISOString());
-      if (existing === 0) await seedSampleItem(userId);
+      if (existing === 0) await seedSampleItem(userId, normalizeLang(req.headers["x-cortex-lang"]));
       return reply.code(200).send({ ok: true });
     } catch (err) {
       req.log.error(err);

@@ -272,20 +272,81 @@ export async function downloadScreenshot(imagePath: string): Promise<Buffer> {
 // rather than a generic placeholder unrelated to what a first-time opener
 // actually needs to know. Best-effort at each call site: a seeding hiccup
 // shouldn't block signup.
-export async function seedSampleItem(userId: string): Promise<void> {
-  await insertItem({
-    userId,
-    source: "memo",
-    captureType: "text",
-    rawText:
+// The guide memo in the person's language (X-Cortex-Lang); Korean when
+// unknown, since Kakao sign-ups don't send it.
+const SAMPLES: Record<"ko" | "en" | "ja" | "zh-Hans" | "zh-Hant", { title: string; snippet: string; tags: string[]; text: string }> = {
+  ko: {
+    title: "저장 눌렀는데 어디로 갔지?",
+    snippet: "Cortex 사용법 안내",
+    tags: ["가이드", "첫기억"],
+    text:
       "인스타 게시물이든, 유튜브 링크든, 캡처한 스크린샷이든 공유 버튼을 눌러 Cortex를 고르면 끝이에요. " +
       "제목과 태그는 AI가 붙여요. 사진이나 링크에는 왜 저장했는지 내 메모를 말로 남겨도 돼요. " +
       "나중에 찾을 땐 검색창에 단어를 치면 바로 나오고, 기억이 흐릿하면 문장으로 쓰고 ✦를 누르세요. " +
       "이 메모는 지워도 되고, 첫 기억으로 둬도 돼요.",
-    title: "저장 눌렀는데 어디로 갔지?",
-    snippet: "Cortex 사용법 안내",
+  },
+  en: {
+    title: "Saved it, but where did it go?",
+    snippet: "How to use Cortex",
+    tags: ["guide", "first memory"],
+    text:
+      "Whether it's an Instagram post, a YouTube link or a screenshot, tap Share and pick Cortex. That's it. " +
+      "AI adds the title and tags. For a photo or a link, you can also say why you saved it as your own note. " +
+      "To find it later, type a word in search; if your memory is fuzzy, write a sentence and tap ✦. " +
+      "You can delete this note or keep it as your first memory.",
+  },
+  ja: {
+    title: "保存したのに、どこへ行った？",
+    snippet: "Cortexの使い方",
+    tags: ["ガイド", "はじめての記録"],
+    text:
+      "Instagramの投稿でも、YouTubeのリンクでも、スクリーンショットでも、共有ボタンからCortexを選べば完了です。" +
+      "タイトルとタグはAIが付けます。写真やリンクには、なぜ保存したかを声でメモしても大丈夫です。" +
+      "あとで探すときは検索欄に単語を入れればすぐ見つかります。記憶があいまいなら文章で書いて✦を押してください。" +
+      "このメモは消しても、最初の記録として残してもかまいません。",
+  },
+  "zh-Hans": {
+    title: "点了保存，跑哪儿去了？",
+    snippet: "Cortex 使用说明",
+    tags: ["指南", "第一条记录"],
+    text:
+      "无论是 Instagram 帖子、YouTube 链接还是截图，点分享并选择 Cortex 就完成了。" +
+      "标题和标签由 AI 添加。照片或链接还可以用语音留下保存的原因。" +
+      "以后要找时，在搜索框输入词语就能找到；记不清时就写一句话，再点 ✦。" +
+      "这条笔记可以删除，也可以留作你的第一条记录。",
+  },
+  "zh-Hant": {
+    title: "按了儲存，跑去哪了？",
+    snippet: "Cortex 使用說明",
+    tags: ["指南", "第一筆記錄"],
+    text:
+      "無論是 Instagram 貼文、YouTube 連結還是截圖，點分享並選擇 Cortex 就完成了。" +
+      "標題和標籤由 AI 加上。照片或連結還可以用語音留下儲存的原因。" +
+      "之後要找時，在搜尋框輸入字詞就能找到；記不清時就寫一句話，再點 ✦。" +
+      "這則筆記可以刪除，也可以留作你的第一筆記錄。",
+  },
+};
+export const SAMPLE_TITLES = Object.values(SAMPLES).map((s) => s.title);
+
+function sampleFor(lang: string | null | undefined) {
+  const l = (lang ?? "ko").toLowerCase();
+  if (l.startsWith("ko")) return SAMPLES.ko;
+  if (l.startsWith("ja")) return SAMPLES.ja;
+  if (l.startsWith("zh")) return /hant|-tw|-hk|-mo/.test(l) ? SAMPLES["zh-Hant"] : SAMPLES["zh-Hans"];
+  return SAMPLES.en;
+}
+
+export async function seedSampleItem(userId: string, lang?: string | null): Promise<void> {
+  const sample = sampleFor(lang);
+  await insertItem({
+    userId,
+    source: "memo",
+    captureType: "text",
+    rawText: sample.text,
+    title: sample.title,
+    snippet: sample.snippet,
     category: "기억할 것",
-    tags: ["가이드", "첫기억"],
+    tags: sample.tags,
     classificationStatus: "done",
   });
 }
@@ -850,7 +911,6 @@ export async function deleteUserAccount(userId: string): Promise<void> {
 // then the guest account is deleted. Works for a brand-new account and for
 // one already in use (the items are simply added). The guest's copy of the
 // sample guide item is dropped if the account already has one.
-const SAMPLE_TITLE = "저장 눌렀는데 어디로 갔지?";
 
 export async function claimGuestAccount(targetId: string, guestId: string): Promise<{ moved: number }> {
   const client = getClient();
@@ -864,9 +924,9 @@ export async function claimGuestAccount(targetId: string, guestId: string): Prom
     if (error) throw new Error(`claim: move screenshot failed: ${error.message}`);
   }
 
-  const { data: targetSample } = await client.from("items").select("id").eq("user_id", targetId).eq("title", SAMPLE_TITLE).limit(1);
+  const { data: targetSample } = await client.from("items").select("id").eq("user_id", targetId).in("title", SAMPLE_TITLES).limit(1);
   if (targetSample && targetSample.length > 0) {
-    await client.from("items").delete().eq("user_id", guestId).eq("title", SAMPLE_TITLE);
+    await client.from("items").delete().eq("user_id", guestId).in("title", SAMPLE_TITLES);
   }
 
   const { data: guestItems, error: itemsError } = await client.from("items").select("id, image_path").eq("user_id", guestId);

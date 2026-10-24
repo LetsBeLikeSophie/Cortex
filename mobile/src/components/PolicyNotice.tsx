@@ -3,22 +3,23 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Theme } from '../theme/themes';
-import { PRIVACY_URL, strings } from '../i18n';
+import { PRIVACY_URL, TERMS_URL, strings } from '../i18n';
 
 const S = strings({
-  ko: { text: '개인정보처리방침이 10월 30일부터 바뀌어요', view: '보기', close: '공지 닫기' },
-  en: { text: 'Our privacy policy changes on Oct 30', view: 'View', close: 'Close notice' },
-  ja: { text: 'プライバシーポリシーが10月30日から変わります', view: '見る', close: 'お知らせを閉じる' },
-  'zh-Hans': { text: '隐私政策将于10月30日起变更', view: '查看', close: '关闭通知' },
-  'zh-Hant': { text: '隱私權政策將於10月30日起變更', view: '查看', close: '關閉通知' },
+  ko: { text: '10월 말 약관·방침이 바뀌어요', terms: '약관', privacy: '방침', close: '공지 닫기' },
+  en: { text: 'Terms and privacy change end of Oct', terms: 'Terms', privacy: 'Privacy', close: 'Close notice' },
+  ja: { text: '10月末に規約・ポリシーが変わります', terms: '規約', privacy: 'ポリシー', close: 'お知らせを閉じる' },
+  'zh-Hans': { text: '10月底条款与隐私政策变更', terms: '条款', privacy: '隐私', close: '关闭通知' },
+  'zh-Hant': { text: '10月底條款與隱私權政策變更', terms: '條款', privacy: '隱私', close: '關閉通知' },
 });
 
-// The in-app notice the privacy policy promises for its changes (at least
-// 7 days before they take effect). One notice at a time: shown until
+// The in-app notice the terms and the privacy policy promise for their
+// changes (at least 7 days before they take effect): privacy Oct 30,
+// terms Oct 31. One notice at a time: shown until
 // dismissed or until the change takes effect (after that it's just the policy).
 const NOTICE = {
-  id: 'privacy-2026-10-30',
-  until: Date.parse('2026-10-30T00:00:00+09:00'),
+  id: 'terms-privacy-2026-10-31',
+  until: Date.parse('2026-10-31T00:00:00+09:00'),
 };
 const KEY = 'cortex.notice.dismissed';
 
@@ -39,11 +40,12 @@ export function PolicyNotice({ theme }: { theme: Theme }) {
   };
   return (
     <View style={styles.row}>
-      <Pressable onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} hitSlop={6} style={styles.textWrap}>
-        <Text style={[styles.text, { color: theme.ink }]} numberOfLines={1}>
-          {S.text} <Text style={styles.link}>{S.view}</Text>
-        </Text>
-      </Pressable>
+      <Text style={[styles.text, styles.textWrap, { color: theme.ink }]} numberOfLines={1}>
+        {S.text}{' '}
+        <Text style={styles.link} onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}>{S.terms}</Text>
+        {' · '}
+        <Text style={styles.link} onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}>{S.privacy}</Text>
+      </Text>
       <Pressable onPress={dismiss} hitSlop={10} accessibilityLabel={S.close}>
         <Text style={[styles.text, { color: theme.sub }]}>×</Text>
       </Pressable>

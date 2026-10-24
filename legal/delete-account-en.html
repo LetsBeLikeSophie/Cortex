@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete your Cortex account</title>
+<style>
+:root {
+  --bg: #fbfaf7; --ink: #14140f; --sub: #6a675e; --line: #e4e0d6;
+  --soft: #eeebe2; --accent: #8d5c41;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+    --soft: #1e1c17; --accent: #d99a6c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+  --soft: #1e1c17; --accent: #d99a6c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: 'IBM Plex Sans', 'IBM Plex Sans KR', sans-serif; font-size: 15px; line-height: 1.75;
+  padding-inline: 20px; padding-block: 40px 80px;
+}
+.wrap { max-width: 720px; margin: 0 auto; }
+.wordmark { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.28em; color: var(--accent); }
+h1 { font-family: 'Instrument Serif', 'Noto Serif KR', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.01em; margin: 10px 0 4px; text-wrap: balance; }
+.meta { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+.crosslink { margin-bottom: 32px; }
+.crosslink a { color: var(--accent); text-decoration: none; font-size: 13.5px; border-bottom: 1px solid currentColor; }
+article h3 { font-size: 15.5px; font-weight: 600; margin: 34px 0 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+article h3:first-of-type { border-top: none; padding-top: 0; margin-top: 20px; }
+article p { margin: 0 0 12px; }
+article ol, article ul { margin: 0 0 14px; padding-left: 22px; }
+article li { margin-bottom: 8px; }
+article table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 13.5px; }
+article th, article td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+article th { background: var(--soft); font-weight: 600; width: 26%; }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
+a { color: var(--accent); }
+@media (max-width: 480px) { h1 { font-size: 25px; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+  <div class="wordmark">CORTEX</div>
+  <h1>Delete your Cortex account</h1>
+  <div class="crosslink"><a href="delete-account.html">한국어</a> &nbsp; <a href="privacy-en.html">Privacy Policy</a></div>
+  <article>
+    <p>Cortex (developer: Sophie Apps) lets you delete your account and all of its data at any time.</p>
+    <h3>In the app (fastest)</h3>
+    <ol>
+      <li>Open Cortex and tap the profile icon at the top right of the home screen (My account).</li>
+      <li>Tap <b>Delete account</b> at the bottom (for a guest: <b>Delete guest data</b>).</li>
+      <li>Confirm. Deletion happens right away.</li>
+    </ol>
+    <p>If you have a Pro subscription, cancel it in the Google Play Store first (Payments &amp; subscriptions) — deleting the account does not cancel it.</p>
+    <h3>Without the app</h3>
+    <p>Email <b>cortex@itssophie.dev</b> from any address with the subject "Delete my Cortex account" and how you signed in (Kakao, Google or guest). We confirm it is your account and delete it within 7 days.</p>
+    <h3>What is deleted</h3>
+    <ul>
+      <li>Your account (name or nickname, email, profile picture URL, Kakao/Google identifier)</li>
+      <li>Everything you saved: text, links, photos/screenshots, notes, tags, combined memos</li>
+      <li>Your AI consent record, plan and monthly AI usage records</li>
+    </ul>
+    <h3>What is kept, and for how long</h3>
+    <ul>
+      <li>Payment records for Pro purchases: 5 years, as required by Korean e-commerce law</li>
+      <li>AI cost records with your account identifier removed (no longer linked to you)</li>
+      <li>Pseudonymized usage statistics that cannot identify you</li>
+      <li>Server access logs (IP address, time): deleted automatically after 14 days</li>
+    </ul>
+    <h3>Deleting only some data</h3>
+    <p>You can delete any single item in the app (it goes to the trash; empty it or delete items permanently from the trash), without deleting your account.</p>
+  </article>
+  <footer>Cortex · Contact: cortex@itssophie.dev</footer>
+</div>
+</body>
+</html>

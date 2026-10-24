@@ -218,6 +218,9 @@ export function ImageViewer({ uri, onClose }: { uri: string | null; onClose: () 
   // The stored image only lives on the server (a signed URL), so "save"
   // means download to cache, then hand that file to the photo library.
   // Write-only permission: saving never needs to read the user's photos.
+  // Android 9 and older can only write to the gallery with a storage
+  // permission Cortex no longer holds -- the button isn't shown there.
+  const canSave = Platform.OS !== 'web' && !!MediaLibrary && !(Platform.OS === 'android' && Number(Platform.Version) < 29);
   const saveToAlbum = async () => {
     if (!uri || !MediaLibrary || saving) return;
     setSaving(true);
@@ -243,7 +246,7 @@ export function ImageViewer({ uri, onClose }: { uri: string | null; onClose: () 
     <Modal visible={!!uri} transparent animationType="fade" onRequestClose={onClose}>
       <SafeAreaView style={styles.backdrop} edges={['top', 'right']}>
         <View style={styles.topBar}>
-          {Platform.OS !== 'web' && MediaLibrary ? (
+          {canSave ? (
             <Pressable onPress={saveToAlbum} style={styles.saveButton} hitSlop={8} disabled={saving}>
               {saving ? (
                 <ActivityIndicator size="small" color="#fff" />

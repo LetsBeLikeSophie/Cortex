@@ -90,12 +90,14 @@ export function TrashIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   );
 }
 
-// A small flag on a pole -- "report this" (AI output that's wrong or offensive).
-export function FlagIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
+// A warning triangle with "!" -- "report this" (AI output that's wrong or
+// offensive). A flag read as "bookmark".
+export function ReportIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
-      <Path d="M4 15.5V3" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
-      <Path d="M4 3.5h8.5l-2 3 2 3H4" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M9 2.8 16 15H2L9 2.8Z" stroke={color} strokeWidth={strokeWidth} strokeLinejoin="round" />
+      <Path d="M9 7.3v3.6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M9 12.9v.1" stroke={color} strokeWidth={strokeWidth + 0.4} strokeLinecap="round" />
     </Svg>
   );
 }

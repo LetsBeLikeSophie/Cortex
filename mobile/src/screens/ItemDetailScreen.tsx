@@ -22,7 +22,7 @@ import { addTag, asQuotaError, deleteItem, reportAiOutput, fetchComposeSources, 
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
-import { FlagIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
+import { ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
@@ -750,18 +750,20 @@ export default function ItemDetailScreen() {
               {/* On a fresh 모아서 만들기 result the header ✦ ("re-tag", 1 AI
                   organize) read as "make it again" -- that's the 다른 형식으로
                   link under the title instead. */}
-              {item.capture_type === 'text' && !composedFrom && sparkleButton}
-              {(item.classification_status === 'done' || composedFrom) && (
-                <IconButton theme={theme} on="sheet" onPress={() => setReportState('confirming')} label={S.report}>
-                  <FlagIcon size={14} color={theme.sub} strokeWidth={1.3} />
-                </IconButton>
-              )}
+              {item.capture_type === 'text' && !isComposed && sparkleButton}
               <IconButton theme={theme} on="sheet" onPress={share} label={S.share}>
                 <ShareIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
               <IconButton theme={theme} on="sheet" onPress={() => setDeleteState('confirming')} label={S.moveToTrash}>
                 <TrashIcon size={14} color={theme.sub} strokeWidth={1.3} />
               </IconButton>
+              {/* Last, in the corner: reporting AI output is rare and shouldn't
+                  sit among the everyday actions. */}
+              {(item.classification_status === 'done' || isComposed) && (
+                <IconButton theme={theme} on="sheet" onPress={() => setReportState('confirming')} label={S.report}>
+                  <ReportIcon size={14} color={theme.danger} strokeWidth={1.3} />
+                </IconButton>
+              )}
             </View>
           </View>
 

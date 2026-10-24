@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
-import { TuneIcon } from './Icons';
 import type { QueryChip } from '../hooks/useChipQuery';
 import { strings } from '../i18n';
 
@@ -113,7 +112,6 @@ export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => vo
       accessibilityLabel={S.tabSettings}
       style={[styles.tabAdd, styles.tabSettings, { borderColor: theme.sub, borderRadius: conceptOf(theme) === 'vintage' ? 3 : 13 }]}
     >
-      <TuneIcon size={13} color={theme.sub} strokeWidth={1.4} />
       <Text style={{ fontSize: 12, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.tabSettings}</Text>
     </Pressable>
   );

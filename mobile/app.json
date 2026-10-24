@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cortex",
     "slug": "cortex",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "scheme": "cortex",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -17,7 +17,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "dev.itssophie.cortex",
-      "versionCode": 10001,
+      "versionCode": 10100,
       "blockedPermissions": [
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",

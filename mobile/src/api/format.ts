@@ -107,6 +107,7 @@ export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
   return {
     title: itemTitle(item),
     snippet: item.locked ? '' : item.snippet ?? item.raw_text ?? '',
+    locked: !!item.locked,
     terms: include,
     matchedCount: got.length,
     missingTerms: include.filter((w) => !got.includes(w)),

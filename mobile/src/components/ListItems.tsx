@@ -4,7 +4,7 @@ import { Theme, emToTracking, MONO, OUTLINE, allEdges, bottomEdge, SERIF } from 
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
-import { SourceIcon, CheckIcon } from './Icons';
+import { SourceIcon, CheckIcon, LockIcon } from './Icons';
 import { LayeredBack } from './Decor';
 import { LAYERED_BACK_OFFSET, cardShellStyle } from './Card';
 import { strings } from '../i18n';
@@ -112,11 +112,14 @@ export function RecentRow({
         {item.no}
       </Text>
       <View style={styles.rowBody}>
-        <Text style={[styles.title, { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal' }]}>
-          {item.composed ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
-          {item.locked ? <Text style={{ color: theme.sub }}>🔒 </Text> : null}
-          {item.title}
-        </Text>
+        <View style={styles.titleLine}>
+          {/* The line icon, not the 🔒 emoji -- an emoji ignores the theme's color. */}
+          {item.locked && <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />}
+          <Text style={[styles.title, styles.titleText, { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal' }]}>
+            {item.composed ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
+            {item.title}
+          </Text>
+        </View>
         <View style={{ marginTop: 7 }}>
           <MetaLine item={item} theme={theme} />
         </View>
@@ -162,21 +165,24 @@ export function ResultRow({
           <Text style={{ fontSize: 11, color: theme.sub, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.inTrash}</Text>
         </View>
       )}
-      <HighlightText
-        text={item.title}
-        terms={item.terms}
-        accent={theme.accent}
-        baseStyle={[
-          styles.title,
-          { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal', opacity: trashed ? 0.6 : 1 },
-        ]}
-      />
-      <HighlightText
-        text={item.snippet}
-        terms={item.terms}
-        accent={theme.accent}
-        baseStyle={[styles.snippet, { color: theme.sub, opacity: trashed ? 0.6 : 1 }]}
-      />
+      <View style={[styles.titleLine, { opacity: trashed ? 0.6 : 1 }]}>
+        {item.locked && <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />}
+        <HighlightText
+          text={item.title}
+          terms={item.terms}
+          accent={theme.accent}
+          baseStyle={[styles.title, styles.titleText, { color: item.pending ? theme.sub : theme.ink, fontStyle: item.pending ? 'italic' : 'normal' }]}
+        />
+      </View>
+      {/* A locked memo has no preview -- no empty line where one would be. */}
+      {item.snippet !== '' && (
+        <HighlightText
+          text={item.snippet}
+          terms={item.terms}
+          accent={theme.accent}
+          baseStyle={[styles.snippet, { color: theme.sub, opacity: trashed ? 0.6 : 1 }]}
+        />
+      )}
       <View style={styles.resultFooter}>
         <View style={[styles.resultFooterLeft, { opacity: trashed ? 0.6 : 1 }]}>
           <MetaLine item={item} theme={theme} />
@@ -220,6 +226,8 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, minWidth: 0 },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  titleText: { flexShrink: 1 },
   snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: 'IBMPlexSansKR_400Regular' },
   trashBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginBottom: 8 },
   resultFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 },

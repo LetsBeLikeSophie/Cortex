@@ -13,13 +13,15 @@ export interface RecentItem {
   pending?: boolean;
   // Made by 모아서 만들기 -- marked with ✦ in lists.
   composed?: boolean;
-  // Memo lock: marked with 🔒, title only.
+  // Memo lock: marked with a lock icon, title only.
   locked?: boolean;
 }
 
 export interface SearchResult {
   title: string;
+  // Empty for a locked memo (title only).
   snippet: string;
+  locked?: boolean;
   // Include terms to highlight wherever they literally appear in title/snippet.
   terms: string[];
   // How many of the search's include terms this item actually matched (across

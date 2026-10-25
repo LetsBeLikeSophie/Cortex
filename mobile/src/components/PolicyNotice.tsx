@@ -40,7 +40,7 @@ export function PolicyNotice({ theme }: { theme: Theme }) {
   };
   return (
     <View style={styles.row}>
-      <Text style={[styles.text, styles.textWrap, { color: theme.ink }]} numberOfLines={1}>
+      <Text style={[styles.text, styles.textWrap, { color: theme.ink }]} numberOfLines={2}>
         {S.text}{' '}
         <Text style={styles.link} onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}>{S.terms}</Text>
         {' · '}

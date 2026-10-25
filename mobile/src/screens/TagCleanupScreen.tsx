@@ -230,7 +230,8 @@ const styles = StyleSheet.create({
   line: { fontSize: 14, lineHeight: 21, marginTop: 14, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   small: { fontSize: 12.5, lineHeight: 18, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
   wait: { alignItems: 'center', gap: 4, marginTop: 24 },
-  list: { marginTop: 8, maxHeight: 380 },
+  // Shrinks (and scrolls) on short phones so the merge button stays on screen.
+  list: { marginTop: 8, maxHeight: 380, flexShrink: 1 },
   group: { flexDirection: 'row', gap: 12, paddingVertical: 10, paddingHorizontal: 4 },
   box: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   groupBody: { flex: 1 },

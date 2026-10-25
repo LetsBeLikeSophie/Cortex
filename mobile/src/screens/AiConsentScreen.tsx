@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { fetchPlan, friendlyError, setAiConsent } from '../api/client';
+import { discardUnreceivedShares, drainShareQueue } from '../share/shareQueue';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
@@ -90,6 +91,11 @@ export default function AiConsentScreen() {
     setBusy(agree ? 'agree' : 'decline');
     try {
       await setAiConsent(agree);
+      // Photos shared in (Mehh) wait on this answer: agreed -> Mehh hears
+      // "received" and they save; declined -> the copies are deleted and
+      // Mehh keeps its originals.
+      if (agree) drainShareQueue();
+      else discardUnreceivedShares();
       navigation.goBack();
     } catch (err) {
       setError(friendlyError(err));

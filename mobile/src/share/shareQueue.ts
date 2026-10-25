@@ -3,153 +3,92 @@ import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as BackgroundTask from 'expo-background-task';
-import { saveScreenshotItem } from '../api/client';
+import { fetchPlan, saveScreenshotItem } from '../api/client';
+import { tellMehhReceived } from '../native/mehh';
+import { createShareQueue, Progress, QueueState } from './shareQueueCore';
 
 // Screenshots shared in "send and forget" style (Mehh): copied into the app's
-// own documents folder the moment they arrive, then saved to the server from
-// here -- in the app while it's open, and by a WorkManager job
-// (SHARE_QUEUE_TASK, see shareQueueTask.ts) when it isn't. A copy is only
-// deleted once its save went through, so a failed one is simply tried again
-// on the next run.
+// own documents folder the moment they arrive, then -- once the person has
+// agreed to AI analysis -- Mehh is told they were received and they're saved
+// to the server: in the app while it's open, and by a WorkManager job
+// (SHARE_QUEUE_TASK, see shareQueueTask.ts) when it isn't. The rules live in
+// shareQueueCore.ts.
 
 export const SHARE_QUEUE_TASK = 'cortex-share-queue';
 
-const KEY = 'cortex.shareQueue.v1';
-const CONCURRENCY = 3;
-
-interface Job {
-  id: string;
-  uri: string;
-  addedAt: number;
-  attempts: number;
-}
+const KEY = 'cortex.shareQueue.v2';
+// v1 held only jobs, all of which Mehh had already been told about.
+const KEY_V1 = 'cortex.shareQueue.v1';
 
 const queueDir = () => new Directory(Paths.document, 'share-queue');
 
-// Every read-modify-write of the stored list goes through this chain, so a
-// finishing save and a new share can't overwrite each other's change.
-let writes: Promise<unknown> = Promise.resolve();
-function update(fn: (jobs: Job[]) => Job[]): Promise<Job[]> {
-  const next = writes.then(async () => {
-    const jobs = fn(await readJobs());
-    await AsyncStorage.setItem(KEY, JSON.stringify(jobs));
-    return jobs;
-  });
-  writes = next.catch(() => {});
-  return next;
-}
-
-async function readJobs(): Promise<Job[]> {
+async function load(): Promise<QueueState> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Job[]) : [];
+    if (raw) return JSON.parse(raw) as QueueState;
+    const v1 = await AsyncStorage.getItem(KEY_V1);
+    return { jobs: v1 ? JSON.parse(v1) : [], receipts: [] };
   } catch {
-    return [];
+    return { jobs: [], receipts: [] };
   }
 }
 
-// --- progress, for the line on Home -----------------------------------------
-
-type Progress = { pending: number; running: boolean };
-let progress: Progress = { pending: 0, running: false };
+let progress: Progress = { pending: 0, running: false, waitingConsent: false };
 const listeners = new Set<(p: Progress) => void>();
-function setProgress(p: Partial<Progress>) {
-  progress = { ...progress, ...p };
-  listeners.forEach((l) => l(progress));
-}
 
-// --- public API --------------------------------------------------------------
-
-// Copies each shared file into the queue. Returns, per input, whether its
-// copy landed -- only those are safe for the sender to delete.
-export async function enqueueSharedImages(uris: string[]): Promise<boolean[]> {
-  const dir = queueDir();
-  dir.create({ intermediates: true, idempotent: true });
-  const added: Job[] = [];
-  const copied = await Promise.all(
-    uris.map(async (uri, i) => {
+const queue = createShareQueue({
+  load,
+  save: async (state) => {
+    await AsyncStorage.setItem(KEY, JSON.stringify(state));
+    await AsyncStorage.removeItem(KEY_V1);
+  },
+  copyIn: async (uri, id) => {
+    const dir = queueDir();
+    dir.create({ intermediates: true, idempotent: true });
+    const source = new File(uri);
+    const dest = new File(dir, `${id}.img`);
+    await source.copy(dest);
+    // expo-share-intent's cache-dir copy; ours is the one that counts now.
+    // Never a content:// uri -- that would be the sender's own file.
+    if (uri.startsWith(Paths.cache.uri)) {
       try {
-        const id = `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`;
-        const dest = new File(dir, `${id}.img`);
-        const source = new File(uri);
-        await source.copy(dest);
-        added.push({ id, uri: dest.uri, addedAt: Date.now(), attempts: 0 });
-        // expo-share-intent's cache-dir copy; ours is the one that counts now.
-        // Never a content:// uri -- that would be the sender's own file.
-        if (uri.startsWith(Paths.cache.uri)) {
-          try {
-            source.delete();
-          } catch {}
-        }
-        return true;
-      } catch {
-        return false;
-      }
-    })
-  );
-  if (added.length > 0) {
-    const jobs = await update((jobs) => [...jobs, ...added]);
-    setProgress({ pending: jobs.length });
-    // The WorkManager fallback for when the app is closed before it's done.
+        source.delete();
+      } catch {}
+    }
+    return dest.uri;
+  },
+  readBase64: (uri) => new File(uri).base64(),
+  exists: (uri) => new File(uri).exists,
+  remove: (uri) => new File(uri).delete(),
+  upload: async (base64) => {
+    await saveScreenshotItem('other', base64);
+  },
+  consent: async () => (await fetchPlan()).aiConsent ?? null,
+  tellMehh: tellMehhReceived,
+  onProgress: (p) => {
+    progress = p;
+    listeners.forEach((l) => l(p));
+  },
+  schedule: () => {
     BackgroundTask.registerTaskAsync(SHARE_QUEUE_TASK, { minimumInterval: 15 }).catch(() => {});
-  }
-  return copied;
-}
+  },
+  unschedule: () => {
+    BackgroundTask.unregisterTaskAsync(SHARE_QUEUE_TASK).catch(() => {});
+  },
+  now: () => Date.now(),
+  newId: () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+});
 
-// Saves whatever is waiting. One run at a time; each job is tried once per
-// run. Resolves with how many are still waiting.
-let running: Promise<number> | null = null;
-export function drainShareQueue(): Promise<number> {
-  if (!running) {
-    running = drain().finally(() => {
-      running = null;
-    });
-  }
-  return running;
-}
+// Copies shared files in; resolves with how many landed. Mehh hears about
+// them only from drainShareQueue, once consent is there.
+export const enqueueSharedImages = queue.enqueue;
+// Tells Mehh / uploads if the person has agreed; otherwise does nothing.
+export const drainShareQueue = queue.drain;
+// After "동의하지 않음": the copies Mehh wasn't told about are deleted.
+export const discardUnreceivedShares = queue.discardUnreceived;
 
-async function drain(): Promise<number> {
-  // Re-read after each batch so photos shared mid-run join this run.
-  const tried = new Set<string>();
-  for (;;) {
-    const jobs = await readJobs();
-    const batch = jobs.filter((j) => !tried.has(j.id)).slice(0, CONCURRENCY);
-    setProgress({ pending: jobs.length, running: batch.length > 0 });
-    if (batch.length === 0) break;
-    batch.forEach((j) => tried.add(j.id));
-    await Promise.all(batch.map(runJob));
-  }
-  const left = await readJobs();
-  setProgress({ pending: left.length, running: false });
-  if (left.length === 0) BackgroundTask.unregisterTaskAsync(SHARE_QUEUE_TASK).catch(() => {});
-  return left.length;
-}
-
-async function runJob(job: Job) {
-  const file = new File(job.uri);
-  if (!file.exists) {
-    // Nothing left to save (the copy was cleared) -- don't keep retrying.
-    const jobs = await update((all) => all.filter((j) => j.id !== job.id));
-    setProgress({ pending: jobs.length });
-    return;
-  }
-  try {
-    await saveScreenshotItem('other', await file.base64());
-  } catch {
-    await update((all) => all.map((j) => (j.id === job.id ? { ...j, attempts: j.attempts + 1 } : j)));
-    return;
-  }
-  const jobs = await update((all) => all.filter((j) => j.id !== job.id));
-  setProgress({ pending: jobs.length });
-  try {
-    file.delete();
-  } catch {
-    // a stray file in the queue folder is harmless
-  }
-}
-
-// Home: how many shared photos are still being saved. Also drains the queue
-// on mount and whenever the app comes back to the foreground.
+// Home: shared photos still waiting or being saved. Also drains the queue on
+// mount and whenever the app comes back to the foreground.
 export function useShareQueue(): Progress {
   const [state, setState] = useState(progress);
   useEffect(() => {

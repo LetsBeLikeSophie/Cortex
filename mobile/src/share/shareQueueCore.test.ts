@@ -1,0 +1,153 @@
+// npm test -- the share queue's consent rules, with fake storage/files/API.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { Consent, createShareQueue, QueueState } from './shareQueueCore';
+
+function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; failUpload?: number } = {}) {
+  let state: QueueState = { jobs: [], receipts: [] };
+  const files = new Set<string>();
+  const log: string[] = [];
+  let answer = consent;
+  let uploadFailures = opts.failUpload ?? 0;
+  let n = 0;
+  const queue = createShareQueue({
+    load: async () => structuredClone(state),
+    save: async (s) => {
+      state = structuredClone(s);
+    },
+    copyIn: async (uri, id) => {
+      if (opts.failCopy?.includes(uri)) throw new Error('copy failed');
+      const dest = `queue/${id}`;
+      files.add(dest);
+      return dest;
+    },
+    readBase64: async (uri) => `b64:${uri}`,
+    exists: (uri) => files.has(uri),
+    remove: (uri) => {
+      files.delete(uri);
+    },
+    upload: async (b64) => {
+      if (uploadFailures > 0) {
+        uploadFailures--;
+        throw new Error('upload failed');
+      }
+      log.push(`upload ${b64}`);
+    },
+    consent: async () => {
+      if (answer === 'error') throw new Error('offline');
+      return answer;
+    },
+    tellMehh: (count, ids) => log.push(`mehh count=${count} ids=${ids?.join(',') ?? '-'}`),
+    now: () => 0,
+    newId: () => `j${++n}`,
+  });
+  return {
+    queue,
+    log,
+    files,
+    state: () => state,
+    setConsent: (c: Consent) => {
+      answer = c;
+    },
+  };
+}
+
+test('fresh guest, consent not answered yet: share is copied, nothing uploaded, Mehh not told', async () => {
+  const t = setup(null);
+  assert.equal(await t.queue.enqueue(['a', 'b'], ['101', '102']), 2);
+  const r = await t.queue.drain();
+  assert.deepEqual(r, { left: 2, waitingConsent: true });
+  assert.deepEqual(t.log, []);
+  assert.equal(t.files.size, 2);
+});
+
+test('consent declined earlier: still nothing leaves', async () => {
+  const t = setup('declined');
+  await t.queue.enqueue(['a'], ['101']);
+  assert.equal((await t.queue.drain()).waitingConsent, true);
+  assert.deepEqual(t.log, []);
+});
+
+test('consent lookup fails (offline / signed out): treated as not agreed', async () => {
+  const t = setup('error');
+  await t.queue.enqueue(['a'], ['101']);
+  assert.equal((await t.queue.drain()).waitingConsent, true);
+  assert.deepEqual(t.log, []);
+});
+
+test('background run (app closed) before consent: does nothing, keeps the copies', async () => {
+  const t = setup(null);
+  await t.queue.enqueue(['a', 'b'], ['101', '102']);
+  // what the WorkManager task calls
+  await t.queue.drain();
+  await t.queue.drain();
+  assert.deepEqual(t.log, []);
+  assert.equal(t.state().jobs.length, 2);
+  assert.equal(t.state().receipts.length, 1);
+});
+
+test('agreeing: Mehh is told first, then the photos upload, then copies go', async () => {
+  const t = setup(null);
+  await t.queue.enqueue(['a', 'b'], ['101', '102']);
+  await t.queue.drain();
+  t.setConsent('agreed');
+  const r = await t.queue.drain();
+  assert.deepEqual(r, { left: 0, waitingConsent: false });
+  assert.equal(t.log[0], 'mehh count=2 ids=101,102');
+  assert.deepEqual(t.log.slice(1).sort(), ['upload b64:queue/j1', 'upload b64:queue/j2']);
+  assert.equal(t.files.size, 0);
+  assert.deepEqual(t.state(), { jobs: [], receipts: [] });
+});
+
+test('declining: copies deleted, Mehh never told, nothing uploaded', async () => {
+  const t = setup(null);
+  await t.queue.enqueue(['a', 'b'], ['101', '102']);
+  await t.queue.drain();
+  t.setConsent('declined');
+  assert.equal(await t.queue.discardUnreceived(), 2);
+  await t.queue.drain();
+  assert.deepEqual(t.log, []);
+  assert.equal(t.files.size, 0);
+  assert.deepEqual(t.state(), { jobs: [], receipts: [] });
+});
+
+test('already agreed: Mehh told and uploads run on the first drain', async () => {
+  const t = setup('agreed');
+  await t.queue.enqueue(['a'], ['101']);
+  await t.queue.drain();
+  assert.deepEqual(t.log, ['mehh count=1 ids=101', 'upload b64:queue/j1']);
+});
+
+test('only copied photos are reported to Mehh, ids kept in order', async () => {
+  const t = setup('agreed', { failCopy: ['b'] });
+  assert.equal(await t.queue.enqueue(['a', 'b', 'c'], ['101', '102', '103']), 2);
+  await t.queue.drain();
+  assert.equal(t.log[0], 'mehh count=2 ids=101,103');
+});
+
+test('ids that do not line up with the files: count only', async () => {
+  const t = setup('agreed');
+  await t.queue.enqueue(['a', 'b'], ['101']);
+  await t.queue.drain();
+  assert.equal(t.log[0], 'mehh count=2 ids=-');
+});
+
+test('a failed upload stays queued and retries on the next run; Mehh is told once', async () => {
+  const t = setup('agreed', { failUpload: 1 });
+  await t.queue.enqueue(['a'], ['101']);
+  assert.equal((await t.queue.drain()).left, 1);
+  assert.equal((await t.queue.drain()).left, 0);
+  assert.deepEqual(t.log, ['mehh count=1 ids=101', 'upload b64:queue/j1']);
+});
+
+test('withdrawing consent later: queued photos pause, nothing more is uploaded', async () => {
+  const t = setup('agreed', { failUpload: 1 });
+  await t.queue.enqueue(['a'], ['101']);
+  await t.queue.drain(); // told Mehh, upload failed
+  t.setConsent('declined');
+  assert.equal((await t.queue.drain()).waitingConsent, true);
+  assert.deepEqual(t.log, ['mehh count=1 ids=101']);
+  // already-received photos aren't thrown away by a later decline
+  assert.equal(await t.queue.discardUnreceived(), 0);
+  assert.equal(t.state().jobs.length, 1);
+});

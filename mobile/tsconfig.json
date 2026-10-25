@@ -2,5 +2,7 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  // Node-run tests (npm test) use Node's own modules, not the app's types.
+  "exclude": ["node_modules", "**/*.test.ts"]
 }

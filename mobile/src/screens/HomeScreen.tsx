@@ -5,7 +5,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 import { PolicyNotice } from '../components/PolicyNotice';
-import { parseMehhMarker, tellMehhReceived } from '../native/mehh';
+import { parseMehhMarker } from '../native/mehh';
 import { drainShareQueue, enqueueSharedImages, useShareQueue } from '../share/shareQueue';
 import { splitLinkText } from '../data/linkText';
 
@@ -40,6 +40,7 @@ const S = strings({
     trash: '휴지통',
     sharedSaving: (n: number) => `사진 ${n}장 저장 중`,
     sharedCopyFailed: '사진을 받지 못했어요',
+    sharedWaitingConsent: (n: number) => `사진 ${n}장 · AI 분석 동의 후 저장`,
     stats: '통계',
     account: '내 계정',
     all: '모두',
@@ -75,6 +76,7 @@ const S = strings({
     trash: 'Trash',
     sharedSaving: (n: number) => `Saving ${n} photo${n === 1 ? '' : 's'}`,
     sharedCopyFailed: "Couldn't receive the photos",
+    sharedWaitingConsent: (n: number) => `${n} photo${n === 1 ? '' : 's'} · saved after AI consent`,
     stats: 'Stats',
     account: 'My account',
     all: 'All',
@@ -110,6 +112,7 @@ const S = strings({
     trash: 'ゴミ箱',
     sharedSaving: (n: number) => `写真${n}枚を保存中`,
     sharedCopyFailed: '写真を受け取れませんでした',
+    sharedWaitingConsent: (n: number) => `写真${n}枚 · AI分析に同意後に保存`,
     stats: '統計',
     account: 'マイアカウント',
     all: 'すべて',
@@ -145,6 +148,7 @@ const S = strings({
     trash: '回收站',
     sharedSaving: (n: number) => `正在保存 ${n} 张照片`,
     sharedCopyFailed: '没能接收照片',
+    sharedWaitingConsent: (n: number) => `${n} 张照片 · 同意 AI 分析后保存`,
     stats: '统计',
     account: '我的账户',
     all: '全部',
@@ -180,6 +184,7 @@ const S = strings({
     trash: '垃圾桶',
     sharedSaving: (n: number) => `正在儲存 ${n} 張照片`,
     sharedCopyFailed: '沒能接收照片',
+    sharedWaitingConsent: (n: number) => `${n} 張照片 · 同意 AI 分析後儲存`,
     stats: '統計',
     account: '我的帳戶',
     all: '全部',
@@ -358,17 +363,18 @@ export default function HomeScreen() {
     const mehh = images.length > 0 ? parseMehhMarker(shareIntent.text) : null;
     const mehhIds = mehh?.ids?.length === files.length ? mehh.ids.filter((_, i) => isImage(files[i])) : undefined;
     if (mehh) {
-      // "Send and forget": copy into our own queue, tell Mehh which ones we
-      // have, and save them in the background -- no sheet to wait on.
+      // "Send and forget": copy into our own queue and save in the
+      // background -- no sheet to wait on. Mehh is told "received" (and
+      // anything is uploaded) only once AI analysis is agreed to; without
+      // that, the consent sheet comes first.
       resetShareIntent();
-      enqueueSharedImages(images.map((f) => f.path)).then((copied) => {
-        const count = copied.filter(Boolean).length;
+      enqueueSharedImages(images.map((f) => f.path), mehhIds).then(async (count) => {
         if (count === 0) {
           showToast(S.sharedCopyFailed);
           return;
         }
-        tellMehhReceived(count, mehhIds?.filter((_, i) => copied[i]));
-        drainShareQueue();
+        const { waitingConsent } = await drainShareQueue();
+        if (waitingConsent) navigation.navigate('AiConsent');
       });
       return;
     }
@@ -590,12 +596,17 @@ export default function HomeScreen() {
           </View>
         </View>
         <PolicyNotice theme={theme} />
-        {shareQueue.pending > 0 && (
-          <View style={styles.shareQueueRow}>
-            {shareQueue.running && <ActivityIndicator color={theme.sub} size="small" />}
-            <Text style={[styles.shareQueueText, { color: theme.sub }]}>{S.sharedSaving(shareQueue.pending)}</Text>
-          </View>
-        )}
+        {shareQueue.pending > 0 &&
+          (shareQueue.waitingConsent ? (
+            <Pressable onPress={() => navigation.navigate('AiConsent')} hitSlop={6} style={styles.shareQueueRow}>
+              <Text style={[styles.shareQueueText, { color: theme.accent }]}>{S.sharedWaitingConsent(shareQueue.pending)}</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.shareQueueRow}>
+              {shareQueue.running && <ActivityIndicator color={theme.sub} size="small" />}
+              <Text style={[styles.shareQueueText, { color: theme.sub }]}>{S.sharedSaving(shareQueue.pending)}</Text>
+            </View>
+          ))}
 
         {/* No shadow/elevation here -- 'card' (retired) paired elevation
             with overflow:hidden and that's what caused the Android "shadow

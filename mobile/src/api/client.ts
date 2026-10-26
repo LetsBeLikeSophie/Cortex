@@ -303,10 +303,14 @@ export function fetchItemsWithTag(tag: string, limit = 100) {
 // `include` terms are AND'd together, `exclude` terms are NOT'd -- see the
 // search screen's tag-chip input (space/enter turns a word into a chip,
 // tapping it toggles include/exclude, × removes it).
-export function searchItems(include: string[], exclude: string[], limit = 30) {
+// `tags` / `excludeTags`: the tag chips, matched exactly by the server (an
+// older server ignores them -- the search screen filters exactly too).
+export function searchItems(include: string[], exclude: string[], limit = 30, tags: string[] = [], excludeTags: string[] = []) {
   const params = new URLSearchParams();
   if (include.length) params.set('include', include.join(','));
   if (exclude.length) params.set('exclude', exclude.join(','));
+  if (tags.length) params.set('tags', tags.join(','));
+  if (excludeTags.length) params.set('excludeTags', excludeTags.join(','));
   params.set('limit', String(limit));
   return request<{ items: ApiItem[] }>(`/items/search?${params.toString()}`);
 }

@@ -83,6 +83,10 @@ const SearchQuerySchema = z.object({
   // "include" (AND'd together) and "exclude" (NOT'd) before calling this.
   include: z.string().optional(),
   exclude: z.string().optional(),
+  // The "# 태그로 좁히기" chips: matched against tags exactly ('이사' never
+  // pulls in '이사님'), unlike the loose words above (decision S1).
+  tags: z.string().optional(),
+  excludeTags: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
@@ -209,11 +213,13 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
     const include = splitTerms(parsed.data.include);
     const exclude = splitTerms(parsed.data.exclude);
-    if (include.length === 0 && exclude.length === 0) {
+    const tags = splitTerms(parsed.data.tags);
+    const excludeTags = splitTerms(parsed.data.excludeTags);
+    if (include.length === 0 && exclude.length === 0 && tags.length === 0 && excludeTags.length === 0) {
       return reply.code(400).send({ error: "include or exclude required" });
     }
     const userId = await resolveUserId(req);
-    const items = await searchItems(userId, include, exclude, parsed.data.limit);
+    const items = await searchItems(userId, include, exclude, parsed.data.limit, tags, excludeTags);
     return reply.send({ items });
   });
 

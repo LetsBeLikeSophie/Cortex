@@ -447,18 +447,25 @@ export default function SearchScreen() {
   const trimmed = query.trim();
   const aiMode = aiQuery !== null && aiQuery === trimmed;
 
-  // Instant search terms: typed words ("-word" = exclude) plus tag chips.
+  // Instant search terms: typed words ("-word" = exclude) match loosely
+  // anywhere; tag chips match a tag exactly (decision S1: '이사' doesn't
+  // bring in '이사님'). Included chips also ride along in `include` so an
+  // older server (which ignores `tags`) still narrows and highlights.
   const words = trimmed ? trimmed.split(/\s+/) : [];
   const isExcl = (w: string) => w.startsWith('-') && w.length > 1;
-  const include = words.filter((w) => !isExcl(w)).concat(tags.includeChips.map((c) => c.text));
-  const exclude = words.filter(isExcl).map((w) => w.slice(1)).concat(tags.excludeChips.map((c) => c.text));
-  const termsKey = JSON.stringify([include, exclude]);
+  const chipTags = tags.includeChips.map((c) => c.text);
+  const chipExcl = tags.excludeChips.map((c) => c.text);
+  const include = words.filter((w) => !isExcl(w)).concat(chipTags);
+  const exclude = words.filter(isExcl).map((w) => w.slice(1));
+  const termsKey = JSON.stringify([include, exclude, chipTags, chipExcl]);
 
-  const runSearch = React.useCallback((inc: string[], exc: string[]) => {
+  const runSearch = React.useCallback((inc: string[], exc: string[], tagInc: string[], tagExc: string[]) => {
     setLoading(true);
-    apiSearchItems(inc, exc)
+    const hasTag = (raw: ApiItem, t: string) => [...raw.tags, ...raw.user_tags].some((x) => x.toLowerCase() === t.toLowerCase());
+    apiSearchItems(inc, exc, 30, tagInc, tagExc)
       .then((res) => {
         const next = res.items
+          .filter((raw) => tagInc.every((t) => hasTag(raw, t)) && !tagExc.some((t) => hasTag(raw, t)))
           .map((raw) => ({ raw, result: toSearchResult(raw, inc) }))
           .sort((a, b) => b.result.matchedCount - a.result.matchedCount);
         setHits(next);
@@ -477,12 +484,12 @@ export default function SearchScreen() {
     if (aiMode) return;
     setInterpretation(null);
     setRelaxedCount(null);
-    if (include.length === 0 && exclude.length === 0) {
+    if (include.length === 0 && exclude.length === 0 && chipExcl.length === 0) {
       setHits([]);
       setError(null);
       return;
     }
-    const timer = setTimeout(() => runSearch(include, exclude), 250);
+    const timer = setTimeout(() => runSearch(include, exclude, chipTags, chipExcl), 250);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [termsKey, aiMode]);
@@ -545,7 +552,7 @@ export default function SearchScreen() {
       if (interpretation) reSearch(interpretation);
       else ask();
     } else {
-      runSearch(include, exclude);
+      runSearch(include, exclude, chipTags, chipExcl);
     }
   };
 

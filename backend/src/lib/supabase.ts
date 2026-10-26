@@ -688,7 +688,10 @@ export async function searchItems(
   userId: string,
   include: string[],
   exclude: string[],
-  limit = 30
+  limit = 30,
+  // Tag chips: exact tag match (case-insensitive), applied before the limit.
+  tags: string[] = [],
+  excludeTags: string[] = []
 ): Promise<ItemRecord[]> {
   const { data, error } = await getClient()
     .from("items")
@@ -702,8 +705,14 @@ export async function searchItems(
   const inc = include.map((w) => w.toLowerCase()).filter(Boolean);
   const exc = exclude.map((w) => w.toLowerCase()).filter(Boolean);
 
+  const tagInc = tags.map((t) => t.toLowerCase()).filter(Boolean);
+  const tagExc = excludeTags.map((t) => t.toLowerCase()).filter(Boolean);
+  const hasTag = (item: ItemRecord, tag: string) => [...item.tags, ...item.user_tags].some((t) => t.toLowerCase() === tag);
+
   const matches = (data ?? []).filter((item: ItemRecord) => {
     if (exc.some((needle) => matchesTerm(item, needle))) return false;
+    if (tagExc.some((tag) => hasTag(item, tag))) return false;
+    if (!tagInc.every((tag) => hasTag(item, tag))) return false;
     return inc.every((needle) => matchesTerm(item, needle));
   });
 

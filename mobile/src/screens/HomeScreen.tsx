@@ -50,6 +50,8 @@ const S = strings({
     recentFirst: (n: number, left: number) => `최근 것부터 ${n}건 · 이번 달 AI 정리 ${left}건 남음`,
     sortWithAi: (n: number) => `AI로 정리 (${n})`,
     sortWithPro: 'Pro로 정리',
+    needConsent: 'AI 분석에 동의하면 정리돼요',
+    allowAi: 'AI 분석 동의',
     selected: (n: number) => `${n}개 선택됨`,
     toTrash: '휴지통으로',
     select: '선택',
@@ -86,6 +88,8 @@ const S = strings({
     recentFirst: (n: number, left: number) => `${n}, newest first · ${left} AI sorts left this month`,
     sortWithAi: (n: number) => `Sort with AI (${n})`,
     sortWithPro: 'Sort with Pro',
+    needConsent: 'Sorted once you allow AI analysis',
+    allowAi: 'Allow AI',
     selected: (n: number) => `${n} selected`,
     toTrash: 'Move to trash',
     select: 'Select',
@@ -122,6 +126,8 @@ const S = strings({
     recentFirst: (n: number, left: number) => `新しい順に${n}件 · 今月のAI整理 残り${left}件`,
     sortWithAi: (n: number) => `AIで整理 (${n})`,
     sortWithPro: 'Proで整理',
+    needConsent: 'AI分析に同意すると整理されます',
+    allowAi: 'AI分析に同意',
     selected: (n: number) => `${n}件選択中`,
     toTrash: 'ゴミ箱へ',
     select: '選択',
@@ -158,6 +164,8 @@ const S = strings({
     recentFirst: (n: number, left: number) => `从最新开始 ${n} 项 · 本月 AI 整理剩 ${left} 次`,
     sortWithAi: (n: number) => `用 AI 整理 (${n})`,
     sortWithPro: '用 Pro 整理',
+    needConsent: '同意 AI 分析后即可整理',
+    allowAi: '同意 AI 分析',
     selected: (n: number) => `已选 ${n} 项`,
     toTrash: '移到回收站',
     select: '选择',
@@ -194,6 +202,8 @@ const S = strings({
     recentFirst: (n: number, left: number) => `從最新開始 ${n} 項 · 本月 AI 整理剩 ${left} 次`,
     sortWithAi: (n: number) => `用 AI 整理 (${n})`,
     sortWithPro: '用 Pro 整理',
+    needConsent: '同意 AI 分析後即可整理',
+    allowAi: '同意 AI 分析',
     selected: (n: number) => `已選 ${n} 項`,
     toTrash: '移到垃圾桶',
     select: '選擇',
@@ -528,6 +538,9 @@ export default function HomeScreen() {
       : tagList ?? rawItems;
   const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;
   const classifyLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : 0;
+  // Never agreed (or declined): the 미분류 strip asks for consent instead of
+  // offering a sort the server would refuse (and Pro would not fix).
+  const noAiConsent = !!plan && plan.aiConsent !== 'agreed';
 
   // "AI로 정리" in the 미분류함 tab: classify as much of the backlog as this
   // month's quota covers; with nothing left, it's the upgrade prompt.
@@ -728,7 +741,10 @@ export default function HomeScreen() {
             {/* When the press would spend the whole month's rest, say so --
                 every save after it waits here until the reset. */}
             <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={2}>
-              {classifyLeft === 0
+              {/* No AI consent: neither quota nor Pro would sort these. */}
+              {noAiConsent
+                ? S.needConsent
+                : classifyLeft === 0
                 ? S.refillsOn(resetLabel(plan?.resetsAt))
                 : classifyLeft <= unclassifiedCount
                   ? S.usesRest(classifyLeft, resetLabel(plan?.resetsAt))
@@ -736,12 +752,12 @@ export default function HomeScreen() {
             </Text>
           </View>
           <SolidButton
-            label={classifyLeft > 0 ? S.sortWithAi(Math.min(classifyLeft, unclassifiedCount)) : S.sortWithPro}
+            label={noAiConsent ? S.allowAi : classifyLeft > 0 ? S.sortWithAi(Math.min(classifyLeft, unclassifiedCount)) : S.sortWithPro}
             theme={theme}
             size="sm"
             flex={0}
             loading={sorting}
-            onPress={sortBacklog}
+            onPress={noAiConsent ? () => navigation.navigate('AiConsent') : sortBacklog}
           />
         </View>
       )}

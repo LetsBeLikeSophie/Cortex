@@ -855,7 +855,7 @@ export default function SaveSheetScreen() {
                         (what was typed) -- only the AI-refined title/tags
                         are actually pending there, so this shows it as-is
                         rather than hiding it behind the spinner too. */}
-                    {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]}>{saved.raw_text}</Text>}
+                    {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]} numberOfLines={4}>{saved.raw_text}</Text>}
                     <View style={styles.analyzingRow}>
                       <ActivityIndicator size="small" color={theme.accent} />
                       <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
@@ -867,14 +867,14 @@ export default function SaveSheetScreen() {
                   // Saved past this month's AI quota: kept, but not sorted --
                   // it went to 미분류함. Said plainly, with the way out.
                   <>
-                    {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]}>{saved.raw_text}</Text>}
+                    {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]} numberOfLines={4}>{saved.raw_text}</Text>}
                     <Text style={[styles.snippet, { color: theme.sub }]}>
                       {saved.unclassified_reason === 'consent' ? S.unclassifiedConsent : S.unclassifiedQuota}
                     </Text>
                   </>
                 ) : (
                   <>
-                    <Text style={[styles.title, { color: theme.ink }]}>{saved.title ?? saved.raw_text}</Text>
+                    <Text style={[styles.title, { color: theme.ink }]} numberOfLines={4}>{saved.title ?? saved.raw_text}</Text>
                     {saved.snippet && <Text style={[styles.snippet, { color: theme.sub }]}>{saved.snippet}</Text>}
                   </>
                 )}

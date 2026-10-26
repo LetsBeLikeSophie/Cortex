@@ -78,6 +78,8 @@ export function MemoText({ text, theme, style, onRef, onRefLayout }: Props) {
         return <Text key={i}>{part}</Text>;
       });
 
+  const bodySize = style.fontSize ?? 14.5;
+  const headingSize = { fontSize: bodySize + 1.5, ...(style.lineHeight ? { lineHeight: style.lineHeight + 2 } : null) };
   const lines = text.replace(/\r\n/g, '\n').split('\n');
   return (
     <View>
@@ -88,8 +90,10 @@ export function MemoText({ text, theme, style, onRef, onRefLayout }: Props) {
         if (!line.trim()) return <View key={i} style={styles.gap} />;
         const heading = line.match(/^#{1,3}\s+(.*)$/);
         if (heading) {
+          // A step above the body (decision C1), so sections read apart from
+          // the **bold names** inside them, which stay body-sized.
           return (
-            <Text key={i} {...layout} style={[style, styles.heading, { color: theme.ink }, i > 0 && styles.headingSpace]}>
+            <Text key={i} {...layout} style={[style, styles.heading, headingSize, { color: theme.ink }, i > 0 && styles.headingSpace]}>
               {heading[1].replace(/\*\*/g, '').replace(/\[#\d+\]/g, '')}
             </Text>
           );
@@ -124,8 +128,8 @@ export function MemoText({ text, theme, style, onRef, onRefLayout }: Props) {
 
 const styles = StyleSheet.create({
   gap: { height: 8 },
-  heading: { fontFamily: 'IBMPlexSansKR_500Medium' },
-  headingSpace: { marginTop: 6 },
+  heading: { fontFamily: 'IBMPlexSansKR_500Medium', marginBottom: 2 },
+  headingSpace: { marginTop: 14 },
   bold: { fontFamily: 'IBMPlexSansKR_500Medium' },
   link: { textDecorationLine: 'underline' },
   row: { flexDirection: 'row', gap: 8, paddingLeft: 2 },

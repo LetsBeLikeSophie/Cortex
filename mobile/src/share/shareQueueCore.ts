@@ -2,11 +2,13 @@
 // they can be tested in plain Node (shareQueueCore.test.ts). shareQueue.ts
 // wires the real storage, files, API and Mehh link.
 //
-// The one rule that matters most: nothing leaves the phone -- no upload, so
-// no AI analysis -- and Mehh isn't told "received" until the person has
-// agreed to AI analysis. Before that, shared photos only sit as local
-// copies. Declining deletes those copies and Mehh is never told, so it keeps
-// its originals.
+// The one rule that matters most: no AI analysis without consent. Until the
+// person answers, shared photos only sit as local copies -- nothing is
+// uploaded and Mehh isn't told "received". Agreeing tells Mehh and uploads.
+// Declining asks once more (decision C, 2026-10-26): save them to 미분류함
+// without AI (saveWithoutAi -- uploaded, and the server, seeing no consent,
+// never sends them to the AI), or not (discardUnreceived -- the copies are
+// deleted and Mehh, never told, keeps its originals).
 
 export type Consent = 'agreed' | 'declined' | null;
 
@@ -15,6 +17,9 @@ export interface Job {
   uri: string;
   addedAt: number;
   attempts: number;
+  // The person declined AI but chose to keep these: uploaded without
+  // waiting for consent (they land in 미분류함, unanalyzed).
+  noAi?: boolean;
 }
 
 // A share Mehh hasn't been told about yet: which copied jobs it covers and,
@@ -117,7 +122,7 @@ export function createShareQueue(deps: QueueDeps) {
 
   // One run at a time. With consent: tells Mehh what was received, then
   // uploads, each job once per run (failures stay for the next run).
-  // Without: does nothing at all.
+  // Without: uploads only the photos kept with saveWithoutAi.
   let running: Promise<{ left: number; waitingConsent: boolean }> | null = null;
   function drain() {
     if (!running) {
@@ -135,33 +140,63 @@ export function createShareQueue(deps: QueueDeps) {
       deps.unschedule?.();
       return { left: 0, waitingConsent: false };
     }
-    if ((await currentConsent()) !== 'agreed') {
+    const agreed = (await currentConsent()) === 'agreed';
+    const eligible = (j: Job) => agreed || !!j.noAi;
+    if (!initial.jobs.some(eligible)) {
       report({ pending: initial.jobs.length, running: false, waitingConsent: true });
       return { left: initial.jobs.length, waitingConsent: true };
     }
     report({ waitingConsent: false });
 
-    // Receipts first: Mehh may go ahead once its photos are safely copied.
-    let receipts: Receipt[] = [];
-    await update((s) => {
-      receipts = s.receipts;
-      return { ...s, receipts: [] };
-    });
-    for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
+    if (agreed) {
+      // Receipts first: Mehh may go ahead once its photos are safely copied.
+      let receipts: Receipt[] = [];
+      await update((s) => {
+        receipts = s.receipts;
+        return { ...s, receipts: [] };
+      });
+      for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
+    }
 
     const tried = new Set<string>();
     for (;;) {
       const { jobs } = await deps.load();
-      const batch = jobs.filter((j) => !tried.has(j.id)).slice(0, CONCURRENCY);
+      const batch = jobs.filter((j) => eligible(j) && !tried.has(j.id)).slice(0, CONCURRENCY);
       report({ pending: jobs.length, running: batch.length > 0 });
       if (batch.length === 0) break;
       batch.forEach((j) => tried.add(j.id));
       await Promise.all(batch.map(runJob));
     }
-    const left = (await deps.load()).jobs.length;
-    report({ pending: left, running: false });
-    if (left === 0) deps.unschedule?.();
-    return { left, waitingConsent: false };
+    const { jobs: left } = await deps.load();
+    const waitingConsent = left.some((j) => !eligible(j));
+    report({ pending: left.length, running: false, waitingConsent });
+    if (left.length === 0) deps.unschedule?.();
+    return { left: left.length, waitingConsent };
+  }
+
+  // How many photos are waiting on the consent answer (Mehh not told yet).
+  async function unreceivedCount(): Promise<number> {
+    const s = await deps.load();
+    return s.receipts.reduce((n, r) => n + r.jobIds.length, 0);
+  }
+
+  // The person declined AI but wants these kept: Mehh is told they were
+  // received (copied, and now saved regardless), and they upload marked
+  // noAi -- the server files them in 미분류함 without calling the AI.
+  async function saveWithoutAi(): Promise<number> {
+    let receipts: Receipt[] = [];
+    await update((s) => {
+      receipts = s.receipts;
+      const ids = new Set(receipts.flatMap((r) => r.jobIds));
+      return { jobs: s.jobs.map((j) => (ids.has(j.id) ? { ...j, noAi: true } : j)), receipts: [] };
+    });
+    for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
+    const kept = receipts.reduce((n, r) => n + r.jobIds.length, 0);
+    if (kept > 0) deps.schedule?.();
+    // A run already going may have started before these were marked.
+    if (running) await running;
+    await drain();
+    return kept;
   }
 
   async function runJob(job: Job) {
@@ -206,5 +241,5 @@ export function createShareQueue(deps: QueueDeps) {
     return dropped.length;
   }
 
-  return { enqueue, drain, discardUnreceived, progress: () => progress };
+  return { enqueue, drain, discardUnreceived, saveWithoutAi, unreceivedCount, progress: () => progress };
 }

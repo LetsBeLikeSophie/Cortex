@@ -84,8 +84,11 @@ const queue = createShareQueue({
 export const enqueueSharedImages = queue.enqueue;
 // Tells Mehh / uploads if the person has agreed; otherwise does nothing.
 export const drainShareQueue = queue.drain;
-// After "동의하지 않음": the copies Mehh wasn't told about are deleted.
+// After "동의하지 않음", the person picks: keep them in 미분류함 without AI,
+// or not -- then the copies Mehh wasn't told about are deleted.
+export const saveSharesWithoutAi = queue.saveWithoutAi;
 export const discardUnreceivedShares = queue.discardUnreceived;
+export const unreceivedShareCount = queue.unreceivedCount;
 
 // Home: shared photos still waiting or being saved. Also drains the queue on
 // mount and whenever the app comes back to the foreground.

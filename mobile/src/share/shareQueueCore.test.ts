@@ -157,7 +157,7 @@ test('declined, then "미분류함에 저장": Mehh told, photos upload without 
   await t.queue.enqueue(['a', 'b'], ['101', '102']);
   await t.queue.drain();
   t.setConsent('declined');
-  assert.equal(await t.queue.unreceivedCount(), 2);
+  assert.equal(await t.queue.waitingCount(), 2);
   assert.equal(await t.queue.saveWithoutAi(), 2);
   assert.equal(t.log[0], 'mehh count=2 ids=101,102');
   assert.deepEqual(t.log.slice(1).sort(), ['upload b64:queue/j1', 'upload b64:queue/j2']);
@@ -182,5 +182,17 @@ test('a new share after choosing "미분류함에 저장" still waits for its ow
   const r = await t.queue.drain();
   assert.deepEqual(r, { left: 1, waitingConsent: true });
   assert.deepEqual(t.log, ['mehh count=1 ids=101', 'upload b64:queue/j1']);
-  assert.equal(await t.queue.unreceivedCount(), 1);
+  assert.equal(await t.queue.waitingCount(), 1);
+});
+
+test('agreed, upload failed, consent withdrawn: the decline question still covers it, and "저장" uploads it', async () => {
+  const t = setup('agreed', { failUpload: 1 });
+  await t.queue.enqueue(['a'], ['101']);
+  await t.queue.drain(); // Mehh told, upload failed
+  t.setConsent('declined');
+  assert.equal((await t.queue.drain()).waitingConsent, true);
+  assert.equal(await t.queue.waitingCount(), 1);
+  assert.equal(await t.queue.saveWithoutAi(), 1);
+  assert.deepEqual(t.log, ['mehh count=1 ids=101', 'upload b64:queue/j1']);
+  assert.deepEqual(t.state(), { jobs: [], receipts: [] });
 });

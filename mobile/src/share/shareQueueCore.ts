@@ -174,24 +174,26 @@ export function createShareQueue(deps: QueueDeps) {
     return { left: left.length, waitingConsent };
   }
 
-  // How many photos are waiting on the consent answer (Mehh not told yet).
-  async function unreceivedCount(): Promise<number> {
+  // How many photos wait on consent: everything not yet uploaded and not
+  // already kept without AI -- including ones Mehh was told about under an
+  // earlier consent whose upload failed before it was withdrawn.
+  async function waitingCount(): Promise<number> {
     const s = await deps.load();
-    return s.receipts.reduce((n, r) => n + r.jobIds.length, 0);
+    return s.jobs.filter((j) => !j.noAi).length;
   }
 
-  // The person declined AI but wants these kept: Mehh is told they were
-  // received (copied, and now saved regardless), and they upload marked
-  // noAi -- the server files them in 미분류함 without calling the AI.
+  // The person declined AI but wants these kept: every waiting photo uploads
+  // marked noAi -- the server files them in 미분류함 without calling the AI
+  // -- and Mehh is told about the ones it hadn't heard of yet.
   async function saveWithoutAi(): Promise<number> {
     let receipts: Receipt[] = [];
+    let kept = 0;
     await update((s) => {
       receipts = s.receipts;
-      const ids = new Set(receipts.flatMap((r) => r.jobIds));
-      return { jobs: s.jobs.map((j) => (ids.has(j.id) ? { ...j, noAi: true } : j)), receipts: [] };
+      kept = s.jobs.filter((j) => !j.noAi).length;
+      return { jobs: s.jobs.map((j) => (j.noAi ? j : { ...j, noAi: true })), receipts: [] };
     });
     for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
-    const kept = receipts.reduce((n, r) => n + r.jobIds.length, 0);
     if (kept > 0) deps.schedule?.();
     // A run already going may have started before these were marked.
     if (running) await running;
@@ -241,5 +243,5 @@ export function createShareQueue(deps: QueueDeps) {
     return dropped.length;
   }
 
-  return { enqueue, drain, discardUnreceived, saveWithoutAi, unreceivedCount, progress: () => progress };
+  return { enqueue, drain, discardUnreceived, saveWithoutAi, waitingCount, progress: () => progress };
 }

@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { fetchPlan, friendlyError, setAiConsent } from '../api/client';
-import { discardUnreceivedShares, drainShareQueue, saveSharesWithoutAi, unreceivedShareCount, useShareQueue } from '../share/shareQueue';
+import { discardUnreceivedShares, drainShareQueue, saveSharesWithoutAi, waitingShareCount, useShareQueue } from '../share/shareQueue';
 import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
@@ -141,7 +141,7 @@ export default function AiConsentScreen() {
       }
       // Declined with photos waiting: ask once whether to keep them in
       // 미분류함 without AI (decision C) before closing.
-      const waiting = await unreceivedShareCount();
+      const waiting = await waitingShareCount();
       if (waiting > 0) {
         setAskKeep(waiting);
         setBusy(null);

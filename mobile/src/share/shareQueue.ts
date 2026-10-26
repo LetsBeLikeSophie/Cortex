@@ -88,7 +88,7 @@ export const drainShareQueue = queue.drain;
 // or not -- then the copies Mehh wasn't told about are deleted.
 export const saveSharesWithoutAi = queue.saveWithoutAi;
 export const discardUnreceivedShares = queue.discardUnreceived;
-export const unreceivedShareCount = queue.unreceivedCount;
+export const waitingShareCount = queue.waitingCount;
 
 // Home: shared photos still waiting or being saved. Also drains the queue on
 // mount and whenever the app comes back to the foreground.

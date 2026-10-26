@@ -90,6 +90,24 @@ export const saveSharesWithoutAi = queue.saveWithoutAi;
 export const discardUnreceivedShares = queue.discardUnreceived;
 export const waitingShareCount = queue.waitingCount;
 
+// What to do with Mehh photos when AI analysis is declined (decision M2,
+// C): the first answer to "미분류함에 저장할까요?" is remembered and applied
+// from then on without asking; the profile can change it ('ask' = ask
+// every time). null = never answered.
+export type DeclinedChoice = 'keep' | 'drop' | 'ask';
+const CHOICE_KEY = 'cortex.mehhDeclinedChoice';
+export async function getDeclinedChoice(): Promise<DeclinedChoice | null> {
+  try {
+    const v = await AsyncStorage.getItem(CHOICE_KEY);
+    return v === 'keep' || v === 'drop' || v === 'ask' ? v : null;
+  } catch {
+    return null;
+  }
+}
+export function setDeclinedChoice(choice: DeclinedChoice): Promise<void> {
+  return AsyncStorage.setItem(CHOICE_KEY, choice).catch(() => {});
+}
+
 // Home: shared photos still waiting or being saved. Also drains the queue on
 // mount and whenever the app comes back to the foreground.
 export function useShareQueue(): Progress {

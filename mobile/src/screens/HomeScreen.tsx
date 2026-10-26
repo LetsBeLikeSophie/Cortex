@@ -6,7 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 import { PolicyNotice } from '../components/PolicyNotice';
 import { parseMehhMarker } from '../native/mehh';
-import { drainShareQueue, enqueueSharedImages, useShareQueue } from '../share/shareQueue';
+import { discardUnreceivedShares, drainShareQueue, enqueueSharedImages, getDeclinedChoice, saveSharesWithoutAi, useShareQueue } from '../share/shareQueue';
 import { splitLinkText } from '../data/linkText';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -40,6 +40,8 @@ const S = strings({
     trash: '휴지통',
     sharedSaving: (n: number) => `사진 ${n}장 저장 중`,
     sharedCopyFailed: '사진을 받지 못했어요',
+    sharedKept: (n: number) => `사진 ${n}장을 미분류함에 저장해요`,
+    sharedNotKept: (n: number) => `사진 ${n}장은 저장하지 않았어요 · Mehh에 그대로 있어요`,
     sharedWaitingConsent: (n: number) => `사진 ${n}장 · 눌러서 저장 방법 고르기`,
     stats: '통계',
     account: '내 계정',
@@ -78,6 +80,8 @@ const S = strings({
     trash: 'Trash',
     sharedSaving: (n: number) => `Saving ${n} photo${n === 1 ? '' : 's'}`,
     sharedCopyFailed: "Couldn't receive the photos",
+    sharedKept: (n: number) => `Keeping ${n} photo${n === 1 ? '' : 's'} in Unsorted`,
+    sharedNotKept: (n: number) => `${n} photo${n === 1 ? '' : 's'} not saved · still in Mehh`,
     sharedWaitingConsent: (n: number) => `${n} photo${n === 1 ? '' : 's'} · tap to choose how to save`,
     stats: 'Stats',
     account: 'My account',
@@ -116,6 +120,8 @@ const S = strings({
     trash: 'ゴミ箱',
     sharedSaving: (n: number) => `写真${n}枚を保存中`,
     sharedCopyFailed: '写真を受け取れませんでした',
+    sharedKept: (n: number) => `写真${n}枚を未分類に保存します`,
+    sharedNotKept: (n: number) => `写真${n}枚は保存しませんでした · Mehhに残っています`,
     sharedWaitingConsent: (n: number) => `写真${n}枚 · タップして保存方法を選ぶ`,
     stats: '統計',
     account: 'マイアカウント',
@@ -154,6 +160,8 @@ const S = strings({
     trash: '回收站',
     sharedSaving: (n: number) => `正在保存 ${n} 张照片`,
     sharedCopyFailed: '没能接收照片',
+    sharedKept: (n: number) => `正在把 ${n} 张照片存入未分类`,
+    sharedNotKept: (n: number) => `${n} 张照片未保存 · 仍在 Mehh 中`,
     sharedWaitingConsent: (n: number) => `${n} 张照片 · 点按选择保存方式`,
     stats: '统计',
     account: '我的账户',
@@ -192,6 +200,8 @@ const S = strings({
     trash: '垃圾桶',
     sharedSaving: (n: number) => `正在儲存 ${n} 張照片`,
     sharedCopyFailed: '沒能接收照片',
+    sharedKept: (n: number) => `正在把 ${n} 張照片存入未分類`,
+    sharedNotKept: (n: number) => `${n} 張照片未儲存 · 仍在 Mehh 中`,
     sharedWaitingConsent: (n: number) => `${n} 張照片 · 點按選擇儲存方式`,
     stats: '統計',
     account: '我的帳戶',
@@ -384,7 +394,19 @@ export default function HomeScreen() {
           return;
         }
         const { waitingConsent } = await drainShareQueue();
-        if (waitingConsent) navigation.navigate('AiConsent');
+        if (!waitingConsent) return;
+        // AI already declined and an answer remembered (decision M2): follow
+        // it without asking. Otherwise the consent sheet comes first.
+        const [choice, consent] = await Promise.all([getDeclinedChoice(), fetchPlan().then((p) => p.aiConsent ?? null).catch(() => undefined)]);
+        if (consent === 'declined' && choice === 'keep') {
+          showToast(S.sharedKept(count));
+          saveSharesWithoutAi();
+        } else if (consent === 'declined' && choice === 'drop') {
+          const dropped = await discardUnreceivedShares();
+          if (dropped > 0) showToast(S.sharedNotKept(dropped));
+        } else {
+          navigation.navigate('AiConsent');
+        }
       });
       return;
     }

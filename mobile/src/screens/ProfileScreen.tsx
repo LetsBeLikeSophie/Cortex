@@ -18,6 +18,7 @@ import { ConfirmCard } from '../components/ConfirmCard';
 import { GhostButton } from '../components/Buttons';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
+import { DeclinedChoice, getDeclinedChoice, setDeclinedChoice } from '../share/shareQueue';
 import { LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
 import { COMMON } from '../i18n/common';
 
@@ -61,6 +62,10 @@ const S = strings({
     agreed: '동의함',
     declined: '동의 안 함',
     notYet: '아직 안 함',
+    mehhChoice: 'Mehh 사진 · AI 동의 안 할 때',
+    mehhKeep: '미분류함에 저장',
+    mehhDrop: '저장 안 함',
+    mehhAsk: '매번 묻기',
     theme: '테마',
     signOut: '로그아웃',
     deleteGuestData: '게스트 데이터 삭제',
@@ -107,6 +112,10 @@ const S = strings({
     agreed: 'Agreed',
     declined: 'Declined',
     notYet: 'Not yet',
+    mehhChoice: 'Mehh photos · without AI consent',
+    mehhKeep: 'Keep in Unsorted',
+    mehhDrop: "Don't keep",
+    mehhAsk: 'Ask each time',
     theme: 'Theme',
     signOut: 'Log out',
     deleteGuestData: 'Delete guest data',
@@ -153,6 +162,10 @@ const S = strings({
     agreed: '同意済み',
     declined: '同意しない',
     notYet: '未回答',
+    mehhChoice: 'Mehhの写真 · AI未同意のとき',
+    mehhKeep: '未分類に保存',
+    mehhDrop: '保存しない',
+    mehhAsk: '毎回確認',
     theme: 'テーマ',
     signOut: 'ログアウト',
     deleteGuestData: 'ゲストデータを削除',
@@ -199,6 +212,10 @@ const S = strings({
     agreed: '已同意',
     declined: '不同意',
     notYet: '尚未选择',
+    mehhChoice: 'Mehh 照片 · 未同意 AI 时',
+    mehhKeep: '存入未分类',
+    mehhDrop: '不保存',
+    mehhAsk: '每次询问',
     theme: '主题',
     signOut: '退出登录',
     deleteGuestData: '删除访客数据',
@@ -245,6 +262,10 @@ const S = strings({
     agreed: '已同意',
     declined: '不同意',
     notYet: '尚未選擇',
+    mehhChoice: 'Mehh 照片 · 未同意 AI 時',
+    mehhKeep: '存入未分類',
+    mehhDrop: '不儲存',
+    mehhAsk: '每次詢問',
     theme: '主題',
     signOut: '登出',
     deleteGuestData: '刪除訪客資料',
@@ -312,13 +333,22 @@ export default function ProfileScreen() {
   const [state, setState] = useState<FooterState>('idle');
   const [error, setError] = useState('');
   const [plan, setPlan] = useState<Plan | null>(null);
+  // What happens to Mehh photos while AI is declined -- shown once it has
+  // been answered (decision M2); tapping cycles keep -> drop -> ask.
+  const [mehhChoice, setMehhChoice] = useState<DeclinedChoice | null>(null);
   useFocusEffect(
     useCallback(() => {
       fetchPlan()
         .then(setPlan)
         .catch(() => {});
+      getDeclinedChoice().then(setMehhChoice);
     }, [])
   );
+  const cycleMehhChoice = () => {
+    const next: DeclinedChoice = mehhChoice === 'keep' ? 'drop' : mehhChoice === 'drop' ? 'ask' : 'keep';
+    setMehhChoice(next);
+    setDeclinedChoice(next);
+  };
   const planLabel =
     plan?.tier === 'pro'
       ? 'Pro'
@@ -511,6 +541,17 @@ export default function ProfileScreen() {
                 {plan?.aiConsent === 'agreed' ? S.agreed : plan?.aiConsent === 'declined' ? S.declined : S.notYet}
               </Text>
             </Pressable>
+            {mehhChoice !== null && (
+              <Pressable
+                onPress={cycleMehhChoice}
+                style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
+              >
+                <Text style={[styles.signOutLabel, styles.rowLabelShrink, { color: theme.ink }]}>{S.mehhChoice}</Text>
+                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>
+                  {mehhChoice === 'keep' ? S.mehhKeep : mehhChoice === 'drop' ? S.mehhDrop : S.mehhAsk}
+                </Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={() => navigation.navigate('ThemePicker')}
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
@@ -562,6 +603,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  rowLabelShrink: { flexShrink: 1, marginRight: 12 },
   linkBox: { padding: 16, gap: 8 },
   langList: { paddingHorizontal: 16, paddingTop: 8, gap: 2 },
   langRow: { paddingVertical: 8 },

@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { fetchPlan, friendlyError, setAiConsent } from '../api/client';
-import { discardUnreceivedShares, drainShareQueue, saveSharesWithoutAi, waitingShareCount, useShareQueue } from '../share/shareQueue';
+import { discardUnreceivedShares, drainShareQueue, saveSharesWithoutAi, setDeclinedChoice, waitingShareCount, useShareQueue } from '../share/shareQueue';
 import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
@@ -158,6 +158,9 @@ export default function AiConsentScreen() {
   const keep = async (yes: boolean) => {
     if (askKeep === null) return;
     setBusy(yes ? 'agree' : 'decline');
+    // Remembered: later shares while AI stays declined follow this answer
+    // without asking (decision M2; changeable in the profile).
+    setDeclinedChoice(yes ? 'keep' : 'drop');
     if (yes) {
       showToast(S.kept(askKeep));
       saveSharesWithoutAi();

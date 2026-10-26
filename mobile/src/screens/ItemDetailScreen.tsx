@@ -404,6 +404,13 @@ export default function ItemDetailScreen() {
   // A composed memo's sources, loaded when "원본 N개" is opened (decision Q7).
   const sourceIds = item.composed_from ?? [];
   const isComposed = sourceIds.length > 0 || !!composedFrom;
+  // The "made from" line with its 다른 모양으로 다시: right after making it
+  // (composedFrom, maybe a free remake), and also when the memo is opened
+  // again later -- from its stored sources and the tag it's filed under
+  // (decision C2; that remake costs 1, the sheet says so).
+  const reopenTag = userTags[0] ?? aiTags[0];
+  const composeInfo: { tag: string; count: number; left?: number; freeRemake?: boolean } | null =
+    composedFrom ?? (sourceIds.length > 0 && reopenTag ? { tag: reopenTag, count: sourceIds.length } : null);
   const [editingBody, setEditingBody] = useState(false);
   const [sources, setSources] = useState<ApiItem[] | null>(null);
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -881,27 +888,27 @@ export default function ItemDetailScreen() {
             </View>
           </View>
 
-          {composedFrom && (
+          {composeInfo && (
             <View style={styles.composedNote}>
               <SparkleIcon size={13} color={theme.accent} strokeWidth={1.5} />
               <Text style={[styles.composedText, { color: theme.sub }]}>
-                {S.composedFrom(composedFrom.tag, composedFrom.count)}
-                {composedFrom.left !== undefined ? S.composeLeft(composedFrom.left) : ''}
+                {S.composedFrom(composeInfo.tag, composeInfo.count)}
+                {composeInfo.left !== undefined ? S.composeLeft(composeInfo.left) : ''}
               </Text>
               <Pressable
                 onPress={() =>
                   navigation.replace('Compose', {
-                    tag: composedFrom.tag,
-                    count: composedFrom.count,
+                    tag: composeInfo.tag,
+                    count: composeInfo.count,
                     retryOf: item.id,
-                    freeRemake: composedFrom.freeRemake,
+                    freeRemake: composeInfo.freeRemake,
                     remakeBefore: { title: savedRef.current.title, rawText: savedRef.current.rawText, edited: handEdited.current },
                   })
                 }
                 hitSlop={8}
                 style={styles.composedAgain}
               >
-                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>{composedFrom.freeRemake ? S.otherShapeFree : S.otherShape}</Text>
+                <Text style={[styles.composedText, { color: theme.ink, textDecorationLine: 'underline' }]}>{composeInfo.freeRemake ? S.otherShapeFree : S.otherShape}</Text>
               </Pressable>
             </View>
           )}

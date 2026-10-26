@@ -8,6 +8,7 @@ import { ApiError, asQuotaError, composeMemo, fetchItemsWithTag, fetchPlan, frie
 import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
+import { composeMaterials } from '../api/format';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { fieldStyle } from '../components/Fields';
 import { VoiceInputButton } from '../components/VoiceInputButton';
@@ -27,6 +28,8 @@ const S = strings({
   ko: {
     examples: ['코스·동선', '비교표', '체크리스트', '일정표', '요약'],
     tooFew: '메모가 2개 이상 있어야 해요',
+    needTwo: (n: number) => `메모가 2개 이상 있어야 해요 · 지금 ${n}개`,
+    lockedOut: (n: number) => ` · 잠긴 메모 ${n}개는 빠져요`,
     expired: '시간이 지나 결과가 사라졌어요. 다시 만들어 주세요.',
     previewLabel: (n: number) => `미리보기 · 메모 ${n}개로 만들었어요`,
     retryFree: '다른 모양으로 다시 · 무료',
@@ -56,6 +59,8 @@ const S = strings({
   en: {
     examples: ['Route', 'Comparison', 'Checklist', 'Schedule', 'Summary'],
     tooFew: 'You need at least 2 items',
+    needTwo: (n: number) => `You need at least 2 items · now ${n}`,
+    lockedOut: (n: number) => ` · ${n} locked memo${n === 1 ? '' : 's'} left out`,
     expired: 'The result expired. Please make it again.',
     previewLabel: (n: number) => `Preview · made from ${n} items`,
     retryFree: 'Remake in another shape · Free',
@@ -85,6 +90,8 @@ const S = strings({
   ja: {
     examples: ['コース・動線', '比較表', 'チェックリスト', 'スケジュール', '要約'],
     tooFew: 'メモが2つ以上必要です',
+    needTwo: (n: number) => `メモが2つ以上必要です · 今は${n}件`,
+    lockedOut: (n: number) => ` · ロック中のメモ${n}件は除きます`,
     expired: '時間が経って結果が消えました。もう一度作ってください。',
     previewLabel: (n: number) => `プレビュー · メモ${n}件から作りました`,
     retryFree: '別の形で作り直す · 無料',
@@ -114,6 +121,8 @@ const S = strings({
   'zh-Hans': {
     examples: ['路线', '对比表', '清单', '日程表', '摘要'],
     tooFew: '至少需要 2 项收藏内容',
+    needTwo: (n: number) => `至少需要 2 项收藏内容 · 目前 ${n} 项`,
+    lockedOut: (n: number) => ` · 不含 ${n} 条已锁定的备注`,
     expired: '时间太久，结果已失效。请重新生成。',
     previewLabel: (n: number) => `预览 · 由 ${n} 项收藏内容生成`,
     retryFree: '换个形式重做 · 免费',
@@ -143,6 +152,8 @@ const S = strings({
   'zh-Hant': {
     examples: ['路線', '比較表', '清單', '行程表', '摘要'],
     tooFew: '至少需要 2 項收藏內容',
+    needTwo: (n: number) => `至少需要 2 項收藏內容 · 目前 ${n} 項`,
+    lockedOut: (n: number) => ` · 不含 ${n} 則已鎖定的備註`,
     expired: '時間太久，結果已失效。請重新產生。',
     previewLabel: (n: number) => `預覽 · 由 ${n} 項收藏內容產生`,
     retryFree: '換個形式重做 · 免費',
@@ -174,9 +185,10 @@ const S = strings({
 export default function ComposeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { tag, count, itemIds, tagChoices, retryOf, freeRemake } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
+  const { tag, count, lockedOut, itemIds, tagChoices, retryOf, freeRemake } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
   const [pickedTag, setPickedTag] = useState(tagChoices?.[0] ?? tag);
   const [tagCount, setTagCount] = useState<number | null>(count ?? null);
+  const [lockedCount, setLockedCount] = useState(lockedOut ?? 0);
   const [shape, setShape] = useState<string | null>(null);
   const [ask, setAsk] = useState('');
   // Dictation appends to what's typed rather than replacing it.
@@ -206,10 +218,15 @@ export default function ComposeScreen() {
   useEffect(() => {
     if (itemIds || retryOf || (count !== undefined && pickedTag === tag)) return;
     setTagCount(null);
+    setLockedCount(0);
     let cancelled = false;
     fetchItemsWithTag(pickedTag, 50)
       .then((res) => {
-        if (!cancelled) setTagCount(res.items.length);
+        if (cancelled) return;
+        // Counted the server's way: locked and earlier composed memos are out.
+        const m = composeMaterials(res.items);
+        setTagCount(m.usable.length);
+        setLockedCount(m.locked);
       })
       .catch(() => {});
     return () => {
@@ -220,7 +237,9 @@ export default function ComposeScreen() {
   const close = () => navigation.goBack();
   const left = plan?.compose ? Math.max(0, plan.compose.limit - plan.compose.used) : null;
   const remakeFree = !!retryOf && !!freeRemake;
-  const materials = itemIds ? itemIds.length : tagCount;
+  const materials = itemIds && count === undefined ? itemIds.length : tagCount;
+  // Fewer than 2 usable memos: the server would refuse, so don't offer it.
+  const tooFew = !retryOf && materials !== null && materials < 2;
 
   const make = async () => {
     if (!remakeFree && left === 0) {
@@ -229,12 +248,15 @@ export default function ComposeScreen() {
     }
     setError('');
     setWorking(true);
-    // The memo lives under its tag -- make sure that tag is a home tab
-    // (done first, so it holds even if the sheet is closed meanwhile).
-    const tabs = await loadHomeTabs();
-    if (!tabs.includes(pickedTag)) await saveHomeTabs([...tabs, pickedTag]);
+    // The memo lives under its tag -- make sure that tag is a home tab,
+    // once there is a memo (a too_few refusal adds no tab).
+    const keepTab = async () => {
+      const tabs = await loadHomeTabs();
+      if (!tabs.includes(pickedTag)) await saveHomeTabs([...tabs, pickedTag]);
+    };
     try {
       const res = await composeMemo(pickedTag, 'auto', { itemIds, retryOf, instruction: [shape, ask.trim()].filter(Boolean).join(' · ') || undefined });
+      await keepTab().catch(() => {});
       if (!mounted.current) {
         showToast(S.doneToast(pickedTag));
         return;
@@ -282,7 +304,8 @@ export default function ComposeScreen() {
           </View>
         )}
         <Text style={[styles.sub, { color: theme.sub }]}>
-          {materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
+          {tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
+          {!retryOf && lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}
           {retryOf ? (remakeFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}
@@ -344,6 +367,7 @@ export default function ComposeScreen() {
           theme={theme}
           onPress={make}
           loading={working}
+          disabled={tooFew}
         />
       </ButtonRow>
     </ModalSheet>

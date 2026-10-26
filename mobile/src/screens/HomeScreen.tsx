@@ -14,7 +14,7 @@ import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../them
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
-import { toRecentItem, relativeTime } from '../api/format';
+import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
@@ -566,6 +566,8 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTag, plan]);
   const items = filtered.map(toRecentItem);
+  // Counted the server's way, so "메모 N개" matches what gets made.
+  const tabMaterials = composeMaterials(listSource);
 
   // Always off the unfiltered list -- the hero card describes the whole
   // archive, not whatever tag tab happens to be active.
@@ -795,7 +797,8 @@ export default function HomeScreen() {
                         const ids = [...selectedIds];
                         setSelectMode(false);
                         setSelectedIds(new Set());
-                        navigation.navigate('Compose', { tag: activeTag, count: ids.length, itemIds: ids, suggested: suggestFormat(listSource.filter((it) => ids.includes(it.id))) });
+                        const picked = composeMaterials(listSource.filter((it) => ids.includes(it.id)));
+                        navigation.navigate('Compose', { tag: activeTag, count: picked.usable.length, lockedOut: picked.locked, itemIds: ids, suggested: suggestFormat(picked.usable) });
                       }}
                     >
                       <Text style={[styles.bulkBarLink, { color: theme.accent }]}>{S.composeSelected}</Text>
@@ -850,9 +853,9 @@ export default function HomeScreen() {
           ) : (
             <View style={styles.bulkBarRow}>
               {/* "모아서 만들기": this tab's items -> one course/list/summary memo. */}
-              {items.length >= 2 ? (
+              {tabMaterials.usable.length >= 2 ? (
                 <Pressable
-                  onPress={() => navigation.navigate('Compose', { tag: activeTag, count: items.length, suggested: suggestFormat(listSource) })}
+                  onPress={() => navigation.navigate('Compose', { tag: activeTag, count: tabMaterials.usable.length, lockedOut: tabMaterials.locked, suggested: suggestFormat(tabMaterials.usable) })}
                   hitSlop={6}
                   style={styles.composeLink}
                 >

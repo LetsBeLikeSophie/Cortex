@@ -30,7 +30,9 @@ export type RootStackParamList = {
   // the whole tag; tagChoices: let the sheet pick among the item's tags.
   Compose: {
     tag: string;
+    // Usable materials (composeMaterials); lockedOut = locked memos left out.
     count?: number;
+    lockedOut?: number;
     suggested?: import('../api/client').ComposeFormat;
     itemIds?: string[];
     tagChoices?: string[];

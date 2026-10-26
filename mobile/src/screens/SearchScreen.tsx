@@ -22,7 +22,7 @@ import {
   SmartSearchResponse,
   friendlyError,
 } from '../api/client';
-import { captureTypeLabel, sourceLabel, toSearchResult, toSmartSearchResult } from '../api/format';
+import { captureTypeLabel, composeMaterials, sourceLabel, toSearchResult, toSmartSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Heading } from '../components/Typography';
@@ -572,6 +572,7 @@ export default function SearchScreen() {
         return tags.includeChips.every((c) => has.has(c.text)) && !tags.excludeChips.some((c) => has.has(c.text));
       })
     : hits;
+  const searchMaterials = composeMaterials(shown.map((h) => h.raw));
 
   const termCount = aiMode ? (interpretation?.sort ? 0 : interpretation?.keywords.length ?? 0) : include.length;
   const rows: Row[] = [];
@@ -750,9 +751,9 @@ export default function SearchScreen() {
 
         {/* Searching by one tag is 모아서 만들기's material already --
             offer it here too (decision Q8). */}
-        {!aiMode && words.length === 0 && tags.includeChips.length === 1 && tags.excludeChips.length === 0 && shown.length >= 2 && (
+        {!aiMode && words.length === 0 && tags.includeChips.length === 1 && tags.excludeChips.length === 0 && searchMaterials.usable.length >= 2 && (
           <Pressable
-            onPress={() => navigation.navigate('Compose', { tag: tags.includeChips[0].text, count: shown.length })}
+            onPress={() => navigation.navigate('Compose', { tag: tags.includeChips[0].text, count: searchMaterials.usable.length, lockedOut: searchMaterials.locked })}
             hitSlop={6}
             style={styles.suggestLine}
           >

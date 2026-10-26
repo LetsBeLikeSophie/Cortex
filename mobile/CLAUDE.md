@@ -13,3 +13,11 @@ The theme = a Layout (line / thinBorder / layered / layeredVintage) × a Palette
 - Values that differ per theme are fields on Layout or Palette. A `conceptOf(theme)` branch in a component only picks which field to read; it doesn't invent new numbers. Never branch on a value no layout has.
 - Color roles: ink = selected / primary, accent = meaning (AI, 미분류, recording), danger = errors and delete. No error text in accent; text on an accent fill uses `onAccent`.
 - After a UI change, check all four layouts with their signature colors (line+Paper, thinBorder+Sage, layered+Blush, layeredVintage+Ink).
+
+## Product rules (Sophie, 2026-10-26)
+
+- One state, one mark: a state shown in several places (locked, AI-made, 미분류, ...) uses the same icon and the same theme color in lists, search and detail.
+- Every on-screen string also fits in English and Japanese on a ~360dp phone: check for one-line overflow and links cut off by an ellipsis.
+- A count shown before an action ("메모 N개") is counted with the same filter the server uses for that action, so the number before matches the number after.
+- A button that lets the AI overwrite what the person made or edited says first that the current content will be replaced, and offers undo afterwards.
+- AI buttons (sort, search, 모아서 만들기, Pro prompts) shown to someone without AI consent read as "동의하면 할 수 있어요" and lead to the consent sheet.

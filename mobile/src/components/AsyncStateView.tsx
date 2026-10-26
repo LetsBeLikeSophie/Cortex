@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Theme } from '../theme/themes';
+import { Theme, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { COMMON } from '../i18n/common';
 import { strings } from '../i18n';
 
@@ -49,7 +49,7 @@ export function AsyncStateView({
           {error}
         </Text>
         <Pressable onPress={onRetry} style={[styles.retryButton, { borderColor: theme.line }]}>
-          <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>{COMMON.retry}</Text>
+          <Text style={{ color: theme.ink, fontFamily: BODY_KR_MEDIUM, fontSize: 13.5 }}>{COMMON.retry}</Text>
         </Pressable>
       </View>
     );
@@ -65,7 +65,7 @@ export function AsyncStateView({
 }
 
 const styles = StyleSheet.create({
-  message: { textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' },
+  message: { textAlign: 'center', fontFamily: BODY_KR },
   empty: { paddingHorizontal: 24 },
   retryButton: { marginTop: 16, borderWidth: 1, borderRadius: 999, paddingHorizontal: 20, paddingVertical: 10 },
 });

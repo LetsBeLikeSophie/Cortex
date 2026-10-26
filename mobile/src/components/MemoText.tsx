@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TextStyle, View } from 'react-native';
 import type { Theme } from '../theme/themes';
 
+import { BODY_KR_MEDIUM } from '../theme/themes';
 // Renders the small markdown subset 모아서 만들기 writes, so a long text-only
 // memo reads in sections instead of one wall of text:
 //   ## Section            -> a heading line
@@ -128,9 +129,9 @@ export function MemoText({ text, theme, style, onRef, onRefLayout }: Props) {
 
 const styles = StyleSheet.create({
   gap: { height: 8 },
-  heading: { fontFamily: 'IBMPlexSansKR_500Medium', marginBottom: 2 },
+  heading: { fontFamily: BODY_KR_MEDIUM, marginBottom: 2 },
   headingSpace: { marginTop: 14 },
-  bold: { fontFamily: 'IBMPlexSansKR_500Medium' },
+  bold: { fontFamily: BODY_KR_MEDIUM },
   link: { textDecorationLine: 'underline' },
   row: { flexDirection: 'row', gap: 8, paddingLeft: 2 },
   rowText: { flex: 1 },

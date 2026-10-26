@@ -10,7 +10,7 @@ import { sourceLabel, SOURCE_ORDER } from '../api/format';
 import { BarChart, HorizontalBars, Heatmap } from '../components/Charts';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Card, isBoxed, screenGutter } from '../components/Card';
-import { allEdges } from '../theme/themes';
+import { allEdges, BODY_KR } from '../theme/themes';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { VintageWallpaper } from '../components/Decor';
 import type { RootStackParamList } from '../navigation/types';
@@ -176,5 +176,5 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   section: { marginTop: 20 },
   sectionTitle: { fontSize: 17 },
-  sectionNote: { fontSize: 12, marginTop: 3, fontFamily: 'IBMPlexSansKR_400Regular' },
+  sectionNote: { fontSize: 12, marginTop: 3, fontFamily: BODY_KR },
 });

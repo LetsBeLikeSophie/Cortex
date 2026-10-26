@@ -18,6 +18,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { TIME } from '../i18n/common';
 
+import { BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 const S = strings({
   ko: {
     restored: '복원했어요',
@@ -143,9 +144,9 @@ function TrashRow({
 
       {action === 'restored' ? (
         <View style={styles.actionRow}>
-          <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13 }}>{S.restored}</Text>
+          <Text style={{ color: theme.sub, fontFamily: BODY_KR, fontSize: 13 }}>{S.restored}</Text>
           <Pressable onPress={() => onOpen({ ...item, deleted_at: null })} hitSlop={6}>
-            <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13, textDecorationLine: 'underline' }}>{S.open}</Text>
+            <Text style={{ color: theme.ink, fontFamily: BODY_KR_MEDIUM, fontSize: 13, textDecorationLine: 'underline' }}>{S.open}</Text>
           </Pressable>
         </View>
       ) : action === 'confirmingPermanent' || action === 'deletingPermanent' ? (
@@ -166,13 +167,13 @@ function TrashRow({
             ) : (
               <>
                 <RestoreIcon size={13} color={theme.ink} strokeWidth={1.3} />
-                <Text style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13 }}>{S.restore}</Text>
+                <Text style={{ color: theme.ink, fontFamily: BODY_KR_MEDIUM, fontSize: 13 }}>{S.restore}</Text>
               </>
             )}
           </Pressable>
           <Pressable onPress={() => setAction('confirmingPermanent')} style={[styles.iconTextButton, { borderColor: theme.line }]}>
             <TrashIcon size={13} color={theme.sub} strokeWidth={1.3} />
-            <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13 }}>{S.permanentDelete}</Text>
+            <Text style={{ color: theme.sub, fontFamily: BODY_KR_MEDIUM, fontSize: 13 }}>{S.permanentDelete}</Text>
           </Pressable>
         </View>
       )}
@@ -235,9 +236,9 @@ export default function TrashScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   row: { gap: 6 },
-  title: { fontSize: 15, lineHeight: 21, fontFamily: 'IBMPlexSansKR_500Medium' },
-  meta: { fontSize: 12, fontFamily: 'IBMPlexSansKR_400Regular' },
-  error: { fontSize: 12, fontFamily: 'IBMPlexSansKR_400Regular' },
+  title: { fontSize: 15, lineHeight: 21, fontFamily: BODY_KR_MEDIUM },
+  meta: { fontSize: 12, fontFamily: BODY_KR },
+  error: { fontSize: 12, fontFamily: BODY_KR },
   actionRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   iconTextButton: {
     flexDirection: 'row',

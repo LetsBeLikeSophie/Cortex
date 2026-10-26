@@ -10,7 +10,7 @@ import { drainShareQueue, enqueueSharedImages, useShareQueue } from '../share/sh
 import { splitLinkText } from '../data/linkText';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
@@ -643,7 +643,7 @@ export default function HomeScreen() {
 
             <Text
               style={{
-                fontFamily: 'IBMPlexSansKR_400Regular',
+                fontFamily: BODY_KR,
                 fontSize: 13.5,
                 letterSpacing: emToTracking(0.01, 13.5),
                 color: theme.sub,
@@ -677,7 +677,7 @@ export default function HomeScreen() {
               <View style={[styles.heroDot, { backgroundColor: theme.accent }]} />
               <Text
                 style={{
-                  fontFamily: 'IBMPlexSansKR_400Regular',
+                  fontFamily: BODY_KR,
                   fontSize: 12.5,
                   letterSpacing: emToTracking(0.01, 12.5),
                   color: theme.accent,
@@ -852,13 +852,13 @@ export default function HomeScreen() {
                     placeholder={bulkEditing === 'add' ? S.tagToAdd : S.tagToRemove}
                     placeholderTextColor={theme.sub}
                     onSubmitEditing={applyBulkTag}
-                    style={{ flex: 1, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5, padding: 0, outlineWidth: 0 }}
+                    style={{ flex: 1, color: theme.ink, fontFamily: BODY_KR, fontSize: 13.5, padding: 0, outlineWidth: 0 }}
                   />
                   {bulkApplying ? (
                     <ActivityIndicator color={theme.accent} size="small" />
                   ) : (
                     <Pressable onPress={applyBulkTag} disabled={!bulkTagDraft.trim()}>
-                      <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }}>
+                      <Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM, fontSize: 13.5 }}>
                         {S.apply}
                       </Text>
                     </Pressable>
@@ -949,11 +949,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   backlog: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 12, paddingBottom: 4 },
   backlogText: { flex: 1, minWidth: 0 },
-  backlogTitle: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
-  backlogSub: { fontSize: 12, marginTop: 2, fontFamily: 'IBMPlexSansKR_400Regular' },
+  backlogTitle: { fontSize: 14, fontFamily: BODY_KR_MEDIUM },
+  backlogSub: { fontSize: 12, marginTop: 2, fontFamily: BODY_KR },
   headPad: {},
   shareQueueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
-  shareQueueText: { fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 12.5 },
+  shareQueueText: { fontFamily: BODY_KR, fontSize: 12.5 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   heroWrap: { position: 'relative' },
@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
   heroBox: { position: 'relative', overflow: 'hidden' },
   heroDot: { width: 8, height: 8, borderRadius: 4 },
   numRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 },
-  numSuffix: { fontSize: 14, lineHeight: 21, paddingBottom: 9, fontFamily: 'IBMPlexSansKR_400Regular' },
+  numSuffix: { fontSize: 14, lineHeight: 21, paddingBottom: 9, fontFamily: BODY_KR },
   heroFoot: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 18 },
   tabsScroll: { flexGrow: 0 },
   // Vertical breathing room: a horizontal ScrollView clips its content to
@@ -972,10 +972,10 @@ const styles = StyleSheet.create({
   composeLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   bulkBar: { paddingTop: 12 },
   bulkBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 8 },
-  bulkBarText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  bulkBarText: { fontSize: 12.5, fontFamily: BODY_KR },
   // Wraps to a second line when the actions don't fit (long languages, many selected).
   bulkBarActions: { flexDirection: 'row', flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end', columnGap: 14, rowGap: 6 },
-  bulkBarLink: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_500Medium' },
+  bulkBarLink: { fontSize: 12.5, fontFamily: BODY_KR_MEDIUM },
   bulkTagBox: {
     flexDirection: 'row',
     alignItems: 'center',

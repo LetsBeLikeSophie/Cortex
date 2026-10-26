@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, emToTracking } from '../theme/themes';
+import { MONO, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { frameStyle } from '../components/Card';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { COMMON } from '../i18n/common';
@@ -374,16 +374,16 @@ function LastUsed({ theme, label }: { theme: ReturnType<typeof useTheme>['theme'
 
 const styles = StyleSheet.create({
   guestConfirm: { padding: 14, gap: 4 },
-  guestConfirmTitle: { fontSize: 14.5, marginBottom: 2, fontFamily: 'IBMPlexSansKR_500Medium' },
+  guestConfirmTitle: { fontSize: 14.5, marginBottom: 2, fontFamily: BODY_KR_MEDIUM },
   buttonWrap: { position: 'relative' },
   lastUsed: { position: 'absolute', top: -9, right: 14, paddingHorizontal: 8, paddingVertical: 2 },
-  lastUsedText: { fontSize: 11, fontFamily: 'IBMPlexSansKR_500Medium' },
+  lastUsedText: { fontSize: 11, fontFamily: BODY_KR_MEDIUM },
   screen: { flex: 1, paddingHorizontal: 28 },
   body: { flex: 1, justifyContent: 'center' },
   title: { fontSize: 32, lineHeight: 40, letterSpacing: -0.5 },
-  subtitle: { fontSize: 14.5, lineHeight: 22, marginTop: 16, fontFamily: 'IBMPlexSansKR_400Regular' },
+  subtitle: { fontSize: 14.5, lineHeight: 22, marginTop: 16, fontFamily: BODY_KR },
   footer: { paddingBottom: 32, gap: 12 },
-  errorText: { fontSize: 13, textAlign: 'center', fontFamily: 'IBMPlexSansKR_400Regular' },
+  errorText: { fontSize: 13, textAlign: 'center', fontFamily: BODY_KR },
   kakaoButton: {
     minHeight: 56,
     backgroundColor: KAKAO_YELLOW,
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  kakaoButtonText: { color: KAKAO_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
+  kakaoButtonText: { color: KAKAO_TEXT, fontSize: 16, fontFamily: BODY_KR_MEDIUM },
   googleButton: {
     minHeight: 56,
     backgroundColor: '#FFFFFF',
@@ -402,17 +402,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   googleInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  googleButtonText: { color: GOOGLE_TEXT, fontSize: 16, fontFamily: 'IBMPlexSansKR_500Medium' },
+  googleButtonText: { color: GOOGLE_TEXT, fontSize: 16, fontFamily: BODY_KR_MEDIUM },
   guestButton: {
     minHeight: 56,
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  guestButtonText: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
+  guestButtonText: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
   guestLine: { flexDirection: 'row', gap: 6 },
   flex1: { flex: 1 },
-  guestNote: { fontSize: 12.5, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
-  policyNote: { fontSize: 11.5, textAlign: 'center', marginTop: 4, lineHeight: 17, fontFamily: 'IBMPlexSansKR_400Regular' },
+  guestNote: { fontSize: 12.5, lineHeight: 19, fontFamily: BODY_KR },
+  policyNote: { fontSize: 11.5, textAlign: 'center', marginTop: 4, lineHeight: 17, fontFamily: BODY_KR },
   policyLink: { textDecorationLine: 'underline' },
 });

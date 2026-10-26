@@ -11,6 +11,7 @@ import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { PRIVACY_URL, strings } from '../i18n';
 
+import { BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 // Consent to send saved content to the AI provider abroad. Asked once after
 // login, again whenever an AI feature is used without it, and changeable
 // from the profile. Declining keeps saving and word search; only AI is off.
@@ -225,14 +226,14 @@ export default function AiConsentScreen() {
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 4 },
   lines: { gap: 8, marginTop: 14, paddingHorizontal: 4 },
-  line: { fontSize: 14, lineHeight: 21, fontFamily: 'IBMPlexSansKR_400Regular' },
+  line: { fontSize: 14, lineHeight: 21, fontFamily: BODY_KR },
   rows: { gap: 8, marginTop: 4 },
   row: { flexDirection: 'row', gap: 12 },
-  label: { width: 76, fontSize: 13, lineHeight: 20, fontFamily: 'IBMPlexSansKR_500Medium' },
-  value: { flex: 1, fontSize: 13.5, lineHeight: 20, fontFamily: 'IBMPlexSansKR_400Regular' },
-  note: { fontSize: 12.5, lineHeight: 19, marginTop: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
-  link: { fontSize: 13.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
-  now: { fontSize: 12.5, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
-  error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  label: { width: 76, fontSize: 13, lineHeight: 20, fontFamily: BODY_KR_MEDIUM },
+  value: { flex: 1, fontSize: 13.5, lineHeight: 20, fontFamily: BODY_KR },
+  note: { fontSize: 12.5, lineHeight: 19, marginTop: 4, fontFamily: BODY_KR },
+  link: { fontSize: 13.5, marginTop: 14, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
+  now: { fontSize: 12.5, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
+  error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: BODY_KR },
   buttons: { marginTop: 18 },
 });

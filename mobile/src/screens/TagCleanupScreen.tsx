@@ -8,7 +8,7 @@ import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
-import { allEdges, OUTLINE } from '../theme/themes';
+import { allEdges, OUTLINE, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { applyTagCleanup, asQuotaError, friendlyError, suggestTagCleanup, TagMergeGroup } from '../api/client';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import { strings } from '../i18n';
@@ -227,14 +227,14 @@ export default function TagCleanupScreen() {
 
 const styles = StyleSheet.create({
   pad: { paddingHorizontal: 4 },
-  line: { fontSize: 14, lineHeight: 21, marginTop: 14, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
-  small: { fontSize: 12.5, lineHeight: 18, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  line: { fontSize: 14, lineHeight: 21, marginTop: 14, paddingHorizontal: 4, fontFamily: BODY_KR },
+  small: { fontSize: 12.5, lineHeight: 18, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
   wait: { alignItems: 'center', gap: 4, marginTop: 24 },
   // Shrinks (and scrolls) on short phones so the merge button stays on screen.
   list: { marginTop: 8, maxHeight: 380, flexShrink: 1 },
   group: { flexDirection: 'row', gap: 12, paddingVertical: 10, paddingHorizontal: 4 },
   box: { width: 20, height: 20, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   groupBody: { flex: 1 },
-  keep: { fontSize: 14.5, fontFamily: 'IBMPlexSansKR_500Medium' },
+  keep: { fontSize: 14.5, fontFamily: BODY_KR_MEDIUM },
   buttons: { marginTop: 18 },
 });

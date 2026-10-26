@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Theme } from '../theme/themes';
 import { PRIVACY_URL, TERMS_URL, strings } from '../i18n';
 
+import { BODY_KR } from '../theme/themes';
 const S = strings({
   ko: { text: '10월 말 약관·방침이 바뀌어요', terms: '약관', privacy: '방침', close: '공지 닫기' },
   en: { text: 'Terms and privacy change end of Oct', terms: 'Terms', privacy: 'Privacy', close: 'Close notice' },
@@ -56,6 +57,6 @@ export function PolicyNotice({ theme }: { theme: Theme }) {
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
   textWrap: { flex: 1 },
-  text: { fontSize: 13, fontFamily: 'IBMPlexSansKR_400Regular' },
+  text: { fontSize: 13, fontFamily: BODY_KR },
   link: { textDecorationLine: 'underline' },
 });

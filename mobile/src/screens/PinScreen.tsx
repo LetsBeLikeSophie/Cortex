@@ -5,7 +5,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
-import { allEdges, OUTLINE } from '../theme/themes';
+import { allEdges, OUTLINE, BODY_KR } from '../theme/themes';
 import { strings } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
 import { checkPin, confirmDeviceOwner, finishPin, setPin } from '../lock/memoLock';
@@ -185,10 +185,10 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 22 },
   dot: { width: 14, height: 14, borderRadius: 7 },
-  message: { textAlign: 'center', minHeight: 20, marginTop: 12, fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  message: { textAlign: 'center', minHeight: 20, marginTop: 12, fontSize: 12.5, fontFamily: BODY_KR },
   pad: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
   key: { width: '33.33%', height: 58, alignItems: 'center', justifyContent: 'center' },
-  keyText: { fontSize: 24, fontFamily: 'IBMPlexSansKR_400Regular' },
+  keyText: { fontSize: 24, fontFamily: BODY_KR },
   forgot: { alignSelf: 'center', marginTop: 8, paddingVertical: 6 },
-  forgotText: { fontSize: 13, fontFamily: 'IBMPlexSansKR_400Regular', textDecorationLine: 'underline' },
+  forgotText: { fontSize: 13, fontFamily: BODY_KR, textDecorationLine: 'underline' },
 });

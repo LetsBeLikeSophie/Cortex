@@ -12,7 +12,7 @@ import { composeMaterials } from '../api/format';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { fieldStyle } from '../components/Fields';
 import { VoiceInputButton } from '../components/VoiceInputButton';
-import { OUTLINE, allEdges } from '../theme/themes';
+import { OUTLINE, allEdges, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { TagChip } from '../components/Chips';
 import { SparkleIcon } from '../components/Icons';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
@@ -390,23 +390,23 @@ export default function ComposeScreen() {
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
-  sub: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  sub: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
   tagChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingHorizontal: 4 },
   dim: { opacity: 0.45 },
-  askLabel: { fontSize: 14, marginTop: 18, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_500Medium' },
+  askLabel: { fontSize: 14, marginTop: 18, paddingHorizontal: 4, fontFamily: BODY_KR_MEDIUM },
   radios: { gap: 2, marginTop: 8, paddingHorizontal: 4 },
   radioRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7 },
   radioRing: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 9, height: 9, borderRadius: 4.5 },
-  radioText: { fontSize: 14.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  radioText: { fontSize: 14.5, fontFamily: BODY_KR },
   micInField: { position: 'absolute', right: 4, bottom: 6 },
-  askInput: { marginTop: 10, paddingHorizontal: 14, paddingRight: 44, paddingVertical: 11, minHeight: 48, fontSize: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
-  previewLabel: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
+  askInput: { marginTop: 10, paddingHorizontal: 14, paddingRight: 44, paddingVertical: 11, minHeight: 48, fontSize: 14, fontFamily: BODY_KR },
+  previewLabel: { fontSize: 13, fontFamily: BODY_KR_MEDIUM },
   previewTitle: { marginTop: 12, paddingHorizontal: 4 },
   previewBodyBox: { marginTop: 10, paddingHorizontal: 4 },
-  previewBody: { fontSize: 14.5, lineHeight: 23, fontFamily: 'IBMPlexSansKR_400Regular' },
+  previewBody: { fontSize: 14.5, lineHeight: 23, fontFamily: BODY_KR },
   retryLink: { marginTop: 14, paddingHorizontal: 4 },
-  link: { fontSize: 13.5, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
-  error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  link: { fontSize: 13.5, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
+  error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: BODY_KR },
   buttons: { marginTop: 18 },
 });

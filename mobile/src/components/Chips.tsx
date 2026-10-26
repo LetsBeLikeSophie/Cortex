@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import type { QueryChip } from '../hooks/useChipQuery';
 import { strings } from '../i18n';
 
@@ -30,7 +30,7 @@ export function TabChip({ label, active, theme, onPress }: { label: string; acti
         style={{
           fontSize: concept === 'vintage' ? 12.5 : pill ? 12.5 : 13,
           color,
-          fontFamily: concept === 'vintage' ? MONO : 'IBMPlexSansKR_400Regular',
+          fontFamily: concept === 'vintage' ? MONO : BODY_KR,
         }}
       >
         {label}
@@ -70,7 +70,7 @@ export function addChipShell(theme: Theme) {
 }
 
 function chipFont(theme: Theme) {
-  return conceptOf(theme) === 'vintage' ? MONO : 'IBMPlexSansKR_400Regular';
+  return conceptOf(theme) === 'vintage' ? MONO : BODY_KR;
 }
 
 // The 미분류 tab. Deliberately not a normal tab in a different state: it's
@@ -89,7 +89,7 @@ export function PileTabChip({ count, active, theme, onPress }: { count: number; 
       ]
     : [styles.underlineTab, styles.pileRow, bottomEdge(2, active ? theme.accent : 'transparent'), { backgroundColor: 'transparent' }];
   const fg = pill && active ? theme.bg : theme.accent;
-  const font = concept === 'vintage' ? MONO : 'IBMPlexSansKR_500Medium';
+  const font = concept === 'vintage' ? MONO : BODY_KR_MEDIUM;
   return (
     <Pressable onPress={onPress} style={shell} accessibilityLabel={S.unsortedCount(count)}>
       {/* Always rendered (just recolored) so selecting it doesn't shrink the tab. */}
@@ -112,7 +112,7 @@ export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => vo
       accessibilityLabel={S.tabSettings}
       style={[styles.tabAdd, styles.tabSettings, { borderColor: theme.sub, borderRadius: conceptOf(theme) === 'vintage' ? 3 : 13 }]}
     >
-      <Text style={{ fontSize: 12, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.tabSettings}</Text>
+      <Text style={{ fontSize: 12, color: theme.sub, fontFamily: BODY_KR }}>{S.tabSettings}</Text>
     </Pressable>
   );
 }
@@ -189,7 +189,7 @@ export function SearchChip({
           style={{
             fontSize: 13.5,
             color,
-            fontFamily: conceptOf(theme) === 'vintage' ? MONO : 'IBMPlexSansKR_500Medium',
+            fontFamily: conceptOf(theme) === 'vintage' ? MONO : BODY_KR_MEDIUM,
             textDecorationLine: excluded ? 'line-through' : 'none',
           }}
         >

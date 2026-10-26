@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { isUserCancelledError, useIAP, type Purchase } from 'expo-iap';
 
-import { Theme } from '../theme/themes';
+import { Theme, BODY_KR } from '../theme/themes';
 import { classifyBacklog, friendlyError, Offers, Plan, verifyGooglePurchase } from '../api/client';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { showToast } from '../native/toast';
@@ -254,9 +254,9 @@ export function AndroidPurchase({
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: BODY_KR },
   buttons: { marginTop: 16 },
   restore: { alignSelf: 'center', marginTop: 12, paddingVertical: 4 },
-  restoreText: { fontSize: 12.5, textDecorationLine: 'underline', fontFamily: 'IBMPlexSansKR_400Regular' },
-  fine: { fontSize: 11.5, lineHeight: 17, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  restoreText: { fontSize: 12.5, textDecorationLine: 'underline', fontFamily: BODY_KR },
+  fine: { fontSize: 11.5, lineHeight: 17, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
 });

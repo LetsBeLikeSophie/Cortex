@@ -6,7 +6,7 @@ import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/b
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, conceptOf, emToTracking } from '../theme/themes';
+import { MONO, conceptOf, emToTracking, BODY_KR } from '../theme/themes';
 import { DashedRule, VintageWallpaper } from '../components/Decor';
 import { ArchiveIcon, PlusIcon, SearchIcon } from '../components/Icons';
 import HomeScreen from '../screens/HomeScreen';
@@ -78,7 +78,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
             <item.Icon size={18} color={on ? theme.ink : theme.sub} strokeWidth={1.3} />
             <Text
               style={{
-                fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
+                fontFamily: tech ? MONO : BODY_KR,
                 fontSize: tech ? 10 : 12,
                 letterSpacing: tech ? emToTracking(0.14, 10) : emToTracking(0.01, 12),
                 color: on ? theme.ink : theme.sub,
@@ -95,7 +95,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
         <PlusIcon size={18} color={theme.sub} strokeWidth={1.3} />
         <Text
           style={{
-            fontFamily: tech ? MONO : 'IBMPlexSansKR_400Regular',
+            fontFamily: tech ? MONO : BODY_KR,
             fontSize: tech ? 10 : 12,
             letterSpacing: tech ? emToTracking(0.14, 10) : emToTracking(0.01, 12),
             color: theme.sub,

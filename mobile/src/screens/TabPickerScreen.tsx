@@ -65,6 +65,7 @@ const S = strings({
 import { Heading } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
 
+import { BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 // Same bottom-sheet shape as ThemePickerScreen, but multi-select: each row
 // toggles independently instead of picking one and closing, since the home
 // tab strip can pin any combination of tags. The list is every tag that
@@ -132,7 +133,7 @@ export default function TabPickerScreen() {
             onChangeText={setQuery}
             placeholder={S.search}
             placeholderTextColor={theme.sub}
-            style={{ flex: 1, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 14.5, padding: 0, outlineWidth: 0 }}
+            style={{ flex: 1, color: theme.ink, fontFamily: BODY_KR, fontSize: 14.5, padding: 0, outlineWidth: 0 }}
           />
         </View>
 
@@ -173,10 +174,10 @@ export default function TabPickerScreen() {
 
 const styles = StyleSheet.create({
   cleanup: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 4 },
-  cleanupText: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
+  cleanupText: { fontSize: 13, fontFamily: BODY_KR_MEDIUM },
   flexShrink: { flexShrink: 1 },
   heading: { marginBottom: 6, paddingHorizontal: 4 },
-  sub: { fontSize: 13, marginBottom: 16, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular', lineHeight: 19 },
+  sub: { fontSize: 13, marginBottom: 16, paddingHorizontal: 4, fontFamily: BODY_KR, lineHeight: 19 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginBottom: 14,
   },
-  emptyText: { fontSize: 13.5, textAlign: 'center', paddingVertical: 20, fontFamily: 'IBMPlexSansKR_400Regular' },
+  emptyText: { fontSize: 13.5, textAlign: 'center', paddingVertical: 20, fontFamily: BODY_KR },
   // Fixed height so typing doesn't resize the sheet -- but allowed to
   // shrink when the keyboard leaves less room (ModalSheet liftForKeyboard).
   resultsBox: { height: Dimensions.get('window').height * 0.45, flexShrink: 1, minHeight: 120 },
@@ -201,5 +202,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  rowLabel: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
+  rowLabel: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
 });

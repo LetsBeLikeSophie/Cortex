@@ -4,7 +4,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { allEdges } from '../theme/themes';
+import { allEdges, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { frameStyle } from '../components/Card';
 import { fetchOffers, fetchPlan, Offers, Plan } from '../api/client';
 import { ModalSheet } from '../components/ModalSheet';
@@ -349,18 +349,18 @@ export default function PaywallScreen() {
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   heading: { paddingHorizontal: 4 },
-  sub: { fontSize: 13.5, lineHeight: 20, marginTop: 8, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  sub: { fontSize: 13.5, lineHeight: 20, marginTop: 8, paddingHorizontal: 4, fontFamily: BODY_KR },
   card: { padding: 18, marginTop: 18, gap: 12 },
-  planName: { fontSize: 20, fontFamily: 'IBMPlexSansKR_500Medium', marginBottom: 2 },
+  planName: { fontSize: 20, fontFamily: BODY_KR_MEDIUM, marginBottom: 2 },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  benefitText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: 'IBMPlexSansKR_400Regular' },
+  benefitText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: BODY_KR },
   options: { gap: 8, marginTop: 14 },
   option: { paddingHorizontal: 16, paddingVertical: 12 },
   optionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  optionLabel: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
-  optionPrice: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
-  optionNote: { fontSize: 12.5, marginTop: 3, fontFamily: 'IBMPlexSansKR_400Regular' },
-  status: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  optionLabel: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
+  optionPrice: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
+  optionNote: { fontSize: 12.5, marginTop: 3, fontFamily: BODY_KR },
+  status: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: BODY_KR },
   buttons: { marginTop: 18 },
-  manageLink: { fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
+  manageLink: { fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
 });

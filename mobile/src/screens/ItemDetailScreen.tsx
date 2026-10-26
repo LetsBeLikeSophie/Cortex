@@ -17,7 +17,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, emToTracking } from '../theme/themes';
+import { MONO, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
@@ -975,7 +975,7 @@ export default function ItemDetailScreen() {
                   onBlur={submitNewTag}
                   placeholder={S.newTag}
                   placeholderTextColor={theme.sub}
-                  style={{ color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, padding: 0, minWidth: 60, outlineWidth: 0 }}
+                  style={{ color: theme.ink, fontFamily: BODY_KR, fontSize: 13, padding: 0, minWidth: 60, outlineWidth: 0 }}
                 />
               </View>
             ) : (
@@ -1002,7 +1002,7 @@ export default function ItemDetailScreen() {
           {item.capture_type === 'screenshot' && (
             <View style={[styles.imageBox, { backgroundColor: theme.soft, borderColor: theme.line }]}>
               {imageError ? (
-                <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', padding: 24 }}>
+                <Text style={{ color: theme.sub, fontFamily: BODY_KR, padding: 24 }}>
                   {S.imageFailed}
                 </Text>
               ) : imageUrl ? (
@@ -1102,7 +1102,7 @@ export default function ItemDetailScreen() {
 
           {item.raw_url && (
             <Pressable onPress={() => Linking.openURL(item.raw_url!)} style={styles.linkRow}>
-              <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5 }} numberOfLines={1}>
+              <Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM, fontSize: 13.5 }} numberOfLines={1}>
                 {item.raw_url}
               </Text>
             </Pressable>
@@ -1215,7 +1215,7 @@ const styles = StyleSheet.create({
   micSlot: { marginTop: 10 },
   imageBox: { marginTop: 16, borderRadius: 14, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', aspectRatio: 1 },
-  body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
+  body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: BODY_KR },
   linkRow: { marginTop: 14 },
   inline: { padding: 0, paddingTop: 0, paddingBottom: 0, borderWidth: 0, textAlignVertical: 'top', outlineWidth: 0 } as object,
   inlineMirror: { opacity: 0 },
@@ -1226,20 +1226,20 @@ const styles = StyleSheet.create({
   aiMemo: { marginTop: 16 },
   composedNote: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   composedAgain: { marginLeft: 'auto' },
-  composedText: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  composedText: { fontSize: 12.5, fontFamily: BODY_KR },
   aiMemoHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   aiMemoLabel: { fontFamily: MONO, fontSize: 10.5, letterSpacing: 1.2 },
   aiMemoText: { marginTop: 6 },
   snack: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 11, marginTop: 12 },
-  snackText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: 'IBMPlexSansKR_400Regular' },
-  snackAction: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
+  snackText: { flex: 1, fontSize: 13, lineHeight: 18, fontFamily: BODY_KR },
+  snackAction: { fontSize: 13, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
   tagScroll: { marginTop: 16, flexGrow: 0 },
   // paddingVertical: same Android horizontal-ScrollView bottom-edge clip as
   // Home's tab strip -- outlined tag chips lost their bottom border.
   tagRow: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingRight: 8, paddingVertical: 2 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
-  errorText: { fontSize: 12.5, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
-  timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  errorText: { fontSize: 12.5, marginTop: 8, fontFamily: BODY_KR },
+  timestamp: { fontSize: 12.5, marginTop: 18, marginBottom: 4, fontFamily: BODY_KR },
   footerMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerMetaText: { marginTop: 0 },
   buttonRow: { marginTop: 16 },

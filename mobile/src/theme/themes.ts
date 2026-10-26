@@ -1,4 +1,5 @@
-import { strings } from '../i18n';
+import { Platform } from 'react-native';
+import { LANG, strings } from '../i18n';
 
 // Ported from the Claude Design handoff (`project/Cortex Themed.dc.html`, THEMES const),
 // then split into two independent axes per product discussion: a palette only
@@ -98,8 +99,16 @@ export const SERIF = 'InstrumentSerif_400Regular';
 export const GROTESK_SEMIBOLD = 'SchibstedGrotesk_600SemiBold';
 export const GROTESK_BOLD = 'SchibstedGrotesk_700Bold';
 export const MONO = 'IBMPlexMono_400Regular';
-export const BODY_KR = 'IBMPlexSansKR_400Regular';
-export const BODY_KR_MEDIUM = 'IBMPlexSansKR_500Medium';
+// IBM Plex Sans KR has no kana and few Chinese characters, so in Japanese
+// and Chinese a word came out in two fonts at once. There the body text uses
+// the phone's own font instead (decision F1). Fixed at startup -- index.ts
+// reads the saved language before any screen loads -- so an in-app switch
+// to or from Japanese/Chinese changes the font on the next start.
+export const CJK_SYSTEM_FONT = LANG === 'ja' || LANG === 'zh-Hans' || LANG === 'zh-Hant';
+const systemFont = (weight: 'regular' | 'medium') =>
+  Platform.select({ android: weight === 'medium' ? 'sans-serif-medium' : 'sans-serif', ios: 'System', default: 'system-ui' });
+export const BODY_KR = CJK_SYSTEM_FONT ? systemFont('regular') : 'IBMPlexSansKR_400Regular';
+export const BODY_KR_MEDIUM = CJK_SYSTEM_FONT ? systemFont('medium') : 'IBMPlexSansKR_500Medium';
 
 // The old card layout (background + border + shadow per row, rounded
 // corners) is gone for good -- Android's elevation shadow never rendered it

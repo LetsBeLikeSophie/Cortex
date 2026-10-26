@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { Theme, emToTracking, MONO, OUTLINE, allEdges, bottomEdge, SERIF } from '../theme/themes';
+import { Theme, emToTracking, MONO, OUTLINE, allEdges, bottomEdge, SERIF, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { HighlightText } from './HighlightText';
 import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
@@ -31,7 +31,7 @@ function MetaLine({
       <SourceIcon source={item.source} size={11} color={theme.sub} strokeWidth={1.3} />
       <Text
         style={{
-          fontFamily: 'IBMPlexSansKR_400Regular',
+          fontFamily: BODY_KR,
           fontSize: 12.5,
           letterSpacing: emToTracking(0.01, 12.5),
           color: theme.sub,
@@ -162,7 +162,7 @@ export function ResultRow({
     >
       {trashed && (
         <View style={[styles.trashBadge, { backgroundColor: theme.soft }]}>
-          <Text style={{ fontSize: 11, color: theme.sub, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.inTrash}</Text>
+          <Text style={{ fontSize: 11, color: theme.sub, fontFamily: BODY_KR_MEDIUM }}>{S.inTrash}</Text>
         </View>
       )}
       <View style={[styles.titleLine, { opacity: trashed ? 0.6 : 1 }]}>
@@ -188,7 +188,7 @@ export function ResultRow({
           <MetaLine item={item} theme={theme} />
           {item.missingTerms.length > 0 && (
             <View style={[styles.missingBadge, { borderColor: theme.sub }]}>
-              <Text style={{ fontSize: 11.5, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+              <Text style={{ fontSize: 11.5, color: theme.sub, fontFamily: BODY_KR }}>
                 {S.missing(item.missingTerms.join(', '))}
               </Text>
             </View>
@@ -196,7 +196,7 @@ export function ResultRow({
         </View>
         {trashed && (
           <Pressable onPress={onRestore} hitSlop={8} style={[styles.restoreButton, { borderColor: theme.line }]}>
-            <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.restore}</Text>
+            <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: BODY_KR_MEDIUM }}>{S.restore}</Text>
           </Pressable>
         )}
       </View>
@@ -225,10 +225,10 @@ const styles = StyleSheet.create({
   },
   rowBody: { flex: 1, minWidth: 0 },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: BODY_KR },
   titleLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   titleText: { flexShrink: 1 },
-  snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: 'IBMPlexSansKR_400Regular' },
+  snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: BODY_KR },
   trashBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3, marginBottom: 8 },
   resultFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 7 },
   resultFooterLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },

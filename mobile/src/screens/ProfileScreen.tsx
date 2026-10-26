@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { LAYOUTS, PALETTES, allEdges, conceptOf } from '../theme/themes';
+import { LAYOUTS, PALETTES, allEdges, conceptOf, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signInWithKakao, signOut } from '../auth/kakaoLogin';
 import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
@@ -420,13 +420,13 @@ export default function ProfileScreen() {
             {isGuest && (
               <View style={[styles.linkBox, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
                 <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.linkTitle}</Text>
-                <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.linkNote}</Text>
+                <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.linkNote}</Text>
                 <View style={styles.linkButtons}>
                   <GhostButton label={S.linkKakao} theme={theme} size="sm" onPress={() => link('kakao')} disabled={linking !== null} />
                   <GhostButton label={S.linkGoogle} theme={theme} size="sm" onPress={() => link('google')} disabled={linking !== null} />
                 </View>
                 {linking !== null && <ActivityIndicator color={theme.ink} />}
-                {linkError !== '' && <Text style={{ fontSize: 12.5, color: theme.danger, fontFamily: 'IBMPlexSansKR_400Regular' }}>{linkError}</Text>}
+                {linkError !== '' && <Text style={{ fontSize: 12.5, color: theme.danger, fontFamily: BODY_KR }}>{linkError}</Text>}
               </View>
             )}
             <Pressable
@@ -434,7 +434,7 @@ export default function ProfileScreen() {
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
             >
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.plan}</Text>
-              <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{planLabel}</Text>
+              <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>{planLabel}</Text>
             </Pressable>
             <View>
               <Pressable
@@ -442,7 +442,7 @@ export default function ProfileScreen() {
                 style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
               >
                 <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.language}</Text>
-                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>
                   {LANG_PREF === 'device' ? S.langDevice : LANGUAGE_NAMES[LANG_PREF]}
                 </Text>
               </Pressable>
@@ -462,14 +462,14 @@ export default function ProfileScreen() {
                         style={styles.langRow}
                         hitSlop={4}
                       >
-                        <Text style={{ fontSize: 14.5, color: active ? theme.ink : theme.sub, fontFamily: active ? 'IBMPlexSansKR_500Medium' : 'IBMPlexSansKR_400Regular' }}>
+                        <Text style={{ fontSize: 14.5, color: active ? theme.ink : theme.sub, fontFamily: active ? BODY_KR_MEDIUM : BODY_KR }}>
                           {pref === 'device' ? S.langDevice : LANGUAGE_NAMES[pref]}
                           {active ? '  ✓' : ''}
                         </Text>
                       </Pressable>
                     );
                   })}
-                  <Text style={{ fontSize: 12.5, color: theme.sub, marginTop: 4, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.langNote}</Text>
+                  <Text style={{ fontSize: 12.5, color: theme.sub, marginTop: 4, fontFamily: BODY_KR }}>{S.langNote}</Text>
                 </View>
               )}
             </View>
@@ -480,24 +480,24 @@ export default function ProfileScreen() {
                   style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
                 >
                   <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.memoLock}</Text>
-                  <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{lockOn ? S.lockOn : S.lockOff}</Text>
+                  <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>{lockOn ? S.lockOn : S.lockOff}</Text>
                 </Pressable>
                 {lockOpen && lockOn && (
                   <View style={styles.langList}>
                     <Pressable onPress={() => lockAction('change')} style={styles.langRow} hitSlop={4}>
-                      <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.lockChange}</Text>
+                      <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: BODY_KR }}>{S.lockChange}</Text>
                     </Pressable>
                     {bioAvail && (
                       <Pressable onPress={() => lockAction('bio')} style={styles.langRow} hitSlop={4} accessibilityRole="switch" accessibilityState={{ checked: bio }}>
-                        <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                        <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: BODY_KR }}>
                           {S.lockBio}  <Text style={{ color: theme.sub }}>{bio ? S.lockOn : S.lockOff}</Text>
                         </Text>
                       </Pressable>
                     )}
                     <Pressable onPress={() => lockAction('off')} style={styles.langRow} hitSlop={4}>
-                      <Text style={{ fontSize: 14.5, color: theme.danger, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.lockTurnOff}</Text>
+                      <Text style={{ fontSize: 14.5, color: theme.danger, fontFamily: BODY_KR }}>{S.lockTurnOff}</Text>
                     </Pressable>
-                    <Text style={{ fontSize: 12.5, color: theme.sub, marginTop: 4, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.lockNote}</Text>
+                    <Text style={{ fontSize: 12.5, color: theme.sub, marginTop: 4, fontFamily: BODY_KR }}>{S.lockNote}</Text>
                   </View>
                 )}
               </View>
@@ -507,7 +507,7 @@ export default function ProfileScreen() {
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
             >
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.aiConsent}</Text>
-              <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+              <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>
                 {plan?.aiConsent === 'agreed' ? S.agreed : plan?.aiConsent === 'declined' ? S.declined : S.notYet}
               </Text>
             </Pressable>
@@ -518,7 +518,7 @@ export default function ProfileScreen() {
               <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.theme}</Text>
               <View style={styles.themeRowRight}>
                 <View style={[styles.themeDot, { backgroundColor: theme.accent }]} />
-                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+                <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>
                   {PALETTES[paletteKey].label} · {LAYOUTS[layoutKey].label}
                 </Text>
               </View>
@@ -566,27 +566,27 @@ const styles = StyleSheet.create({
   langList: { paddingHorizontal: 16, paddingTop: 8, gap: 2 },
   langRow: { paddingVertical: 8 },
   linkButtons: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  subWarning: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_500Medium' },
-  subLink: { fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
+  subWarning: { fontSize: 13, lineHeight: 19, fontFamily: BODY_KR_MEDIUM },
+  subLink: { fontSize: 13, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
   screen: { flex: 1 },
   body: { flexGrow: 1, justifyContent: 'space-between', gap: 28, paddingBottom: 32 },
   identity: { alignItems: 'center', marginTop: 40, gap: 6 },
   avatar: { width: 76, height: 76, borderRadius: 38 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   nickname: { fontSize: 19, marginTop: 12 },
-  provider: { fontSize: 13, fontFamily: 'IBMPlexSansKR_400Regular' },
+  provider: { fontSize: 13, fontFamily: BODY_KR },
   signOutButton: {
     paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  signOutLabel: { fontSize: 15, fontFamily: 'IBMPlexSansKR_500Medium' },
+  signOutLabel: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
   themeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18 },
   themeRowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   themeDot: { width: 8, height: 8, borderRadius: 4 },
   deleteLinkButton: { alignItems: 'center', paddingVertical: 6 },
-  deleteLinkLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  deleteLinkLabel: { fontSize: 12.5, fontFamily: BODY_KR },
   policyRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  policyLabel: { fontSize: 12, fontFamily: 'IBMPlexSansKR_400Regular', textDecorationLine: 'underline' },
+  policyLabel: { fontSize: 12, fontFamily: BODY_KR, textDecorationLine: 'underline' },
   policyDivider: { fontSize: 12 },
 });

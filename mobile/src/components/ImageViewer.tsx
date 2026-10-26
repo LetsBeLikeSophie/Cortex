@@ -18,6 +18,7 @@ import { permissionToast, showToast } from '../native/toast';
 import { CloseIcon, DownloadIcon } from './Icons';
 import { strings } from '../i18n';
 
+import { BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 const S = strings({
   ko: {
     savePhotoPerm: '사진 저장',
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  saveText: { color: '#fff', fontSize: 13, fontFamily: 'IBMPlexSansKR_500Medium' },
+  saveText: { color: '#fff', fontSize: 13, fontFamily: BODY_KR_MEDIUM },
   closeButton: {
     width: 36,
     height: 36,
@@ -312,5 +313,5 @@ const styles = StyleSheet.create({
   },
   imageWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   image: { width: IMAGE_W, height: IMAGE_H },
-  hint: { textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12.5, marginBottom: 14, fontFamily: 'IBMPlexSansKR_400Regular' },
+  hint: { textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12.5, marginBottom: 14, fontFamily: BODY_KR },
 });

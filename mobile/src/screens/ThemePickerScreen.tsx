@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { LAYOUT_ORDER, LAYOUTS, LayoutKey, PALETTE_ORDER, PALETTES, PaletteKey } from '../theme/themes';
+import { LAYOUT_ORDER, LAYOUTS, LayoutKey, PALETTE_ORDER, PALETTES, PaletteKey, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { CheckIcon, LayoutIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
@@ -117,7 +117,7 @@ export default function ThemePickerScreen() {
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   heading: { marginBottom: 14, paddingHorizontal: 4 },
-  sectionLabel: { fontSize: 12, fontFamily: 'IBMPlexSansKR_500Medium', marginBottom: 10, paddingHorizontal: 4 },
+  sectionLabel: { fontSize: 12, fontFamily: BODY_KR_MEDIUM, marginBottom: 10, paddingHorizontal: 4 },
   colorSectionLabel: { marginTop: 22 },
   layoutRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 2 },
   layoutOpt: { alignItems: 'center', gap: 7 },
@@ -130,9 +130,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   layoutRadio: { width: 6, height: 6, borderRadius: 3, borderWidth: 1.3 },
-  layoutCaption: { fontSize: 11.5, marginTop: 10, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  layoutCaption: { fontSize: 11.5, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
   swatchRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, paddingHorizontal: 2 },
   swatchWrap: { padding: 2 },
   swatch: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  swatchCaption: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: 'IBMPlexSansKR_400Regular' },
+  swatchCaption: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: BODY_KR },
 });

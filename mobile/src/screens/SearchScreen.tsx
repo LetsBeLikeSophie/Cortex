@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, OUTLINE, Theme, allEdges, bottomEdge, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { copyFor, SearchResult } from '../data/content';
 import {
   askSearch,
@@ -621,7 +621,7 @@ export default function SearchScreen() {
   };
 
   const metaStyle = {
-    fontFamily: 'IBMPlexSansKR_400Regular',
+    fontFamily: BODY_KR,
     fontSize: 12.5,
     letterSpacing: emToTracking(0.01, 12.5),
     color: theme.sub,
@@ -643,7 +643,7 @@ export default function SearchScreen() {
               onChangeText={setQuery}
               onSubmitEditing={() => Keyboard.dismiss()}
               returnKeyType="done"
-              style={[styles.searchInput, { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
+              style={[styles.searchInput, { color: theme.ink, fontFamily: BODY_KR, outlineWidth: 0 }]}
               selectionColor={theme.accent}
               placeholder={S.placeholder}
               placeholderTextColor={theme.sub}
@@ -691,14 +691,14 @@ export default function SearchScreen() {
               returnKeyType="done"
               placeholder={S.tagPlaceholder}
               placeholderTextColor={theme.sub}
-              style={[styles.tagInput, fieldStyle(theme), { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', outlineWidth: 0 }]}
+              style={[styles.tagInput, fieldStyle(theme), { color: theme.ink, fontFamily: BODY_KR, outlineWidth: 0 }]}
             />
             <ChipQueryRow chips={tags.chips} theme={theme} onToggle={tags.toggleChip} onRemove={tags.removeChip} />
             {suggestions.length > 0 && (
               <View style={styles.suggestRow}>
                 {suggestions.map((tag) => (
                   <Pressable key={tag} onPress={() => pickSuggestion(tag)} style={[styles.suggestTag, { borderColor: theme.line }]}>
-                    <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular' }}>#{tag}</Text>
+                    <Text style={{ fontSize: 12.5, color: theme.ink, fontFamily: BODY_KR }}>#{tag}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -739,13 +739,13 @@ export default function SearchScreen() {
         {looksLikeSentence &&
           (aiLeft === 0 ? (
             <View style={styles.suggestLine}>
-              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>{S.quotaOut}</Text>
+              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.quotaOut}</Text>
             </View>
           ) : (
             <Pressable onPress={() => ask()} hitSlop={6} style={styles.suggestLine}>
               <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
-              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular' }}>
-                {S.looksLikeSentence}<Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.askAi}</Text>
+              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>
+                {S.looksLikeSentence}<Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM }}>{S.askAi}</Text>
                 {aiLeft !== null ? S.costLeft(aiLeft) : S.costOne}
               </Text>
             </Pressable>
@@ -769,7 +769,7 @@ export default function SearchScreen() {
             style={styles.suggestLine}
           >
             <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
-            <Text style={{ fontSize: 13, color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium' }}>{S.compose(tags.includeChips[0].text)}</Text>
+            <Text style={{ fontSize: 13, color: theme.accent, fontFamily: BODY_KR_MEDIUM }}>{S.compose(tags.includeChips[0].text)}</Text>
           </Pressable>
         )}
       </View>
@@ -838,31 +838,31 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   notice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 },
-  noticeText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontFamily: 'IBMPlexSansKR_400Regular' },
-  noticeLink: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_500Medium', textDecorationLine: 'underline' },
-  interpretHelp: { fontSize: 12, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
-  noReading: { fontSize: 12.5, marginTop: 12, fontFamily: 'IBMPlexSansKR_400Regular' },
+  noticeText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontFamily: BODY_KR },
+  noticeLink: { fontSize: 12.5, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
+  interpretHelp: { fontSize: 12, marginTop: 8, fontFamily: BODY_KR },
+  noReading: { fontSize: 12.5, marginTop: 12, fontFamily: BODY_KR },
   screen: { flex: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchInput: { fontSize: 17, flex: 1, padding: 0 },
   aiButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   filterToggle: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  filterLabel: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  filterLabel: { fontSize: 12.5, fontFamily: BODY_KR },
   filterPanel: { marginTop: 10 },
   tagInput: { fontSize: 14, paddingHorizontal: 12, paddingVertical: 9 },
-  filterHelp: { fontSize: 12, marginTop: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
+  filterHelp: { fontSize: 12, marginTop: 8, fontFamily: BODY_KR },
   suggestLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
   suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   suggestTag: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
-  help: { fontSize: 13.5, lineHeight: 22, fontFamily: 'IBMPlexSansKR_400Regular' },
-  quotaTitle: { fontSize: 15, marginBottom: 6, fontFamily: 'IBMPlexSansKR_500Medium' },
+  help: { fontSize: 13.5, lineHeight: 22, fontFamily: BODY_KR },
+  quotaTitle: { fontSize: 15, marginBottom: 6, fontFamily: BODY_KR_MEDIUM },
   quotaActions: { flexDirection: 'row', gap: 20, marginTop: 12 },
-  quotaLink: { fontSize: 14, fontFamily: 'IBMPlexSansKR_500Medium' },
+  quotaLink: { fontSize: 14, fontFamily: BODY_KR_MEDIUM },
   sectionHead: { flexDirection: 'row', alignItems: 'baseline', gap: 6, paddingTop: 18, paddingBottom: 8 },
-  sectionTitle: { fontSize: 12.5, fontWeight: '500', fontFamily: 'IBMPlexSansKR_500Medium' },
-  sectionCount: { fontSize: 12.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  sectionTitle: { fontSize: 12.5, fontWeight: '500', fontFamily: BODY_KR_MEDIUM },
+  sectionCount: { fontSize: 12.5, fontFamily: BODY_KR },
   list: { flex: 1 },
 });

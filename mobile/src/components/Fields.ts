@@ -1,5 +1,5 @@
 import { TextStyle, ViewStyle } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge, BODY_KR } from '../theme/themes';
 
 // Per-concept styling for text fields and the small secondary buttons that
 // sit inside sheets (앨범에서 선택 / 카메라로 촬영, inline confirm/cancel...),
@@ -41,5 +41,5 @@ export function pickStyle(theme: Theme): ViewStyle {
 export function pickTextStyle(theme: Theme): TextStyle {
   return conceptOf(theme) === 'vintage'
     ? { color: theme.ink, fontFamily: MONO, fontSize: 12.5, letterSpacing: 0.4 }
-    : { color: theme.ink, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 };
+    : { color: theme.ink, fontFamily: BODY_KR, fontSize: 13.5 };
 }

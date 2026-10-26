@@ -17,7 +17,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { MONO, OUTLINE, allEdges, conceptOf, emToTracking } from '../theme/themes';
+import { MONO, OUTLINE, allEdges, conceptOf, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { Card, frameStyle, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
 import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError } from '../api/client';
@@ -556,18 +556,18 @@ export default function SaveSheetScreen() {
               <View style={styles.imagePreviewWrap}>
                 <Image source={{ uri: image.previewUri }} style={[styles.imagePreview, { borderColor: theme.line }]} />
                 <Pressable onPress={() => setImage(null)} disabled={status === 'saving'}>
-                  <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 13.5, marginTop: 10 }}>
+                  <Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM, fontSize: 13.5, marginTop: 10 }}>
                     {S.repickPhoto}
                   </Text>
                 </Pressable>
               </View>
             ) : linkUrl ? (
               <View style={[styles.linkPreview, { borderColor: theme.line, backgroundColor: 'transparent' }]}>
-                <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 14 }} numberOfLines={2}>
+                <Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM, fontSize: 14 }} numberOfLines={2}>
                   {linkUrl}
                 </Text>
                 <Pressable onPress={() => setLinkUrl(null)} disabled={status === 'saving'}>
-                  <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13, marginTop: 10 }}>
+                  <Text style={{ color: theme.sub, fontFamily: BODY_KR, fontSize: 13, marginTop: 10 }}>
                     {S.clearLink}
                   </Text>
                 </Pressable>
@@ -594,7 +594,7 @@ export default function SaveSheetScreen() {
                       marginTop: 0,
                       paddingRight: 44,
                       color: theme.ink,
-                      fontFamily: 'IBMPlexSansKR_400Regular',
+                      fontFamily: BODY_KR,
                       outlineWidth: 0,
                     },
                   ]}
@@ -651,7 +651,7 @@ export default function SaveSheetScreen() {
                           }}
                           disabled={status === 'saving'}
                         >
-                          <Text style={{ color: theme.accent, fontFamily: 'IBMPlexSansKR_500Medium', fontSize: 12.5 }}>
+                          <Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM, fontSize: 12.5 }}>
                             {S.clearSelection}
                           </Text>
                         </Pressable>
@@ -684,7 +684,7 @@ export default function SaveSheetScreen() {
                     {
                       paddingRight: 44,
                       color: theme.ink,
-                      fontFamily: 'IBMPlexSansKR_400Regular',
+                      fontFamily: BODY_KR,
                       outlineWidth: 0,
                     },
                   ]}
@@ -696,7 +696,7 @@ export default function SaveSheetScreen() {
             )}
 
             {status === 'error' && (
-              <Text style={{ color: theme.danger, marginTop: 10, fontFamily: 'IBMPlexSansKR_400Regular' }}>
+              <Text style={{ color: theme.danger, marginTop: 10, fontFamily: BODY_KR }}>
                 {S.saveFailed(error)}
               </Text>
             )}
@@ -734,7 +734,7 @@ export default function SaveSheetScreen() {
               <View style={styles.savedHeadBody}>
                 <Text
                   style={{
-                    fontFamily: 'IBMPlexSansKR_400Regular',
+                    fontFamily: BODY_KR,
                     fontSize: 12.5,
                     letterSpacing: emToTracking(0.02, 12.5),
                     color: theme.accent,
@@ -809,7 +809,7 @@ export default function SaveSheetScreen() {
                 <View style={styles.savedHeadBody}>
                   <Text
                     style={{
-                      fontFamily: 'IBMPlexSansKR_400Regular',
+                      fontFamily: BODY_KR,
                       fontSize: 12.5,
                       letterSpacing: emToTracking(0.02, 12.5),
                       color: theme.accent,
@@ -858,7 +858,7 @@ export default function SaveSheetScreen() {
                     {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]} numberOfLines={4}>{saved.raw_text}</Text>}
                     <View style={styles.analyzingRow}>
                       <ActivityIndicator size="small" color={theme.accent} />
-                      <Text style={{ color: theme.sub, fontFamily: 'IBMPlexSansKR_400Regular', fontSize: 13.5 }}>
+                      <Text style={{ color: theme.sub, fontFamily: BODY_KR, fontSize: 13.5 }}>
                         {S.analyzingTags}
                       </Text>
                     </View>
@@ -885,7 +885,7 @@ export default function SaveSheetScreen() {
                 <>
                   <Text
                     style={{
-                      fontFamily: 'IBMPlexSansKR_400Regular',
+                      fontFamily: BODY_KR,
                       fontSize: 13,
                       letterSpacing: emToTracking(0.01, 13),
                       color: theme.sub,
@@ -935,14 +935,14 @@ const styles = StyleSheet.create({
   savedHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   savedMark: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   savedHeadBody: { flex: 1 },
-  savedSub: { fontSize: 13.5, marginTop: 7, lineHeight: 21.6, fontFamily: 'IBMPlexSansKR_400Regular' },
+  savedSub: { fontSize: 13.5, marginTop: 7, lineHeight: 21.6, fontFamily: BODY_KR },
   savedCard: { marginTop: 22 },
   savedCardMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: 'IBMPlexSansKR_400Regular' },
-  snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: 'IBMPlexSansKR_400Regular' },
+  title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: BODY_KR },
+  snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: BODY_KR },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   buttonRow: { marginTop: 26 },
-  quotaLine: { fontSize: 12.5, lineHeight: 18, marginTop: 18, marginBottom: -12, fontFamily: 'IBMPlexSansKR_400Regular' },
+  quotaLine: { fontSize: 12.5, lineHeight: 18, marginTop: 18, marginBottom: -12, fontFamily: BODY_KR },
   input: {
     marginTop: 18,
     minHeight: 90,
@@ -961,8 +961,8 @@ const styles = StyleSheet.create({
   screenshotSection: { marginTop: 18 },
   bulkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, alignSelf: 'flex-start' },
-  screenshotLabel: { fontSize: 12.5, marginBottom: 8, fontFamily: 'IBMPlexSansKR_400Regular' },
-  permissionHintText: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
+  screenshotLabel: { fontSize: 12.5, marginBottom: 8, fontFamily: BODY_KR },
+  permissionHintText: { fontSize: 13, lineHeight: 19, fontFamily: BODY_KR },
   screenshotRow: { flexDirection: 'row', gap: 8 },
   screenshotThumb: { width: 64, height: 64, borderRadius: 10, borderWidth: 1 },
   screenshotCheck: {
@@ -977,5 +977,5 @@ const styles = StyleSheet.create({
   },
   bulkResultList: { marginTop: 18, maxHeight: 220 },
   bulkResultRow: { paddingVertical: 10, paddingHorizontal: 12, marginBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  bulkResultTitle: { flex: 1, fontSize: 13.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  bulkResultTitle: { flex: 1, fontSize: 13.5, fontFamily: BODY_KR },
 });

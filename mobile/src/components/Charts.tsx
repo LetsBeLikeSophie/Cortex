@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import { Theme, MONO } from '../theme/themes';
+import { Theme, MONO, BODY_KR } from '../theme/themes';
 import { strings } from '../i18n';
 
 // Every chart here is monochrome-on-purpose: each theme defines exactly one
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   legend: { flex: 1, gap: 9 },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   legendDot: { width: 9, height: 9, borderRadius: 4.5 },
-  legendLabel: { flex: 1, fontSize: 13, fontFamily: 'IBMPlexSansKR_400Regular' },
+  legendLabel: { flex: 1, fontSize: 13, fontFamily: BODY_KR },
   legendValue: { fontSize: 12.5, fontFamily: MONO },
 
   barRow: { flexDirection: 'row', alignItems: 'flex-end', height: 140, gap: 10 },
@@ -193,10 +193,10 @@ const styles = StyleSheet.create({
   barValue: { fontSize: 10.5, fontFamily: MONO, marginBottom: 4 },
   barTrack: { width: '60%', flex: 1, justifyContent: 'flex-end' },
   barFill: { width: '100%', borderRadius: 4, minHeight: 2 },
-  barLabel: { fontSize: 11, fontFamily: 'IBMPlexSansKR_400Regular', marginTop: 6 },
+  barLabel: { fontSize: 11, fontFamily: BODY_KR, marginTop: 6 },
 
   hBarLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  hBarLabel: { fontSize: 13, fontFamily: 'IBMPlexSansKR_400Regular' },
+  hBarLabel: { fontSize: 13, fontFamily: BODY_KR },
   hBarValue: { fontSize: 12, fontFamily: MONO },
   hBarTrack: { height: 8, borderRadius: 4, overflow: 'hidden' },
   hBarFill: { height: '100%', borderRadius: 4 },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   heatmapBandLabelSpacer: { width: 38 },
   heatmapWeekdayLabel: { flex: 1, textAlign: 'center', fontSize: 10.5, fontFamily: MONO },
   heatmapRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  heatmapBandLabel: { width: 38, fontSize: 10.5, fontFamily: 'IBMPlexSansKR_400Regular' },
+  heatmapBandLabel: { width: 38, fontSize: 10.5, fontFamily: BODY_KR },
   heatmapCellWrap: { flex: 1, alignItems: 'center' },
   heatmapCell: { width: '78%', aspectRatio: 1, borderRadius: 5, borderWidth: 1 },
 });

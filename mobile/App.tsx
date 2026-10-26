@@ -18,6 +18,7 @@ import { IBMPlexSansKR_500Medium } from '@expo-google-fonts/ibm-plex-sans-kr/500
 import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono/400Regular';
 
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { CJK_SYSTEM_FONT } from './src/theme/themes';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import LoginScreen from './src/screens/LoginScreen';
@@ -57,12 +58,13 @@ export default function App() {
   // grep) -- IBM Plex Sans KR's full Korean glyph set makes each unused
   // weight here a multi-megabyte dead download that blocks first paint
   // (see the `!fontsLoaded` gate below) for nothing.
+  // In Japanese/Chinese the body uses the system font (CJK_SYSTEM_FONT), so
+  // Plex KR isn't loaded there at all.
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
     SchibstedGrotesk_600SemiBold,
     SchibstedGrotesk_700Bold,
-    IBMPlexSansKR_400Regular,
-    IBMPlexSansKR_500Medium,
+    ...(CJK_SYSTEM_FONT ? null : { IBMPlexSansKR_400Regular, IBMPlexSansKR_500Medium }),
     IBMPlexMono_400Regular,
   });
 

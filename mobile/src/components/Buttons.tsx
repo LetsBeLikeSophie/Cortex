@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, conceptOf, layerEdge } from '../theme/themes';
+import { MONO, OUTLINE, Theme, allEdges, conceptOf, layerEdge, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { DashedRule } from './Decor';
 
 interface ButtonProps {
@@ -40,7 +40,7 @@ export function GhostButton({ label, onPress, theme, flex = 1, disabled = false,
           { fontSize: LABEL_SIZE[size] },
           concept === 'vintage' && styles.typed,
           concept === 'vintage' && size === 'sm' && styles.typedSm,
-          { color: theme.ink, fontFamily: concept === 'vintage' ? MONO : 'IBMPlexSansKR_400Regular' },
+          { color: theme.ink, fontFamily: concept === 'vintage' ? MONO : BODY_KR },
         ]}
       >
         {label}
@@ -86,7 +86,7 @@ export function SolidButton({
             { fontSize: LABEL_SIZE[size] },
             concept === 'vintage' && styles.typed,
             concept === 'vintage' && size === 'sm' && styles.typedSm,
-            { color: textColor, fontFamily: concept === 'vintage' ? MONO : 'IBMPlexSansKR_500Medium', fontWeight: '500' },
+            { color: textColor, fontFamily: concept === 'vintage' ? MONO : BODY_KR_MEDIUM, fontWeight: '500' },
           ]}
         >
           {label}

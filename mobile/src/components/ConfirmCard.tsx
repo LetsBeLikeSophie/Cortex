@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { OUTLINE, Theme, allEdges, conceptOf } from '../theme/themes';
+import { OUTLINE, Theme, allEdges, conceptOf, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { GhostButton, SolidButton } from './Buttons';
 import { COMMON } from '../i18n/common';
 
@@ -61,8 +61,8 @@ function frame(theme: Theme): ViewStyle {
 const styles = StyleSheet.create({
   card: { padding: 16, gap: 6, marginTop: 14 },
   bare: { padding: 0, marginTop: 4 },
-  title: { fontSize: 14.5, fontFamily: 'IBMPlexSansKR_500Medium' },
-  body: { fontSize: 13, lineHeight: 19, fontFamily: 'IBMPlexSansKR_400Regular' },
-  error: { fontSize: 12.5, marginTop: 2, fontFamily: 'IBMPlexSansKR_400Regular' },
+  title: { fontSize: 14.5, fontFamily: BODY_KR_MEDIUM },
+  body: { fontSize: 13, lineHeight: 19, fontFamily: BODY_KR },
+  error: { fontSize: 12.5, marginTop: 2, fontFamily: BODY_KR },
   buttons: { flexDirection: 'row', gap: 10, marginTop: 10 },
 });

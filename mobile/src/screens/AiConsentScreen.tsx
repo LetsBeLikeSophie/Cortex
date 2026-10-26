@@ -4,7 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { fetchPlan, friendlyError, setAiConsent } from '../api/client';
-import { discardUnreceivedShares, drainShareQueue } from '../share/shareQueue';
+import { discardUnreceivedShares, drainShareQueue, useShareQueue } from '../share/shareQueue';
+import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
@@ -26,6 +27,8 @@ const S = strings({
     nowDeclined: '현재: 동의하지 않음',
     disagree: '동의하지 않음',
     agree: '동의합니다',
+    sharedWaiting: (n: number) => `받은 사진 ${n}장은 동의하면 저장돼요 · 동의하지 않으면 저장하지 않고 Mehh에 그대로 둬요`,
+    sharedDropped: (n: number) => `사진 ${n}장은 저장하지 않았어요 · Mehh에 그대로 있어요`,
   },
   en: {
     title: 'Consent to AI analysis',
@@ -37,6 +40,8 @@ const S = strings({
     nowDeclined: 'Current: declined',
     disagree: 'Decline',
     agree: 'I agree',
+    sharedWaiting: (n: number) => `The ${n} photo${n === 1 ? '' : 's'} you sent will be saved if you agree · if not, they aren't saved and stay in Mehh`,
+    sharedDropped: (n: number) => `${n} photo${n === 1 ? '' : 's'} not saved · still in Mehh`,
   },
   ja: {
     title: 'AI分析への同意(国外移転)',
@@ -48,6 +53,8 @@ const S = strings({
     nowDeclined: '現在: 同意していません',
     disagree: '同意しない',
     agree: '同意する',
+    sharedWaiting: (n: number) => `受け取った写真${n}枚は同意すると保存されます · 同意しない場合は保存せず、Mehhにそのまま残ります`,
+    sharedDropped: (n: number) => `写真${n}枚は保存しませんでした · Mehhに残っています`,
   },
   'zh-Hans': {
     title: 'AI 分析授权（跨境传输）',
@@ -59,6 +66,8 @@ const S = strings({
     nowDeclined: '当前：未同意',
     disagree: '不同意',
     agree: '同意',
+    sharedWaiting: (n: number) => `收到的 ${n} 张照片在同意后会保存 · 不同意则不保存，照片仍留在 Mehh`,
+    sharedDropped: (n: number) => `${n} 张照片未保存 · 仍在 Mehh 中`,
   },
   'zh-Hant': {
     title: 'AI 分析授權（跨境傳輸）',
@@ -70,6 +79,8 @@ const S = strings({
     nowDeclined: '目前：未同意',
     disagree: '不同意',
     agree: '同意',
+    sharedWaiting: (n: number) => `收到的 ${n} 張照片在同意後會儲存 · 不同意則不儲存，照片仍留在 Mehh`,
+    sharedDropped: (n: number) => `${n} 張照片未儲存 · 仍在 Mehh 中`,
   },
 });
 
@@ -79,6 +90,8 @@ export default function AiConsentScreen() {
   const [current, setCurrent] = useState<'agreed' | 'declined' | null | undefined>(undefined);
   const [busy, setBusy] = useState<'agree' | 'decline' | null>(null);
   const [error, setError] = useState('');
+  // Photos shared in (Mehh) that wait on this answer.
+  const shareQueue = useShareQueue();
 
   useEffect(() => {
     fetchPlan()
@@ -95,7 +108,10 @@ export default function AiConsentScreen() {
       // "received" and they save; declined -> the copies are deleted and
       // Mehh keeps its originals.
       if (agree) drainShareQueue();
-      else discardUnreceivedShares();
+      else
+        discardUnreceivedShares().then((n) => {
+          if (n > 0) showToast(S.sharedDropped(n));
+        });
       navigation.goBack();
     } catch (err) {
       setError(friendlyError(err));
@@ -119,6 +135,9 @@ export default function AiConsentScreen() {
             </View>
           ))}
         </View>
+        {shareQueue.waitingConsent && shareQueue.pending > 0 && (
+          <Text style={[styles.note, { color: theme.ink }]}>{S.sharedWaiting(shareQueue.pending)}</Text>
+        )}
         <Text style={[styles.note, { color: theme.sub }]}>{S.decline}</Text>
       </View>
       <Pressable onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} hitSlop={6} style={styles.pad}>

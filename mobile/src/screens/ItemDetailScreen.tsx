@@ -102,6 +102,7 @@ const S = strings({
     bodyPlaceholder: '본문 — 말하거나 눌러서 적어요',
     saved: (when: string) => `${when} 저장됨`,
     undo: '되돌리기',
+    remade: '다시 만들었어요',
     openLink: '링크 열기',
   },
   en: {
@@ -160,6 +161,7 @@ const S = strings({
     bodyPlaceholder: 'Text — speak or tap to write',
     saved: (when: string) => `saved ${when}`,
     undo: 'Undo',
+    remade: 'Remade',
     openLink: 'Open link',
   },
   ja: {
@@ -218,6 +220,7 @@ const S = strings({
     bodyPlaceholder: '本文 — 話すかタップして入力',
     saved: (when: string) => `${when}に保存`,
     undo: '元に戻す',
+    remade: '作り直しました',
     openLink: 'リンクを開く',
   },
   'zh-Hans': {
@@ -276,6 +279,7 @@ const S = strings({
     bodyPlaceholder: '正文 — 说话或点按输入',
     saved: (when: string) => `${when}保存`,
     undo: '撤销',
+    remade: '已重新生成',
     openLink: '打开链接',
   },
   'zh-Hant': {
@@ -334,6 +338,7 @@ const S = strings({
     bodyPlaceholder: '內文 — 說話或點按輸入',
     saved: (when: string) => `${when}儲存`,
     undo: '復原',
+    remade: '已重新產生',
     openLink: '開啟連結',
   },
 });
@@ -342,7 +347,7 @@ export default function ItemDetailScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ItemDetail'>>();
-  const { item, composedFrom } = route.params;
+  const { item, composedFrom, remadeFrom } = route.params;
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
@@ -383,6 +388,8 @@ export default function ItemDetailScreen() {
   // organize, not a re-organize) -- the bar then only informs.
   const [snack, setSnack] = useState<{ message: string; undo?: () => void } | null>(null);
   const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Changed by hand on this screen -- a remake's sheet warns those go too.
+  const handEdited = useRef(false);
   // What an AI re-organize is about to replace, so its undo can put it all back.
   const beforeAiRef = useRef<{ title: string; snippet: string; category: ApiItem['category']; tags: string[] } | null>(null);
   const [editError, setEditError] = useState('');
@@ -577,6 +584,27 @@ export default function ItemDetailScreen() {
     []
   );
 
+  // Just remade by 다른 모양으로 다시: one tap puts the old title/body back.
+  useEffect(() => {
+    if (!remadeFrom) return;
+    showSnack(S.remade, () => {
+      hideSnack();
+      const now = { title: savedRef.current.title, rawText: savedRef.current.rawText };
+      savedRef.current.title = remadeFrom.title;
+      savedRef.current.rawText = remadeFrom.rawText;
+      setTitle(remadeFrom.title);
+      setRawText(remadeFrom.rawText);
+      updateItem(item.id, { title: remadeFrom.title, rawText: remadeFrom.rawText }).catch((err) => {
+        savedRef.current.title = now.title;
+        savedRef.current.rawText = now.rawText;
+        setTitle(now.title);
+        setRawText(now.rawText);
+        setEditError(friendlyError(err));
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Saves one field; on success hands the previous value to onSaved (which
   // offers the undo bar). A failed save puts the old text back.
   const save = (field: EditField, next: string, onSaved?: (previous: string) => void) => {
@@ -598,6 +626,7 @@ export default function ItemDetailScreen() {
     const next = value.trim();
     if (next === savedRef.current[field]) return;
     setEditError('');
+    handEdited.current = true;
     save(field, next, (previous) =>
       showSnack(S.edited[field], () => {
         hideSnack();
@@ -858,7 +887,15 @@ export default function ItemDetailScreen() {
                 {composedFrom.left !== undefined ? S.composeLeft(composedFrom.left) : ''}
               </Text>
               <Pressable
-                onPress={() => navigation.replace('Compose', { tag: composedFrom.tag, count: composedFrom.count, retryOf: item.id, freeRemake: composedFrom.freeRemake })}
+                onPress={() =>
+                  navigation.replace('Compose', {
+                    tag: composedFrom.tag,
+                    count: composedFrom.count,
+                    retryOf: item.id,
+                    freeRemake: composedFrom.freeRemake,
+                    remakeBefore: { title: savedRef.current.title, rawText: savedRef.current.rawText, edited: handEdited.current },
+                  })
+                }
                 hitSlop={8}
                 style={styles.composedAgain}
               >

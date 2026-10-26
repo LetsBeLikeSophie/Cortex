@@ -18,7 +18,8 @@ export type RootStackParamList = {
   Trash: undefined;
   // composedFrom: just made by 모아서 만들기 -- the detail says from what
   // (shown once, on arrival; the sources aren't stored with the memo).
-  ItemDetail: { item: ApiItem; composedFrom?: { tag: string; count: number; left?: number; freeRemake?: boolean } };
+  // remadeFrom: what a 다른 모양으로 다시 just replaced -- offered as an undo.
+  ItemDetail: { item: ApiItem; composedFrom?: { tag: string; count: number; left?: number; freeRemake?: boolean }; remadeFrom?: { title: string; rawText: string } };
   // Why it opened -- picks the headline; omitted = opened from the profile.
   Paywall: { reason?: 'classify' | 'search' | 'compose' | 'tag_cleanup' } | undefined;
   // Memo-lock PIN pad: 'check' opens a locked memo, 'set' makes a new PIN.
@@ -39,5 +40,8 @@ export type RootStackParamList = {
     // Remake this composed memo in place; freeRemake = the first remake is free.
     retryOf?: string;
     freeRemake?: boolean;
+    // The memo as it is right before a remake (edited = changed by hand in
+    // the detail just now) -- the sheet warns, and the result offers undo.
+    remakeBefore?: { title: string; rawText: string; edited: boolean };
   };
 };

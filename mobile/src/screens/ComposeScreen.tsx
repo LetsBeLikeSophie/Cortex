@@ -49,6 +49,8 @@ const S = strings({
     placeholder: '예: 20명 갈 수 있는 곳만, 가격순',
     working: '정리하는 중 · 창을 닫아도 계속 만들어요',
     remakeTitle: '다른 모양으로 다시 만들기',
+    replaces: '지금 메모를 새 내용으로 바꿔요',
+    editsToo: ' · 직접 고친 부분도 바뀌어요',
     doneToast: (tag: string) => `'${tag}' 모아서 만든 메모를 저장했어요`,
     toPreview: '미리보기로',
     remakeFree: '다시 만들기 · 무료',
@@ -80,6 +82,8 @@ const S = strings({
     placeholder: 'e.g. only places for 20, by price',
     working: 'Working · it keeps going if you close this',
     remakeTitle: 'Remake in another shape',
+    replaces: 'Replaces this memo with the new one',
+    editsToo: ' · your edits are replaced too',
     doneToast: (tag: string) => `Saved the combined '${tag}' memo`,
     toPreview: 'Back to preview',
     remakeFree: 'Remake · Free',
@@ -111,6 +115,8 @@ const S = strings({
     placeholder: '例: 20人で行ける所だけ、価格順',
     working: '作成中 · 閉じても続きます',
     remakeTitle: '別の形で作り直す',
+    replaces: '今のメモを新しい内容に置き換えます',
+    editsToo: ' · 自分で直した部分も置き換わります',
     doneToast: (tag: string) => `「${tag}」のまとめメモを保存しました`,
     toPreview: 'プレビューへ',
     remakeFree: 'もう一度作る · 無料',
@@ -142,6 +148,8 @@ const S = strings({
     placeholder: '例：只要能容纳 20 人的地方，按价格排序',
     working: '生成中 · 关闭也会继续',
     remakeTitle: '换个形式重做',
+    replaces: '会用新内容替换当前备注',
+    editsToo: ' · 你修改过的部分也会被替换',
     doneToast: (tag: string) => `已保存「${tag}」汇总笔记`,
     toPreview: '回到预览',
     remakeFree: '重新生成 · 免费',
@@ -173,6 +181,8 @@ const S = strings({
     placeholder: '例：只要能容納 20 人的地方，依價格排序',
     working: '產生中 · 關閉也會繼續',
     remakeTitle: '換個形式重做',
+    replaces: '會用新內容取代目前的備註',
+    editsToo: ' · 你修改過的部分也會被取代',
     doneToast: (tag: string) => `已儲存「${tag}」彙整筆記`,
     toPreview: '回到預覽',
     remakeFree: '重新產生 · 免費',
@@ -185,7 +195,7 @@ const S = strings({
 export default function ComposeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { tag, count, lockedOut, itemIds, tagChoices, retryOf, freeRemake } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
+  const { tag, count, lockedOut, itemIds, tagChoices, retryOf, freeRemake, remakeBefore } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
   const [pickedTag, setPickedTag] = useState(tagChoices?.[0] ?? tag);
   const [tagCount, setTagCount] = useState<number | null>(count ?? null);
   const [lockedCount, setLockedCount] = useState(lockedOut ?? 0);
@@ -264,6 +274,7 @@ export default function ComposeScreen() {
       navigation.replace('ItemDetail', {
         item: res.item,
         composedFrom: { tag: pickedTag, count: res.sourceCount, left: left !== null ? Math.max(0, left - (remakeFree ? 0 : 1)) : undefined, freeRemake: res.freeRemake },
+        remadeFrom: retryOf && remakeBefore ? { title: remakeBefore.title, rawText: remakeBefore.rawText } : undefined,
       });
     } catch (err) {
       if (!mounted.current) return;
@@ -304,6 +315,8 @@ export default function ComposeScreen() {
           </View>
         )}
         <Text style={[styles.sub, { color: theme.sub }]}>
+          {/* A remake replaces this very memo -- say so, and that hand edits go too. */}
+          {retryOf ? S.replaces + (remakeBefore?.edited ? S.editsToo : '') + ' · ' : ''}
           {tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
           {!retryOf && lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
           {/* Retrying: the first run already took this month's 1 -- say

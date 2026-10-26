@@ -572,7 +572,11 @@ export default function SearchScreen() {
         return tags.includeChips.every((c) => has.has(c.text)) && !tags.excludeChips.some((c) => has.has(c.text));
       })
     : hits;
-  const searchMaterials = composeMaterials(shown.map((h) => h.raw));
+  // The search matches tag text loosely ('이사' also finds '이사님') and stops
+  // at 30, so only exact-tag hits decide whether to offer 모아서 만들기; the
+  // sheet then counts the tag itself (fetchItemsWithTag).
+  const oneTag = tags.includeChips.length === 1 ? tags.includeChips[0].text : null;
+  const searchMaterials = composeMaterials(shown.map((h) => h.raw).filter((it) => oneTag !== null && [...it.tags, ...it.user_tags].includes(oneTag)));
 
   const termCount = aiMode ? (interpretation?.sort ? 0 : interpretation?.keywords.length ?? 0) : include.length;
   const rows: Row[] = [];
@@ -753,7 +757,7 @@ export default function SearchScreen() {
             offer it here too (decision Q8). */}
         {!aiMode && words.length === 0 && tags.includeChips.length === 1 && tags.excludeChips.length === 0 && searchMaterials.usable.length >= 2 && (
           <Pressable
-            onPress={() => navigation.navigate('Compose', { tag: tags.includeChips[0].text, count: searchMaterials.usable.length, lockedOut: searchMaterials.locked })}
+            onPress={() => navigation.navigate('Compose', { tag: tags.includeChips[0].text })}
             hitSlop={6}
             style={styles.suggestLine}
           >

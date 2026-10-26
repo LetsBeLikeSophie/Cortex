@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { LAYOUTS, PALETTES, allEdges, conceptOf, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
+import { CJK_SYSTEM_FONT, LAYOUTS, PALETTES, allEdges, conceptOf, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { useAuth } from '../auth/AuthContext';
 import { signInWithKakao, signOut } from '../auth/kakaoLogin';
 import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
@@ -19,7 +19,8 @@ import { GhostButton } from '../components/Buttons';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
 import { DeclinedChoice, getDeclinedChoice, setDeclinedChoice } from '../share/shareQueue';
-import { LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
+import { LANG, LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
+import { showToast } from '../native/toast';
 import { COMMON } from '../i18n/common';
 
 const S = strings({
@@ -58,6 +59,7 @@ const S = strings({
     memoLock: '메모 잠금',
     langNote: '메뉴와 AI 메모가 이 언어로 나와요',
     langDevice: '휴대폰 설정 따르기',
+    fontOnRestart: '다시 켜면 글꼴이 맞춰져요',
     language: '언어',
     agreed: '동의함',
     declined: '동의 안 함',
@@ -108,6 +110,7 @@ const S = strings({
     memoLock: 'Memo lock',
     langNote: 'Menus and AI memos use this language',
     langDevice: 'Same as phone',
+    fontOnRestart: 'The font updates when you reopen the app',
     language: 'Language',
     agreed: 'Agreed',
     declined: 'Declined',
@@ -158,6 +161,7 @@ const S = strings({
     memoLock: 'メモロック',
     langNote: 'メニューとAIメモがこの言語になります',
     langDevice: '端末の設定に合わせる',
+    fontOnRestart: 'アプリを開き直すとフォントが切り替わります',
     language: '言語',
     agreed: '同意済み',
     declined: '同意しない',
@@ -208,6 +212,7 @@ const S = strings({
     memoLock: '笔记锁',
     langNote: '菜单和 AI 笔记都会使用这个语言',
     langDevice: '跟随手机设置',
+    fontOnRestart: '重新打开应用后字体会更新',
     language: '语言',
     agreed: '已同意',
     declined: '不同意',
@@ -258,6 +263,7 @@ const S = strings({
     memoLock: '筆記鎖',
     langNote: '選單和 AI 筆記都會使用這個語言',
     langDevice: '跟隨手機設定',
+    fontOnRestart: '重新開啟 App 後字型會更新',
     language: '語言',
     agreed: '已同意',
     declined: '不同意',
@@ -344,6 +350,13 @@ export default function ProfileScreen() {
       getDeclinedChoice().then(setMehhChoice);
     }, [])
   );
+  // The body font is fixed at startup (CJK_SYSTEM_FONT), so a switch into or
+  // out of Japanese/Chinese needs a restart for it -- say so, briefly.
+  const changeLanguage = (pref: LangPref) => {
+    setLanguage(pref);
+    const cjkNow = LANG === 'ja' || LANG === 'zh-Hans' || LANG === 'zh-Hant';
+    if (cjkNow !== CJK_SYSTEM_FONT) showToast(S.fontOnRestart);
+  };
   const cycleMehhChoice = () => {
     const next: DeclinedChoice = mehhChoice === 'keep' ? 'drop' : mehhChoice === 'drop' ? 'ask' : 'keep';
     setMehhChoice(next);
@@ -485,7 +498,7 @@ export default function ProfileScreen() {
                         key={pref}
                         onPress={() => {
                           setLangOpen(false);
-                          if (!active) setLanguage(pref);
+                          if (!active) changeLanguage(pref);
                         }}
                         accessibilityRole="radio"
                         accessibilityState={{ selected: active }}

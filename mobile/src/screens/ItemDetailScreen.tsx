@@ -26,7 +26,7 @@ import { LockIcon, ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } f
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
-import { MemoText, refsIn } from '../components/MemoText';
+import { MemoText, refsIn, plainMemo } from '../components/MemoText';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
 import type { ApiItem } from '../api/client';
@@ -784,7 +784,9 @@ export default function ItemDetailScreen() {
   const share = () => {
     const body =
       item.capture_type === 'text'
-        ? rawText
+        ? isComposed
+          ? plainMemo(rawText) // no ## / ** / [#3] in the other app
+          : rawText
         : [snippet, userNote ? S.myNoteShare(userNote) : null, item.raw_url].filter(Boolean).join('\n\n');
     const message = [title.trim(), body.trim()].filter(Boolean).join('\n\n');
     if (!message) return;

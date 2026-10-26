@@ -15,6 +15,18 @@ import type { Theme } from '../theme/themes';
 
 const TOKEN = /(\*\*[^*]+\*\*(?:\[#\d+\])?|\[#\d+\])/g;
 
+// The same memo as plain text, for where markup can't render (sharing to
+// another app, a one-line search preview): headings lose their ##, bold its
+// **, bullets become •, and [#N] references are dropped.
+export function plainMemo(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => line.replace(/^\s*#{1,6}\s+/, '').replace(/^(\s*)[-*]\s+/, '$1• '))
+    .join('\n')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\s?\[#\d+\]/g, '');
+}
+
 export function refsIn(text: string): Set<number> {
   const out = new Set<number>();
   for (const m of text.matchAll(/\[#(\d+)\]/g)) out.add(Number(m[1]));

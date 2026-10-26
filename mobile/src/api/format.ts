@@ -2,6 +2,7 @@ import type { ApiItem, ItemSource, SearchInterpretation, SmartHit } from './clie
 import type { RecentItem, SearchResult } from '../data/content';
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG, SOURCE_ORDER } from '../data/sourceCatalog';
 import { COMMON, TIME } from '../i18n/common';
+import { plainMemo } from '../components/MemoText';
 
 // Re-exported so existing call sites (e.g. StatsScreen) don't need to know
 // the labels moved into a shared catalog -- see sourceCatalog.ts, the single
@@ -85,12 +86,20 @@ function fieldMatches(item: ApiItem, needle: string): boolean {
 // Sentence-search counterpart of toSearchResult -- a keyword "matches" if
 // its term or any synonym does (same group rule as the server's
 // searchItemsSmart), and every term+synonym is highlighted.
+// A search row's preview: none for a locked memo; a composed memo's markup
+// (##, **, [#N]) stripped so it reads as text.
+function previewOf(item: ApiItem): string {
+  if (item.locked) return '';
+  const text = item.snippet ?? item.raw_text ?? '';
+  return item.composed_from?.length ? plainMemo(text) : text;
+}
+
 export function toSmartSearchResult(item: SmartHit, keywords: SearchInterpretation['keywords']): SearchResult {
   const pending = item.classification_status === 'pending';
   const missing = keywords.filter((k) => ![k.term, ...k.synonyms].some((w) => fieldMatches(item, w)));
   return {
     title: itemTitle(item),
-    snippet: item.locked ? '' : item.snippet ?? item.raw_text ?? '',
+    snippet: previewOf(item),
     terms: keywords.flatMap((k) => [k.term, ...k.synonyms]),
     matchedCount: keywords.length - missing.length,
     missingTerms: missing.map((k) => k.term),
@@ -106,7 +115,7 @@ export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
   const pending = item.classification_status === 'pending';
   return {
     title: itemTitle(item),
-    snippet: item.locked ? '' : item.snippet ?? item.raw_text ?? '',
+    snippet: previewOf(item),
     locked: !!item.locked,
     terms: include,
     matchedCount: got.length,

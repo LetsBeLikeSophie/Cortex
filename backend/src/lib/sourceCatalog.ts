@@ -20,7 +20,7 @@ export const SOURCE_CATALOG: Record<ItemSource, SourceCatalogEntry> = {
   youtube: { id: "youtube", label: "유튜브", labelEn: "youtube", collects: { title: true, thumbnail: true, description: true } },
   instagram: { id: "instagram", label: "인스타그램", labelEn: "instagram", collects: { title: false, thumbnail: false, description: false } },
   kakaotalk: { id: "kakaotalk", label: "카카오톡", labelEn: "kakaotalk", collects: { title: false, thumbnail: false, description: false } },
-  safari: { id: "safari", label: "사파리", labelEn: "safari", collects: { title: true, thumbnail: true, description: true } },
+  safari: { id: "safari", label: "웹", labelEn: "web", collects: { title: true, thumbnail: true, description: true } },
   memo: { id: "memo", label: "메모", labelEn: "memo", collects: { title: false, thumbnail: false, description: false } },
   other: { id: "other", label: "기타", labelEn: "other", collects: { title: false, thumbnail: false, description: false } },
 };

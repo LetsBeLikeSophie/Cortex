@@ -2,11 +2,11 @@ import type { ApiItem, ItemSource } from '../api/client';
 import { strings } from '../i18n';
 
 const L = strings({
-  ko: { youtube: '유튜브', instagram: '인스타그램', kakaotalk: '카카오톡', safari: '사파리', memo: '메모', other: '기타', link: '링크', text: '메모', screenshot: '사진' },
-  en: { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: 'Safari', memo: 'Note', other: 'Other', link: 'Link', text: 'Note', screenshot: 'Photo' },
-  ja: { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'カカオトーク', safari: 'Safari', memo: 'メモ', other: 'その他', link: 'リンク', text: 'メモ', screenshot: '写真' },
-  'zh-Hans': { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: 'Safari', memo: '备注', other: '其他', link: '链接', text: '备注', screenshot: '照片' },
-  'zh-Hant': { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: 'Safari', memo: '備註', other: '其他', link: '連結', text: '備註', screenshot: '照片' },
+  ko: { youtube: '유튜브', instagram: '인스타그램', kakaotalk: '카카오톡', safari: '웹', memo: '메모', other: '기타', link: '링크', text: '메모', screenshot: '사진' },
+  en: { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: 'Web', memo: 'Note', other: 'Other', link: 'Link', text: 'Note', screenshot: 'Photo' },
+  ja: { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'カカオトーク', safari: 'ウェブ', memo: 'メモ', other: 'その他', link: 'リンク', text: 'メモ', screenshot: '写真' },
+  'zh-Hans': { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: '网页', memo: '备注', other: '其他', link: '链接', text: '备注', screenshot: '照片' },
+  'zh-Hant': { youtube: 'YouTube', instagram: 'Instagram', kakaotalk: 'KakaoTalk', safari: '網頁', memo: '備註', other: '其他', link: '連結', text: '備註', screenshot: '照片' },
 });
 
 // The single place that knows about each channel (source) and method
@@ -51,12 +51,14 @@ export const SOURCE_CATALOG: Record<ItemSource, SourceCatalogEntry> = {
     labelTech: 'KAKAOTALK',
     collects: { title: false, thumbnail: false, description: false },
   },
+  // Stored as 'safari' (kept for existing items), but it's any browser link
+  // -- Chrome on Android too -- so it shows as "웹" / WEB.
   safari: {
     id: 'safari',
     get label() {
       return L.safari;
     },
-    labelTech: 'SAFARI',
+    labelTech: 'WEB',
     collects: { title: true, thumbnail: true, description: true },
   },
   memo: {

@@ -22,7 +22,7 @@ import { MONO, OUTLINE, allEdges, conceptOf, emToTracking, BODY_KR, BODY_KR_MEDI
 import { Card, frameStyle, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
 import { newRequestId, saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError } from '../api/client';
-import { itemTitle, sourceLabel } from '../api/format';
+import { itemTitle, sourceLabel, captureTypeLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { Heading } from '../components/Typography';
@@ -876,7 +876,8 @@ ${sharedNote ?? ''}`;
               >
                 <View style={styles.savedCardMeta}>
                   <Text style={{ fontFamily: MONO, fontSize: 10.5, letterSpacing: emToTracking(0.12, 10.5), color: theme.sub }}>
-                    {sourceLabel(saved.source, true)}
+                    {/* 'other' says nothing ("OTHER") -- show what it is (PHOTO) instead. */}
+                    {saved.source === 'other' ? captureTypeLabel(saved.capture_type, true) : sourceLabel(saved.source, true)}
                   </Text>
                 </View>
                 {/* The photo that was just saved -- without it a screenshot

@@ -45,6 +45,7 @@ const S = strings({
     searchN: (n: string) => `AI 검색 월 ${n}회`,
     search: 'AI 검색을 넉넉하게',
     composeN: (n: string) => `태그별로 모아서 코스·목록 만들기 월 ${n}회`,
+    tagCleanupN: (n: string) => `태그 정리하기 월 ${n}회`,
     compose: '태그별로 모아서 코스·목록 만들기',
     trial: (days: number) => `무료 체험 중 · ${days}일 남음`,
     lifetimePro: 'Pro 평생 이용 중',
@@ -79,6 +80,7 @@ const S = strings({
     searchN: (n: string) => `${n} AI searches a month`,
     search: 'Plenty of AI search',
     composeN: (n: string) => `Combine ${n} times a month — routes and lists by tag`,
+    tagCleanupN: (n: string) => `Tidy up tags ${n} times a month`,
     compose: 'Combine by tag into routes and lists',
     trial: (days: number) => `Free trial · ${days} days left`,
     lifetimePro: 'Pro for life',
@@ -113,6 +115,7 @@ const S = strings({
     searchN: (n: string) => `AI検索 月${n}回`,
     search: 'AI検索をたっぷり',
     composeN: (n: string) => `タグごとにまとめてコース・リストを作る 月${n}回`,
+    tagCleanupN: (n: string) => `タグを整理 月${n}回`,
     compose: 'タグごとにまとめてコース・リストを作る',
     trial: (days: number) => `無料体験中 · 残り${days}日`,
     lifetimePro: 'Pro 買い切りで利用中',
@@ -147,6 +150,7 @@ const S = strings({
     searchN: (n: string) => `每月 AI 搜索 ${n} 次`,
     search: '充足的 AI 搜索',
     composeN: (n: string) => `按标签汇总生成路线、清单 每月 ${n} 次`,
+    tagCleanupN: (n: string) => `整理标签 每月 ${n} 次`,
     compose: '按标签汇总生成路线、清单',
     trial: (days: number) => `免费试用中 · 剩 ${days} 天`,
     lifetimePro: 'Pro 终身版使用中',
@@ -181,6 +185,7 @@ const S = strings({
     searchN: (n: string) => `每月 AI 搜尋 ${n} 次`,
     search: '充足的 AI 搜尋',
     composeN: (n: string) => `依標籤彙整生成路線、清單 每月 ${n} 次`,
+    tagCleanupN: (n: string) => `整理標籤 每月 ${n} 次`,
     compose: '依標籤彙整生成路線、清單',
     trial: (days: number) => `免費試用中 · 剩 ${days} 天`,
     lifetimePro: 'Pro 終身版使用中',
@@ -238,6 +243,9 @@ export default function PaywallScreen() {
     plan && plan.unclassifiedCount > 0 ? S.backlogN(plan.unclassifiedCount) : S.backlog,
     pro ? S.searchN(pro.search.toLocaleString()) : S.search,
     pro?.compose ? S.composeN(pro.compose.toLocaleString()) : S.compose,
+    // Opened because tag cleanup ran out: say what Pro gives for it (only
+    // then, so the usual card keeps its four lines).
+    ...(reason === 'tag_cleanup' && pro?.tag_cleanup ? [S.tagCleanupN(pro.tag_cleanup.toLocaleString())] : []),
   ];
 
   const status =

@@ -52,6 +52,9 @@ const S = strings({
     replaces: '지금 메모를 새 내용으로 바꿔요',
     editsToo: ' · 직접 고친 부분도 바뀌어요',
     doneToast: (tag: string) => `'${tag}' 모아서 만든 메모를 저장했어요`,
+    failedToast: (tag: string) => `'${tag}' 모아서 만들기가 안 됐어요 · 횟수는 그대로예요`,
+    quotaToast: '이번 달 모아서 만들기를 다 썼어요',
+    slowToast: (tag: string) => `오래 걸려요 · 잠시 뒤 '${tag}' 탭을 확인해 주세요`,
     toPreview: '미리보기로',
     remakeFree: '다시 만들기 · 무료',
     remakePaid: '다시 만들기 · 1회',
@@ -87,6 +90,9 @@ const S = strings({
     replaces: 'Replaces this memo with the new one',
     editsToo: ' · your edits are replaced too',
     doneToast: (tag: string) => `Saved the combined '${tag}' memo`,
+    failedToast: (tag: string) => `Couldn't combine '${tag}' · no use was spent`,
+    quotaToast: "You've used this month's Combine",
+    slowToast: (tag: string) => `Taking a while · check the '${tag}' tab in a bit`,
     toPreview: 'Back to preview',
     remakeFree: 'Remake · Free',
     remakePaid: 'Remake · 1 use',
@@ -122,6 +128,9 @@ const S = strings({
     replaces: '今のメモを新しい内容に置き換えます',
     editsToo: ' · 自分で直した部分も置き換わります',
     doneToast: (tag: string) => `「${tag}」のまとめメモを保存しました`,
+    failedToast: (tag: string) => `「${tag}」のまとめを作れませんでした · 回数は減っていません`,
+    quotaToast: '今月のまとめ作成を使い切りました',
+    slowToast: (tag: string) => `時間がかかっています · 少ししてから「${tag}」タブを確認してください`,
     toPreview: 'プレビューへ',
     remakeFree: 'もう一度作る · 無料',
     remakePaid: 'もう一度作る · 1回',
@@ -157,6 +166,9 @@ const S = strings({
     replaces: '会用新内容替换当前备注',
     editsToo: ' · 你修改过的部分也会被替换',
     doneToast: (tag: string) => `已保存「${tag}」汇总笔记`,
+    failedToast: (tag: string) => `「${tag}」汇总没能生成 · 次数未扣除`,
+    quotaToast: '本月的汇总生成次数已用完',
+    slowToast: (tag: string) => `需要一些时间 · 稍后请查看「${tag}」标签`,
     toPreview: '回到预览',
     remakeFree: '重新生成 · 免费',
     remakePaid: '重新生成 · 1 次',
@@ -192,6 +204,9 @@ const S = strings({
     replaces: '會用新內容取代目前的備註',
     editsToo: ' · 你修改過的部分也會被取代',
     doneToast: (tag: string) => `已儲存「${tag}」彙整筆記`,
+    failedToast: (tag: string) => `「${tag}」彙整沒能產生 · 次數未扣除`,
+    quotaToast: '本月的彙整產生次數已用完',
+    slowToast: (tag: string) => `需要一些時間 · 稍後請查看「${tag}」標籤`,
     toPreview: '回到預覽',
     remakeFree: '重新產生 · 免費',
     remakePaid: '重新產生 · 1 次',
@@ -293,7 +308,13 @@ export default function ComposeScreen() {
         remadeFrom: retryOf && remakeBefore ? { title: remakeBefore.title, rawText: remakeBefore.rawText } : undefined,
       });
     } catch (err) {
-      if (!mounted.current) return;
+      if (!mounted.current) {
+        // The sheet promised to keep going after closing -- so a failure
+        // after that is said too. A timeout may still finish on the server.
+        const timedOut = err instanceof Error && /abort/i.test(err.message);
+        showToast(asQuotaError(err) ? S.quotaToast : timedOut ? S.slowToast(pickedTag) : S.failedToast(pickedTag));
+        return;
+      }
       if (asQuotaError(err)) {
         navigation.replace('Paywall', { reason: 'compose' });
         return;

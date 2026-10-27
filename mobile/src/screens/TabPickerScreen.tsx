@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -82,13 +82,18 @@ export default function TabPickerScreen() {
   // may ride off the top of the screen when the keyboard pushes the sheet up.
   const [headerHeight, setHeaderHeight] = useState(0);
 
-  useEffect(() => {
-    loadHomeTabs().then(setSelected);
-    fetchTags()
-      .then((res) => setAllTags(res.tags))
-      .catch(() => setAllTags([]))
-      .finally(() => setLoading(false));
-  }, []);
+  // Read again whenever this sheet is back on top -- 태그 정리하기 opens over
+  // it and renames tags and tabs; a stale list here would save the old tab
+  // set back on the next toggle (an empty tab for a merged-away tag).
+  useFocusEffect(
+    useCallback(() => {
+      loadHomeTabs().then(setSelected);
+      fetchTags()
+        .then((res) => setAllTags(res.tags))
+        .catch(() => setAllTags([]))
+        .finally(() => setLoading(false));
+    }, [])
+  );
 
   const toggle = (tag: TagTab) => {
     const next = selected.includes(tag) ? selected.filter((t) => t !== tag) : [...selected, tag];

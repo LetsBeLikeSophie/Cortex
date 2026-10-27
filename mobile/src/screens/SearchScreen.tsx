@@ -754,17 +754,21 @@ export default function SearchScreen() {
         {looksLikeSentence &&
           (noAiConsent ? (
             <Pressable onPress={() => navigation.navigate('AiConsent')} hitSlop={6} style={styles.suggestLine}>
-              <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
-              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.needConsent}</Text>
+              <View style={styles.suggestIcon}>
+                <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
+              </View>
+              <Text style={{ flexShrink: 1, fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.needConsent}</Text>
             </Pressable>
           ) : aiLeft === 0 ? (
             <View style={styles.suggestLine}>
-              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.quotaOut}</Text>
+              <Text style={{ flexShrink: 1, fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.quotaOut}</Text>
             </View>
           ) : (
             <Pressable onPress={() => ask()} hitSlop={6} style={styles.suggestLine}>
-              <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
-              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>
+              <View style={styles.suggestIcon}>
+                <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
+              </View>
+              <Text style={{ flexShrink: 1, fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>
                 {S.looksLikeSentence}<Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM }}>{S.askAi}</Text>
                 {aiLeft !== null ? S.costLeft(aiLeft) : S.costOne}
               </Text>
@@ -788,8 +792,10 @@ export default function SearchScreen() {
             hitSlop={6}
             style={styles.suggestLine}
           >
-            <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
-            <Text style={{ fontSize: 13, color: theme.accent, fontFamily: BODY_KR_MEDIUM }}>{S.compose(tags.includeChips[0].text)}</Text>
+            <View style={styles.suggestIcon}>
+                <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
+              </View>
+            <Text style={{ flexShrink: 1, fontSize: 13, color: theme.accent, fontFamily: BODY_KR_MEDIUM }}>{S.compose(tags.includeChips[0].text)}</Text>
           </Pressable>
         )}
       </View>
@@ -872,7 +878,10 @@ const styles = StyleSheet.create({
   filterPanel: { marginTop: 10 },
   tagInput: { fontSize: 14, paddingHorizontal: 12, paddingVertical: 9 },
   filterHelp: { fontSize: 12, marginTop: 8, fontFamily: BODY_KR },
-  suggestLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 },
+  // Wraps instead of running off the right edge (long English, big text, a
+  // long tag name); on two lines the ✦ stays with the first.
+  suggestLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 12 },
+  suggestIcon: { marginTop: 3 },
   suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   suggestTag: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },

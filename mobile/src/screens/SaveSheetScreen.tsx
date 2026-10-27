@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -221,6 +222,8 @@ const S = strings({
 // everything else (and for iOS, which has no share extension yet).
 type Status = 'input' | 'saving' | 'done' | 'error';
 
+const DRAFT_KEY = 'cortex.saveDraft';
+
 // No reliable way to know which app a share came from (Android's generic
 // ACTION_SEND doesn't carry the sender's identity), but a link's own domain
 // is a good enough guess to avoid dumping every URL into 'other'.
@@ -313,6 +316,29 @@ export default function SaveSheetScreen() {
   // Text already in the memo when a voice dictation starts -- live partial
   // transcripts get appended to it instead of overwriting it.
   const voiceBase = useRef('');
+
+  // What was typed by hand survives a close without saving (a failed save,
+  // a tap outside): kept in one slot and put back the next time the sheet
+  // opens from "+" (no share). A successful save clears it. Shared-in text
+  // is never kept -- it can just be shared again.
+  const openedByShare = !!(route.params?.sharedText || route.params?.sharedUrl || route.params?.sharedImageUri || route.params?.sharedImageUris?.length);
+  const draftRef = useRef({ text, status });
+  draftRef.current = { text, status };
+  useEffect(() => {
+    if (!openedByShare) {
+      AsyncStorage.getItem(DRAFT_KEY)
+        .then((draft) => {
+          if (draft) setText((current) => current || draft);
+        })
+        .catch(() => {});
+    }
+    return () => {
+      const { text: last, status: end } = draftRef.current;
+      if (end === 'done' || (!openedByShare && !last.trim())) AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
+      else if (!openedByShare) AsyncStorage.setItem(DRAFT_KEY, last).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const close = () => navigation.goBack();
   // While photos are being saved, leaving would stop the batch partway with

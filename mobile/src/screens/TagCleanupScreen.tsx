@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,7 +10,7 @@ import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
 import { allEdges, OUTLINE, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
-import { applyTagCleanup, asQuotaError, friendlyError, suggestTagCleanup, TagMergeGroup } from '../api/client';
+import { applyTagCleanup, asQuotaError, fetchTags, friendlyError, suggestTagCleanup, TagMergeGroup } from '../api/client';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import { strings } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
@@ -89,6 +90,13 @@ const S = strings({
 
 type Step = 'intro' | 'finding' | 'pick' | 'applying' | 'done';
 
+// The last suggestion, kept with the month it was bought in: a closed sheet
+// (swipe, cancel, the app quitting) doesn't throw away a paid-for answer.
+// Reopening this month shows it again; a successful merge clears it.
+const SAVED_KEY = 'cortex.tagCleanupSuggestion';
+const thisMonth = () => new Date().toISOString().slice(0, 7);
+type Saved = { month: string; groups: TagMergeGroup[]; left: number | null };
+
 // 태그 정리하기: AI proposes merges from tag names only; the person ticks
 // which groups to apply. Opened from tag settings.
 export default function TagCleanupScreen() {
@@ -101,11 +109,41 @@ export default function TagCleanupScreen() {
   const [changed, setChanged] = useState(0);
   const [error, setError] = useState('');
 
+  // A suggestion bought earlier this month: straight to its list (nothing
+  // ticked), without tags that have since gone.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const raw = await AsyncStorage.getItem(SAVED_KEY).catch(() => null);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Saved;
+      if (saved.month !== thisMonth()) {
+        AsyncStorage.removeItem(SAVED_KEY).catch(() => {});
+        return;
+      }
+      const existing = new Set((await fetchTags().catch(() => null))?.tags ?? []);
+      const still = saved.groups
+        .map((g) => ({ ...g, merge: existing.size ? g.merge.filter((m) => existing.has(m)) : g.merge }))
+        .filter((g) => g.merge.length > 0);
+      if (cancelled || still.length === 0) return;
+      setGroups(still);
+      setPicked(new Set());
+      setLeft(saved.left);
+      setStep((cur) => (cur === 'intro' ? 'pick' : cur));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const find = async () => {
     setError('');
     setStep('finding');
     try {
       const res = await suggestTagCleanup();
+      if (res.groups.length > 0) {
+        AsyncStorage.setItem(SAVED_KEY, JSON.stringify({ month: thisMonth(), groups: res.groups, left: res.left } satisfies Saved)).catch(() => {});
+      }
       setGroups(res.groups);
       // Nothing is merged unless the person ticks it.
       setPicked(new Set());
@@ -135,6 +173,7 @@ export default function TagCleanupScreen() {
       const next = [...new Set(tabs.map((t) => rename.get(t) ?? t))];
       if (next.join('\n') !== tabs.join('\n')) await saveHomeTabs(next);
       setChanged(res.changed);
+      AsyncStorage.removeItem(SAVED_KEY).catch(() => {});
       setStep('done');
     } catch (err) {
       setError(friendlyError(err));

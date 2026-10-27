@@ -528,8 +528,10 @@ export interface TagMergeGroup {
   counts: Record<string, number>;
 }
 
+// As long as composeMemo: the server finishes (and counts the use) even if
+// the app stops waiting, so a short timeout only lost a paid-for answer.
 export function suggestTagCleanup() {
-  return request<{ groups: TagMergeGroup[]; left: number }>('/tags/cleanup/suggest', { method: 'POST' });
+  return request<{ groups: TagMergeGroup[]; left: number }>('/tags/cleanup/suggest', { method: 'POST' }, 120_000);
 }
 
 export function applyTagCleanup(groups: { keep: string; merge: string[] }[]) {

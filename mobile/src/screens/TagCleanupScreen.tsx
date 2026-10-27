@@ -10,7 +10,7 @@ import { Heading } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
 import { allEdges, OUTLINE, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
-import { applyTagCleanup, asQuotaError, fetchTags, friendlyError, suggestTagCleanup, TagMergeGroup } from '../api/client';
+import { ApiError, applyTagCleanup, asQuotaError, fetchPlan, fetchTags, friendlyError, Plan, suggestTagCleanup, TagMergeGroup } from '../api/client';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import { strings } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
@@ -21,6 +21,9 @@ const S = strings({
     intro: 'AI가 뜻이 같은 태그를 찾아 묶자고 제안해요. 태그 이름만 보내고, 고른 것만 합쳐요.',
     cost: '이번 달 1회 차감 · 제안이 없으면 차감하지 않아요',
     start: '정리 제안 받기',
+    monthLeft: (n: number) => ` · 이번 달 ${n}회 남음`,
+    agreeAndStart: '동의하고 정리하기',
+    consentNote: ' · AI 분석에 동의하면 쓸 수 있어요',
     finding: '비슷한 태그를 찾고 있어요',
     none: '합칠 만한 태그가 없어요. 이미 깔끔해요.',
     pick: '합칠 묶음을 골라 주세요',
@@ -35,6 +38,9 @@ const S = strings({
     intro: 'AI suggests tags that mean the same thing. Only tag names are sent, and only the groups you pick are merged.',
     cost: "Uses 1 this month · not counted if there's nothing to suggest",
     start: 'Get suggestions',
+    monthLeft: (n: number) => ` · ${n} left this month`,
+    agreeAndStart: 'Allow AI and tidy up',
+    consentNote: ' · Allow AI analysis to use it',
     finding: 'Looking for look-alike tags',
     none: 'Nothing to merge. Your tags are already tidy.',
     pick: 'Pick the groups to merge',
@@ -49,6 +55,9 @@ const S = strings({
     intro: '意味が同じタグをAIがまとめて提案します。送るのはタグ名だけで、選んだものだけを統合します。',
     cost: '今月1回分を使います · 提案がなければ数えません',
     start: '整理の提案をもらう',
+    monthLeft: (n: number) => ` · 今月残り${n}回`,
+    agreeAndStart: '同意して整理する',
+    consentNote: ' · AI分析に同意すると使えます',
     finding: '似たタグを探しています',
     none: '統合できるタグはありません。すでに整っています。',
     pick: '統合するグループを選んでください',
@@ -63,6 +72,9 @@ const S = strings({
     intro: 'AI 会找出意思相同的标签并建议合并。只发送标签名，只合并你选中的。',
     cost: '本月计 1 次 · 没有建议则不计',
     start: '获取整理建议',
+    monthLeft: (n: number) => ` · 本月剩 ${n} 次`,
+    agreeAndStart: '同意并整理',
+    consentNote: ' · 同意 AI 分析后即可使用',
     finding: '正在查找相似标签',
     none: '没有可合并的标签，已经很整齐了。',
     pick: '选择要合并的组',
@@ -77,6 +89,9 @@ const S = strings({
     intro: 'AI 會找出意思相同的標籤並建議合併。只傳送標籤名稱，只合併你選取的。',
     cost: '本月計 1 次 · 沒有建議則不計',
     start: '取得整理建議',
+    monthLeft: (n: number) => ` · 本月剩 ${n} 次`,
+    agreeAndStart: '同意並整理',
+    consentNote: ' · 同意 AI 分析後即可使用',
     finding: '正在尋找相似標籤',
     none: '沒有可合併的標籤，已經很整齊了。',
     pick: '選擇要合併的組',
@@ -136,7 +151,29 @@ export default function TagCleanupScreen() {
     };
   }, []);
 
+  // This month's uses and AI consent, read on open and again on coming back
+  // from the consent sheet, so the button says what a tap will do.
+  const [plan, setPlan] = useState<Plan | null>(null);
+  useEffect(() => {
+    const refresh = () =>
+      fetchPlan()
+        .then(setPlan)
+        .catch(() => {});
+    refresh();
+    return navigation.addListener('focus', refresh);
+  }, [navigation]);
+  const usesLeft = plan?.tag_cleanup ? Math.max(0, plan.tag_cleanup.limit - plan.tag_cleanup.used) : null;
+  const noAiConsent = !!plan && plan.aiConsent !== 'agreed';
+
   const find = async () => {
+    if (noAiConsent) {
+      navigation.navigate('AiConsent');
+      return;
+    }
+    if (usesLeft === 0) {
+      navigation.replace('Paywall', { reason: 'tag_cleanup' });
+      return;
+    }
     setError('');
     setStep('finding');
     try {
@@ -154,7 +191,8 @@ export default function TagCleanupScreen() {
         navigation.replace('Paywall', { reason: 'tag_cleanup' });
         return;
       }
-      setError(friendlyError(err));
+      // Not a failure: the consent sheet is opening.
+      if (!(err instanceof ApiError && (err.body as { error?: string } | null)?.error === 'ai_consent')) setError(friendlyError(err));
       setStep('intro');
     }
   };
@@ -199,7 +237,10 @@ export default function TagCleanupScreen() {
       {step === 'intro' && (
         <>
           <Text style={[styles.line, { color: theme.ink }]}>{S.intro}</Text>
-          <Text style={[styles.small, { color: theme.sub }]}>{S.cost}</Text>
+          <Text style={[styles.small, { color: theme.sub }]}>
+            {S.cost}
+            {noAiConsent ? S.consentNote : usesLeft !== null ? S.monthLeft(usesLeft) : ''}
+          </Text>
         </>
       )}
 
@@ -249,7 +290,7 @@ export default function TagCleanupScreen() {
         {step === 'intro' || step === 'finding' ? (
           <>
             <GhostButton label={S.cancel} theme={theme} onPress={() => navigation.goBack()} disabled={busy} />
-            <SolidButton label={S.start} theme={theme} onPress={find} loading={step === 'finding'} />
+            <SolidButton label={noAiConsent ? S.agreeAndStart : S.start} theme={theme} onPress={find} loading={step === 'finding'} />
           </>
         ) : step === 'done' || groups.length === 0 ? (
           <SolidButton label={S.done} theme={theme} onPress={() => navigation.goBack()} />

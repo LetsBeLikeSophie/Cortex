@@ -408,7 +408,9 @@ export default function ItemDetailScreen() {
   // (composedFrom, maybe a free remake), and also when the memo is opened
   // again later -- from its stored sources and the tag it's filed under
   // (decision C2; that remake costs 1, the sheet says so).
-  const reopenTag = userTags[0] ?? aiTags[0];
+  // The server files a composed memo's tag among the AI tags; a tag the
+  // person added later (userTags) isn't what it was made from.
+  const reopenTag = aiTags[0] ?? userTags[0];
   const composeInfo: { tag: string; count: number; left?: number; freeRemake?: boolean } | null =
     composedFrom ?? (sourceIds.length > 0 && reopenTag ? { tag: reopenTag, count: sourceIds.length } : null);
   const [editingBody, setEditingBody] = useState(false);

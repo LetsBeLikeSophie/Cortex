@@ -57,6 +57,8 @@ const S = strings({
     remakePaid: '다시 만들기 · 1회',
     makePro: 'Pro로 만들기',
     make: '만들기 · 1회',
+    agreeAndMake: '동의하고 만들기',
+    consentNote: ' · AI 분석에 동의하면 만들 수 있어요',
   },
   en: {
     examples: ['Route', 'Comparison', 'Checklist', 'Schedule', 'Summary'],
@@ -90,6 +92,8 @@ const S = strings({
     remakePaid: 'Remake · 1 use',
     makePro: 'Make with Pro',
     make: 'Make · 1 use',
+    agreeAndMake: 'Allow AI and make',
+    consentNote: ' · Allow AI analysis to make it',
   },
   ja: {
     examples: ['コース・動線', '比較表', 'チェックリスト', 'スケジュール', '要約'],
@@ -123,6 +127,8 @@ const S = strings({
     remakePaid: 'もう一度作る · 1回',
     makePro: 'Proで作る',
     make: '作る · 1回',
+    agreeAndMake: '同意して作る',
+    consentNote: ' · AI分析に同意すると作れます',
   },
   'zh-Hans': {
     examples: ['路线', '对比表', '清单', '日程表', '摘要'],
@@ -156,6 +162,8 @@ const S = strings({
     remakePaid: '重新生成 · 1 次',
     makePro: '用 Pro 生成',
     make: '生成 · 1 次',
+    agreeAndMake: '同意并生成',
+    consentNote: ' · 同意 AI 分析后即可生成',
   },
   'zh-Hant': {
     examples: ['路線', '比較表', '清單', '行程表', '摘要'],
@@ -189,6 +197,8 @@ const S = strings({
     remakePaid: '重新產生 · 1 次',
     makePro: '用 Pro 產生',
     make: '產生 · 1 次',
+    agreeAndMake: '同意並產生',
+    consentNote: ' · 同意 AI 分析後即可產生',
   },
 });
 
@@ -220,9 +230,15 @@ export default function ComposeScreen() {
     fetchPlan()
       .then(setPlan)
       .catch(() => {});
+  // Again on coming back from the consent sheet, so the button follows.
   useEffect(() => {
     refreshPlan();
+    return navigation.addListener('focus', refreshPlan);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // No AI consent: making would only be refused -- the button leads to the
+  // consent sheet instead (rule 2026-10-26).
+  const noAiConsent = !!plan && plan.aiConsent !== 'agreed';
 
   // Opened from a detail or search (no count): ask how many the tag has.
   useEffect(() => {
@@ -282,8 +298,12 @@ export default function ComposeScreen() {
         navigation.replace('Paywall', { reason: 'compose' });
         return;
       }
-      if (err instanceof ApiError && (err.body as { error?: string } | null)?.error === 'too_few') {
+      const code = err instanceof ApiError ? (err.body as { error?: string } | null)?.error : undefined;
+      if (code === 'too_few') {
         setError(S.tooFew);
+      } else if (code === 'ai_consent') {
+        // Not a failure: the consent sheet is opening.
+        refreshPlan();
       } else {
         setError(friendlyError(err));
       }
@@ -322,6 +342,7 @@ export default function ComposeScreen() {
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}
           {retryOf ? (remakeFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}
+          {noAiConsent ? S.consentNote : ''}
         </Text>
 
         <Text style={[styles.askLabel, { color: theme.ink }]}>{S.askLabel}</Text>
@@ -376,9 +397,9 @@ export default function ComposeScreen() {
       <ButtonRow theme={theme} style={styles.buttons}>
         <GhostButton label={COMMON.cancel} theme={theme} onPress={close} />
         <SolidButton
-          label={retryOf ? (remakeFree ? S.remakeFree : S.remakePaid) : left === 0 ? S.makePro : S.make}
+          label={noAiConsent ? S.agreeAndMake : retryOf ? (remakeFree ? S.remakeFree : S.remakePaid) : left === 0 ? S.makePro : S.make}
           theme={theme}
-          onPress={make}
+          onPress={noAiConsent ? () => navigation.navigate('AiConsent') : make}
           loading={working}
           disabled={tooFew}
         />

@@ -21,6 +21,7 @@ import {
   SearchInterpretation,
   SmartSearchResponse,
   friendlyError,
+  ApiError,
 } from '../api/client';
 import { captureTypeLabel, composeMaterials, sourceLabel, toSearchResult, toSmartSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
@@ -66,6 +67,7 @@ const S = strings({
     interpretHelp: 'AI가 읽은 조건 · 단어를 누르면 제외, ×는 빼기 (다시 AI를 쓰지 않아요)',
     quotaOut: '이번 달 AI 검색을 다 썼어요',
     looksLikeSentence: '문장처럼 보여요 → ',
+    needConsent: 'AI 분석에 동의하면 문장으로 찾을 수 있어요',
     costLeft: (n: number) => ` (1회 · ${n}회 남음)`,
     costOne: ' (1회)',
     aiReading: 'AI가 문장을 읽는 중...',
@@ -111,6 +113,7 @@ const S = strings({
     interpretHelp: 'What the AI read · tap to exclude, × to remove (no extra AI use)',
     quotaOut: "You've used this month's AI searches",
     looksLikeSentence: 'Looks like a sentence → ',
+    needConsent: 'Allow AI analysis to search by sentence',
     costLeft: (n: number) => ` (1 use · ${n} left)`,
     costOne: ' (1 use)',
     aiReading: 'AI is reading...',
@@ -156,6 +159,7 @@ const S = strings({
     interpretHelp: 'AIが読んだ条件 · タップで除外、×で外す（AIは再使用しません）',
     quotaOut: '今月のAI検索を使い切りました',
     looksLikeSentence: '文章のようです → ',
+    needConsent: 'AI分析に同意すると文章で検索できます',
     costLeft: (n: number) => `（1回 · 残り${n}回）`,
     costOne: '（1回）',
     aiReading: 'AIが文章を読んでいます...',
@@ -201,6 +205,7 @@ const S = strings({
     interpretHelp: 'AI 读出的条件 · 点击排除，× 移除（不会再用 AI）',
     quotaOut: '本月 AI 搜索已用完',
     looksLikeSentence: '像是一句话 → ',
+    needConsent: '同意 AI 分析后即可用句子搜索',
     costLeft: (n: number) => `（1 次 · 剩 ${n} 次）`,
     costOne: '（1 次）',
     aiReading: 'AI 正在读句子...',
@@ -246,6 +251,7 @@ const S = strings({
     interpretHelp: 'AI 讀出的條件 · 點一下排除，× 移除（不會再用 AI）',
     quotaOut: '本月 AI 搜尋已用完',
     looksLikeSentence: '看起來像一句話 → ',
+    needConsent: '同意 AI 分析後即可用句子搜尋',
     costLeft: (n: number) => `（1 次 · 剩 ${n} 次）`,
     costOne: '（1 次）',
     aiReading: 'AI 正在讀句子...',
@@ -501,9 +507,16 @@ export default function SearchScreen() {
     setError(null);
   };
 
+  // No AI consent: sentence search would only be refused -- the consent
+  // sheet comes instead (rule 2026-10-26: AI buttons say "동의하면 돼요").
+  const noAiConsent = !!plan && plan.aiConsent !== 'agreed';
   const ask = (spoken?: string) => {
     const text = (spoken ?? query).trim();
     if (!text || asking) return;
+    if (noAiConsent) {
+      navigation.navigate('AiConsent');
+      return;
+    }
     Keyboard.dismiss();
     setAiQuery(text);
     setAsking(true);
@@ -525,6 +538,8 @@ export default function SearchScreen() {
         if (quota) {
           setQuotaHit(quota);
           setQuotaQuery(text);
+        } else if (err instanceof ApiError && err.status === 403 && (err.body as { error?: string } | null)?.error === 'ai_consent') {
+          // Not a failure: the consent sheet is already opening.
         } else {
           setAiError({ query: text, message: friendlyError(err) });
         }
@@ -737,7 +752,12 @@ export default function SearchScreen() {
 
         {/* Says what the tap costs; with none left it stops offering. */}
         {looksLikeSentence &&
-          (aiLeft === 0 ? (
+          (noAiConsent ? (
+            <Pressable onPress={() => navigation.navigate('AiConsent')} hitSlop={6} style={styles.suggestLine}>
+              <SparkleIcon color={theme.accent} size={13} strokeWidth={1.4} />
+              <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.needConsent}</Text>
+            </Pressable>
+          ) : aiLeft === 0 ? (
             <View style={styles.suggestLine}>
               <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.quotaOut}</Text>
             </View>

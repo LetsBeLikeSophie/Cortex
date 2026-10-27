@@ -60,8 +60,10 @@ const queue = createShareQueue({
   readBase64: (uri) => new File(uri).base64(),
   exists: (uri) => new File(uri).exists,
   remove: (uri) => new File(uri).delete(),
-  upload: async (base64) => {
-    await saveScreenshotItem('other', base64);
+  // The job id doubles as the save's request id: a re-upload after a
+  // timeout that did land returns that item instead of making another.
+  upload: async (base64, jobId) => {
+    await saveScreenshotItem('other', base64, undefined, jobId);
   },
   consent: async () => (await fetchPlan()).aiConsent ?? null,
   tellMehh: tellMehhReceived,

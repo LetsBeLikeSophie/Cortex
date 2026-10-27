@@ -13,6 +13,8 @@ import {
   listPendingItems,
   markUnclassified,
   insertItem,
+  DuplicateRequestError,
+  findItemByRequestId,
   logAnalyticsEvent,
   uploadScreenshot,
   listFrequentTags,
@@ -44,18 +46,24 @@ async function compressScreenshot(bytes: Buffer): Promise<Buffer> {
 
 const SOURCES = ["instagram", "kakaotalk", "safari", "youtube", "memo", "other"] as const satisfies readonly ItemSource[];
 
+// The app's id for one save, the same on every retry of it (decision UX-64):
+// a retry after a timeout returns the item the first try already made.
+const RequestIdSchema = z.string().min(8).max(100).optional();
+
 export const IncomingItemSchema = z.discriminatedUnion("captureType", [
   z.object({
     captureType: z.literal("link"),
     source: z.enum(SOURCES),
     url: z.string().url(),
     note: z.string().max(200).optional(),
+    requestId: RequestIdSchema,
   }),
   z.object({
     captureType: z.literal("text"),
     source: z.enum(SOURCES),
     text: z.string().min(1),
     note: z.string().max(200).optional(),
+    requestId: RequestIdSchema,
   }),
   z.object({
     captureType: z.literal("screenshot"),
@@ -63,6 +71,7 @@ export const IncomingItemSchema = z.discriminatedUnion("captureType", [
     imageBase64: z.string().min(1),
     mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
     note: z.string().max(200).optional(),
+    requestId: RequestIdSchema,
   }),
 ]);
 
@@ -84,6 +93,15 @@ const PENDING_CATEGORY = "기타" as const;
 // used up: then the item still saves, as 'unclassified', with no Claude call
 // at all, and waits in the app's 미분류함 (see classifyBacklog).
 export async function processIncomingItem(input: IncomingItem, userId: string): Promise<ItemRecord> {
+  // A retry of a save that already went through (the app timed out waiting,
+  // or the Mehh queue re-uploads): hand back that item -- no second row, no
+  // second classification against the quota.
+  let requestId = input.requestId;
+  if (requestId) {
+    const existing = await findItemByRequestId(userId, requestId);
+    if (existing) return existing;
+    if (existing === undefined) requestId = undefined; // column not migrated yet
+  }
   // The quota is reserved here, the moment the save is accepted -- not when
   // the classification finishes -- so a 30-photo batch counts as 30 right
   // away. Parallel uploads can each see one slot left and overshoot by a
@@ -114,22 +132,34 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
     tags: [],
     classificationStatus: status,
     unclassifiedReason: classifyNow ? undefined : waitReason,
+    clientRequestId: requestId,
   };
 
   let item: ItemRecord;
   let imageBase64: string | undefined;
-  if (input.captureType === "link") {
-    item = await insertItem({ ...base, captureType: "link", rawUrl: input.url });
-  } else if (input.captureType === "text") {
-    item = await insertItem({ ...base, captureType: "text", rawText: input.text });
-  } else {
-    // The Storage upload stays synchronous -- it's a plain file write (fast),
-    // and image_path has to exist for the row to show a thumbnail at all.
-    // Only the Claude vision call (the slow part) moves to the background.
-    const compressed = await compressScreenshot(Buffer.from(input.imageBase64, "base64"));
-    const imagePath = await uploadScreenshot(userId, compressed, "image/jpeg");
-    item = await insertItem({ ...base, captureType: "screenshot", imagePath });
-    imageBase64 = compressed.toString("base64");
+  try {
+    if (input.captureType === "link") {
+      item = await insertItem({ ...base, captureType: "link", rawUrl: input.url });
+    } else if (input.captureType === "text") {
+      item = await insertItem({ ...base, captureType: "text", rawText: input.text });
+    } else {
+      // The Storage upload stays synchronous -- it's a plain file write (fast),
+      // and image_path has to exist for the row to show a thumbnail at all.
+      // Only the Claude vision call (the slow part) moves to the background.
+      const compressed = await compressScreenshot(Buffer.from(input.imageBase64, "base64"));
+      const imagePath = await uploadScreenshot(userId, compressed, "image/jpeg");
+      item = await insertItem({ ...base, captureType: "screenshot", imagePath });
+      imageBase64 = compressed.toString("base64");
+    }
+  } catch (err) {
+    // Two tries of the same save raced past the lookup: the other one won.
+    // Give back its quota hold and return what it made.
+    if (err instanceof DuplicateRequestError && requestId) {
+      if (reservation !== null) await refundUsage(reservation).catch((e) => console.error("refundUsage failed:", e));
+      const existing = await findItemByRequestId(userId, requestId);
+      if (existing) return existing;
+    }
+    throw err;
   }
 
   if (classifyNow) {

@@ -196,3 +196,36 @@ test('agreed, upload failed, consent withdrawn: the decline question still cover
   assert.deepEqual(t.log, ['mehh count=1 ids=101', 'upload b64:queue/j1']);
   assert.deepEqual(t.state(), { jobs: [], receipts: [] });
 });
+
+test('a save that landed but timed out, then re-uploaded: the server keeps one item (same request id)', async () => {
+  // A fake server that dedupes by request id, like POST /items does.
+  const stored = new Map<string, string>();
+  let timeoutOnce = true;
+  let state: QueueState = { jobs: [], receipts: [] };
+  let n = 0;
+  const queue = createShareQueue({
+    load: async () => structuredClone(state),
+    save: async (s) => {
+      state = structuredClone(s);
+    },
+    copyIn: async (_uri, id) => `queue/${id}`,
+    readBase64: async (uri) => `b64:${uri}`,
+    exists: () => true,
+    remove: () => {},
+    upload: async (b64, jobId) => {
+      if (!stored.has(jobId)) stored.set(jobId, b64);
+      if (timeoutOnce) {
+        timeoutOnce = false;
+        throw new Error('timed out'); // the row exists, the answer never came back
+      }
+    },
+    consent: async () => 'agreed',
+    tellMehh: () => {},
+    now: () => 0,
+    newId: () => `job-${++n}`,
+  });
+  await queue.enqueue(['a'], ['101']);
+  assert.equal((await queue.drain()).left, 1); // timed out, stays queued
+  assert.equal((await queue.drain()).left, 0); // re-upload, same id
+  assert.equal(stored.size, 1);
+});

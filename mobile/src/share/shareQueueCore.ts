@@ -49,7 +49,9 @@ export interface QueueDeps {
   readBase64(uri: string): Promise<string>;
   exists(uri: string): boolean;
   remove(uri: string): void;
-  upload(base64: string): Promise<void>;
+  // jobId goes along as the save's request id, so a retry of a save that
+  // did land (timed out on the way back) doesn't make a second item.
+  upload(base64: string, jobId: string): Promise<void>;
   // The person's current answer. A failure to find out counts as "not
   // agreed" -- nothing is sent on a guess.
   consent(): Promise<Consent>;
@@ -209,7 +211,7 @@ export function createShareQueue(deps: QueueDeps) {
       return;
     }
     try {
-      await deps.upload(await deps.readBase64(job.uri));
+      await deps.upload(await deps.readBase64(job.uri), job.id);
     } catch {
       await update((st) => ({ ...st, jobs: st.jobs.map((j) => (j.id === job.id ? { ...j, attempts: j.attempts + 1 } : j)) }));
       return;

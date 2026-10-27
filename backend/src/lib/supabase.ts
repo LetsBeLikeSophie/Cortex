@@ -82,6 +82,29 @@ export interface NewItem {
   classificationStatus: ClassificationStatus;
   unclassifiedReason?: UnclassifiedReason;
   composedFrom?: string[];
+  // The app's id for this save (see findItemByRequestId).
+  clientRequestId?: string;
+}
+
+// The same save sent twice -- the unique index on (user_id,
+// client_request_id) refused the second row.
+export class DuplicateRequestError extends Error {
+  constructor() {
+    super("duplicate client_request_id");
+  }
+}
+
+// The item an earlier try of this save already made, if any. undefined
+// (not null) when the database has no client_request_id column yet
+// (migration 2026-10-27-save-request-id.sql not run): saving then goes on
+// without the check, as before.
+export async function findItemByRequestId(userId: string, requestId: string): Promise<ItemRecord | null | undefined> {
+  const { data, error } = await getClient().from("items").select().eq("user_id", userId).eq("client_request_id", requestId).maybeSingle();
+  if (error) {
+    if (error.code === "42703" || /client_request_id/.test(error.message)) return undefined;
+    throw new Error(`findItemByRequestId failed: ${error.message}`);
+  }
+  return (data as ItemRecord | null) ?? null;
 }
 
 export async function insertItem(item: NewItem): Promise<ItemRecord> {
@@ -103,10 +126,12 @@ export async function insertItem(item: NewItem): Promise<ItemRecord> {
       classification_status: item.classificationStatus,
       ...(item.unclassifiedReason ? { unclassified_reason: item.unclassifiedReason } : null),
       ...(item.composedFrom ? { composed_from: item.composedFrom } : null),
+      ...(item.clientRequestId ? { client_request_id: item.clientRequestId } : null),
     })
     .select()
     .single();
 
+  if (error?.code === "23505" && item.clientRequestId) throw new DuplicateRequestError();
   if (error) throw new Error(`insertItem failed: ${error.message}`);
   return data as ItemRecord;
 }

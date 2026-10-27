@@ -21,7 +21,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, allEdges, conceptOf, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { Card, frameStyle, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
-import { saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError } from '../api/client';
+import { newRequestId, saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError } from '../api/client';
 import { itemTitle, sourceLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
@@ -317,6 +317,14 @@ export default function SaveSheetScreen() {
   // transcripts get appended to it instead of overwriting it.
   const voiceBase = useRef('');
 
+  // Request ids for saves (UX-64): kept across retries of the same content,
+  // dropped as soon as what would be saved changes.
+  const singleRequestId = useRef<string | null>(null);
+  const bulkRequestIds = useRef<Record<string, string>>({});
+  useEffect(() => {
+    singleRequestId.current = null;
+  }, [text, linkUrl, image, note]);
+
   // What was typed by hand survives a close without saving (a failed save,
   // a tap outside): kept in one slot and put back the next time the sheet
   // opens from "+" (no share). A successful save clears it. Shared-in text
@@ -454,7 +462,11 @@ export default function SaveSheetScreen() {
         batch.map(async (shot, offset) => {
           try {
             const base64 = shot.base64 ?? (await new File(shot.uri).base64());
-            results[start + offset] = await saveScreenshotItem('other', base64, sharedNote);
+            // Same photo + memo again (a retry after a timeout) -> same id.
+            const key = `${shot.id}
+${sharedNote ?? ''}`;
+            const requestId = (bulkRequestIds.current[key] ??= newRequestId());
+            results[start + offset] = await saveScreenshotItem('other', base64, sharedNote, requestId);
           } catch (err) {
             // left as null -- counted as a failure below
             lastError = err;
@@ -493,11 +505,14 @@ export default function SaveSheetScreen() {
     const typed = !image && !linkUrl ? splitLinkText(text) : null;
     const url = linkUrl ?? typed?.url ?? null;
     const trimmedNote = note.trim() || typed?.note || undefined;
+    // One id per thing being saved: pressing 저장 again after a timeout
+    // reuses it, so a save that did land comes back instead of doubling.
+    const requestId = (singleRequestId.current ??= newRequestId());
     const request = image
-      ? saveScreenshotItem('other', image.base64, trimmedNote)
+      ? saveScreenshotItem('other', image.base64, trimmedNote, requestId)
       : url
-        ? saveLinkItem(guessSourceFromUrl(url), url, trimmedNote)
-        : saveTextItem('memo', text.trim());
+        ? saveLinkItem(guessSourceFromUrl(url), url, trimmedNote, requestId)
+        : saveTextItem('memo', text.trim(), undefined, requestId);
     request
       .then((item) => {
         setSaved(item);

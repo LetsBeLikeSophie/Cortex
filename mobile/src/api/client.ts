@@ -359,32 +359,39 @@ export function smartSearch(interpretation: SearchInterpretation) {
 // `note` is the optional one-line "why I saved this" memo -- stored as-is
 // (user_note), separate from the AI-assigned title/snippet/tags, and fed
 // into search the same way a tag is.
-export function saveTextItem(source: ItemSource, text: string, note?: string) {
+// requestId (all three saves): the app's id for this one save, the same on
+// every retry of it -- a retry after a timeout gets back the item the first
+// try already made instead of a second one (newRequestId).
+export function saveTextItem(source: ItemSource, text: string, note?: string, requestId?: string) {
   return request<ApiItem>('/items', {
     method: 'POST',
-    body: JSON.stringify({ captureType: 'text', source, text, note }),
+    body: JSON.stringify({ captureType: 'text', source, text, note, requestId }),
   });
+}
+
+export function newRequestId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 // Goes through the backend's og:tags/oEmbed metadata fetch instead of
 // storing the bare URL as unstructured text -- worth using whenever we
 // actually have a clean link (e.g. the OS share sheet's webUrl), which
 // saveTextItem alone had no path to before this.
-export function saveLinkItem(source: ItemSource, url: string, note?: string) {
+export function saveLinkItem(source: ItemSource, url: string, note?: string, requestId?: string) {
   return request<ApiItem>('/items', {
     method: 'POST',
-    body: JSON.stringify({ captureType: 'link', source, url, note }),
+    body: JSON.stringify({ captureType: 'link', source, url, note, requestId }),
   });
 }
 
 // expo-image-picker's base64 output is always re-encoded as JPEG regardless
 // of the original file's format, so mediaType is always 'image/jpeg' here.
-export function saveScreenshotItem(source: ItemSource, imageBase64: string, note?: string) {
+export function saveScreenshotItem(source: ItemSource, imageBase64: string, note?: string, requestId?: string) {
   return request<ApiItem>(
     '/items',
     {
       method: 'POST',
-      body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg', note }),
+      body: JSON.stringify({ captureType: 'screenshot', source, imageBase64, mediaType: 'image/jpeg', note, requestId }),
     },
     SCREENSHOT_TIMEOUT_MS
   );

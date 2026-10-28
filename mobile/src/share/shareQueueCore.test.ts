@@ -96,7 +96,7 @@ test('agreeing: Mehh is told first, then the photos upload, then copies go', asy
   assert.equal(t.log[0], 'mehh count=2 ids=101,102');
   assert.deepEqual(t.log.slice(1).sort(), ['upload b64:queue/j1', 'upload b64:queue/j2']);
   assert.equal(t.files.size, 0);
-  assert.deepEqual(t.state(), { jobs: [], receipts: [] });
+  assert.deepEqual({ jobs: t.state().jobs, receipts: t.state().receipts }, { jobs: [], receipts: [] });
 });
 
 test('declining: copies deleted, Mehh never told, nothing uploaded', async () => {
@@ -108,7 +108,7 @@ test('declining: copies deleted, Mehh never told, nothing uploaded', async () =>
   await t.queue.drain();
   assert.deepEqual(t.log, []);
   assert.equal(t.files.size, 0);
-  assert.deepEqual(t.state(), { jobs: [], receipts: [] });
+  assert.deepEqual({ jobs: t.state().jobs, receipts: t.state().receipts }, { jobs: [], receipts: [] });
 });
 
 test('already agreed: Mehh told and uploads run on the first drain', async () => {
@@ -161,7 +161,7 @@ test('declined, then "미분류함에 저장": Mehh told, photos upload without 
   assert.equal(await t.queue.saveWithoutAi(), 2);
   assert.equal(t.log[0], 'mehh count=2 ids=101,102');
   assert.deepEqual(t.log.slice(1).sort(), ['upload b64:queue/j1', 'upload b64:queue/j2']);
-  assert.deepEqual(t.state(), { jobs: [], receipts: [] });
+  assert.deepEqual({ jobs: t.state().jobs, receipts: t.state().receipts }, { jobs: [], receipts: [] });
   assert.equal(t.queue.progress().waitingConsent, false);
 });
 
@@ -194,7 +194,7 @@ test('agreed, upload failed, consent withdrawn: the decline question still cover
   assert.equal(await t.queue.waitingCount(), 1);
   assert.equal(await t.queue.saveWithoutAi(), 1);
   assert.deepEqual(t.log, ['mehh count=1 ids=101', 'upload b64:queue/j1']);
-  assert.deepEqual(t.state(), { jobs: [], receipts: [] });
+  assert.deepEqual({ jobs: t.state().jobs, receipts: t.state().receipts }, { jobs: [], receipts: [] });
 });
 
 test('a save that landed but timed out, then re-uploaded: the server keeps one item (same request id)', async () => {
@@ -228,4 +228,29 @@ test('a save that landed but timed out, then re-uploaded: the server keeps one i
   assert.equal((await queue.drain()).left, 1); // timed out, stays queued
   assert.equal((await queue.drain()).left, 0); // re-upload, same id
   assert.equal(stored.size, 1);
+});
+
+test('saves are tallied for Home, with the ones that went to 미분류함 for quota, and handed over once', async () => {
+  let state: QueueState = { jobs: [], receipts: [] };
+  let n = 0;
+  const queue = createShareQueue({
+    load: async () => structuredClone(state),
+    save: async (s) => {
+      state = structuredClone(s);
+    },
+    copyIn: async (_uri, id) => `queue/${id}`,
+    readBase64: async (uri) => uri,
+    exists: () => true,
+    remove: () => {},
+    // the first two get sorted, the rest hit the month's limit
+    upload: async () => ({ unclassifiedReason: n++ < 2 ? null : 'quota' }),
+    consent: async () => 'agreed',
+    tellMehh: () => {},
+    now: () => 0,
+    newId: () => `j${Math.random()}`,
+  });
+  await queue.enqueue(['a', 'b', 'c', 'd', 'e'], ['1', '2', '3', '4', '5']);
+  await queue.drain();
+  assert.deepEqual(await queue.takeUnreported(), { saved: 5, quota: 3 });
+  assert.deepEqual(await queue.takeUnreported(), { saved: 0, quota: 0 });
 });

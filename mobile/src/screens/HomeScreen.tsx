@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, AppState, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useShareIntent } from 'expo-share-intent';
 import { PolicyNotice } from '../components/PolicyNotice';
 import { parseMehhMarker } from '../native/mehh';
-import { discardUnreceivedShares, drainShareQueue, enqueueSharedImages, getDeclinedChoice, saveSharesWithoutAi, useShareQueue } from '../share/shareQueue';
+import { discardUnreceivedShares, drainShareQueue, enqueueSharedImages, getDeclinedChoice, saveSharesWithoutAi, takeUnreportedShares, useShareQueue } from '../share/shareQueue';
 import { splitLinkText } from '../data/linkText';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -40,6 +40,7 @@ const S = strings({
     trash: '휴지통',
     sharedSaving: (n: number) => `사진 ${n}장 저장 중`,
     sharedCopyFailed: '사진을 받지 못했어요',
+    mehhQuota: (saved: number, quota: number) => `Mehh 사진 ${saved}장 저장 · ${quota}장은 이번 달 AI 정리를 다 써서 미분류함에 넣어뒀어요`,
     sharedKept: (n: number) => `사진 ${n}장을 미분류함에 저장해요`,
     sharedNotKept: (n: number) => `사진 ${n}장은 저장하지 않았어요 · Mehh에 그대로 있어요`,
     sharedWaitingConsent: (n: number) => `사진 ${n}장 · 눌러서 저장 방법 고르기`,
@@ -80,6 +81,7 @@ const S = strings({
     trash: 'Trash',
     sharedSaving: (n: number) => `Saving ${n} photo${n === 1 ? '' : 's'}`,
     sharedCopyFailed: "Couldn't receive the photos",
+    mehhQuota: (saved: number, quota: number) => `Saved ${saved} Mehh photo${saved === 1 ? '' : 's'} · ${quota} went to Unsorted (AI sorting used up this month)`,
     sharedKept: (n: number) => `Keeping ${n} photo${n === 1 ? '' : 's'} in Unsorted`,
     sharedNotKept: (n: number) => `${n} photo${n === 1 ? '' : 's'} not saved · still in Mehh`,
     sharedWaitingConsent: (n: number) => `${n} photo${n === 1 ? '' : 's'} · tap to choose how to save`,
@@ -120,6 +122,7 @@ const S = strings({
     trash: 'ゴミ箱',
     sharedSaving: (n: number) => `写真${n}枚を保存中`,
     sharedCopyFailed: '写真を受け取れませんでした',
+    mehhQuota: (saved: number, quota: number) => `Mehhの写真${saved}枚を保存 · ${quota}件は今月のAI整理を使い切ったため未分類に入れました`,
     sharedKept: (n: number) => `写真${n}枚を未分類に保存します`,
     sharedNotKept: (n: number) => `写真${n}枚は保存しませんでした · Mehhに残っています`,
     sharedWaitingConsent: (n: number) => `写真${n}枚 · タップして保存方法を選ぶ`,
@@ -160,6 +163,7 @@ const S = strings({
     trash: '回收站',
     sharedSaving: (n: number) => `正在保存 ${n} 张照片`,
     sharedCopyFailed: '没能接收照片',
+    mehhQuota: (saved: number, quota: number) => `已保存 ${saved} 张 Mehh 照片 · ${quota} 项因本月 AI 整理已用完，已放入未分类`,
     sharedKept: (n: number) => `正在把 ${n} 张照片存入未分类`,
     sharedNotKept: (n: number) => `${n} 张照片未保存 · 仍在 Mehh 中`,
     sharedWaitingConsent: (n: number) => `${n} 张照片 · 点按选择保存方式`,
@@ -200,6 +204,7 @@ const S = strings({
     trash: '垃圾桶',
     sharedSaving: (n: number) => `正在儲存 ${n} 張照片`,
     sharedCopyFailed: '沒能接收照片',
+    mehhQuota: (saved: number, quota: number) => `已儲存 ${saved} 張 Mehh 照片 · ${quota} 項因本月 AI 整理已用完，已放入未分類`,
     sharedKept: (n: number) => `正在把 ${n} 張照片存入未分類`,
     sharedNotKept: (n: number) => `${n} 張照片未儲存 · 仍在 Mehh 中`,
     sharedWaitingConsent: (n: number) => `${n} 張照片 · 點按選擇儲存方式`,
@@ -366,6 +371,25 @@ export default function HomeScreen() {
     if (shareQueue.pending < lastPending.current) load();
     lastPending.current = shareQueue.pending;
   }, [shareQueue.pending, load]);
+  // Once the queue is idle (and whenever the app comes back), say once if
+  // shared photos landed in 미분류함 because the month's AI sorting ran out
+  // -- including ones saved in the background meanwhile.
+  const announceShares = React.useCallback(() => {
+    takeUnreportedShares()
+      .then(({ saved, quota }) => {
+        if (quota > 0) showToast(S.mehhQuota(saved, quota));
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (!shareQueue.running) announceShares();
+  }, [shareQueue.running, shareQueue.pending, announceShares]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') announceShares();
+    });
+    return () => sub.remove();
+  }, [announceShares]);
   useEffect(() => {
     if (!hasShareIntent) return;
     // Several images at once (ACTION_SEND_MULTIPLE, e.g. Mehh's screenshot

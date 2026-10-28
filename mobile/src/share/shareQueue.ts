@@ -63,7 +63,8 @@ const queue = createShareQueue({
   // The job id doubles as the save's request id: a re-upload after a
   // timeout that did land returns that item instead of making another.
   upload: async (base64, jobId) => {
-    await saveScreenshotItem('other', base64, undefined, jobId);
+    const item = await saveScreenshotItem('other', base64, undefined, jobId);
+    return { unclassifiedReason: item.classification_status === 'unclassified' ? item.unclassified_reason ?? null : null };
   },
   consent: async () => (await fetchPlan()).aiConsent ?? null,
   tellMehh: tellMehhReceived,
@@ -91,6 +92,8 @@ export const drainShareQueue = queue.drain;
 export const saveSharesWithoutAi = queue.saveWithoutAi;
 export const discardUnreceivedShares = queue.discardUnreceived;
 export const waitingShareCount = queue.waitingCount;
+// Home: how the shared photos landed since it last said so (then cleared).
+export const takeUnreportedShares = queue.takeUnreported;
 
 // What to do with Mehh photos when AI analysis is declined (decision M2,
 // C): the first answer to "미분류함에 저장할까요?" is remembered and applied

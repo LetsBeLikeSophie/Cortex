@@ -33,6 +33,15 @@ export interface Receipt {
 export interface QueueState {
   jobs: Job[];
   receipts: Receipt[];
+  // Saves not yet told to the person (Home says it once, then clears):
+  // how many landed, and how many of those went to 미분류함 because the
+  // month's AI sorting ran out. Background uploads count too.
+  unreported?: { saved: number; quota: number };
+}
+
+// What the server said about one saved photo.
+export interface UploadResult {
+  unclassifiedReason?: 'quota' | 'consent' | 'failed' | null;
 }
 
 export interface Progress {
@@ -51,7 +60,7 @@ export interface QueueDeps {
   remove(uri: string): void;
   // jobId goes along as the save's request id, so a retry of a save that
   // did land (timed out on the way back) doesn't make a second item.
-  upload(base64: string, jobId: string): Promise<void>;
+  upload(base64: string, jobId: string): Promise<UploadResult | void>;
   // The person's current answer. A failure to find out counts as "not
   // agreed" -- nothing is sent on a guess.
   consent(): Promise<Consent>;
@@ -116,7 +125,7 @@ export function createShareQueue(deps: QueueDeps) {
     });
     if (jobs.length === 0) return 0;
     const receipt: Receipt = { jobIds: jobs.map((j) => j.id), ...(mehhIds?.length === uris.length ? { mehhIds: ids } : null) };
-    const state = await update((s) => ({ jobs: [...s.jobs, ...jobs], receipts: [...s.receipts, receipt] }));
+    const state = await update((s) => ({ ...s, jobs: [...s.jobs, ...jobs], receipts: [...s.receipts, receipt] }));
     report({ pending: state.jobs.length });
     deps.schedule?.();
     return jobs.length;
@@ -193,7 +202,7 @@ export function createShareQueue(deps: QueueDeps) {
     await update((s) => {
       receipts = s.receipts;
       kept = s.jobs.filter((j) => !j.noAi).length;
-      return { jobs: s.jobs.map((j) => (j.noAi ? j : { ...j, noAi: true })), receipts: [] };
+      return { ...s, jobs: s.jobs.map((j) => (j.noAi ? j : { ...j, noAi: true })), receipts: [] };
     });
     for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
     if (kept > 0) deps.schedule?.();
@@ -210,13 +219,19 @@ export function createShareQueue(deps: QueueDeps) {
       report({ pending: s.jobs.length });
       return;
     }
+    let result: UploadResult | void;
     try {
-      await deps.upload(await deps.readBase64(job.uri), job.id);
+      result = await deps.upload(await deps.readBase64(job.uri), job.id);
     } catch {
       await update((st) => ({ ...st, jobs: st.jobs.map((j) => (j.id === job.id ? { ...j, attempts: j.attempts + 1 } : j)) }));
       return;
     }
-    const s = await update((st) => ({ ...st, jobs: st.jobs.filter((j) => j.id !== job.id) }));
+    const quota = result?.unclassifiedReason === 'quota' ? 1 : 0;
+    const s = await update((st) => ({
+      ...st,
+      jobs: st.jobs.filter((j) => j.id !== job.id),
+      unreported: { saved: (st.unreported?.saved ?? 0) + 1, quota: (st.unreported?.quota ?? 0) + quota },
+    }));
     report({ pending: s.jobs.length });
     try {
       deps.remove(job.uri);
@@ -233,7 +248,7 @@ export function createShareQueue(deps: QueueDeps) {
     const state = await update((s) => {
       const ids = new Set(s.receipts.flatMap((r) => r.jobIds));
       dropped = s.jobs.filter((j) => ids.has(j.id));
-      return { jobs: s.jobs.filter((j) => !ids.has(j.id)), receipts: [] };
+      return { ...s, jobs: s.jobs.filter((j) => !ids.has(j.id)), receipts: [] };
     });
     for (const j of dropped) {
       try {
@@ -245,5 +260,15 @@ export function createShareQueue(deps: QueueDeps) {
     return dropped.length;
   }
 
-  return { enqueue, drain, discardUnreceived, saveWithoutAi, waitingCount, progress: () => progress };
+  // The saves not yet told, cleared as they're handed over.
+  async function takeUnreported(): Promise<{ saved: number; quota: number }> {
+    let out = { saved: 0, quota: 0 };
+    await update((s) => {
+      out = s.unreported ?? out;
+      return { jobs: s.jobs, receipts: s.receipts };
+    });
+    return out;
+  }
+
+  return { enqueue, drain, discardUnreceived, saveWithoutAi, waitingCount, takeUnreported, progress: () => progress };
 }

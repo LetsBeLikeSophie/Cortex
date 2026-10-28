@@ -342,8 +342,11 @@ export default function SaveSheetScreen() {
     }
     return () => {
       const { text: last, status: end } = draftRef.current;
-      if (end === 'done' || (!openedByShare && !last.trim())) AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
-      else if (!openedByShare) AsyncStorage.setItem(DRAFT_KEY, last).catch(() => {});
+      // A sheet opened by a share never touches the "+" draft -- saving a
+      // shared link mustn't wipe a thought kept from earlier.
+      if (openedByShare) return;
+      if (end === 'done' || !last.trim()) AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
+      else AsyncStorage.setItem(DRAFT_KEY, last).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

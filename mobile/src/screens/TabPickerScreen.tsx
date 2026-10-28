@@ -23,7 +23,7 @@ import { strings } from '../i18n';
 const S = strings({
   ko: {
     title: '홈 화면 탭',
-    sub: '보여줄 태그를 검색해서 골라주세요. 즐겨찾기 탭은 항상 남아있어요.',
+    sub: '홈에 보여줄 태그를 골라요',
     cleanup: '✦ 태그 정리하기',
     search: '태그 검색',
     noTags: '아직 저장된 태그가 없어요.',
@@ -31,7 +31,7 @@ const S = strings({
   },
   en: {
     title: 'Home tabs',
-    sub: 'Search and pick tags to show. Favorites always stays.',
+    sub: 'Pick tags to show on Home',
     cleanup: '✦ Tidy up tags',
     search: 'Search tags',
     noTags: 'No tags yet.',
@@ -39,7 +39,7 @@ const S = strings({
   },
   ja: {
     title: 'ホームのタブ',
-    sub: '表示するタグを検索して選んでください。お気に入りタブは常に残ります。',
+    sub: 'ホームに出すタグを選びます',
     cleanup: '✦ タグを整理',
     search: 'タグを検索',
     noTags: 'まだタグがありません。',
@@ -47,7 +47,7 @@ const S = strings({
   },
   'zh-Hans': {
     title: '首页标签页',
-    sub: '搜索并选择要显示的标签。星标标签页会一直保留。',
+    sub: '选择要在首页显示的标签',
     cleanup: '✦ 整理标签',
     search: '搜索标签',
     noTags: '还没有标签。',
@@ -55,7 +55,7 @@ const S = strings({
   },
   'zh-Hant': {
     title: '首頁分頁',
-    sub: '搜尋並選擇要顯示的標籤。星號分頁會一直保留。',
+    sub: '選擇要在首頁顯示的標籤',
     cleanup: '✦ 整理標籤',
     search: '搜尋標籤',
     noTags: '還沒有標籤。',

@@ -21,6 +21,7 @@ import { MONO, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle, composeMaterials } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
+import { fieldStyle } from '../components/Fields';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { LockIcon, ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
@@ -75,14 +76,14 @@ const S = strings({
     lockFailed: (e: string) => `잠금을 바꾸지 못했어요: ${e}`,
     bioPrompt: '잠긴 메모 열기',
     open: '열기',
-    lockedBody: '비밀번호나 지문으로 열 수 있어요. 잠긴 메모는 AI 검색과 모아서 만들기에서 빠져요.',
+    lockedBody: '비밀번호나 지문으로 열어요',
     lockedTitle: '잠긴 메모예요',
     unlock: '잠금 풀기',
     lock: '메모 잠그기',
     reportFailed: (e: string) => `신고하지 못했어요: ${e}`,
     reported: '신고했어요. 확인할게요.',
     reportSend: '신고',
-    reportBody: '부적절하거나 잘못된 제목·메모·태그를 알려주세요. 운영자가 확인해요.',
+    reportBody: '잘못된 AI 결과를 알려주세요',
     reportTitle: 'AI가 만든 내용을 신고할까요?',
     report: 'AI 결과 신고',
     organizing: 'AI가 정리하는 중...',
@@ -135,14 +136,14 @@ const S = strings({
     lockFailed: (e: string) => `Couldn't change the lock: ${e}`,
     bioPrompt: 'Open locked memo',
     open: 'Open',
-    lockedBody: 'Open it with your PIN or fingerprint. Locked memos are left out of AI search and Combine.',
+    lockedBody: 'Open with your PIN or fingerprint',
     lockedTitle: 'This memo is locked',
     unlock: 'Unlock memo',
     lock: 'Lock memo',
     reportFailed: (e: string) => `Couldn't report: ${e}`,
     reported: "Reported. Thanks, we'll take a look.",
     reportSend: 'Report',
-    reportBody: 'Tell us if a title, memo or tag is wrong or inappropriate. We review every report.',
+    reportBody: 'Tell us what the AI got wrong',
     reportTitle: 'Report what the AI wrote?',
     report: 'Report AI result',
     organizing: 'AI is sorting...',
@@ -195,14 +196,14 @@ const S = strings({
     lockFailed: (e: string) => `ロックを変更できませんでした: ${e}`,
     bioPrompt: 'ロックされたメモを開く',
     open: '開く',
-    lockedBody: '暗証番号か指紋で開けます。ロック中のメモはAI検索と「まとめて作る」から外れます。',
+    lockedBody: '暗証番号か指紋で開けます',
     lockedTitle: 'ロックされたメモです',
     unlock: 'ロックを解除',
     lock: 'メモをロック',
     reportFailed: (e: string) => `報告できませんでした: ${e}`,
     reported: '報告しました。確認します。',
     reportSend: '報告',
-    reportBody: '不適切・誤ったタイトル、メモ、タグをお知らせください。運営が確認します。',
+    reportBody: 'AIの誤りをお知らせください',
     reportTitle: 'AIが作った内容を報告しますか？',
     report: 'AI結果を報告',
     organizing: 'AIが整理中...',
@@ -255,14 +256,14 @@ const S = strings({
     lockFailed: (e: string) => `无法更改锁定：${e}`,
     bioPrompt: '打开锁定的笔记',
     open: '打开',
-    lockedBody: '可用密码或指纹打开。锁定的笔记不会用于 AI 搜索和汇总生成。',
+    lockedBody: '用密码或指纹打开',
     lockedTitle: '这条笔记已锁定',
     unlock: '解除锁定',
     lock: '锁定笔记',
     reportFailed: (e: string) => `举报失败：${e}`,
     reported: '已举报，我们会查看。',
     reportSend: '举报',
-    reportBody: '如果标题、笔记或标签不当或有误，请告诉我们。我们会逐一查看。',
+    reportBody: '告诉我们 AI 哪里出错了',
     reportTitle: '要举报 AI 生成的内容吗？',
     report: '举报 AI 结果',
     organizing: 'AI 整理中...',
@@ -315,14 +316,14 @@ const S = strings({
     lockFailed: (e: string) => `無法變更鎖定：${e}`,
     bioPrompt: '開啟鎖定的筆記',
     open: '開啟',
-    lockedBody: '可用密碼或指紋開啟。鎖定的筆記不會用於 AI 搜尋和彙整生成。',
+    lockedBody: '用密碼或指紋開啟',
     lockedTitle: '這則筆記已鎖定',
     unlock: '解除鎖定',
     lock: '鎖定筆記',
     reportFailed: (e: string) => `檢舉失敗：${e}`,
     reported: '已檢舉，我們會查看。',
     reportSend: '檢舉',
-    reportBody: '如果標題、筆記或標籤不當或有誤，請告訴我們。我們會逐一查看。',
+    reportBody: '告訴我們 AI 哪裡出錯了',
     reportTitle: '要檢舉 AI 產生的內容嗎？',
     report: '檢舉 AI 結果',
     organizing: 'AI 整理中...',
@@ -1075,10 +1076,11 @@ export default function ItemDetailScreen() {
           {/* The person's own words -- kept visually distinct (italic,
               accent) from the AI memo above, since it isn't generated. */}
           {item.capture_type !== 'text' && (
-            <View style={styles.editRow}>
+            // Dressed as a field (like 태그 검색), so it reads as a place to type.
+            <View style={[styles.editRow, styles.fieldRow, fieldStyle(theme)]}>
               <View style={styles.flex1}>
                 {/* The person's own words: ink (accent is reserved for AI/status). */}
-                {inlineInput('userNote', [styles.body, { color: theme.ink, fontStyle: 'italic' }], S.myNotePlaceholder)}
+                {inlineInput('userNote', [styles.body, styles.inField, { color: theme.ink, fontStyle: 'italic' }], S.myNotePlaceholder)}
               </View>
               {voiceButton('userNote')}
             </View>
@@ -1105,8 +1107,8 @@ export default function ItemDetailScreen() {
                 />
               </Pressable>
             ) : (
-              <View style={styles.editRow}>
-                <View style={styles.flex1}>{inlineInput('rawText', [styles.body, { color: theme.ink }], S.bodyPlaceholder)}</View>
+              <View style={[styles.editRow, styles.fieldRow, fieldStyle(theme)]}>
+                <View style={styles.flex1}>{inlineInput('rawText', [styles.body, styles.inField, { color: theme.ink }], S.bodyPlaceholder)}</View>
                 {voiceButton('rawText')}
               </View>
             ))}
@@ -1236,6 +1238,10 @@ const styles = StyleSheet.create({
   // Placed under the mirror's top margin (top is set per field).
   inlineWebFill: { position: 'absolute', left: 0, right: 0, bottom: 0, marginTop: 0, overflow: 'hidden' } as object,
   editRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  // Padding for a text field box; fieldStyle drops it for the line and
+  // vintage layouts, which write on an underline / the card's ruling.
+  fieldRow: { marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
+  inField: { marginTop: 0 },
   flex1: { flex: 1 },
   aiMemo: { marginTop: 16 },
   composedNote: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 10 },

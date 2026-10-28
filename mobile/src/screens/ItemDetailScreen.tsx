@@ -31,6 +31,7 @@ import { VoiceInputButton } from '../components/VoiceInputButton';
 import { Heading } from '../components/Typography';
 import type { ApiItem } from '../api/client';
 import type { RootStackParamList } from '../navigation/types';
+import { showToast } from '../native/toast';
 import { strings } from '../i18n';
 import { COMMON, categoryLabel } from '../i18n/common';
 import { LOCK_SUPPORTED, askPin, hasPin } from '../lock/memoLock';
@@ -66,7 +67,8 @@ const S = strings({
     showSources: (n: number) => `원본 메모 ${n}개 보기`,
     notInMemo: (n: number) => `글에 안 나온 메모 ${n}개`,
     loading: '불러오는 중...',
-    sourcesDeleted: (n: number) => `${n}개는 지워졌어요`,
+    sourcesDeleted: (n: number) => `${n}개는 휴지통에 있거나 지워졌어요`,
+    sourceMissing: '이 원본은 휴지통에 있거나 지워졌어요 · 휴지통에서 복원할 수 있어요',
     trashTitle: '휴지통으로 이동할까요?',
     trashBody: '나중에 홈 위쪽 휴지통에서 복원할 수 있어요.',
     deleteFailed: (e: string) => `삭제 실패: ${e}`,
@@ -125,7 +127,8 @@ const S = strings({
     showSources: (n: number) => `Show ${n} source items`,
     notInMemo: (n: number) => `${n} not in the memo`,
     loading: 'Loading...',
-    sourcesDeleted: (n: number) => `${n} deleted`,
+    sourcesDeleted: (n: number) => `${n} in the trash or deleted`,
+    sourceMissing: 'This source is in the trash or deleted · you can restore it from the trash',
     trashTitle: 'Move to trash?',
     trashBody: 'You can restore it from the trash at the top of Home.',
     deleteFailed: (e: string) => `Couldn't delete: ${e}`,
@@ -184,7 +187,8 @@ const S = strings({
     showSources: (n: number) => `元のメモ${n}件を見る`,
     notInMemo: (n: number) => `本文にないメモ${n}件`,
     loading: '読み込み中...',
-    sourcesDeleted: (n: number) => `${n}件は削除されました`,
+    sourcesDeleted: (n: number) => `${n}件はゴミ箱にあるか削除されました`,
+    sourceMissing: 'この元のメモはゴミ箱にあるか削除されました · ゴミ箱から復元できます',
     trashTitle: 'ゴミ箱に移動しますか？',
     trashBody: 'あとでホーム上部のゴミ箱から復元できます。',
     deleteFailed: (e: string) => `削除できませんでした: ${e}`,
@@ -243,7 +247,8 @@ const S = strings({
     showSources: (n: number) => `查看 ${n} 项原始内容`,
     notInMemo: (n: number) => `正文未提到的 ${n} 项`,
     loading: '加载中...',
-    sourcesDeleted: (n: number) => `${n} 项已删除`,
+    sourcesDeleted: (n: number) => `${n} 项在回收站或已删除`,
+    sourceMissing: '这条原始内容在回收站或已删除 · 可以从回收站恢复',
     trashTitle: '移到回收站？',
     trashBody: '之后可以在首页上方的回收站恢复。',
     deleteFailed: (e: string) => `删除失败：${e}`,
@@ -302,7 +307,8 @@ const S = strings({
     showSources: (n: number) => `查看 ${n} 項原始內容`,
     notInMemo: (n: number) => `內文未提到的 ${n} 項`,
     loading: '載入中...',
-    sourcesDeleted: (n: number) => `${n} 項已刪除`,
+    sourcesDeleted: (n: number) => `${n} 項在垃圾桶或已刪除`,
+    sourceMissing: '這則原始內容在垃圾桶或已刪除 · 可以從垃圾桶復原',
     trashTitle: '移到垃圾桶？',
     trashBody: '之後可以在首頁上方的垃圾桶還原。',
     deleteFailed: (e: string) => `刪除失敗：${e}`,
@@ -439,6 +445,8 @@ export default function ItemDetailScreen() {
   const openSource = (n: number) => {
     const src = sourceAt(n);
     if (src) navigation.push('ItemDetail', { item: src });
+    // Loaded, but not among them: trashed (or gone) -- say so, not nothing.
+    else if (sources) showToast(S.sourceMissing);
   };
   // Where the memo body starts in the scroll view, and each ref's line in
   // it -- tapping a linked source in the list scrolls the memo there.

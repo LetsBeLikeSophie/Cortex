@@ -332,8 +332,11 @@ export default function ComposeScreen() {
         refreshPlan();
       } else if (err instanceof Error && /abort/i.test(err.message)) {
         // Timed out here, but the server likely still finishes (and counts
-        // it): "try again" would make a second memo -- say wait instead.
-        setError(S.slowToast(pickedTag));
+        // it): pressing 만들기 again would make a second memo. Same as after
+        // closing -- a toast to check the tab later, and the sheet goes.
+        showToast(S.slowToast(pickedTag));
+        close();
+        return;
       } else {
         setError(friendlyError(err));
       }

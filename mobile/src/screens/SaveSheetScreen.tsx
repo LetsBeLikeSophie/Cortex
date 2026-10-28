@@ -223,6 +223,8 @@ const S = strings({
 type Status = 'input' | 'saving' | 'done' | 'error';
 
 const DRAFT_KEY = 'cortex.saveDraft';
+// The server's limit for a save's note (IncomingItemSchema).
+const NOTE_MAX = 200;
 
 // No reliable way to know which app a share came from (Android's generic
 // ACTION_SEND doesn't carry the sender's identity), but a link's own domain
@@ -330,6 +332,7 @@ export default function SaveSheetScreen() {
   // opens from "+" (no share). A successful save clears it. Shared-in text
   // is never kept -- it can just be shared again.
   const openedByShare = !!(route.params?.sharedText || route.params?.sharedUrl || route.params?.sharedImageUri || route.params?.sharedImageUris?.length);
+  const longDraft = useRef<string | null>(null);
   const draftRef = useRef({ text, status });
   draftRef.current = { text, status };
   useEffect(() => {
@@ -342,6 +345,11 @@ export default function SaveSheetScreen() {
     }
     return () => {
       const { text: last, status: end } = draftRef.current;
+      // Typed text too long to become a photo's note: kept whatever happens.
+      if (longDraft.current) {
+        AsyncStorage.setItem(DRAFT_KEY, longDraft.current).catch(() => {});
+        return;
+      }
       // A sheet opened by a share never touches the "+" draft -- saving a
       // shared link mustn't wipe a thought kept from earlier.
       if (openedByShare) return;
@@ -401,12 +409,25 @@ export default function SaveSheetScreen() {
     if (!asset) return;
     const base64 = asset.base64 ?? (await new File(asset.uri).base64().catch(() => null));
     if (!base64) return;
-    setText('');
+    carryTextToNote();
     setLinkUrl(null);
-    setNote('');
     setSelectedScreenshots([]);
     setStatus('input');
     setImage({ base64, previewUri: asset.uri });
+  };
+
+  // Picking one photo turns the sheet into a photo save, whose box is the
+  // note -- so what was typed moves there (a note holds 200). Longer text
+  // isn't cut: it's kept as the "+" draft instead (UX-78).
+  const carryTextToNote = () => {
+    const typed = text.trim();
+    if (typed.length > NOTE_MAX) {
+      longDraft.current = typed;
+      setNote('');
+    } else {
+      setNote(typed);
+    }
+    setText('');
   };
 
   const takePhoto = async () => {
@@ -418,9 +439,8 @@ export default function SaveSheetScreen() {
     const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.8 });
     const asset = result.canceled ? null : result.assets[0];
     if (!asset?.base64) return;
-    setText('');
+    carryTextToNote();
     setLinkUrl(null);
-    setNote('');
     setSelectedScreenshots([]);
     setStatus('input');
     setImage({ base64: asset.base64, previewUri: asset.uri });

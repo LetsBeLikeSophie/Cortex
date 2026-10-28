@@ -9,6 +9,7 @@ import { ApiItem, fetchTrash, permanentlyDeleteItem, restoreItem, friendlyError 
 import { relativeTime, itemTitle } from '../api/format';
 import { RestoreIcon, TrashIcon, LockIcon } from '../components/Icons';
 import { AsyncStateView } from '../components/AsyncStateView';
+import { PhotoThumb } from '../components/PhotoThumb';
 import { Card, isBoxed, screenGutter } from '../components/Card';
 import { showToast } from '../native/toast';
 import { ConfirmCard } from '../components/ConfirmCard';
@@ -133,12 +134,16 @@ function TrashRow({
   return (
     <Card theme={theme} style={styles.row}>
       {/* Same marks as the lists (rule 2026-10-26: one state, one mark). */}
-      <View style={styles.titleLine}>
-        {item.locked && <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />}
-        <Text style={[styles.title, styles.titleText, { color: theme.ink }]} numberOfLines={2}>
-          {item.composed_from?.length ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
-          {itemTitle(item)}
-        </Text>
+      <View style={styles.titleRow}>
+        <View style={[styles.titleLine, styles.titleText]}>
+          {item.locked && <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />}
+          <Text style={[styles.title, styles.titleText, { color: theme.ink }]} numberOfLines={2}>
+            {item.composed_from?.length ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
+            {itemTitle(item)}
+          </Text>
+        </View>
+        {/* Which photo it was, to find the one to restore (decision C1). */}
+        {item.capture_type === 'screenshot' && !item.locked && <PhotoThumb itemId={item.id} theme={theme} />}
       </View>
       <Text style={[styles.meta, { color: theme.sub }]}>
         {item.deleted_at ? S.deletedAgo(relativeTime(item.deleted_at)) : ''}
@@ -239,6 +244,7 @@ export default function TrashScreen() {
 }
 
 const styles = StyleSheet.create({
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   titleLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   titleText: { flexShrink: 1 },
   screen: { flex: 1 },

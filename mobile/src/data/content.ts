@@ -15,6 +15,8 @@ export interface RecentItem {
   composed?: boolean;
   // Memo lock: marked with a lock icon, title only.
   locked?: boolean;
+  // A 미분류 photo: its id, for a small preview (titles can't tell them apart).
+  thumbId?: string;
 }
 
 export interface SearchResult {

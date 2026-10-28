@@ -61,6 +61,7 @@ export function toRecentItem(item: ApiItem, index: number): RecentItem {
     pending,
     composed: (item.composed_from?.length ?? 0) > 0,
     locked: !!item.locked,
+    thumbId: item.capture_type === 'screenshot' && item.classification_status === 'unclassified' && !item.locked ? item.id : undefined,
   };
 }
 

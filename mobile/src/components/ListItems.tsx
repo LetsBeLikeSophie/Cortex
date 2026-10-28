@@ -6,6 +6,7 @@ import { RecentItem, SearchResult } from '../data/content';
 import { captureTypeLabel } from '../api/format';
 import { SourceIcon, CheckIcon, LockIcon } from './Icons';
 import { LayeredBack } from './Decor';
+import { PhotoThumb } from './PhotoThumb';
 import { LAYERED_BACK_OFFSET, cardShellStyle } from './Card';
 import { strings } from '../i18n';
 
@@ -124,6 +125,7 @@ export function RecentRow({
           <MetaLine item={item} theme={theme} />
         </View>
       </View>
+      {item.thumbId && <PhotoThumb itemId={item.thumbId} theme={theme} />}
     </Pressable>
   );
 

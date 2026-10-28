@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { ApiItem, fetchTrash, permanentlyDeleteItem, restoreItem, friendlyError } from '../api/client';
 import { relativeTime, itemTitle } from '../api/format';
-import { RestoreIcon, TrashIcon } from '../components/Icons';
+import { RestoreIcon, TrashIcon, LockIcon } from '../components/Icons';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { Card, isBoxed, screenGutter } from '../components/Card';
 import { showToast } from '../native/toast';
@@ -132,9 +132,14 @@ function TrashRow({
 
   return (
     <Card theme={theme} style={styles.row}>
-      <Text style={[styles.title, { color: theme.ink }]} numberOfLines={2}>
-        {itemTitle(item)}
-      </Text>
+      {/* Same marks as the lists (rule 2026-10-26: one state, one mark). */}
+      <View style={styles.titleLine}>
+        {item.locked && <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />}
+        <Text style={[styles.title, styles.titleText, { color: theme.ink }]} numberOfLines={2}>
+          {item.composed_from?.length ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
+          {itemTitle(item)}
+        </Text>
+      </View>
       <Text style={[styles.meta, { color: theme.sub }]}>
         {item.deleted_at ? S.deletedAgo(relativeTime(item.deleted_at)) : ''}
         {S.savedOn(savedDay(item.shared_at))}
@@ -234,6 +239,8 @@ export default function TrashScreen() {
 }
 
 const styles = StyleSheet.create({
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  titleText: { flexShrink: 1 },
   screen: { flex: 1 },
   row: { gap: 6 },
   title: { fontSize: 15, lineHeight: 21, fontFamily: BODY_KR_MEDIUM },

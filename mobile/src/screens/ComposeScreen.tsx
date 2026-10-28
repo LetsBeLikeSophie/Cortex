@@ -325,6 +325,10 @@ export default function ComposeScreen() {
       } else if (code === 'ai_consent') {
         // Not a failure: the consent sheet is opening.
         refreshPlan();
+      } else if (err instanceof Error && /abort/i.test(err.message)) {
+        // Timed out here, but the server likely still finishes (and counts
+        // it): "try again" would make a second memo -- say wait instead.
+        setError(S.slowToast(pickedTag));
       } else {
         setError(friendlyError(err));
       }

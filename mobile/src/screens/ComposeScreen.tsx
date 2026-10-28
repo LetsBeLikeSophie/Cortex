@@ -280,7 +280,7 @@ export default function ComposeScreen() {
   const remakeFree = !!retryOf && !!freeRemake;
   const materials = itemIds && count === undefined ? itemIds.length : tagCount;
   // Fewer than 2 usable memos: the server would refuse, so don't offer it.
-  const tooFew = !retryOf && materials !== null && materials < 2;
+  const tooFew = materials !== null && materials < 2;
 
   const make = async () => {
     if (!remakeFree && left === 0) {
@@ -359,7 +359,7 @@ export default function ComposeScreen() {
           {/* A remake replaces this very memo -- say so, and that hand edits go too. */}
           {retryOf ? S.replaces + (remakeBefore?.edited ? S.editsToo : '') + ' · ' : ''}
           {tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
-          {!retryOf && lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
+          {lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}
           {retryOf ? (remakeFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}

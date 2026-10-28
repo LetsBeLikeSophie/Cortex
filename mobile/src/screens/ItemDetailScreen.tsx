@@ -19,7 +19,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
-import { relativeTime, sourceLabel, captureTypeLabel, itemTitle } from '../api/format';
+import { relativeTime, sourceLabel, captureTypeLabel, itemTitle, composeMaterials } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { LockIcon, ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
@@ -901,7 +901,11 @@ export default function ItemDetailScreen() {
                 onPress={() =>
                   navigation.replace('Compose', {
                     tag: composeInfo.tag,
-                    count: composeInfo.count,
+                    // What a remake can still use: sources since trashed or
+                    // locked are out (server rule). Unknown until loaded.
+                    ...(sources && sources.length > 0
+                      ? { count: composeMaterials(sources).usable.length, lockedOut: composeMaterials(sources).locked }
+                      : { count: composeInfo.count }),
                     retryOf: item.id,
                     freeRemake: composeInfo.freeRemake,
                     remakeBefore: { title: savedRef.current.title, rawText: savedRef.current.rawText, edited: handEdited.current },

@@ -52,6 +52,8 @@ const S = strings({
     clearLink: '지우고 직접 입력',
     memoBulkPlaceholder: '고른 사진들에 같이 남길 메모 (선택) — 예: 제주 여행 맛집들',
     memoPlaceholder: '예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래',
+    draftWaiting: '적던 글 있음 · ',
+    draftLoad: '눌러서 불러오기',
     pickAlbum: '앨범에서 선택',
     takePhoto: '카메라로 촬영',
     selectedCount: (n: number) => `${n}장 선택됨`,
@@ -87,6 +89,8 @@ const S = strings({
     clearLink: 'Clear and type instead',
     memoBulkPlaceholder: 'A note for all these photos (optional) — e.g. Jeju food spots',
     memoPlaceholder: 'e.g. That new croffle place in Seongsu is amazing',
+    draftWaiting: 'Unfinished note · ',
+    draftLoad: 'tap to bring it back',
     pickAlbum: 'Pick from album',
     takePhoto: 'Take a photo',
     selectedCount: (n: number) => `${n} selected`,
@@ -122,6 +126,8 @@ const S = strings({
     clearLink: '消して直接入力',
     memoBulkPlaceholder: '選んだ写真に付けるメモ(任意) — 例: 済州旅行のグルメ',
     memoPlaceholder: '例: 聖水にできたクロッフルの店、すごく美味しいらしい',
+    draftWaiting: '書きかけのメモあり · ',
+    draftLoad: 'タップで呼び出す',
     pickAlbum: 'アルバムから選ぶ',
     takePhoto: 'カメラで撮る',
     selectedCount: (n: number) => `${n}枚選択中`,
@@ -157,6 +163,8 @@ const S = strings({
     clearLink: '清除并手动输入',
     memoBulkPlaceholder: '给所选照片一起加备注（可选）— 例：济州旅行美食',
     memoPlaceholder: '例：圣水洞新开的可颂华夫店超好吃',
+    draftWaiting: '有未写完的内容 · ',
+    draftLoad: '点按恢复',
     pickAlbum: '从相册选择',
     takePhoto: '拍照',
     selectedCount: (n: number) => `已选 ${n} 张`,
@@ -192,6 +200,8 @@ const S = strings({
     clearLink: '清除並手動輸入',
     memoBulkPlaceholder: '為所選照片一起加備註（選填）— 例：濟州旅行美食',
     memoPlaceholder: '例：聖水洞新開的可頌鬆餅店超好吃',
+    draftWaiting: '有未寫完的內容 · ',
+    draftLoad: '點按恢復',
     pickAlbum: '從相簿選擇',
     takePhoto: '拍照',
     selectedCount: (n: number) => `已選 ${n} 張`,
@@ -335,11 +345,18 @@ export default function SaveSheetScreen() {
   const longDraft = useRef<string | null>(null);
   const draftRef = useRef({ text, status });
   draftRef.current = { text, status };
+  // The kept draft isn't poured into the box (decision S1, C): someone
+  // opening "+" for a new thought would stop at "when did I write this?",
+  // and with photos picked it would become every photo's note. It's offered
+  // instead -- a line in the empty box's place, tap to bring it back.
+  const [offeredDraft, setOfferedDraft] = useState<string | null>(null);
+  const offeredRef = useRef<string | null>(null);
+  offeredRef.current = offeredDraft;
   useEffect(() => {
     if (!openedByShare) {
       AsyncStorage.getItem(DRAFT_KEY)
         .then((draft) => {
-          if (draft) setText((current) => current || draft);
+          if (draft) setOfferedDraft(draft);
         })
         .catch(() => {});
     }
@@ -353,6 +370,12 @@ export default function SaveSheetScreen() {
       // A sheet opened by a share never touches the "+" draft -- saving a
       // shared link mustn't wipe a thought kept from earlier.
       if (openedByShare) return;
+      // Still only offered (not brought back): it stays for next time,
+      // unless something new was typed and left unsaved -- that's newer.
+      if (offeredRef.current !== null) {
+        if (end !== 'done' && last.trim()) AsyncStorage.setItem(DRAFT_KEY, last).catch(() => {});
+        return;
+      }
       if (end === 'done' || !last.trim()) AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
       else AsyncStorage.setItem(DRAFT_KEY, last).catch(() => {});
     };
@@ -687,6 +710,22 @@ ${sharedNote ?? ''}`;
                 </View>
                 </View>
 
+                {offeredDraft !== null && !text.trim() && selectedScreenshots.length === 0 && (
+                  <Pressable
+                    onPress={() => {
+                      setText(offeredDraft);
+                      setOfferedDraft(null);
+                    }}
+                    hitSlop={6}
+                    style={styles.draftLine}
+                  >
+                    <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>
+                      {S.draftWaiting}
+                      <Text style={{ color: theme.ink, fontFamily: BODY_KR_MEDIUM }}>{S.draftLoad}</Text>
+                    </Text>
+                  </Pressable>
+                )}
+
                 {/* Same pill shape + border convention as GhostButton (the
                     bottom 취소/저장 row) -- just not the component itself,
                     since GhostButton's full size/label scale was built for
@@ -1000,6 +1039,7 @@ ${sharedNote ?? ''}`;
 }
 
 const styles = StyleSheet.create({
+  draftLine: { marginTop: 8 },
   flexShrink: { flexShrink: 1 },
   photoButtonRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
   photoButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },

@@ -9,7 +9,9 @@ export type RootStackParamList = {
   Tabs: undefined;
   // Both optional: present when this sheet was opened via the OS share
   // sheet (expo-share-intent) instead of the in-app "+" button.
-  SaveSheet: { sharedText?: string; sharedUrl?: string; sharedNote?: string; sharedImageUri?: string; sharedImageUris?: string[] } | undefined;
+  // shareId: one per incoming share -- a new id makes a new sheet (see
+  // RootNavigator's getId), so a second share never lands in an open one.
+  SaveSheet: { shareId?: string; sharedText?: string; sharedUrl?: string; sharedNote?: string; sharedImageUri?: string; sharedImageUris?: string[] } | undefined;
   ThemePicker: undefined;
   AiConsent: undefined;
   TabPicker: undefined;

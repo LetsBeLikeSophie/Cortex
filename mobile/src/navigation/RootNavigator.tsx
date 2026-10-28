@@ -142,7 +142,10 @@ export default function RootNavigator() {
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Trash" component={TrashScreen} />
         <Stack.Group screenOptions={{ presentation: 'transparentModal', animation: 'fade', animationDuration: 180 }}>
-          <Stack.Screen name="SaveSheet" component={SaveSheetScreen} />
+          {/* A share while a sheet is open (its done card, half-typed, or still
+              saving) opens a sheet of its own: the open one only read its
+              params when it mounted, so updating them dropped the share. */}
+          <Stack.Screen name="SaveSheet" component={SaveSheetScreen} getId={({ params }) => params?.shareId} />
           <Stack.Screen name="ThemePicker" component={ThemePickerScreen} />
           <Stack.Screen name="TabPicker" component={TabPickerScreen} />
           <Stack.Screen name="ItemDetail" component={ItemDetailScreen} />

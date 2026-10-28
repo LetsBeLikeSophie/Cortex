@@ -414,6 +414,7 @@ export default function HomeScreen() {
     // now they prefill the link's note.
     const linkNote = images.length === 0 && shareIntent.webUrl && shareIntent.text ? splitLinkText(shareIntent.text)?.note : undefined;
     navigation.navigate('SaveSheet', {
+      shareId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       sharedImageUri: images.length === 1 ? images[0].path : undefined,
       sharedImageUris: images.length > 1 ? images.map((f) => f.path) : undefined,
       sharedUrl: images.length > 0 ? undefined : shareIntent.webUrl ?? undefined,

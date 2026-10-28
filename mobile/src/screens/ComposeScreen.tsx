@@ -30,6 +30,7 @@ const S = strings({
     tooFew: '메모가 2개 이상 있어야 해요',
     needTwo: (n: number) => `메모가 2개 이상 있어야 해요 · 지금 ${n}개`,
     lockedOut: (n: number) => ` · 잠긴 메모 ${n}개는 빠져요`,
+    recentFifty: ' · 최근 50개만',
     composedOut: (n: number) => ` · 모아서 만든 메모 ${n}개는 빠져요`,
     expired: '시간이 지나 결과가 사라졌어요. 다시 만들어 주세요.',
     previewLabel: (n: number) => `미리보기 · 메모 ${n}개로 만들었어요`,
@@ -69,6 +70,7 @@ const S = strings({
     tooFew: 'You need at least 2 items',
     needTwo: (n: number) => `You need at least 2 items · now ${n}`,
     lockedOut: (n: number) => ` · ${n} locked memo${n === 1 ? '' : 's'} left out`,
+    recentFifty: ' · newest 50 only',
     composedOut: (n: number) => ` · ${n} combined memo${n === 1 ? '' : 's'} left out`,
     expired: 'The result expired. Please make it again.',
     previewLabel: (n: number) => `Preview · made from ${n} items`,
@@ -108,6 +110,7 @@ const S = strings({
     tooFew: 'メモが2つ以上必要です',
     needTwo: (n: number) => `メモが2つ以上必要です · 今は${n}件`,
     lockedOut: (n: number) => ` · ロック中のメモ${n}件は除きます`,
+    recentFifty: ' · 最新の50件のみ',
     composedOut: (n: number) => ` · まとめメモ${n}件は除きます`,
     expired: '時間が経って結果が消えました。もう一度作ってください。',
     previewLabel: (n: number) => `プレビュー · メモ${n}件から作りました`,
@@ -147,6 +150,7 @@ const S = strings({
     tooFew: '至少需要 2 项收藏内容',
     needTwo: (n: number) => `至少需要 2 项收藏内容 · 目前 ${n} 项`,
     lockedOut: (n: number) => ` · 不含 ${n} 条已锁定的备注`,
+    recentFifty: ' · 仅最近 50 项',
     composedOut: (n: number) => ` · 不含 ${n} 条汇总笔记`,
     expired: '时间太久，结果已失效。请重新生成。',
     previewLabel: (n: number) => `预览 · 由 ${n} 项收藏内容生成`,
@@ -186,6 +190,7 @@ const S = strings({
     tooFew: '至少需要 2 項收藏內容',
     needTwo: (n: number) => `至少需要 2 項收藏內容 · 目前 ${n} 項`,
     lockedOut: (n: number) => ` · 不含 ${n} 則已鎖定的備註`,
+    recentFifty: ' · 僅最近 50 項',
     composedOut: (n: number) => ` · 不含 ${n} 則彙整筆記`,
     expired: '時間太久，結果已失效。請重新產生。',
     previewLabel: (n: number) => `預覽 · 由 ${n} 項收藏內容產生`,
@@ -260,19 +265,24 @@ export default function ComposeScreen() {
   // consent sheet instead (rule 2026-10-26).
   const noAiConsent = !!plan && plan.aiConsent !== 'agreed';
 
-  // Opened from a detail or search (no count): ask how many the tag has.
+  // A whole tag: count it the way the server will use it -- its newest 50,
+  // minus locked and earlier composed memos. One past 50 is asked for only
+  // to know whether older ones are left out (decision C3: say so).
+  const [overFifty, setOverFifty] = useState(false);
   useEffect(() => {
-    if (itemIds || retryOf || (count !== undefined && pickedTag === tag)) return;
-    setTagCount(null);
-    setLockedCount(0);
+    if (itemIds || retryOf) return;
+    if (pickedTag !== tag || count === undefined) {
+      setTagCount(null);
+      setLockedCount(0);
+    }
     let cancelled = false;
-    fetchItemsWithTag(pickedTag, 50)
+    fetchItemsWithTag(pickedTag, 51)
       .then((res) => {
         if (cancelled) return;
-        // Counted the server's way: locked and earlier composed memos are out.
-        const m = composeMaterials(res.items);
+        const m = composeMaterials(res.items.slice(0, 50));
         setTagCount(m.usable.length);
         setLockedCount(m.locked);
+        setOverFifty(res.items.length > 50);
       })
       .catch(() => {});
     return () => {
@@ -372,6 +382,7 @@ export default function ComposeScreen() {
           {retryOf ? S.replaces + (remakeBefore?.edited ? S.editsToo : '') + ' · ' : ''}
           {tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
           {lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
+          {overFifty ? S.recentFifty : ''}
           {composedOut ? S.composedOut(composedOut) : ''}
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}

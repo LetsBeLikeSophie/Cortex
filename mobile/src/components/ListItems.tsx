@@ -125,7 +125,14 @@ export function RecentRow({
           <MetaLine item={item} theme={theme} />
         </View>
       </View>
-      {item.thumbId && <PhotoThumb itemId={item.thumbId} theme={theme} />}
+      {/* A text-less View's baseline is its bottom edge: on the line layout's
+          baseline row it would push the number and title down. Centered
+          instead, the row keeps its baseline. */}
+      {item.thumbId && (
+        <View style={styles.thumb}>
+          <PhotoThumb itemId={item.thumbId} theme={theme} />
+        </View>
+      )}
     </Pressable>
   );
 
@@ -215,6 +222,7 @@ export function ResultRow({
 }
 
 const styles = StyleSheet.create({
+  thumb: { alignSelf: 'center' },
   layeredWrap: { position: 'relative', marginBottom: 16 },
   row: { flexDirection: 'row', gap: 13 },
   selectCircle: {

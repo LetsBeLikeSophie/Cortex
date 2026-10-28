@@ -36,7 +36,7 @@ const S = strings({
   },
   en: {
     title: 'Tidy up tags',
-    intro: 'AI suggests tags that mean the same thing. Only tag names are sent, and only the groups you pick are merged. Tags on locked memos aren't sent.',
+    intro: 'AI suggests tags that mean the same thing. Only tag names are sent, and only the groups you pick are merged. Tags on locked memos are not sent.',
     cost: "Uses 1 this month · not counted if there's nothing to suggest",
     start: 'Get suggestions',
     monthLeft: (n: number) => ` · ${n} left this month`,

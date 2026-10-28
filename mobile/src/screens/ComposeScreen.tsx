@@ -30,6 +30,7 @@ const S = strings({
     tooFew: '메모가 2개 이상 있어야 해요',
     needTwo: (n: number) => `메모가 2개 이상 있어야 해요 · 지금 ${n}개`,
     lockedOut: (n: number) => ` · 잠긴 메모 ${n}개는 빠져요`,
+    composedOut: (n: number) => ` · 모아서 만든 메모 ${n}개는 빠져요`,
     expired: '시간이 지나 결과가 사라졌어요. 다시 만들어 주세요.',
     previewLabel: (n: number) => `미리보기 · 메모 ${n}개로 만들었어요`,
     retryFree: '다른 모양으로 다시 · 무료',
@@ -68,6 +69,7 @@ const S = strings({
     tooFew: 'You need at least 2 items',
     needTwo: (n: number) => `You need at least 2 items · now ${n}`,
     lockedOut: (n: number) => ` · ${n} locked memo${n === 1 ? '' : 's'} left out`,
+    composedOut: (n: number) => ` · ${n} combined memo${n === 1 ? '' : 's'} left out`,
     expired: 'The result expired. Please make it again.',
     previewLabel: (n: number) => `Preview · made from ${n} items`,
     retryFree: 'Remake in another shape · Free',
@@ -106,6 +108,7 @@ const S = strings({
     tooFew: 'メモが2つ以上必要です',
     needTwo: (n: number) => `メモが2つ以上必要です · 今は${n}件`,
     lockedOut: (n: number) => ` · ロック中のメモ${n}件は除きます`,
+    composedOut: (n: number) => ` · まとめメモ${n}件は除きます`,
     expired: '時間が経って結果が消えました。もう一度作ってください。',
     previewLabel: (n: number) => `プレビュー · メモ${n}件から作りました`,
     retryFree: '別の形で作り直す · 無料',
@@ -144,6 +147,7 @@ const S = strings({
     tooFew: '至少需要 2 项收藏内容',
     needTwo: (n: number) => `至少需要 2 项收藏内容 · 目前 ${n} 项`,
     lockedOut: (n: number) => ` · 不含 ${n} 条已锁定的备注`,
+    composedOut: (n: number) => ` · 不含 ${n} 条汇总笔记`,
     expired: '时间太久，结果已失效。请重新生成。',
     previewLabel: (n: number) => `预览 · 由 ${n} 项收藏内容生成`,
     retryFree: '换个形式重做 · 免费',
@@ -182,6 +186,7 @@ const S = strings({
     tooFew: '至少需要 2 項收藏內容',
     needTwo: (n: number) => `至少需要 2 項收藏內容 · 目前 ${n} 項`,
     lockedOut: (n: number) => ` · 不含 ${n} 則已鎖定的備註`,
+    composedOut: (n: number) => ` · 不含 ${n} 則彙整筆記`,
     expired: '時間太久，結果已失效。請重新產生。',
     previewLabel: (n: number) => `預覽 · 由 ${n} 項收藏內容產生`,
     retryFree: '換個形式重做 · 免費',
@@ -220,7 +225,7 @@ const S = strings({
 export default function ComposeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { tag, count, lockedOut, itemIds, tagChoices, retryOf, freeRemake, remakeBefore } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
+  const { tag, count, lockedOut, composedOut, itemIds, tagChoices, retryOf, freeRemake, remakeBefore } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
   const [pickedTag, setPickedTag] = useState(tagChoices?.[0] ?? tag);
   const [tagCount, setTagCount] = useState<number | null>(count ?? null);
   const [lockedCount, setLockedCount] = useState(lockedOut ?? 0);
@@ -364,6 +369,7 @@ export default function ComposeScreen() {
           {retryOf ? S.replaces + (remakeBefore?.edited ? S.editsToo : '') + ' · ' : ''}
           {tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
           {lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
+          {composedOut ? S.composedOut(composedOut) : ''}
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}
           {retryOf ? (remakeFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}

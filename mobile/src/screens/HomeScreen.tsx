@@ -837,7 +837,7 @@ export default function HomeScreen() {
                         setSelectMode(false);
                         setSelectedIds(new Set());
                         const picked = composeMaterials(listSource.filter((it) => ids.includes(it.id)));
-                        navigation.navigate('Compose', { tag: activeTag, count: picked.usable.length, lockedOut: picked.locked, itemIds: ids, suggested: suggestFormat(picked.usable) });
+                        navigation.navigate('Compose', { tag: activeTag, count: picked.usable.length, lockedOut: picked.locked, composedOut: picked.composed, itemIds: ids, suggested: suggestFormat(picked.usable) });
                       }}
                     >
                       <Text style={[styles.bulkBarLink, { color: theme.accent }]}>{S.composeSelected}</Text>

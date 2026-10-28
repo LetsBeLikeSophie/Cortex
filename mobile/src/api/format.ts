@@ -129,7 +129,13 @@ export function toSearchResult(item: ApiItem, include: string[]): SearchResult {
 
 // What 모아서 만들기 can actually use -- the same rule as the server
 // (POST /items/compose): locked memos and earlier composed memos are left out.
-export function composeMaterials(items: ApiItem[]): { usable: ApiItem[]; locked: number } {
-  const live = items.filter((it) => !it.deleted_at && !it.composed_from);
-  return { usable: live.filter((it) => !it.locked), locked: live.filter((it) => it.locked).length };
+// composed: earlier 모아서 만들기 memos among them, left out too.
+export function composeMaterials(items: ApiItem[]): { usable: ApiItem[]; locked: number; composed: number } {
+  const notTrashed = items.filter((it) => !it.deleted_at);
+  const live = notTrashed.filter((it) => !it.composed_from);
+  return {
+    usable: live.filter((it) => !it.locked),
+    locked: live.filter((it) => it.locked).length,
+    composed: notTrashed.length - live.length,
+  };
 }

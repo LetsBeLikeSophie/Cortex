@@ -36,6 +36,8 @@ export type RootStackParamList = {
     // Usable materials (composeMaterials); lockedOut = locked memos left out.
     count?: number;
     lockedOut?: number;
+    // Picked items that are earlier composed memos (left out, said so).
+    composedOut?: number;
     suggested?: import('../api/client').ComposeFormat;
     itemIds?: string[];
     tagChoices?: string[];

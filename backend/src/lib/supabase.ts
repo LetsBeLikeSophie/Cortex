@@ -588,12 +588,15 @@ export async function listTags(userId: string): Promise<string[]> {
 }
 
 // How many live items use each tag -- what 태그 정리하기 sends to the AI.
+// Locked memos are left out (decision T2): a tag only they carry never
+// reaches the AI, the same promise 모아서 만들기 and AI search keep.
 export async function listTagCounts(userId: string): Promise<{ name: string; count: number }[]> {
   const { data, error } = await getClient()
     .from("items")
     .select("tags, user_tags")
     .eq("user_id", userId)
     .is("deleted_at", null)
+    .eq("locked", false)
     .limit(2000);
   if (error) throw new Error(`listTagCounts failed: ${error.message}`);
   const counts = new Map<string, number>();

@@ -526,6 +526,10 @@ export interface TagMergeGroup {
   keep: string;
   merge: string[];
   counts: Record<string, number>;
+  // Memos under `keep` once merged, and memos the merge rewrites (older
+  // servers leave these out).
+  after?: number;
+  changes?: number;
 }
 
 // As long as composeMemo: the server finishes (and counts the use) even if

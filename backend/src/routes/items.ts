@@ -34,6 +34,7 @@ import {
   unlockAllItems,
   listTagCounts,
   mergeTags,
+  tagGroupCounts,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
@@ -520,8 +521,14 @@ export async function itemsRoutes(app: FastifyInstance) {
       // Nothing to tidy -> the use is handed back.
       if (groups.length === 0) await refundUsage(reservation).catch(() => {});
       const counts = new Map(tags.map((t) => [t.name, t.count]));
+      const sizes = groups.length ? await tagGroupCounts(userId, groups) : [];
       return reply.send({
-        groups: groups.map((g) => ({ ...g, counts: Object.fromEntries([g.keep, ...g.merge].map((n) => [n, counts.get(n) ?? 0])) })),
+        groups: groups.map((g, i) => ({
+          ...g,
+          counts: Object.fromEntries([g.keep, ...g.merge].map((n) => [n, counts.get(n) ?? 0])),
+          after: sizes[i].after,
+          changes: sizes[i].changes,
+        })),
         left: remaining(ent, "tag_cleanup") - (groups.length === 0 ? 0 : 1),
       });
     } catch (err) {

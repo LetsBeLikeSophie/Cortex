@@ -18,8 +18,9 @@ import type { RootStackParamList } from '../navigation/types';
 const S = strings({
   ko: {
     title: '태그 정리하기',
-    intro: 'AI가 뜻이 같은 태그를 찾아 묶자고 제안해요. 태그 이름만 보내고, 고른 것만 합쳐요. 잠긴 메모의 태그는 보내지 않아요.',
-    cost: '이번 달 1회 차감 · 제안이 없으면 차감하지 않아요',
+    intro: '비슷한 태그를 AI가 찾아 하나로 합쳐요',
+    cost: '태그 이름만 보내요 · 1회 차감',
+    merged: (n: number) => `합치면 메모 ${n}개`,
     start: '정리 제안 받기',
     monthLeft: (n: number) => ` · 이번 달 ${n}회 남음`,
     agreeAndStart: '동의하고 정리하기',
@@ -36,8 +37,9 @@ const S = strings({
   },
   en: {
     title: 'Tidy up tags',
-    intro: 'AI suggests tags that mean the same thing. Only tag names are sent, and only the groups you pick are merged. Tags on locked memos are not sent.',
-    cost: "Uses 1 this month · not counted if there's nothing to suggest",
+    intro: 'AI finds look-alike tags and merges them into one',
+    cost: 'Only tag names are sent · uses 1 this month',
+    merged: (n: number) => `${n} item${n === 1 ? '' : 's'} once merged`,
     start: 'Get suggestions',
     monthLeft: (n: number) => ` · ${n} left this month`,
     agreeAndStart: 'Allow AI and tidy up',
@@ -54,8 +56,9 @@ const S = strings({
   },
   ja: {
     title: 'タグを整理',
-    intro: '意味が同じタグをAIがまとめて提案します。送るのはタグ名だけで、選んだものだけを統合します。ロック中のメモのタグは送りません。',
-    cost: '今月1回分を使います · 提案がなければ数えません',
+    intro: '似たタグをAIが見つけて1つにまとめます',
+    cost: '送るのはタグ名だけ · 今月1回分',
+    merged: (n: number) => `まとめるとメモ${n}件`,
     start: '整理の提案をもらう',
     monthLeft: (n: number) => ` · 今月残り${n}回`,
     agreeAndStart: '同意して整理する',
@@ -72,8 +75,9 @@ const S = strings({
   },
   'zh-Hans': {
     title: '整理标签',
-    intro: 'AI 会找出意思相同的标签并建议合并。只发送标签名，只合并你选中的。不会发送已锁定备注的标签。',
-    cost: '本月计 1 次 · 没有建议则不计',
+    intro: 'AI 找出相似标签并合并为一个',
+    cost: '只发送标签名 · 本月计 1 次',
+    merged: (n: number) => `合并后 ${n} 项`,
     start: '获取整理建议',
     monthLeft: (n: number) => ` · 本月剩 ${n} 次`,
     agreeAndStart: '同意并整理',
@@ -90,8 +94,9 @@ const S = strings({
   },
   'zh-Hant': {
     title: '整理標籤',
-    intro: 'AI 會找出意思相同的標籤並建議合併。只傳送標籤名稱，只合併你選取的。不會傳送已鎖定備註的標籤。',
-    cost: '本月計 1 次 · 沒有建議則不計',
+    intro: 'AI 找出相似標籤並合併為一個',
+    cost: '只傳送標籤名稱 · 本月計 1 次',
+    merged: (n: number) => `合併後 ${n} 項`,
     start: '取得整理建議',
     monthLeft: (n: number) => ` · 本月剩 ${n} 次`,
     agreeAndStart: '同意並整理',
@@ -232,9 +237,11 @@ export default function TagCleanupScreen() {
       return next;
     });
 
-  const affected = groups
-    .filter((_, i) => picked.has(i))
-    .reduce((n, g) => n + g.merge.reduce((m, t) => m + (g.counts[t] ?? 0), 0), 0);
+  // The server's counts (tagGroupCounts) when it sends them; older servers
+  // only had per-tag counts, which overlap, so those are an upper bound.
+  const sumOf = (g: TagMergeGroup, names: string[]) => names.reduce((n, t) => n + (g.counts[t] ?? 0), 0);
+  const afterOf = (g: TagMergeGroup) => g.after ?? sumOf(g, [g.keep, ...g.merge]);
+  const affected = groups.filter((_, i) => picked.has(i)).reduce((n, g) => n + (g.changes ?? sumOf(g, g.merge)), 0);
   const busy = step === 'finding' || step === 'applying';
   return (
     <ModalSheet theme={theme} onClose={busy ? () => {} : () => navigation.goBack()} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.85}>
@@ -274,13 +281,12 @@ export default function TagCleanupScreen() {
                       {on && <CheckIcon size={10} color={theme.bg} strokeWidth={2.4} />}
                     </View>
                     <View style={styles.groupBody}>
+                      {/* "드로잉 → 그림" reads as a merge; per-tag counts side by
+                          side ("그림 (2) ← 드로잉 (2)") read as a rename. */}
                       <Text style={[styles.keep, { color: theme.ink }]}>
-                        {g.keep}
-                        <Text style={{ color: theme.sub }}> ({g.counts[g.keep] ?? 0})</Text>
+                        {g.merge.join(', ')} → {g.keep}
                       </Text>
-                      <Text style={[styles.small, { color: theme.sub, marginTop: 2 }]}>
-                        ← {g.merge.map((m) => `${m} (${g.counts[m] ?? 0})`).join(', ')}
-                      </Text>
+                      <Text style={[styles.small, { color: theme.sub, marginTop: 2 }]}>{S.merged(afterOf(g))}</Text>
                     </View>
                   </Pressable>
                 );

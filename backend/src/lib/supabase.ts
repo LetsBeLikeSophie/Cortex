@@ -609,6 +609,28 @@ export async function listTagCounts(userId: string): Promise<{ name: string; cou
 // Applies the groups the person ticked: every item (trash included, so a
 // restore doesn't bring an old name back) gets the merged names replaced
 // by keep, in both AI tags and the person's own. Returns items changed.
+// What merging each group would do, counted the way mergeTags works:
+// `after` = memos in the list (not trashed) that carry the kept tag once
+// merged, `changes` = memos mergeTags would rewrite (trash included, since it
+// renames there too). Shown before the person ticks anything.
+export async function tagGroupCounts(userId: string, groups: { keep: string; merge: string[] }[]): Promise<{ after: number; changes: number }[]> {
+  const { data, error } = await getClient().from("items").select("tags, user_tags, deleted_at").eq("user_id", userId).limit(5000);
+  if (error) throw new Error(`tagGroupCounts failed: ${error.message}`);
+  const rows = (data ?? []) as { tags: string[]; user_tags: string[]; deleted_at: string | null }[];
+  return groups.map((g) => {
+    const merge = new Set(g.merge.filter((m) => m !== g.keep));
+    let after = 0;
+    let changes = 0;
+    for (const row of rows) {
+      const all = [...row.tags, ...row.user_tags];
+      const renamed = all.some((t) => merge.has(t));
+      if (renamed) changes++;
+      if (row.deleted_at === null && (renamed || all.includes(g.keep))) after++;
+    }
+    return { after, changes };
+  });
+}
+
 export async function mergeTags(userId: string, groups: { keep: string; merge: string[] }[]): Promise<number> {
   const rename = new Map<string, string>();
   for (const g of groups) for (const m of g.merge) if (m !== g.keep) rename.set(m, g.keep);
@@ -850,7 +872,7 @@ export async function countSavedSince(userId: string, sinceIso: string): Promise
 export interface ItemStats {
   total: number;
   byCategory: { category: string; count: number }[];
-  // The person's most-used tags (AI + their own, once per item), top 6 --
+  // The person's most-used tags (AI + their own, once per item), top 5 --
   // what the stats screen shows now that categories aren't in the UI.
   byTag: { tag: string; count: number }[];
   bySource: { source: string; count: number }[];
@@ -932,7 +954,7 @@ export async function getStats(userId: string): Promise<ItemStats> {
     byCategory: [...categoryCounts.entries()].map(([category, count]) => ({ category, count })),
     byTag: [...tagCounts.entries()]
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
+      .slice(0, 5)
       .map(([tag, count]) => ({ tag, count })),
     bySource: [...sourceCounts.entries()].map(([source, count]) => ({ source, count })),
     byMonth: monthKeys.map((month) => ({ month, count: monthCounts.get(month) ?? 0 })),

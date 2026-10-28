@@ -28,6 +28,7 @@ const S = strings({
     none: '합칠 만한 태그가 없어요. 이미 깔끔해요.',
     pick: '합칠 묶음을 골라 주세요',
     apply: (n: number) => `${n}개 묶음 합치기`,
+    willChange: (n: number) => `메모 ${n}개의 태그가 바뀌어요 · 되돌릴 수 없어요`,
     applied: (n: number) => `메모 ${n}개의 태그를 정리했어요`,
     left: (n: number) => `이번 달 ${n}회 남음`,
     cancel: '취소',
@@ -45,6 +46,7 @@ const S = strings({
     none: 'Nothing to merge. Your tags are already tidy.',
     pick: 'Pick the groups to merge',
     apply: (n: number) => `Merge ${n} ${n === 1 ? 'group' : 'groups'}`,
+    willChange: (n: number) => `Tags change on ${n} item${n === 1 ? '' : 's'} · this can't be undone`,
     applied: (n: number) => `Tidied the tags of ${n} ${n === 1 ? 'memo' : 'memos'}`,
     left: (n: number) => `${n} left this month`,
     cancel: 'Cancel',
@@ -62,6 +64,7 @@ const S = strings({
     none: '統合できるタグはありません。すでに整っています。',
     pick: '統合するグループを選んでください',
     apply: (n: number) => `${n}グループを統合`,
+    willChange: (n: number) => `メモ${n}件のタグが変わります · 元に戻せません`,
     applied: (n: number) => `メモ${n}件のタグを整理しました`,
     left: (n: number) => `今月あと${n}回`,
     cancel: 'キャンセル',
@@ -79,6 +82,7 @@ const S = strings({
     none: '没有可合并的标签，已经很整齐了。',
     pick: '选择要合并的组',
     apply: (n: number) => `合并 ${n} 组`,
+    willChange: (n: number) => `${n} 项内容的标签会改变 · 无法撤销`,
     applied: (n: number) => `已整理 ${n} 条笔记的标签`,
     left: (n: number) => `本月剩 ${n} 次`,
     cancel: '取消',
@@ -96,6 +100,7 @@ const S = strings({
     none: '沒有可合併的標籤，已經很整齊了。',
     pick: '選擇要合併的組',
     apply: (n: number) => `合併 ${n} 組`,
+    willChange: (n: number) => `${n} 項內容的標籤會改變 · 無法復原`,
     applied: (n: number) => `已整理 ${n} 則筆記的標籤`,
     left: (n: number) => `本月剩 ${n} 次`,
     cancel: '取消',
@@ -227,6 +232,9 @@ export default function TagCleanupScreen() {
       return next;
     });
 
+  const affected = groups
+    .filter((_, i) => picked.has(i))
+    .reduce((n, g) => n + g.merge.reduce((m, t) => m + (g.counts[t] ?? 0), 0), 0);
   const busy = step === 'finding' || step === 'applying';
   return (
     <ModalSheet theme={theme} onClose={busy ? () => {} : () => navigation.goBack()} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.85}>
@@ -285,6 +293,13 @@ export default function TagCleanupScreen() {
       {step === 'done' && <Text style={[styles.line, { color: theme.ink }]}>{S.applied(changed)}</Text>}
 
       {error !== '' && <Text style={[styles.small, { color: theme.danger }]}>{error}</Text>}
+
+      {/* Before merging, how big it is and that it sticks (decision T1). The
+          per-tag counts can overlap (a memo with two merged tags), so it's an
+          upper bound -- close enough to say what's about to change. */}
+      {(step === 'pick' || step === 'applying') && picked.size > 0 && (
+        <Text style={[styles.small, { color: theme.sub }]}>{S.willChange(affected)}</Text>
+      )}
 
       <ButtonRow theme={theme} style={styles.buttons}>
         {step === 'intro' || step === 'finding' ? (

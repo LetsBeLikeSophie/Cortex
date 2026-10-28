@@ -135,7 +135,8 @@ function TrashRow({
     <Card theme={theme} style={styles.row}>
       {/* Same marks as the lists (rule 2026-10-26: one state, one mark). */}
       <View style={styles.titleRow}>
-        <View style={[styles.titleLine, styles.titleText]}>
+        {/* flex: 1 keeps the photo preview at the right edge on every row. */}
+        <View style={[styles.titleLine, styles.titleText, styles.grow]}>
           {item.locked && <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />}
           <Text style={[styles.title, styles.titleText, { color: theme.ink }]} numberOfLines={2}>
             {item.composed_from?.length ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
@@ -247,6 +248,7 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   titleLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   titleText: { flexShrink: 1 },
+  grow: { flex: 1 },
   screen: { flex: 1 },
   row: { gap: 6 },
   title: { fontSize: 15, lineHeight: 21, fontFamily: BODY_KR_MEDIUM },

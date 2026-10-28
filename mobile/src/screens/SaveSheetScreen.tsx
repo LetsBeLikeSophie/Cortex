@@ -430,6 +430,16 @@ export default function SaveSheetScreen() {
     setText('');
   };
 
+  // "사진 지우고 다시 선택": back to the memo box, with what was typed (and
+  // moved to the photo's note) back in it.
+  const dropPhoto = () => {
+    setImage(null);
+    if (!text.trim() && note.trim()) {
+      setText(note);
+      setNote('');
+    }
+  };
+
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -619,7 +629,7 @@ ${sharedNote ?? ''}`;
             {image ? (
               <View style={styles.imagePreviewWrap}>
                 <Image source={{ uri: image.previewUri }} style={[styles.imagePreview, { borderColor: theme.line }]} />
-                <Pressable onPress={() => setImage(null)} disabled={status === 'saving'}>
+                <Pressable onPress={dropPhoto} disabled={status === 'saving'}>
                   <Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM, fontSize: 13.5, marginTop: 10 }}>
                     {S.repickPhoto}
                   </Text>

@@ -9,18 +9,32 @@
 ## 저장소 구조
 
 ```
-backend/   Fastify + TypeScript API 서버
-mobile/    Expo(React Native) 앱 -- 웹/안드로이드 동시 빌드
+backend/
+  src/routes/    API 라우트 (items, auth, billing, webhooks)
+  src/lib/       분류 파이프라인, Claude 호출, Supabase, 요금제·결제
+  db/            schema.sql + migrations/ (Supabase SQL 에디터에서 직접 실행)
+  scripts/       운영용 일회성 스크립트
+mobile/
+  src/screens/   화면 하나당 파일 하나
+  src/components/ 공용 UI (버튼, 카드, 입력칸, 아이콘 ...)
+  src/theme/     테마 값은 themes.ts 한 곳에서만 정의
+  src/share/     공유 받기·Mehh 연동 큐
+  plugins/       Expo config plugin (서명, 백업 끄기)
+  scripts/       build-aab.sh (Play 업로드용 번들)
+legal/           이용약관·개인정보처리방침 (서버 /cortex/legal/ 에 그대로 올림, 이전 버전 파일명 = 시행일)
+docs/            Play Console 신고·설정 메모
+releases/        (git 제외) AAB, 스토어 이미지
 ```
 
 ## 핵심 기능
 
-- 공유시트(카카오톡/인스타 등에서 공유), 클립보드 붙여넣기, 최근 스크린샷 여러 장 선택으로 저장
+- 공유시트(카카오톡/인스타/Mehh 등에서 공유), 붙여넣기, 사진 선택 화면으로 여러 장 저장
 - Claude가 저장할 때마다 자동으로 분류:
-  - **카테고리**: 의도 기반 6종 -- 가볼 곳 / 살 것 / 배울 것 / 볼 것 / 기억할 것 / 기타
-  - **태그**: 자유 형식 키워드 (AI가 붙인 태그와 직접 추가한 태그는 구분되고, 둘 다 삭제 가능)
-- 카카오 로그인 또는 게스트(익명) 로그인
-- 태그 기반 검색, 즐겨찾기, 휴지통(소프트 삭제)
+  - **제목·AI 메모·태그** (AI가 붙인 태그와 직접 추가한 태그는 구분되고, 둘 다 삭제 가능)
+- 카카오·Google 로그인 또는 게스트(익명) 로그인
+- 단어 검색 + AI 문장 검색, 홈 태그 탭, 휴지통(소프트 삭제)
+- 모아서 만들기(태그 하나의 메모들로 정리 메모 작성), 태그 정리하기, 메모 잠금
+- Cortex Pro 구독(Google Play 결제), 월별 AI 사용 한도
 - 저장 현황 통계 화면
 
 ## 기술 스택

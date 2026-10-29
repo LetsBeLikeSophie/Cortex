@@ -32,7 +32,7 @@ import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast } from '../native/toast';
 import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { splitLinkText } from '../data/linkText';
-import type { RecentScreenshot } from '../hooks/useRecentScreenshots';
+import type { RecentScreenshot } from '../data/photoBatch';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { COMMON, categoryLabel } from '../i18n/common';

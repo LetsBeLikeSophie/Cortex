@@ -29,7 +29,7 @@ import { Heading } from '../components/Typography';
 import { ModalSheet } from '../components/ModalSheet';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
-import { permissionToast } from '../native/toast';
+import { permissionToast, showToast } from '../native/toast';
 import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
 import { splitLinkText } from '../data/linkText';
 import type { RecentScreenshot } from '../data/photoBatch';
@@ -40,6 +40,7 @@ import { COMMON, categoryLabel } from '../i18n/common';
 const S = strings({
   ko: {
     camera: '카메라',
+    draftKept: "적던 글은 '+'에 남겨 뒀어요",
     allFailed: '전부 저장하지 못했어요',
     quotaNoConsent: 'AI 분석 동의 전이라 미분류함에 들어가요 (저장은 돼요)',
     quotaBulk: (n: number) => `AI가 한 장씩 제목·태그를 달아요 · 이번 달 ${n}건 남음`,
@@ -77,6 +78,7 @@ const S = strings({
   },
   en: {
     camera: 'Camera',
+    draftKept: "Your text is kept under '+'",
     allFailed: "Couldn't save any of them",
     quotaNoConsent: 'No AI consent yet, so it goes to Unsorted (still saved)',
     quotaBulk: (n: number) => `AI titles and tags each photo · ${n} left this month`,
@@ -114,6 +116,7 @@ const S = strings({
   },
   ja: {
     camera: 'カメラ',
+    draftKept: "書きかけの文は「+」に残しました",
     allFailed: 'どれも保存できませんでした',
     quotaNoConsent: 'AI分析に未同意のため未分類に入ります(保存はされます)',
     quotaBulk: (n: number) => `AIが1枚ずつタイトル・タグを付けます · 今月残り${n}件`,
@@ -151,6 +154,7 @@ const S = strings({
   },
   'zh-Hans': {
     camera: '相机',
+    draftKept: '正在写的文字已保留在「+」里',
     allFailed: '全部保存失败',
     quotaNoConsent: '尚未同意 AI 分析，将放入未分类（照样保存）',
     quotaBulk: (n: number) => `AI 会逐张添加标题和标签 · 本月剩余 ${n} 次`,
@@ -188,6 +192,7 @@ const S = strings({
   },
   'zh-Hant': {
     camera: '相機',
+    draftKept: '正在寫的文字已保留在「+」裡',
     allFailed: '全部儲存失敗',
     quotaNoConsent: '尚未同意 AI 分析，將放入未分類（照樣儲存）',
     quotaBulk: (n: number) => `AI 會逐張加上標題和標籤 · 本月剩餘 ${n} 次`,
@@ -442,10 +447,17 @@ export default function SaveSheetScreen() {
   // Picking one photo turns the sheet into a photo save, whose box is the
   // note -- so what was typed moves there (a note holds 200). Longer text
   // isn't cut: it's kept as the "+" draft instead (UX-78).
+  // Shared-in text is held only for "사진 지우고 다시 선택", never as the
+  // "+" draft (UX-92).
+  const carriedText = useRef<string | null>(null);
   const carryTextToNote = () => {
     const typed = text.trim();
     if (typed.length > NOTE_MAX) {
-      longDraft.current = typed;
+      carriedText.current = typed;
+      if (!openedByShare) {
+        longDraft.current = typed;
+        showToast(S.draftKept);
+      }
       setNote('');
     } else {
       setNote(typed);
@@ -457,7 +469,11 @@ export default function SaveSheetScreen() {
   // moved to the photo's note) back in it.
   const dropPhoto = () => {
     setImage(null);
-    if (!text.trim() && note.trim()) {
+    if (carriedText.current && !text.trim()) {
+      setText(carriedText.current);
+      carriedText.current = null;
+      longDraft.current = null;
+    } else if (!text.trim() && note.trim()) {
       setText(note);
       setNote('');
     }

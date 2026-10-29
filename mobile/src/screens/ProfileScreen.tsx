@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -61,8 +61,8 @@ const S = strings({
     memoLock: '메모 잠금',
     exportMemos: '메모 내보내기',
     reminders: '알림',
-    remindMonthly: '매달 1일 · 미분류 알림',
-    remindWeekly: '주 1회 다시 보기',
+    remindMonthly: '매달 1일 · 무료 AI 충전',
+    remindWeekly: '토요일 · 옛 메모 다시 보기',
     notifications: '알림',
     exportAs: '텍스트 파일',
     langNote: '메뉴와 AI 메모가 이 언어로 나와요',
@@ -118,8 +118,8 @@ const S = strings({
     memoLock: 'Memo lock',
     exportMemos: 'Export memos',
     reminders: 'Reminders',
-    remindMonthly: 'Monthly · unsorted',
-    remindWeekly: 'Weekly look-back',
+    remindMonthly: 'The 1st · free AI refilled',
+    remindWeekly: 'Saturdays · old memos',
     notifications: 'Notification',
     exportAs: 'Text file',
     langNote: 'Menus and AI memos use this language',
@@ -175,8 +175,8 @@ const S = strings({
     memoLock: 'メモロック',
     exportMemos: 'メモを書き出す',
     reminders: 'お知らせ',
-    remindMonthly: '毎月1日 · 未分類',
-    remindWeekly: '週1回ふりかえり',
+    remindMonthly: '毎月1日 · 無料AI補充',
+    remindWeekly: '土曜 · 昔のメモ',
     notifications: '通知',
     exportAs: 'テキスト',
     langNote: 'メニューとAIメモがこの言語になります',
@@ -232,8 +232,8 @@ const S = strings({
     memoLock: '笔记锁',
     exportMemos: '导出笔记',
     reminders: '提醒',
-    remindMonthly: '每月1日 · 未分类',
-    remindWeekly: '每周回顾',
+    remindMonthly: '每月1日 · 免费 AI 恢复',
+    remindWeekly: '周六 · 回顾旧笔记',
     notifications: '通知',
     exportAs: '文本文件',
     langNote: '菜单和 AI 笔记都会使用这个语言',
@@ -289,8 +289,8 @@ const S = strings({
     memoLock: '筆記鎖',
     exportMemos: '匯出筆記',
     reminders: '提醒',
-    remindMonthly: '每月1日 · 未分類',
-    remindWeekly: '每週回顧',
+    remindMonthly: '每月1日 · 免費 AI 恢復',
+    remindWeekly: '週六 · 回顧舊筆記',
     notifications: '通知',
     exportAs: '文字檔',
     langNote: '選單和 AI 筆記都會使用這個語言',
@@ -605,11 +605,7 @@ export default function ProfileScreen() {
                       <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: BODY_KR }}>{S.lockChange}</Text>
                     </Pressable>
                     {bioAvail && (
-                      <Pressable onPress={() => lockAction('bio')} style={styles.langRow} hitSlop={4} accessibilityRole="switch" accessibilityState={{ checked: bio }}>
-                        <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: BODY_KR }}>
-                          {S.lockBio}  <Text style={{ color: theme.sub }}>{bio ? S.lockOn : S.lockOff}</Text>
-                        </Text>
-                      </Pressable>
+                      <SwitchRow label={S.lockBio} on={bio} onPress={() => lockAction('bio')} />
                     )}
                     <Pressable onPress={() => lockAction('off')} style={styles.langRow} hitSlop={4}>
                       <Text style={{ fontSize: 14.5, color: theme.danger, fontFamily: BODY_KR }}>{S.lockTurnOff}</Text>
@@ -635,11 +631,7 @@ export default function ProfileScreen() {
                     {(['monthly', 'weekly'] as ReminderKind[]).map((kind) => {
                       const on = notifAllowed && remind[kind];
                       return (
-                        <Pressable key={kind} onPress={() => toggleRemind(kind)} style={styles.langRow} hitSlop={4} accessibilityRole="switch" accessibilityState={{ checked: on }}>
-                          <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: BODY_KR }}>
-                            {kind === 'monthly' ? S.remindMonthly : S.remindWeekly}  <Text style={{ color: theme.sub }}>{on ? S.lockOn : S.lockOff}</Text>
-                          </Text>
-                        </Pressable>
+                        <SwitchRow key={kind} label={kind === 'monthly' ? S.remindMonthly : S.remindWeekly} on={on} onPress={() => toggleRemind(kind)} />
                       );
                     })}
                   </View>
@@ -724,11 +716,24 @@ export default function ProfileScreen() {
   );
 }
 
+// One on/off row inside an opened setting: label on the left, a switch on
+// the right (the whole row toggles too).
+function SwitchRow({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+  const { theme } = useTheme();
+  return (
+    <Pressable onPress={onPress} style={[styles.langRow, styles.switchRow]} hitSlop={4} accessibilityRole="switch" accessibilityState={{ checked: on }}>
+      <Text style={{ flexShrink: 1, fontSize: 14.5, color: theme.ink, fontFamily: BODY_KR }}>{label}</Text>
+      <Switch value={on} onValueChange={onPress} trackColor={{ false: theme.line, true: theme.ink }} thumbColor={theme.cardBg} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   rowLabelShrink: { flexShrink: 1, marginRight: 12 },
   linkBox: { padding: 16, gap: 8 },
   langList: { paddingHorizontal: 16, paddingTop: 8, gap: 2 },
   langRow: { paddingVertical: 8 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 2 },
   linkButtons: { flexDirection: 'row', gap: 8, marginTop: 4 },
   subWarning: { fontSize: 13, lineHeight: 19, fontFamily: BODY_KR_MEDIUM },
   subLink: { fontSize: 13, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },

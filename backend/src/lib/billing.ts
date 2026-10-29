@@ -125,7 +125,11 @@ export async function recomputeProUntil(userId: string): Promise<void> {
     if (candidate && (!until || candidate > until)) until = candidate;
   }
   // Make sure the plan row exists (it's created lazily), then set it.
-  await getEntitlement(userId);
+  const before = await getEntitlement(userId);
+  // Pro ending early (refund, revoked lifetime) keeps the moment it ended
+  // instead of null, so the free share can count from there (decision B2).
+  const nowIso = new Date().toISOString();
+  if (before.proUntil && before.proUntil > nowIso && (!until || until < nowIso)) until = nowIso;
   const { error: updateError } = await getClient().from("user_plans").update({ pro_until: until }).eq("user_id", userId);
   if (updateError) throw new Error(`pro_until update failed: ${updateError.message}`);
 }

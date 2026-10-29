@@ -115,10 +115,16 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
         : "free";
   const paid = tier !== "free";
   const { start, next } = monthWindow();
-  // On the free plan, what the trial used doesn't count: the month's free
-  // share starts fresh the moment the trial ends (decision Q9, 2026-10-23).
-  const trialEnd = new Date(row.trial_ends_at);
-  const since = tier === "free" && trialEnd > start ? trialEnd : start;
+  // On the free plan, what the trial or Pro used doesn't count: the month's
+  // free share starts fresh the moment either ended (decisions Q9,
+  // 2026-10-23, and B2, 2026-10-29 -- cancel, expiry or refund).
+  let since = start;
+  if (tier === "free") {
+    for (const end of [row.trial_ends_at, row.pro_until]) {
+      const at = end ? new Date(end) : null;
+      if (at && at > since) since = at;
+    }
+  }
   const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount] = await Promise.all([
     countUsage(userId, "classify", since),
     countUsage(userId, "search", since),

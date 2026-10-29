@@ -27,3 +27,4 @@ The theme = a Layout (line / thinBorder / layered / layeredVintage) × a Palette
 - A screen opened by a share from another app is checked for a second share arriving while it's already open: the new content must show.
 - An AI request that times out says "잠시 뒤 확인해 주세요" (never "다시 시도"), whether its screen is open or closed, and its button can't be pressed again.
 - A save path with no screen (like receiving from Mehh) tells the person once, the next time the app opens, what the save screen would have said (how many went to 미분류함, uses spent).
+- Text the person wrote that moves elsewhere or goes out of sight (a draft, a photo's note) says in one line where it went, and the way back ("사진 지우고 다시 선택", reopening) brings it back -- check both when building it (2026-10-29).

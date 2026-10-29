@@ -375,10 +375,11 @@ export default function SaveSheetScreen() {
       // A sheet opened by a share never touches the "+" draft -- saving a
       // shared link mustn't wipe a thought kept from earlier.
       if (openedByShare) return;
-      // Still only offered (not brought back): it stays for next time,
-      // unless something new was typed and left unsaved -- that's newer.
+      // Still only offered (not brought back): it stays for next time. If
+      // something new was typed and left unsaved, both are kept, the new
+      // text on top (UX-93).
       if (offeredRef.current !== null) {
-        if (end !== 'done' && last.trim()) AsyncStorage.setItem(DRAFT_KEY, last).catch(() => {});
+        if (end !== 'done' && last.trim()) AsyncStorage.setItem(DRAFT_KEY, `${last}\n\n${offeredRef.current}`).catch(() => {});
         return;
       }
       if (end === 'done' || !last.trim()) AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});

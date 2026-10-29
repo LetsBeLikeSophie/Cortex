@@ -106,6 +106,7 @@ const S = strings({
     saved: (when: string) => `${when} 저장됨`,
     undo: '되돌리기',
     remade: '다시 만들었어요',
+    tagRemoved: (t: string) => `'${t}' 태그를 뺐어요`,
     openLink: '링크 열기',
   },
   en: {
@@ -166,6 +167,7 @@ const S = strings({
     saved: (when: string) => `saved ${when}`,
     undo: 'Undo',
     remade: 'Remade',
+    tagRemoved: (t: string) => `Removed tag '${t}'`,
     openLink: 'Open link',
   },
   ja: {
@@ -226,6 +228,7 @@ const S = strings({
     saved: (when: string) => `${when}に保存`,
     undo: '元に戻す',
     remade: '作り直しました',
+    tagRemoved: (t: string) => `「${t}」タグを外しました`,
     openLink: 'リンクを開く',
   },
   'zh-Hans': {
@@ -286,6 +289,7 @@ const S = strings({
     saved: (when: string) => `${when}保存`,
     undo: '撤销',
     remade: '已重新生成',
+    tagRemoved: (t: string) => `已移除标签「${t}」`,
     openLink: '打开链接',
   },
   'zh-Hant': {
@@ -346,6 +350,7 @@ const S = strings({
     saved: (when: string) => `${when}儲存`,
     undo: '復原',
     remade: '已重新產生',
+    tagRemoved: (t: string) => `已移除標籤「${t}」`,
     openLink: '開啟連結',
   },
 });
@@ -747,20 +752,51 @@ export default function ItemDetailScreen() {
 
   // Optimistic: the tag chip disappears/appears immediately, and rolls back
   // if the server call fails rather than leaving the UI ahead of reality.
+  // A tap removes the chip at once, so a few seconds to undo (UX-94).
   const removeTag = (tag: string) => {
     setUserTags((current) => current.filter((t) => t !== tag));
     setTagError('');
-    removeTagApi(item.id, tag).catch((err) => {
-      setUserTags((current) => [...current, tag]);
+    removeTagApi(item.id, tag)
+      .then(() => showSnack(S.tagRemoved(tag), () => undoRemoveTag(tag)))
+      .catch((err) => {
+        setUserTags((current) => [...current, tag]);
+        setTagError(friendlyError(err));
+      });
+  };
+
+  const undoRemoveTag = (tag: string) => {
+    hideSnack();
+    setUserTags((current) => (current.includes(tag) ? current : [...current, tag]));
+    addTag(item.id, tag).catch((err) => {
+      setUserTags((current) => current.filter((t) => t !== tag));
       setTagError(friendlyError(err));
     });
   };
 
   const removeAiTag = (tag: string) => {
+    const before = aiTags;
     setAiTags((current) => current.filter((t) => t !== tag));
     setTagError('');
-    removeAiTagApi(item.id, tag).catch((err) => {
-      setAiTags((current) => [...current, tag]);
+    removeAiTagApi(item.id, tag)
+      .then(() => showSnack(S.tagRemoved(tag), () => undoRemoveAiTag(before)))
+      .catch((err) => {
+        setAiTags((current) => [...current, tag]);
+        setTagError(friendlyError(err));
+      });
+  };
+
+  // Put back as an AI tag (the same path as undoAi) -- adding it again by
+  // hand would make it '내 태그'.
+  const undoRemoveAiTag = (before: string[]) => {
+    hideSnack();
+    // Read from state, not this render's aiTags -- the snack's closure is older.
+    let now: string[] = [];
+    setAiTags((current) => {
+      now = current;
+      return before;
+    });
+    updateItem(item.id, { tags: before }).catch((err) => {
+      setAiTags(now);
       setTagError(friendlyError(err));
     });
   };

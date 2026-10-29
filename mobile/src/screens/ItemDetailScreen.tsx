@@ -752,7 +752,7 @@ export default function ItemDetailScreen() {
 
   // Optimistic: the tag chip disappears/appears immediately, and rolls back
   // if the server call fails rather than leaving the UI ahead of reality.
-  // A tap removes the chip at once, so a few seconds to undo (UX-94).
+  // The × removes the chip at once, so a few seconds to undo (UX-94).
   const removeTag = (tag: string) => {
     setUserTags((current) => current.filter((t) => t !== tag));
     setTagError('');

@@ -5,11 +5,11 @@ import type { QueryChip } from '../hooks/useChipQuery';
 import { strings } from '../i18n';
 
 const S = strings({
-  ko: { tabSettings: '태그 설정', unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건` },
-  en: { tabSettings: 'Tabs', unsorted: 'Unsorted', unsortedCount: (n: number) => `Unsorted, ${n}` },
-  ja: { tabSettings: 'タグ設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n}件` },
-  'zh-Hans': { tabSettings: '标签设置', unsorted: '未分类', unsortedCount: (n: number) => `未分类 ${n} 条` },
-  'zh-Hant': { tabSettings: '標籤設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n} 則` },
+  ko: { tabSettings: '태그 설정', unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건`, removeTag: (t: string) => `${t} 태그 빼기` },
+  en: { tabSettings: 'Tabs', unsorted: 'Unsorted', unsortedCount: (n: number) => `Unsorted, ${n}`, removeTag: (t: string) => `Remove tag ${t}` },
+  ja: { tabSettings: 'タグ設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n}件`, removeTag: (t: string) => `${t}タグを外す` },
+  'zh-Hans': { tabSettings: '标签设置', unsorted: '未分类', unsortedCount: (n: number) => `未分类 ${n} 条`, removeTag: (t: string) => `移除标签 ${t}` },
+  'zh-Hant': { tabSettings: '標籤設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n} 則`, removeTag: (t: string) => `移除標籤 ${t}` },
 });
 
 // Home tag tabs, per concept: line = underline tabs; border = outlined
@@ -117,9 +117,10 @@ export function TabAddChip({ theme, onPress }: { theme: Theme; onPress: () => vo
   );
 }
 
-// `onRemove` turns this into a tap-to-remove control -- omit it for the
-// plain read-only display used elsewhere (e.g. SaveSheetScreen's post-save
-// view). `tone: 'auto'` is the muted styling for an AI-assigned tag, kept
+// `onRemove` adds a × that removes the tag -- only the ×; the chip body
+// does nothing (decision U1, C: a tap meant to open the tag removed it).
+// Omit it for the plain read-only display used elsewhere (e.g.
+// SaveSheetScreen's post-save view). `tone: 'auto'` is the muted styling for an AI-assigned tag, kept
 // visually distinct from a user-added one (same theme.sub language
 // MetaChip already uses for "not something you typed") even though both
 // are removable the same way.
@@ -137,18 +138,14 @@ export function TagChip({
   const auto = tone === 'auto';
   const textColor = auto ? theme.sub : conceptOf(theme) === 'layer' ? theme.accent : theme.ink;
   return (
-    <Pressable
-      onPress={onRemove}
-      disabled={!onRemove}
-      style={[
-        styles.tag,
-        styles.tagRow,
-        chipShell(theme, auto, true),
-      ]}
-    >
+    <View style={[styles.tag, styles.tagRow, chipShell(theme, auto, true)]}>
       <Text style={{ fontSize: 13, color: textColor, fontFamily: chipFont(theme) }}>{label}</Text>
-      {onRemove && <Text style={{ fontSize: 13, color: textColor, marginLeft: 6, opacity: 0.6 }}>×</Text>}
-    </Pressable>
+      {onRemove && (
+        <Pressable onPress={onRemove} hitSlop={{ top: 10, bottom: 10, left: 8, right: 10 }} accessibilityRole="button" accessibilityLabel={S.removeTag(label)}>
+          <Text style={{ fontSize: 13, color: textColor, marginLeft: 6, opacity: 0.6 }}>×</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 

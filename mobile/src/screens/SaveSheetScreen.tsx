@@ -239,7 +239,7 @@ type Status = 'input' | 'saving' | 'done' | 'error';
 
 const DRAFT_KEY = 'cortex.saveDraft';
 // The server's limit for a save's note (IncomingItemSchema).
-const NOTE_MAX = 200;
+const NOTE_MAX = 1000;
 
 // No reliable way to know which app a share came from (Android's generic
 // ACTION_SEND doesn't carry the sender's identity), but a link's own domain
@@ -446,7 +446,8 @@ export default function SaveSheetScreen() {
   };
 
   // Picking one photo turns the sheet into a photo save, whose box is the
-  // note -- so what was typed moves there (a note holds 200). Longer text
+  // note -- so what was typed moves there (a note holds 1000, and the box
+  // grows with it). Longer text
   // isn't cut: it's kept as the "+" draft instead (UX-78).
   // Shared-in text is held only for "사진 지우고 다시 선택", never as the
   // "+" draft (UX-92).
@@ -804,7 +805,8 @@ ${sharedNote ?? ''}`;
                   value={note}
                   onChangeText={setNote}
                   editable={status !== 'saving'}
-                  maxLength={200}
+                  maxLength={NOTE_MAX}
+                  multiline
                   placeholder={S.notePlaceholder}
                   placeholderTextColor={theme.sub}
                   style={[
@@ -1088,7 +1090,7 @@ const styles = StyleSheet.create({
   memoRow: { position: 'relative', marginTop: 18 },
   micInMemo: { position: 'absolute', right: 4, bottom: 6 },
   micInNote: { position: 'absolute', right: 4, top: 0, bottom: 0, justifyContent: 'center' },
-  noteInput: { marginTop: 0, minHeight: 0, paddingVertical: 12, fontSize: 13.5 },
+  noteInput: { marginTop: 0, minHeight: 0, maxHeight: 160, paddingVertical: 12, fontSize: 13.5, textAlignVertical: 'top' },
   analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   screenshotSection: { marginTop: 18 },
   bulkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },

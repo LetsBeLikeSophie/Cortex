@@ -55,14 +55,14 @@ export const IncomingItemSchema = z.discriminatedUnion("captureType", [
     captureType: z.literal("link"),
     source: z.enum(SOURCES),
     url: z.string().url(),
-    note: z.string().max(200).optional(),
+    note: z.string().max(1000).optional(),
     requestId: RequestIdSchema,
   }),
   z.object({
     captureType: z.literal("text"),
     source: z.enum(SOURCES),
     text: z.string().min(1),
-    note: z.string().max(200).optional(),
+    note: z.string().max(1000).optional(),
     requestId: RequestIdSchema,
   }),
   z.object({
@@ -70,7 +70,7 @@ export const IncomingItemSchema = z.discriminatedUnion("captureType", [
     source: z.enum(SOURCES),
     imageBase64: z.string().min(1),
     mediaType: z.enum(["image/png", "image/jpeg", "image/webp", "image/gif"]),
-    note: z.string().max(200).optional(),
+    note: z.string().max(1000).optional(),
     requestId: RequestIdSchema,
   }),
 ]);

@@ -13,6 +13,8 @@ import {
   getStats,
   listItems,
   listAllItems,
+  listImagePaths,
+  downloadScreenshot,
   listTags,
   listTrash,
   permanentlyDeleteItem,
@@ -38,10 +40,21 @@ import {
   tagGroupCounts,
 } from "../lib/supabase.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
+import crypto from "node:crypto";
+import { ZipStream } from "../lib/zip.js";
 
 // Edits from the detail screen. Empty string clears the field (stored null).
 // raw_text only for text items -- a screenshot's raw_text is the hidden
 // search text Claude read off the image, not something shown to edit.
+// A zip entry name: a plain relative path, no "..", no leading slash.
+const ZipNameSchema = z.string().min(1).max(200).regex(/^(?!\/)(?!.*\.\.)[^\\:*?"<>|]+$/);
+const ExportZipSchema = z.object({
+  text: z.string().max(25 * 1024 * 1024),
+  textName: ZipNameSchema,
+  photos: z.array(z.object({ id: z.string().uuid(), name: ZipNameSchema })).max(20000),
+});
+const pendingExports = new Map<string, z.infer<typeof ExportZipSchema> & { userId: string; expires: number }>();
+
 const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
   snippet: z.string().max(1000).optional(),
@@ -212,6 +225,50 @@ export async function itemsRoutes(app: FastifyInstance) {
   app.get("/items/export", async (req, reply) => {
     const userId = await resolveUserId(req);
     return reply.send({ items: await listAllItems(userId) });
+  });
+
+  // 메모 내보내기 with photos, in two steps since a download can't carry a
+  // body: the app sends the memo text it wrote and the file name for each
+  // photo, then downloads one .zip (the text plus those photos, as stored --
+  // no AI). The parked text lives in memory for 10 minutes.
+  app.post("/items/export-zip", { bodyLimit: 30 * 1024 * 1024 }, async (req, reply) => {
+    const parsed = ExportZipSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
+    const userId = await resolveUserId(req);
+    const now = Date.now();
+    for (const [k, v] of pendingExports) if (v.expires < now) pendingExports.delete(k);
+    const token = crypto.randomUUID();
+    pendingExports.set(token, { userId, ...parsed.data, expires: now + 10 * 60 * 1000 });
+    return reply.send({ token });
+  });
+
+  app.get("/items/export-zip/:token", async (req, reply) => {
+    const { token } = req.params as { token: string };
+    const userId = await resolveUserId(req);
+    const job = pendingExports.get(token);
+    if (!job || job.userId !== userId || job.expires < Date.now()) return reply.code(404).send({ error: "export expired" });
+    pendingExports.delete(token);
+
+    const paths = await listImagePaths(userId, job.photos.map((p) => p.id));
+    const zip = new ZipStream();
+    reply.header("Content-Type", "application/zip");
+    void (async () => {
+      try {
+        await zip.add(job.textName, Buffer.from(job.text, "utf8"));
+        for (const photo of job.photos) {
+          const path = paths.get(photo.id);
+          if (!path || zip.stream.destroyed) continue;
+          // A photo that can't be fetched is left out; its memo is still in the text.
+          const bytes = await downloadScreenshot(path).catch(() => null);
+          if (bytes) await zip.add(photo.name, bytes);
+        }
+        zip.end();
+      } catch (err) {
+        req.log.error(err, "export zip failed");
+        zip.stream.destroy(err as Error);
+      }
+    })();
+    return reply.send(zip.stream);
   });
 
   // Search across title/snippet/raw text for the Search screen.

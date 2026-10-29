@@ -585,6 +585,23 @@ export async function listAllItems(userId: string, max = 20000): Promise<ItemRec
   return out;
 }
 
+// Storage paths of this user's photo memos among `ids` (메모 내보내기 with
+// photos). The user_id filter is the ownership check.
+export async function listImagePaths(userId: string, ids: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await getClient()
+      .from("items")
+      .select("id, image_path")
+      .eq("user_id", userId)
+      .in("id", ids.slice(i, i + 200))
+      .not("image_path", "is", null);
+    if (error) throw new Error(`listImagePaths failed: ${error.message}`);
+    for (const row of data ?? []) out.set(row.id as string, row.image_path as string);
+  }
+  return out;
+}
+
 // Distinct tags (both AI-assigned and user-added) across everything this
 // user has saved, for the home tab picker's search-as-you-type list.
 // PostgREST has no "flatten array column across rows" op, so this fetches

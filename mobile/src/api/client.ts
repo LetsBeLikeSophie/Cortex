@@ -289,9 +289,22 @@ export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number; weekCount?: number | null }>(`/items?limit=${limit}`);
 }
 
-// Every memo outside the trash, for 메모 내보내기.
+// Every memo outside the trash, for 메모 내보내기. Rows come as stored, so
+// photo memos also carry their storage path (for the photo's file type).
 export function fetchAllItems() {
-  return request<{ items: ApiItem[] }>('/items/export', undefined, 60000);
+  return request<{ items: (ApiItem & { image_path?: string | null })[] }>('/items/export', undefined, 60000);
+}
+
+// 메모 내보내기 with photos: parks the memo text on the server and returns
+// the address of the .zip (text + photos) to download with the auth header.
+export async function startExportZip(body: { text: string; textName: string; photos: { id: string; name: string }[] }) {
+  const { token } = await request<{ token: string }>('/items/export-zip', { method: 'POST', body: JSON.stringify(body) }, 60000);
+  const { data } = await supabase.auth.getSession();
+  const auth = data.session?.access_token;
+  return {
+    url: `${API_BASE_URL}/items/export-zip/${encodeURIComponent(token)}`,
+    headers: { ...(auth ? { Authorization: `Bearer ${auth}` } : {}), 'X-Cortex-Lang': DEVICE_LOCALE },
+  };
 }
 
 // The 미분류 tab's items, newest first (the order 'AI로 정리' takes them).

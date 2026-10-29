@@ -12,6 +12,7 @@ import {
   getScreenshotUrl,
   getStats,
   listItems,
+  listAllItems,
   listTags,
   listTrash,
   permanentlyDeleteItem,
@@ -204,6 +205,13 @@ export async function itemsRoutes(app: FastifyInstance) {
       countSavedSince(userId, weekAgo).catch(() => null),
     ]);
     return reply.send({ items, total, weekCount });
+  });
+
+  // 메모 내보내기: every memo not in the trash, for the app to write out as
+  // a text file. No AI, no quota.
+  app.get("/items/export", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    return reply.send({ items: await listAllItems(userId) });
   });
 
   // Search across title/snippet/raw text for the Search screen.

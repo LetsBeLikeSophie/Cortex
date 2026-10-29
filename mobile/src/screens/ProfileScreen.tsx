@@ -21,6 +21,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { DeclinedChoice, getDeclinedChoice, setDeclinedChoice } from '../share/shareQueue';
 import { LANG, LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
 import { showToast } from '../native/toast';
+import { exportMemos } from '../data/exportMemos';
 import { COMMON } from '../i18n/common';
 
 const S = strings({
@@ -57,6 +58,8 @@ const S = strings({
     lockOff: '꺼짐',
     lockOn: '켜짐',
     memoLock: '메모 잠금',
+    exportMemos: '메모 내보내기',
+    exportAs: '텍스트 파일',
     langNote: '메뉴와 AI 메모가 이 언어로 나와요',
     langDevice: '휴대폰 설정 따르기',
     fontOnRestart: '다시 켜면 글꼴이 맞춰져요',
@@ -108,6 +111,8 @@ const S = strings({
     lockOff: 'Off',
     lockOn: 'On',
     memoLock: 'Memo lock',
+    exportMemos: 'Export memos',
+    exportAs: 'Text file',
     langNote: 'Menus and AI memos use this language',
     langDevice: 'Same as phone',
     fontOnRestart: 'The font updates when you reopen the app',
@@ -159,6 +164,8 @@ const S = strings({
     lockOff: 'オフ',
     lockOn: 'オン',
     memoLock: 'メモロック',
+    exportMemos: 'メモを書き出す',
+    exportAs: 'テキスト',
     langNote: 'メニューとAIメモがこの言語になります',
     langDevice: '端末の設定に合わせる',
     fontOnRestart: 'アプリを開き直すとフォントが切り替わります',
@@ -210,6 +217,8 @@ const S = strings({
     lockOff: '已关闭',
     lockOn: '已开启',
     memoLock: '笔记锁',
+    exportMemos: '导出笔记',
+    exportAs: '文本文件',
     langNote: '菜单和 AI 笔记都会使用这个语言',
     langDevice: '跟随手机设置',
     fontOnRestart: '重新打开应用后字体会更新',
@@ -261,6 +270,8 @@ const S = strings({
     lockOff: '已關閉',
     lockOn: '已開啟',
     memoLock: '筆記鎖',
+    exportMemos: '匯出筆記',
+    exportAs: '文字檔',
     langNote: '選單和 AI 筆記都會使用這個語言',
     langDevice: '跟隨手機設定',
     fontOnRestart: '重新開啟 App 後字型會更新',
@@ -319,6 +330,21 @@ export default function ProfileScreen() {
       setLockOpen(false);
     }
     refreshLock();
+  };
+  // 메모 내보내기: with a PIN set, it's asked first, and locked memos go
+  // out too; cancelling the PIN cancels the export.
+  const [exporting, setExporting] = useState(false);
+  const onExport = async () => {
+    if (exporting) return;
+    if (lockOn && !(await askPin('check', bioPrompt))) return;
+    setExporting(true);
+    try {
+      await exportMemos();
+    } catch (err) {
+      showToast(friendlyError(err));
+    } finally {
+      setExporting(false);
+    }
   };
   const [linkError, setLinkError] = useState('');
   // A guest signs in with a real account; AuthContext moves the saves over.
@@ -545,6 +571,14 @@ export default function ProfileScreen() {
                 )}
               </View>
             )}
+            <Pressable
+              onPress={onExport}
+              disabled={exporting}
+              style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
+            >
+              <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.exportMemos}</Text>
+              {exporting ? <ActivityIndicator size="small" color={theme.sub} /> : <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>{S.exportAs}</Text>}
+            </Pressable>
             <Pressable
               onPress={() => navigation.navigate('AiConsent')}
               style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}

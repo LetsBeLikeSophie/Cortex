@@ -565,6 +565,26 @@ export async function listItems(userId: string, options: ListItemsOptions = {}):
   return { items: (data ?? []) as ItemRecord[], total: count ?? 0 };
 }
 
+// Everything not in the trash, newest first, for 메모 내보내기 (decision B1).
+// Pages through PostgREST's 1000-row cap; stops at `max` as a guard.
+export async function listAllItems(userId: string, max = 20000): Promise<ItemRecord[]> {
+  const out: ItemRecord[] = [];
+  for (let from = 0; from < max; from += 1000) {
+    const { data, error } = await getClient()
+      .from("items")
+      .select()
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .order("shared_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + 999);
+    if (error) throw new Error(`listAllItems failed: ${error.message}`);
+    out.push(...((data ?? []) as ItemRecord[]));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
 // Distinct tags (both AI-assigned and user-added) across everything this
 // user has saved, for the home tab picker's search-as-you-type list.
 // PostgREST has no "flatten array column across rows" op, so this fetches

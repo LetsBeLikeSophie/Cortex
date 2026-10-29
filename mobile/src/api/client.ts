@@ -289,6 +289,11 @@ export function fetchRecentItems(limit = 50) {
   return request<{ items: ApiItem[]; total: number; weekCount?: number | null }>(`/items?limit=${limit}`);
 }
 
+// Every memo outside the trash, for 메모 내보내기.
+export function fetchAllItems() {
+  return request<{ items: ApiItem[] }>('/items/export', undefined, 60000);
+}
+
 // The 미분류 tab's items, newest first (the order 'AI로 정리' takes them).
 export function fetchUnclassifiedItems(limit = 100) {
   return request<{ items: ApiItem[]; total: number }>(`/items?status=unclassified&limit=${limit}`);

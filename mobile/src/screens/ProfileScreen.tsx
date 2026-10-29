@@ -20,7 +20,8 @@ import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
 import { DeclinedChoice, getDeclinedChoice, setDeclinedChoice } from '../share/shareQueue';
 import { LANG, LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
-import { showToast } from '../native/toast';
+import { permissionToast, showToast } from '../native/toast';
+import { REMINDERS_SUPPORTED, ReminderKind, askNotifications, notificationsAllowed, reminderOn, setReminderOn, syncReminders } from '../native/reminders';
 import { exportMemos } from '../data/exportMemos';
 import { COMMON } from '../i18n/common';
 
@@ -59,6 +60,10 @@ const S = strings({
     lockOn: '켜짐',
     memoLock: '메모 잠금',
     exportMemos: '메모 내보내기',
+    reminders: '알림',
+    remindMonthly: '매달 1일 · 미분류 알림',
+    remindWeekly: '주 1회 다시 보기',
+    notifications: '알림',
     exportAs: '텍스트 파일',
     langNote: '메뉴와 AI 메모가 이 언어로 나와요',
     langDevice: '휴대폰 설정 따르기',
@@ -112,6 +117,10 @@ const S = strings({
     lockOn: 'On',
     memoLock: 'Memo lock',
     exportMemos: 'Export memos',
+    reminders: 'Reminders',
+    remindMonthly: 'Monthly · unsorted',
+    remindWeekly: 'Weekly look-back',
+    notifications: 'Notification',
     exportAs: 'Text file',
     langNote: 'Menus and AI memos use this language',
     langDevice: 'Same as phone',
@@ -165,6 +174,10 @@ const S = strings({
     lockOn: 'オン',
     memoLock: 'メモロック',
     exportMemos: 'メモを書き出す',
+    reminders: 'お知らせ',
+    remindMonthly: '毎月1日 · 未分類',
+    remindWeekly: '週1回ふりかえり',
+    notifications: '通知',
     exportAs: 'テキスト',
     langNote: 'メニューとAIメモがこの言語になります',
     langDevice: '端末の設定に合わせる',
@@ -218,6 +231,10 @@ const S = strings({
     lockOn: '已开启',
     memoLock: '笔记锁',
     exportMemos: '导出笔记',
+    reminders: '提醒',
+    remindMonthly: '每月1日 · 未分类',
+    remindWeekly: '每周回顾',
+    notifications: '通知',
     exportAs: '文本文件',
     langNote: '菜单和 AI 笔记都会使用这个语言',
     langDevice: '跟随手机设置',
@@ -271,6 +288,10 @@ const S = strings({
     lockOn: '已開啟',
     memoLock: '筆記鎖',
     exportMemos: '匯出筆記',
+    reminders: '提醒',
+    remindMonthly: '每月1日 · 未分類',
+    remindWeekly: '每週回顧',
+    notifications: '通知',
     exportAs: '文字檔',
     langNote: '選單和 AI 筆記都會使用這個語言',
     langDevice: '跟隨手機設定',
@@ -330,6 +351,33 @@ export default function ProfileScreen() {
       setLockOpen(false);
     }
     refreshLock();
+  };
+  // Reminders (B3): each one on/off; turning one on asks for the
+  // notification permission if it isn't granted yet.
+  const [remindOpen, setRemindOpen] = useState(false);
+  const [remind, setRemind] = useState<Record<ReminderKind, boolean>>({ monthly: true, weekly: true });
+  const [notifAllowed, setNotifAllowed] = useState(false);
+  const refreshRemind = () => {
+    Promise.all([reminderOn('monthly'), reminderOn('weekly'), notificationsAllowed()])
+      .then(([monthly, weekly, allowed]) => {
+        setRemind({ monthly, weekly });
+        setNotifAllowed(allowed);
+      })
+      .catch(() => {});
+  };
+  useEffect(refreshRemind, []);
+  const toggleRemind = async (kind: ReminderKind) => {
+    const next = !(notifAllowed && remind[kind]);
+    if (next && !notifAllowed) {
+      const res = await askNotifications();
+      if (!res.granted) {
+        permissionToast(S.notifications, res.canAskAgain);
+        return;
+      }
+    }
+    await setReminderOn(kind, next);
+    refreshRemind();
+    if (plan) syncReminders(plan.unclassifiedCount, true).catch(() => {});
   };
   // 메모 내보내기: with a PIN set, it's asked first, and locked memos go
   // out too; cancelling the PIN cancels the export.
@@ -567,6 +615,33 @@ export default function ProfileScreen() {
                       <Text style={{ fontSize: 14.5, color: theme.danger, fontFamily: BODY_KR }}>{S.lockTurnOff}</Text>
                     </Pressable>
                     <Text style={{ fontSize: 12.5, color: theme.sub, marginTop: 4, fontFamily: BODY_KR }}>{S.lockNote}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+            {REMINDERS_SUPPORTED && (
+              <View>
+                <Pressable
+                  onPress={() => setRemindOpen((o) => !o)}
+                  style={[styles.signOutButton, styles.themeRow, frameStyle(theme), { borderRadius: theme.cardRadius }]}
+                >
+                  <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.reminders}</Text>
+                  <Text style={{ fontSize: 14, color: theme.sub, fontFamily: BODY_KR }}>
+                    {notifAllowed && (remind.monthly || remind.weekly) ? S.lockOn : S.lockOff}
+                  </Text>
+                </Pressable>
+                {remindOpen && (
+                  <View style={styles.langList}>
+                    {(['monthly', 'weekly'] as ReminderKind[]).map((kind) => {
+                      const on = notifAllowed && remind[kind];
+                      return (
+                        <Pressable key={kind} onPress={() => toggleRemind(kind)} style={styles.langRow} hitSlop={4} accessibilityRole="switch" accessibilityState={{ checked: on }}>
+                          <Text style={{ fontSize: 14.5, color: theme.ink, fontFamily: BODY_KR }}>
+                            {kind === 'monthly' ? S.remindMonthly : S.remindWeekly}  <Text style={{ color: theme.sub }}>{on ? S.lockOn : S.lockOff}</Text>
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 )}
               </View>

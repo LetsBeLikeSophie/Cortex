@@ -76,7 +76,14 @@
       "@react-native-google-signin/google-signin",
       "expo-background-task",
       "expo-secure-store",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#8B5E46"
+        }
+      ]
     ]
   }
 }

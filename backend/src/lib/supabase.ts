@@ -567,12 +567,15 @@ export async function listItems(userId: string, options: ListItemsOptions = {}):
 
 // Everything not in the trash, newest first, for 메모 내보내기 (decision B1).
 // Pages through PostgREST's 1000-row cap; stops at `max` as a guard.
+// What 메모 내보내기 writes out -- not embeddings, image paths or the rest.
+const EXPORT_COLUMNS = "id, title, shared_at, source, category, tags, user_tags, capture_type, raw_text, snippet, raw_url, user_note, locked";
+
 export async function listAllItems(userId: string, max = 20000): Promise<ItemRecord[]> {
   const out: ItemRecord[] = [];
   for (let from = 0; from < max; from += 1000) {
     const { data, error } = await getClient()
       .from("items")
-      .select()
+      .select(EXPORT_COLUMNS)
       .eq("user_id", userId)
       .is("deleted_at", null)
       .order("shared_at", { ascending: false })
@@ -585,21 +588,27 @@ export async function listAllItems(userId: string, max = 20000): Promise<ItemRec
   return out;
 }
 
-// Storage paths of this user's photo memos among `ids` (메모 내보내기 with
-// photos). The user_id filter is the ownership check.
-export async function listImagePaths(userId: string, ids: string[]): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  for (let i = 0; i < ids.length; i += 200) {
-    const { data, error } = await getClient()
-      .from("items")
-      .select("id, image_path")
-      .eq("user_id", userId)
-      .in("id", ids.slice(i, i + 200))
-      .not("image_path", "is", null);
-    if (error) throw new Error(`listImagePaths failed: ${error.message}`);
-    for (const row of data ?? []) out.set(row.id as string, row.image_path as string);
+// Up to `n` memos saved over 30 days ago, with a title and not locked, for
+// the weekly '다시 보기' reminder: picked at random from the newest 300.
+export async function listLookback(userId: string, n: number): Promise<{ id: string; title: string }[]> {
+  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await getClient()
+    .from("items")
+    .select("id, title")
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .eq("locked", false)
+    .not("title", "is", null)
+    .lt("shared_at", monthAgo)
+    .order("shared_at", { ascending: false })
+    .limit(300);
+  if (error) throw new Error(`listLookback failed: ${error.message}`);
+  const rows = ((data ?? []) as { id: string; title: string }[]).filter((r) => r.title.trim());
+  for (let i = rows.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rows[i], rows[j]] = [rows[j], rows[i]];
   }
-  return out;
+  return rows.slice(0, n);
 }
 
 // Distinct tags (both AI-assigned and user-added) across everything this

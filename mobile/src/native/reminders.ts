@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
-import { fetchAllItems } from '../api/client';
+import { fetchLookback } from '../api/client';
 import { strings } from '../i18n';
 
 // The app speaks first, two ways (decision B3, C, 2026-10-29), both local
@@ -55,7 +55,6 @@ const ASKED_KEY = 'reminders.asked';
 const SYNCED_KEY = 'reminders.syncedOn';
 const offKey = (kind: ReminderKind) => `reminders.${kind}.off`;
 const ASK_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
-const OLD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const REMINDERS_SUPPORTED = SUPPORTED;
 
@@ -122,14 +121,13 @@ export async function syncReminders(unclassifiedCount: number, force = false) {
   }
 
   await Notifications.cancelScheduledNotificationAsync('weekly').catch(() => {});
-  // Locked memos never show up here, not even their titles.
-  const all = (await reminderOn('weekly')) ? (await fetchAllItems()).items : [];
-  const old = all.filter((it) => !it.locked && it.title?.trim() && now - new Date(it.shared_at).getTime() > OLD_MS);
-  if (old.length >= 3) {
-    const picks = [...old].sort(() => Math.random() - 0.5).slice(0, 3);
+  // Locked memos never show up here, not even their titles (the server
+  // leaves them out).
+  const picks = (await reminderOn('weekly')) ? (await fetchLookback()).items : [];
+  if (picks.length >= 3) {
     await Notifications.scheduleNotificationAsync({
       identifier: 'weekly',
-      content: { title: S.weeklyTitle, body: picks.map((it) => it.title!.trim()).join(' · ') },
+      content: { title: S.weeklyTitle, body: picks.map((it) => it.title.trim()).join(' · ') },
       // Saturday 10:00 (1 = Sunday).
       trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, channelId: CHANNEL, weekday: 7, hour: 10, minute: 0 },
     });

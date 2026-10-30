@@ -1,24 +1,95 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { supabase } from './supabase';
+import { refreshDetached, supabase } from './supabase';
 import { completePendingWebLogin } from './kakaoLogin';
-import { claimGuest, seedSampleItem } from '../api/client';
+import { ApiError, claimGuest, seedSampleItem } from '../api/client';
+import { showToast } from '../native/toast';
+import { strings } from '../i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const S = strings({
+  ko: { claimLater: '게스트 메모를 아직 못 옮겼어요 · 앱을 다시 열면 이어서 옮겨요' },
+  en: { claimLater: "Guest memos aren't moved yet · they'll move when you reopen the app" },
+  ja: { claimLater: 'ゲストのメモはまだ移せていません · アプリを開き直すと続きを移します' },
+  'zh-Hans': { claimLater: '访客笔记还没转移 · 重新打开应用会继续' },
+  'zh-Hant': { claimLater: '訪客筆記還沒轉移 · 重新開啟應用程式會繼續' },
+});
 
 // Set right before a guest signs in with Kakao/Google (which replaces the
 // guest session); once a real session shows up, the guest's saves are
-// moved over. Kept in storage because the web login redirects away.
+// moved over. Kept in storage because the web login redirects away, and
+// kept until the move succeeds (or can never succeed), so a failed try is
+// picked up again the next time the app opens. Holds the guest's refresh
+// token too: the access token alone is dead after an hour.
 const PENDING_CLAIM_KEY = 'cortex.pendingGuestClaim';
 
-async function claimPendingGuest(): Promise<number | null> {
-  const token = await AsyncStorage.getItem(PENDING_CLAIM_KEY).catch(() => null);
-  if (!token) return null;
-  await AsyncStorage.removeItem(PENDING_CLAIM_KEY).catch(() => {});
+interface PendingClaim {
+  access: string;
+  refresh: string | null;
+}
+
+async function readPending(): Promise<PendingClaim | null> {
+  const raw = await AsyncStorage.getItem(PENDING_CLAIM_KEY).catch(() => null);
+  if (!raw) return null;
   try {
-    const { moved } = await claimGuest(token);
-    return moved;
+    const parsed = JSON.parse(raw) as PendingClaim;
+    if (parsed?.access) return parsed;
+  } catch {}
+  // Written by an older build: the bare access token.
+  return { access: raw, refresh: null };
+}
+
+const forgetPending = () => AsyncStorage.removeItem(PENDING_CLAIM_KEY).catch(() => {});
+
+// 400: not a guest / same account -- nothing to move, ever.
+const isFinal = (err: unknown) => err instanceof ApiError && err.status === 400;
+const isExpired = (err: unknown) => err instanceof ApiError && err.status === 410;
+
+let claiming: Promise<number | null> | null = null;
+
+// Auth events can fire several times around a login (initial session,
+// token refresh); one move runs at a time.
+function claimPendingGuest(): Promise<number | null> {
+  claiming ??= runClaim().finally(() => {
+    claiming = null;
+  });
+  return claiming;
+}
+
+async function runClaim(): Promise<number | null> {
+  let pending = await readPending();
+  if (!pending) return null;
+  try {
+    try {
+      const { moved } = await claimGuest(pending.access);
+      await forgetPending();
+      return moved;
+    } catch (err) {
+      if (!isExpired(err)) throw err;
+      if (!pending.refresh) {
+        await forgetPending();
+        return null;
+      }
+      const { data, error } = await refreshDetached(pending.refresh);
+      if (error || !data.session) {
+        // Rejected by the auth server: the guest session is gone for good.
+        const status = (error as { status?: number } | null)?.status;
+        if (status !== undefined && status >= 400 && status < 500) await forgetPending();
+        throw error ?? new Error('guest refresh failed');
+      }
+      pending = { access: data.session.access_token, refresh: data.session.refresh_token };
+      await AsyncStorage.setItem(PENDING_CLAIM_KEY, JSON.stringify(pending)).catch(() => {});
+      const { moved } = await claimGuest(pending.access);
+      await forgetPending();
+      return moved;
+    }
   } catch (err) {
     console.warn('guest claim failed', err);
+    if (isFinal(err) || isExpired(err)) {
+      await forgetPending();
+    } else if (await AsyncStorage.getItem(PENDING_CLAIM_KEY).catch(() => null)) {
+      showToast(S.claimLater);
+    }
     return null;
   }
 }
@@ -63,9 +134,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (suppressNextAuthEvent.current) return;
       // A guest just became a real account: bring the guest's saves along
-      // before the app shows the account (best effort -- never blocks login).
+      // before the app shows the account (best effort -- never holds the
+      // login more than 20s; a longer move finishes in the background).
       if (newSession && !newSession.user.is_anonymous) {
-        void claimPendingGuest().finally(() => setSession(newSession));
+        const shown = new Promise((resolve) => setTimeout(resolve, 20_000));
+        void Promise.race([claimPendingGuest(), shown]).finally(() => setSession(newSession));
         return;
       }
       setSession(newSession);
@@ -112,7 +185,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const startLinking = async () => {
     const { data } = await supabase.auth.getSession();
     const s = data.session;
-    if (s?.user.is_anonymous) await AsyncStorage.setItem(PENDING_CLAIM_KEY, s.access_token).catch(() => {});
+    if (s?.user.is_anonymous) {
+      const pending: PendingClaim = { access: s.access_token, refresh: s.refresh_token };
+      await AsyncStorage.setItem(PENDING_CLAIM_KEY, JSON.stringify(pending)).catch(() => {});
+    }
   };
 
   return (

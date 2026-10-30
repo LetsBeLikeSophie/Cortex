@@ -431,8 +431,9 @@ export function deleteAccount() {
 // A guest who just signed in with Kakao/Google: move the guest's saves to
 // this account (guestToken = the guest session's access token, kept from
 // before the switch).
+// Moving many photos can take a while; the server finishes it either way.
 export function claimGuest(guestToken: string) {
-  return request<{ ok: true; moved: number }>('/auth/claim-guest', { method: 'POST', body: JSON.stringify({ guestToken }) });
+  return request<{ ok: true; moved: number }>('/auth/claim-guest', { method: 'POST', body: JSON.stringify({ guestToken }) }, 120_000);
 }
 
 export function seedSampleItem() {

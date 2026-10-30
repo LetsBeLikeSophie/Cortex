@@ -22,6 +22,9 @@ async function requireVerifiedUserId(req: FastifyRequest): Promise<string | null
   return verifyAccessToken(header.slice("Bearer ".length));
 }
 
+// Guest ids whose memos are being moved right now (one run each).
+const claiming = new Set<string>();
+
 export async function authRoutes(app: FastifyInstance) {
   app.post("/auth/kakao", async (req, reply) => {
     const parsed = KakaoLoginSchema.safeParse(req.body);
@@ -68,6 +71,9 @@ export async function authRoutes(app: FastifyInstance) {
     if (error || !guest) return reply.code(410).send({ error: "guest_expired" });
     if (!guest.is_anonymous) return reply.code(400).send({ error: "not_guest" });
     if (guest.id === userId) return reply.code(400).send({ error: "same_account" });
+    // A retry while the first move is still running would race it.
+    if (claiming.has(guest.id)) return reply.code(409).send({ error: "claim_running" });
+    claiming.add(guest.id);
     try {
       const result = await claimGuestAccount(userId, guest.id);
       await recomputeProUntil(userId).catch((e) => req.log.error(e));
@@ -75,6 +81,8 @@ export async function authRoutes(app: FastifyInstance) {
     } catch (err) {
       req.log.error(err);
       return reply.code(500).send({ error: "claim_failed" });
+    } finally {
+      claiming.delete(guest.id);
     }
   });
 

@@ -8,6 +8,15 @@ import { Platform } from 'react-native';
 const SUPABASE_URL = 'https://brzxggvawcyuiteleelm.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_atRCHo4-v3BopG2-_ow14A_IQHl8ehI';
 
+// Renews a session that isn't the app's current one (a guest's, kept for
+// moving its memos over after login) without touching the signed-in one.
+export async function refreshDetached(refreshToken: string) {
+  const detached = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return detached.auth.refreshSession({ refresh_token: refreshToken });
+}
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     storage: AsyncStorage,

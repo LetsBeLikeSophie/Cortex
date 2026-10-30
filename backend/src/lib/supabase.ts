@@ -1113,12 +1113,21 @@ export async function claimGuestAccount(targetId: string, guestId: string): Prom
     await client.from("items").delete().eq("user_id", guestId).in("title", SAMPLE_TITLES);
   }
 
-  const { data: guestItems, error: itemsError } = await client.from("items").select("id, image_path").eq("user_id", guestId);
-  if (itemsError) throw new Error(`claim: read items failed: ${itemsError.message}`);
-  for (const it of (guestItems ?? []) as { id: string; image_path: string | null }[]) {
-    const imagePath = it.image_path?.startsWith(`${guestId}/`) ? `${targetId}/${it.image_path.slice(guestId.length + 1)}` : it.image_path;
-    const { error } = await client.from("items").update({ user_id: targetId, image_path: imagePath }).eq("id", it.id).eq("user_id", guestId);
-    if (error) throw new Error(`claim: move item failed: ${error.message}`);
+  // The server caps a select at 1000 rows, so read again until nothing of
+  // the guest's is left (moved rows drop out of the next read). A run cut
+  // short picks up where it stopped when the app retries.
+  let moved = 0;
+  for (;;) {
+    const { data: batch, error: itemsError } = await client.from("items").select("id, image_path").eq("user_id", guestId).limit(500);
+    if (itemsError) throw new Error(`claim: read items failed: ${itemsError.message}`);
+    const rows = (batch ?? []) as { id: string; image_path: string | null }[];
+    if (rows.length === 0) break;
+    for (const it of rows) {
+      const imagePath = it.image_path?.startsWith(`${guestId}/`) ? `${targetId}/${it.image_path.slice(guestId.length + 1)}` : it.image_path;
+      const { error } = await client.from("items").update({ user_id: targetId, image_path: imagePath }).eq("id", it.id).eq("user_id", guestId);
+      if (error) throw new Error(`claim: move item failed: ${error.message}`);
+    }
+    moved += rows.length;
   }
 
   // A Pro bought as a guest belongs to the person too (the plan is
@@ -1143,9 +1152,12 @@ export async function claimGuestAccount(targetId: string, guestId: string): Prom
     await client.from("user_plans").update({ lang: guestPlan.lang }).eq("user_id", targetId);
   }
 
-  // Whatever is left of the guest (plan row, auth user) goes.
+  // Whatever is left of the guest (plan row, auth user) goes -- only once
+  // none of its memos are left to lose.
+  const { count, error: countError } = await client.from("items").select("id", { count: "exact", head: true }).eq("user_id", guestId);
+  if (countError || count !== 0) throw new Error(`claim: guest still has items (${countError?.message ?? count})`);
   await deleteUserAccount(guestId);
-  return { moved: guestItems?.length ?? 0 };
+  return { moved };
 }
 
 // One indexed row lookup instead of paging through every account -- see

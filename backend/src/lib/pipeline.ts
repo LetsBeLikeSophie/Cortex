@@ -61,7 +61,8 @@ export const IncomingItemSchema = z.discriminatedUnion("captureType", [
   z.object({
     captureType: z.literal("text"),
     source: z.enum(SOURCES),
-    text: z.string().min(1),
+    // Kept whole up to here; only the first part goes to the AI.
+    text: z.string().min(1).max(200_000),
     note: z.string().max(1000).optional(),
     requestId: RequestIdSchema,
   }),

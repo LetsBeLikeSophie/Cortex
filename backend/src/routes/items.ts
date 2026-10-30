@@ -49,7 +49,7 @@ const exporting = new Set<string>();
 const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
   snippet: z.string().max(1000).optional(),
-  rawText: z.string().max(20000).optional(),
+  rawText: z.string().max(200_000).optional(),
   // The person's own note on a screenshot/link ("내 메모").
   userNote: z.string().max(1000).optional(),
   // Only sent by "undo" after an AI re-organize, putting back what the AI

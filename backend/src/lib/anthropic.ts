@@ -239,6 +239,13 @@ function formatDuration(sec: number): string {
   return m > 0 ? `${m} min ${sec % 60} s` : `${sec} s`;
 }
 
+// A long memo or page description goes to the model only up to here: the
+// start says what it is, and every retry would pay for the rest again.
+const PROMPT_TEXT_MAX = 12000;
+function clipForPrompt(text: string): string {
+  return text.length > PROMPT_TEXT_MAX ? `${text.slice(0, PROMPT_TEXT_MAX)}\n(이하 생략)` : text;
+}
+
 export async function classifyText(input: ClassifyTextInput): Promise<Classification> {
   const lang = input.lang ?? DEFAULT_LANG;
   return inLanguage(lang, (strict) => classifyTextOnce(input, languageLine(lang, strict)));
@@ -252,8 +259,8 @@ async function classifyTextOnce(input: ClassifyTextInput, langLine: string): Pro
     input.title ? `Page title: ${input.title}` : null,
     input.durationSec !== undefined ? `Video length: ${formatDuration(input.durationSec)}` : null,
     input.creatorTags?.length ? `Creator's own tags: ${input.creatorTags.join(", ")}` : null,
-    input.description ? `Page/video description:\n${input.description}` : null,
-    input.rawText ? `Shared text:\n${input.rawText}` : null,
+    input.description ? `Page/video description:\n${clipForPrompt(input.description)}` : null,
+    input.rawText ? `Shared text:\n${clipForPrompt(input.rawText)}` : null,
     hintLine(input.hint),
     knownTagsLine(input.knownTags),
     input.imageUrl

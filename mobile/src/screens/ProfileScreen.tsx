@@ -374,6 +374,9 @@ export default function ProfileScreen() {
         permissionToast(S.notifications, res.canAskAgain);
         return;
       }
+      // Both were 'on' by default while nothing could be sent: only the
+      // one switched on now starts.
+      await setReminderOn(kind === 'monthly' ? 'weekly' : 'monthly', false);
     }
     await setReminderOn(kind, next);
     refreshRemind();

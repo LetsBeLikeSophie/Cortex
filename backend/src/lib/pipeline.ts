@@ -8,7 +8,9 @@ import {
   ClassificationStatus,
   completeClassification,
   downloadScreenshot,
-  listUnclassifiedItems,
+  listBacklogItems,
+  countBacklog,
+  getClassifyGate,
   markClassificationPending,
   listPendingItems,
   markUnclassified,
@@ -245,14 +247,16 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
 export async function classifyBacklog(userId: string): Promise<{ started: number; left: number }> {
   const ent = await getEntitlement(userId);
   const budget = remaining(ent, "classify");
-  if (budget === 0) return { started: 0, left: ent.unclassifiedCount };
-  const items = await listUnclassifiedItems(userId, budget);
+  // Locked memos never go, so "left" doesn't count them either -- the number
+  // after the run matches what a next run could still pick up.
+  if (budget === 0) return { started: 0, left: await countBacklog(userId) };
+  const items = await listBacklogItems(userId, budget);
   for (const item of items) {
     const reservation = await reserveUsage(userId, "classify");
     await markClassificationPending(item.id, userId);
     enqueueClassification({ item, reservation });
   }
-  return { started: items.length, left: ent.unclassifiedCount - items.length };
+  return { started: items.length, left: await countBacklog(userId) };
 }
 
 // "AI로 다시 정리" on one item: uses one classification from the quota and
@@ -313,6 +317,17 @@ async function runJob(job: ClassificationJob): Promise<void> {
   if (ent?.aiConsent !== "agreed") {
     if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
     await markUnclassified(item.id, item.user_id, "consent").catch((e) => console.error("markUnclassified failed:", e));
+    return;
+  }
+  // Locked or trashed since it was queued: it stays here, use handed back.
+  const gate = await getClassifyGate(item.id).catch(() => undefined);
+  if (gate === null) {
+    if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
+    return;
+  }
+  if (gate === undefined || gate.locked || gate.deleted) {
+    if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
+    await markUnclassified(item.id, item.user_id, gate === undefined ? "failed" : null).catch((e) => console.error("markUnclassified failed:", e));
     return;
   }
   for (let attempt = 0; ; attempt++) {

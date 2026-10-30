@@ -207,7 +207,7 @@ export async function markClassificationPending(itemId: string, userId: string):
 
 // Classification gave up after every retry: park the item in 미분류함
 // (still a real, openable item) so "AI로 정리" can try it again later.
-export async function markUnclassified(itemId: string, userId: string, reason: UnclassifiedReason = "failed"): Promise<void> {
+export async function markUnclassified(itemId: string, userId: string, reason: UnclassifiedReason | null = "failed"): Promise<void> {
   const { error } = await getClient()
     .from("items")
     .update({ classification_status: "unclassified" satisfies ClassificationStatus, unclassified_reason: reason })
@@ -279,6 +279,44 @@ export async function listUnclassifiedItems(userId: string, limit: number): Prom
     .limit(limit);
   if (error) throw new Error(`listUnclassifiedItems failed: ${error.message}`);
   return (data ?? []) as ItemRecord[];
+}
+
+// What "AI로 정리" may send to the AI: the 미분류함 minus locked memos
+// (a locked memo stays away from the AI, decision T2). The tab itself still
+// lists locked ones (listUnclassifiedItems).
+export async function listBacklogItems(userId: string, limit: number): Promise<ItemRecord[]> {
+  const { data, error } = await getClient()
+    .from("items")
+    .select()
+    .eq("user_id", userId)
+    .eq("classification_status", "unclassified")
+    .eq("locked", false)
+    .is("deleted_at", null)
+    .order("shared_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`listBacklogItems failed: ${error.message}`);
+  return (data ?? []) as ItemRecord[];
+}
+
+export async function countBacklog(userId: string): Promise<number> {
+  const { count, error } = await getClient()
+    .from("items")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("classification_status", "unclassified")
+    .eq("locked", false)
+    .is("deleted_at", null);
+  if (error) throw new Error(`countBacklog failed: ${error.message}`);
+  return count ?? 0;
+}
+
+// The queue's last look at a row before it goes to the AI: it may have been
+// locked or trashed since it was queued. null: the row is gone.
+export async function getClassifyGate(itemId: string): Promise<{ locked: boolean; deleted: boolean } | null> {
+  const { data, error } = await getClient().from("items").select("locked, deleted_at").eq("id", itemId).maybeSingle();
+  if (error) throw new Error(`getClassifyGate failed: ${error.message}`);
+  if (!data) return null;
+  return { locked: !!data.locked, deleted: data.deleted_at !== null };
 }
 
 // Reads a stored screenshot back -- needed to classify one that was saved
@@ -729,12 +767,14 @@ export async function listItemsWithTag(userId: string, tag: string, max = 50): P
 
 // The tags this person uses most (AI + their own), most-used first -- fed to
 // the classifier so a new item reuses "수달" instead of minting "수달 캐릭터"
-// next to it. Capped so the prompt stays small.
+// next to it. Capped so the prompt stays small. Locked memos' tags (often
+// names) stay out of the prompt.
 export async function listFrequentTags(userId: string, max = 150): Promise<string[]> {
   const { data, error } = await getClient()
     .from("items")
     .select("tags, user_tags")
     .eq("user_id", userId)
+    .eq("locked", false)
     .is("deleted_at", null)
     .order("shared_at", { ascending: false })
     .limit(1000);

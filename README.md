@@ -89,7 +89,7 @@ Expo SDK가 자주 바뀌므로 코드를 건드리기 전에 `mobile/AGENTS.md`
 
 ## 배포 메모
 
-- 백엔드는 Oracle VM에서 systemd 서비스(`cortex-backend`)로 상시 구동, nginx가 `/cortex-api/`로 리버스 프록시.
+- 백엔드는 Oracle VM에서 systemd 서비스(`cortex-backend`)로 상시 구동, nginx가 `/cortex-api/`로 리버스 프록시. 속도 제한이 사람마다 걸리도록 nginx에 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`가 있어야 함 (서버는 `trustProxy: "127.0.0.1"`로 이 헤더만 믿음).
 - 웹 빌드(`expo export -p web`)는 `/var/www/cortex-app/`에 정적 배포.
 - 안드로이드 릴리스는 `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a`로 arm64 전용 빌드 후 `/var/www/cortex-apk/cortex.apk`에 덮어쓰는 방식 (버전별로 파일명을 따로 두지 않고 같은 URL을 계속 갱신).
 - 이용약관/개인정보처리방침은 `/cortex/legal/terms.html`, `/cortex/legal/privacy.html`에 별도 정적 파일로 호스팅 (앱 재배포와 무관하게 유지).

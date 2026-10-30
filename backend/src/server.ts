@@ -16,7 +16,13 @@ import { startRetentionJob } from "./lib/retention.js";
 // FST_ERR_CTP_BODY_TOO_LARGE.
 // Request logs keep the path only: query strings carry the billing
 // webhook's ?secret= and people's search words.
+// trustProxy: nginx on this same VM fronts the API, so without it every
+// request looks like 127.0.0.1 and the per-IP rate limits below become one
+// shared budget for everyone. Only the local proxy's X-Forwarded-For is
+// believed (nginx must set it: proxy_set_header X-Forwarded-For
+// $proxy_add_x_forwarded_for).
 const app = Fastify({
+  trustProxy: "127.0.0.1",
   logger: {
     serializers: {
       req: (req) => ({ method: req.method, url: req.url.split("?")[0], host: req.host, remoteAddress: req.ip }),

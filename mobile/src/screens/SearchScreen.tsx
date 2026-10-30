@@ -54,17 +54,15 @@ const S = strings({
     relevance: '관련순',
     allMatch: '모두 포함',
     someMatch: '일부 포함',
-    placeholder: '단어로 바로 찾기 · ✦는 문장으로',
+    placeholder: '검색 · ✦ 문장으로',
     askAi: 'AI로 찾기',
-    tagConditions: (n: number) => `태그 조건 ${n}개`,
-    narrowByTag: '태그로 좁히기',
+    tagConditions: (n: number) => `태그 필터 ${n}`,
+    narrowByTag: '태그 필터',
     clear: '지우기',
-    tagPlaceholder: '태그 입력 · -태그는 제외',
-    tagHelp: '태그를 누르면 제외로 바뀌어요. ×는 빼기.',
+    tagPlaceholder: '태그 입력',
     quotaUsed: (limit: number) => `이번 달 AI 검색 ${limit}회를 다 썼어요. 단어로 찾은 결과예요.`,
     seePro: 'Pro 보기',
     aiFailed: 'AI 검색이 실패해서 단어로 찾은 결과예요.',
-    interpretHelp: 'AI가 읽은 조건 · 누르면 제외, ×는 빼기',
     quotaOut: '이번 달 AI 검색을 다 썼어요',
     looksLikeSentence: '문장처럼 보여요 → ',
     needConsent: 'AI 분석에 동의하면 문장으로 찾을 수 있어요',
@@ -73,12 +71,8 @@ const S = strings({
     aiReading: 'AI가 문장을 읽는 중...',
     searching: '검색 중...',
     tagFiltered: ' · 태그 조건 적용',
-    usedOne: '1회 사용',
     left: (n: number) => `${n}회 남음`,
     compose: (tag: string) => `'${tag}' 모아서 만들기`,
-    help1: '앞에 -를 붙이면 빼고 찾아요',
-    help2: '기억이 흐릿하면 문장으로 쓰고 ✦를 눌러 보세요.',
-    example: '예: 지난달 인스타에서 본 성수 카페',
     aiLeftMonth: (n: number) => `AI 검색은 이번 달 ${n}회 남았어요.`,
     noResults: '결과가 없어요.',
     relaxed: (n: number) => `기간·출처 같은 조건을 빼면 ${n}건 있어요. 조건 빼고 보기`,
@@ -100,17 +94,15 @@ const S = strings({
     relevance: 'Relevance',
     allMatch: 'All match',
     someMatch: 'Partial match',
-    placeholder: 'Type words · ✦ for a sentence',
+    placeholder: 'Search · ✦ by sentence',
     askAi: 'Search with AI',
-    tagConditions: (n: number) => (n === 1 ? '1 tag filter' : `${n} tag filters`),
-    narrowByTag: 'Filter by tag',
+    tagConditions: (n: number) => `Tag filter ${n}`,
+    narrowByTag: 'Tag filter',
     clear: 'Clear',
-    tagPlaceholder: 'Add a tag · -tag to exclude',
-    tagHelp: 'Tap a tag to exclude it. × removes it.',
+    tagPlaceholder: 'Add a tag',
     quotaUsed: (limit: number) => `You've used all ${limit} AI searches this month. Showing word results.`,
     seePro: 'See Pro',
     aiFailed: 'AI search failed. Showing word results.',
-    interpretHelp: 'What the AI read · tap to exclude, × to remove',
     quotaOut: "You've used this month's AI searches",
     looksLikeSentence: 'Looks like a sentence → ',
     needConsent: 'Allow AI analysis to search by sentence',
@@ -119,12 +111,8 @@ const S = strings({
     aiReading: 'AI is reading...',
     searching: 'Searching...',
     tagFiltered: ' · tag filter on',
-    usedOne: '1 used',
     left: (n: number) => `${n} left`,
     compose: (tag: string) => `Combine '${tag}'`,
-    help1: 'Put - before a word to exclude it',
-    help2: "Can't quite remember? Write a sentence and tap ✦.",
-    example: 'e.g. that café I saw on Instagram last month',
     aiLeftMonth: (n: number) => `${n} AI searches left this month.`,
     noResults: 'No results.',
     relaxed: (n: number) => `${n} found without the date/source filters. Show them`,
@@ -146,17 +134,15 @@ const S = strings({
     relevance: '関連順',
     allMatch: 'すべて含む',
     someMatch: '一部を含む',
-    placeholder: '単語ですぐ検索 · ✦で文章検索',
+    placeholder: '検索 · ✦ 文章で',
     askAi: 'AIで検索',
-    tagConditions: (n: number) => `タグ条件 ${n}件`,
-    narrowByTag: 'タグで絞り込む',
+    tagConditions: (n: number) => `タグ絞り込み ${n}`,
+    narrowByTag: 'タグ絞り込み',
     clear: 'クリア',
-    tagPlaceholder: 'タグを入力 · -タグで除外',
-    tagHelp: 'タグをタップで除外に切り替え。×で外します。',
+    tagPlaceholder: 'タグを入力',
     quotaUsed: (limit: number) => `今月のAI検索${limit}回を使い切りました。単語での検索結果です。`,
     seePro: 'Proを見る',
     aiFailed: 'AI検索に失敗したため、単語での検索結果です。',
-    interpretHelp: 'AIが読んだ条件 · タップで除外、×で外す',
     quotaOut: '今月のAI検索を使い切りました',
     looksLikeSentence: '文章のようです → ',
     needConsent: 'AI分析に同意すると文章で検索できます',
@@ -165,12 +151,8 @@ const S = strings({
     aiReading: 'AIが文章を読んでいます...',
     searching: '検索中...',
     tagFiltered: ' · タグ条件あり',
-    usedOne: '1回使用',
     left: (n: number) => `残り${n}回`,
     compose: (tag: string) => `「${tag}」をまとめて作る`,
-    help1: '前に - を付けると除外',
-    help2: 'うろ覚えなら、文章で書いて ✦ を押してみてください。',
-    example: '例: 先月インスタで見た下北沢のカフェ',
     aiLeftMonth: (n: number) => `今月のAI検索は残り${n}回です。`,
     noResults: '結果がありません。',
     relaxed: (n: number) => `期間・出どころの条件を外すと${n}件あります。条件を外して見る`,
@@ -192,17 +174,15 @@ const S = strings({
     relevance: '相关度',
     allMatch: '全部包含',
     someMatch: '部分包含',
-    placeholder: '输入词语即搜 · ✦ 用句子搜',
+    placeholder: '搜索 · ✦ 用句子',
     askAi: '用 AI 搜索',
-    tagConditions: (n: number) => `${n} 个标签条件`,
-    narrowByTag: '按标签筛选',
+    tagConditions: (n: number) => `标签筛选 ${n}`,
+    narrowByTag: '标签筛选',
     clear: '清除',
-    tagPlaceholder: '输入标签 · -标签 为排除',
-    tagHelp: '点标签切换为排除，× 移除。',
+    tagPlaceholder: '输入标签',
     quotaUsed: (limit: number) => `本月 ${limit} 次 AI 搜索已用完。以下是按词语搜索的结果。`,
     seePro: '查看 Pro',
     aiFailed: 'AI 搜索失败，以下是按词语搜索的结果。',
-    interpretHelp: 'AI 读出的条件 · 点击排除，× 移除',
     quotaOut: '本月 AI 搜索已用完',
     looksLikeSentence: '像是一句话 → ',
     needConsent: '同意 AI 分析后即可用句子搜索',
@@ -211,12 +191,8 @@ const S = strings({
     aiReading: 'AI 正在读句子...',
     searching: '搜索中...',
     tagFiltered: ' · 已按标签筛选',
-    usedOne: '用了 1 次',
     left: (n: number) => `剩 ${n} 次`,
     compose: (tag: string) => `汇总生成「${tag}」`,
-    help1: '词前加 - 可排除',
-    help2: '记不太清？用一句话描述，再点 ✦。',
-    example: '例：上个月在 IG 看到的加东咖啡店',
     aiLeftMonth: (n: number) => `本月还剩 ${n} 次 AI 搜索。`,
     noResults: '没有结果。',
     relaxed: (n: number) => `去掉时间、来源等条件有 ${n} 条。去掉条件查看`,
@@ -238,17 +214,15 @@ const S = strings({
     relevance: '相關度',
     allMatch: '全部包含',
     someMatch: '部分包含',
-    placeholder: '輸入詞語即搜 · ✦ 用句子搜',
+    placeholder: '搜尋 · ✦ 用句子',
     askAi: '用 AI 搜尋',
-    tagConditions: (n: number) => `${n} 個標籤條件`,
-    narrowByTag: '依標籤篩選',
+    tagConditions: (n: number) => `標籤篩選 ${n}`,
+    narrowByTag: '標籤篩選',
     clear: '清除',
-    tagPlaceholder: '輸入標籤 · -標籤 為排除',
-    tagHelp: '點標籤切換為排除，× 移除。',
+    tagPlaceholder: '輸入標籤',
     quotaUsed: (limit: number) => `本月 ${limit} 次 AI 搜尋已用完。以下是依詞語搜尋的結果。`,
     seePro: '查看 Pro',
     aiFailed: 'AI 搜尋失敗，以下是依詞語搜尋的結果。',
-    interpretHelp: 'AI 讀出的條件 · 點一下排除，× 移除',
     quotaOut: '本月 AI 搜尋已用完',
     looksLikeSentence: '看起來像一句話 → ',
     needConsent: '同意 AI 分析後即可用句子搜尋',
@@ -257,12 +231,8 @@ const S = strings({
     aiReading: 'AI 正在讀句子...',
     searching: '搜尋中...',
     tagFiltered: ' · 已依標籤篩選',
-    usedOne: '用了 1 次',
     left: (n: number) => `剩 ${n} 次`,
     compose: (tag: string) => `彙整生成「${tag}」`,
-    help1: '詞前加 - 可排除',
-    help2: '記不太清楚？用一句話描述，再點 ✦。',
-    example: '例：上個月在 IG 看到的赤峰街咖啡廳',
     aiLeftMonth: (n: number) => `本月還剩 ${n} 次 AI 搜尋。`,
     noResults: '沒有結果。',
     relaxed: (n: number) => `拿掉時間、來源等條件有 ${n} 筆。拿掉條件查看`,
@@ -718,7 +688,6 @@ export default function SearchScreen() {
                 ))}
               </View>
             )}
-            <Text style={[styles.filterHelp, { color: theme.sub }]}>{S.tagHelp}</Text>
           </View>
         )}
 
@@ -739,16 +708,7 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {aiMode && interpretation && (
-          <>
-            <InterpretationRow q={interpretation} theme={theme} onChange={reSearch} />
-            {/* Tapping a chip flips it to excluded -- say so, and that editing
-                these never spends another AI search. */}
-            <Text style={[styles.interpretHelp, { color: theme.sub }]}>
-              {S.interpretHelp}
-            </Text>
-          </>
-        )}
+        {aiMode && interpretation && <InterpretationRow q={interpretation} theme={theme} onChange={reSearch} />}
 
         {/* Says what the tap costs; with none left it stops offering. */}
         {looksLikeSentence &&
@@ -777,9 +737,11 @@ export default function SearchScreen() {
 
         {hasQuery && (
           <View style={[styles.metaRow, { paddingBottom: boxed ? 4 : 0 }]}>
-            <Text style={metaStyle}>{asking ? S.aiReading : loading ? S.searching : txt.hits(shown.length) + (aiTagFiltered ? S.tagFiltered : '')}</Text>
-            <Text style={metaStyle}>
-              {aiMode ? `✦ ${orderLabel} · ${S.usedOne}${aiLeft !== null ? ` · ${S.left(aiLeft)}` : ''}` : orderLabel}
+            <Text style={[metaStyle, { flexShrink: 1 }]} numberOfLines={1}>
+              {asking ? S.aiReading : loading ? S.searching : txt.hits(shown.length) + (aiTagFiltered ? S.tagFiltered : '')}
+            </Text>
+            <Text style={metaStyle} numberOfLines={1}>
+              {aiMode ? `✦ ${orderLabel}${aiLeft !== null ? ` · ${S.left(aiLeft)}` : ''}` : orderLabel}
             </Text>
           </View>
         )}
@@ -802,9 +764,6 @@ export default function SearchScreen() {
 
       {!hasQuery ? (
         <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
-          <Text style={[styles.help, { color: theme.sub }]}>{S.help1}</Text>
-          <Text style={[styles.help, { color: theme.sub }]}>{S.help2}</Text>
-          <Text style={[styles.help, { color: theme.sub }]}>{S.example}</Text>
           {aiLeft !== null && <Text style={[styles.help, { color: theme.sub }]}>{S.aiLeftMonth(aiLeft)}</Text>}
         </View>
       ) : (
@@ -866,7 +825,6 @@ const styles = StyleSheet.create({
   notice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 12 },
   noticeText: { flex: 1, fontSize: 12.5, lineHeight: 18, fontFamily: BODY_KR },
   noticeLink: { fontSize: 12.5, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
-  interpretHelp: { fontSize: 12, marginTop: 8, fontFamily: BODY_KR },
   noReading: { fontSize: 12.5, marginTop: 12, fontFamily: BODY_KR },
   screen: { flex: 1 },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -875,9 +833,8 @@ const styles = StyleSheet.create({
   filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
   filterToggle: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   filterLabel: { fontSize: 12.5, fontFamily: BODY_KR },
-  filterPanel: { marginTop: 10 },
-  tagInput: { fontSize: 14, paddingHorizontal: 12, paddingVertical: 9 },
-  filterHelp: { fontSize: 12, marginTop: 8, fontFamily: BODY_KR },
+  filterPanel: { marginTop: 8 },
+  tagInput: { fontSize: 14, paddingHorizontal: 12, paddingVertical: 8 },
   // Wraps instead of running off the right edge (long English, big text, a
   // long tag name); on two lines the ✦ stays with the first.
   suggestLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 12 },
@@ -885,7 +842,7 @@ const styles = StyleSheet.create({
   suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   suggestTag: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 11, paddingVertical: 5 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginTop: 16 },
   help: { fontSize: 13.5, lineHeight: 22, fontFamily: BODY_KR },
   quotaTitle: { fontSize: 15, marginBottom: 6, fontFamily: BODY_KR_MEDIUM },
   quotaActions: { flexDirection: 'row', gap: 20, marginTop: 12 },

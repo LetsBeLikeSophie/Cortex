@@ -14,7 +14,16 @@ import { startRetentionJob } from "./lib/retention.js";
 // headroom above maxImageBytes that our friendlier "image too large" check
 // (routes/items.ts) is the one that actually fires, not Fastify's generic
 // FST_ERR_CTP_BODY_TOO_LARGE.
-const app = Fastify({ logger: true, bodyLimit: Math.ceil(config.maxImageBytes * 2) });
+// Request logs keep the path only: query strings carry the billing
+// webhook's ?secret= and people's search words.
+const app = Fastify({
+  logger: {
+    serializers: {
+      req: (req) => ({ method: req.method, url: req.url.split("?")[0], host: req.host, remoteAddress: req.ip }),
+    },
+  },
+  bodyLimit: Math.ceil(config.maxImageBytes * 2),
+});
 
 // The plugin's default is GET/HEAD/POST only -- the web app's PATCH (edit
 // title/memo) and DELETE (trash) were blocked at the preflight.

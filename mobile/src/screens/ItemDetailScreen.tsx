@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
+import { forgetWeekly } from '../native/reminders';
 import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle, composeMaterials } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
@@ -478,6 +479,7 @@ export default function ItemDetailScreen() {
     setLocked(next);
     try {
       await setItemLocked(item.id, next);
+      if (next) forgetWeekly().catch(() => {});
     } catch (err) {
       setLocked(!next);
       setLockError(S.lockFailed(friendlyError(err)));
@@ -863,6 +865,7 @@ export default function ItemDetailScreen() {
     setDeleteState('deleting');
     try {
       await deleteItem(item.id);
+      forgetWeekly().catch(() => {});
       close();
     } catch (err) {
       setDeleteError(friendlyError(err));

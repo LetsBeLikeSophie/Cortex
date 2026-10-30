@@ -102,7 +102,6 @@ export async function syncReminders(unclassifiedCount: number, force = false) {
     granted = (await askNotifications()).granted;
   }
   if (!granted) return;
-  await AsyncStorage.setItem(SYNCED_KEY, today).catch(() => {});
 
   // Private on a locked screen: memo titles only show once it's unlocked.
   await Notifications.setNotificationChannelAsync(CHANNEL, {
@@ -132,4 +131,14 @@ export async function syncReminders(unclassifiedCount: number, force = false) {
       trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, channelId: CHANNEL, weekday: 7, hour: 10, minute: 0 },
     });
   }
+  // Only once both are planned: offline, the next Home refresh tries again.
+  await AsyncStorage.setItem(SYNCED_KEY, today).catch(() => {});
+}
+
+// A memo was locked or moved to the trash: the planned '다시 보기' may name
+// it, so it's dropped and planned again on the next Home refresh.
+export async function forgetWeekly() {
+  if (!SUPPORTED) return;
+  await Notifications.cancelScheduledNotificationAsync('weekly').catch(() => {});
+  await AsyncStorage.removeItem(SYNCED_KEY).catch(() => {});
 }

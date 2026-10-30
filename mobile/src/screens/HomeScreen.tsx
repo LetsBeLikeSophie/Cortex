@@ -13,7 +13,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { syncReminders } from '../native/reminders';
+import { forgetWeekly, syncReminders } from '../native/reminders';
 import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
@@ -564,6 +564,7 @@ export default function HomeScreen() {
         }
       })
     );
+    if (moved.length) forgetWeekly().catch(() => {});
     setWaitingItems((current) => current?.filter((it) => !moved.includes(it.id)) ?? null);
     showToast(
       [moved.length ? S.movedToTrash(moved.length) : null, failed ? S.failed(failed) : null]

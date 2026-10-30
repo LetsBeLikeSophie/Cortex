@@ -670,22 +670,37 @@ export async function listLookback(userId: string, n: number): Promise<{ id: str
   return rows.slice(0, n);
 }
 
+// PostgREST stops a select at 1000 rows, so a scan of a person's archive
+// (tags, stats) reads it in id order a page at a time, to the end. Only the
+// asked-for columns come back, so even a big archive stays small in memory.
+async function selectAllRows<T>(
+  userId: string,
+  columns: string,
+  only: { live?: boolean; unlocked?: boolean } = {},
+  max = 50000
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < max; from += 1000) {
+    let q = getClient().from("items").select(columns).eq("user_id", userId);
+    if (only.live) q = q.is("deleted_at", null);
+    if (only.unlocked) q = q.eq("locked", false);
+    const { data, error } = await q.order("id", { ascending: true }).range(from, from + 999);
+    if (error) throw new Error(`selectAllRows failed: ${error.message}`);
+    out.push(...((data ?? []) as T[]));
+    if (!data || data.length < 1000) break;
+  }
+  return out;
+}
+
 // Distinct tags (both AI-assigned and user-added) across everything this
 // user has saved, for the home tab picker's search-as-you-type list.
 // PostgREST has no "flatten array column across rows" op, so this fetches
 // the (small, personal-archive-scale) tag arrays and flattens them in JS --
 // same tradeoff as searchItems below.
 export async function listTags(userId: string): Promise<string[]> {
-  const { data, error } = await getClient()
-    .from("items")
-    .select("tags, user_tags")
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .limit(2000);
-  if (error) throw new Error(`listTags failed: ${error.message}`);
-
+  const rows = await selectAllRows<{ tags: string[]; user_tags: string[] }>(userId, "tags, user_tags", { live: true });
   const set = new Set<string>();
-  for (const row of (data ?? []) as { tags: string[]; user_tags: string[] }[]) {
+  for (const row of rows) {
     for (const tag of row.tags) set.add(tag);
     for (const tag of row.user_tags) set.add(tag);
   }
@@ -696,16 +711,9 @@ export async function listTags(userId: string): Promise<string[]> {
 // Locked memos are left out (decision T2): a tag only they carry never
 // reaches the AI, the same promise 모아서 만들기 and AI search keep.
 export async function listTagCounts(userId: string): Promise<{ name: string; count: number }[]> {
-  const { data, error } = await getClient()
-    .from("items")
-    .select("tags, user_tags")
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .eq("locked", false)
-    .limit(2000);
-  if (error) throw new Error(`listTagCounts failed: ${error.message}`);
+  const rows = await selectAllRows<{ tags: string[]; user_tags: string[] }>(userId, "tags, user_tags", { live: true, unlocked: true });
   const counts = new Map<string, number>();
-  for (const row of (data ?? []) as { tags: string[]; user_tags: string[] }[]) {
+  for (const row of rows) {
     for (const tag of new Set([...row.tags, ...row.user_tags])) counts.set(tag, (counts.get(tag) ?? 0) + 1);
   }
   return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
@@ -719,9 +727,7 @@ export async function listTagCounts(userId: string): Promise<{ name: string; cou
 // merged, `changes` = memos mergeTags would rewrite (trash included, since it
 // renames there too). Shown before the person ticks anything.
 export async function tagGroupCounts(userId: string, groups: { keep: string; merge: string[] }[]): Promise<{ after: number; changes: number }[]> {
-  const { data, error } = await getClient().from("items").select("tags, user_tags, deleted_at").eq("user_id", userId).limit(5000);
-  if (error) throw new Error(`tagGroupCounts failed: ${error.message}`);
-  const rows = (data ?? []) as { tags: string[]; user_tags: string[]; deleted_at: string | null }[];
+  const rows = await selectAllRows<{ tags: string[]; user_tags: string[]; deleted_at: string | null }>(userId, "tags, user_tags, deleted_at");
   return groups.map((g) => {
     const merge = new Set(g.merge.filter((m) => m !== g.keep));
     let after = 0;
@@ -740,11 +746,10 @@ export async function mergeTags(userId: string, groups: { keep: string; merge: s
   const rename = new Map<string, string>();
   for (const g of groups) for (const m of g.merge) if (m !== g.keep) rename.set(m, g.keep);
   if (rename.size === 0) return 0;
-  const { data, error } = await getClient().from("items").select("id, tags, user_tags").eq("user_id", userId).limit(5000);
-  if (error) throw new Error(`mergeTags read failed: ${error.message}`);
+  const rows = await selectAllRows<{ id: string; tags: string[]; user_tags: string[] }>(userId, "id, tags, user_tags");
   const swap = (list: string[]) => [...new Set(list.map((t) => rename.get(t) ?? t))];
   let changed = 0;
-  for (const row of (data ?? []) as { id: string; tags: string[]; user_tags: string[] }[]) {
+  for (const row of rows) {
     if (![...row.tags, ...row.user_tags].some((t) => rename.has(t))) continue;
     const tags = swap(row.tags);
     // A tag the AI already gives it isn't repeated among the person's own.
@@ -1005,15 +1010,11 @@ function toKST(iso: string): Date {
 // everything and aggregating here is simpler than standing up an RPC for it
 // (same tradeoff as searchItems above).
 export async function getStats(userId: string): Promise<ItemStats> {
-  const { data, error } = await getClient()
-    .from("items")
-    .select("category, source, shared_at, tags, user_tags")
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .limit(5000);
-
-  if (error) throw new Error(`getStats failed: ${error.message}`);
-  const rows = (data ?? []) as Pick<ItemRecord, "category" | "source" | "shared_at" | "tags" | "user_tags">[];
+  const rows = await selectAllRows<Pick<ItemRecord, "category" | "source" | "shared_at" | "tags" | "user_tags">>(
+    userId,
+    "category, source, shared_at, tags, user_tags",
+    { live: true }
+  );
   const tagCounts = new Map<string, number>();
   for (const row of rows) {
     for (const tag of new Set([...(row.tags ?? []), ...(row.user_tags ?? [])])) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);

@@ -14,7 +14,7 @@ import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking, BODY_KR, BODY_
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
-import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
+import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -38,6 +38,7 @@ const S = strings({
     sortLeft: (n: number) => `${n}건은 아직 기다려요`,
     quotaUsedUp: '이번 달 AI 정리를 다 썼어요',
     nothingToSort: '정리할 수 있는 항목이 없어요',
+    sortCheckLater: '정리 중이에요 · 잠시 뒤 확인해 주세요',
     trash: '휴지통',
     sharedSaving: (n: number) => `사진 ${n}장 저장 중`,
     sharedCopyFailed: '사진을 받지 못했어요',
@@ -79,6 +80,7 @@ const S = strings({
     sortLeft: (n: number) => `${n} still waiting`,
     quotaUsedUp: "This month's AI sorting is used up",
     nothingToSort: 'Nothing to sort',
+    sortCheckLater: 'Sorting · check back in a bit',
     trash: 'Trash',
     sharedSaving: (n: number) => `Saving ${n} photo${n === 1 ? '' : 's'}`,
     sharedCopyFailed: "Couldn't receive the photos",
@@ -120,6 +122,7 @@ const S = strings({
     sortLeft: (n: number) => `${n}件はまだ待機中です`,
     quotaUsedUp: '今月のAI整理を使い切りました',
     nothingToSort: '整理できる項目がありません',
+    sortCheckLater: '整理中です · しばらくして確認してください',
     trash: 'ゴミ箱',
     sharedSaving: (n: number) => `写真${n}枚を保存中`,
     sharedCopyFailed: '写真を受け取れませんでした',
@@ -161,6 +164,7 @@ const S = strings({
     sortLeft: (n: number) => `${n} 项仍在等待`,
     quotaUsedUp: '本月 AI 整理次数已用完',
     nothingToSort: '没有可整理的项目',
+    sortCheckLater: '正在整理 · 请稍后查看',
     trash: '回收站',
     sharedSaving: (n: number) => `正在保存 ${n} 张照片`,
     sharedCopyFailed: '没能接收照片',
@@ -202,6 +206,7 @@ const S = strings({
     sortLeft: (n: number) => `${n} 項仍在等待`,
     quotaUsedUp: '本月 AI 整理次數已用完',
     nothingToSort: '沒有可整理的項目',
+    sortCheckLater: '正在整理 · 請稍後查看',
     trash: '垃圾桶',
     sharedSaving: (n: number) => `正在儲存 ${n} 張照片`,
     sharedCopyFailed: '沒能接收照片',
@@ -281,6 +286,9 @@ export default function HomeScreen() {
   const [waitingItems, setWaitingItems] = useState<ApiItem[] | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [sorting, setSorting] = useState(false);
+  // A run that outlasted the wait (or one already going) keeps going on the
+  // server; the button stays off so it isn't sent twice.
+  const [sortHeld, setSortHeld] = useState(false);
   const [total, setTotal] = useState(0);
   const [serverWeekCount, setServerWeekCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -618,7 +626,12 @@ export default function HomeScreen() {
           : S.nothingToSort
       );
     } catch (err) {
-      showToast(friendlyError(err));
+      if (isTimeout(err) || (err instanceof ApiError && err.status === 409)) {
+        setSortHeld(true);
+        showToast(S.sortCheckLater);
+      } else {
+        showToast(friendlyError(err));
+      }
     } finally {
       setSorting(false);
       load();
@@ -809,6 +822,7 @@ export default function HomeScreen() {
             size="sm"
             flex={0}
             loading={sorting}
+            disabled={sortHeld && !noAiConsent}
             onPress={noAiConsent ? () => navigation.navigate('AiConsent') : sortBacklog}
           />
         </View>

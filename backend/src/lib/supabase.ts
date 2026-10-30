@@ -310,6 +310,27 @@ export async function countBacklog(userId: string): Promise<number> {
   return count ?? 0;
 }
 
+// Flips the picked 미분류 rows to 'pending' in a few calls, not one per row.
+// Only rows that were still waiting (and still unlocked) come back -- a row
+// another run already took isn't returned, so it's never queued twice.
+export async function markBacklogPending(userId: string, ids: string[]): Promise<ItemRecord[]> {
+  const flipped: ItemRecord[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await getClient()
+      .from("items")
+      .update({ classification_status: "pending" satisfies ClassificationStatus, unclassified_reason: null })
+      .eq("user_id", userId)
+      .in("id", ids.slice(i, i + 100))
+      .eq("classification_status", "unclassified")
+      .eq("locked", false)
+      .is("deleted_at", null)
+      .select();
+    if (error) throw new Error(`markBacklogPending failed: ${error.message}`);
+    flipped.push(...((data ?? []) as ItemRecord[]));
+  }
+  return flipped;
+}
+
 // The queue's last look at a row before it goes to the AI: it may have been
 // locked or trashed since it was queued. null: the row is gone.
 export async function getClassifyGate(itemId: string): Promise<{ locked: boolean; deleted: boolean } | null> {

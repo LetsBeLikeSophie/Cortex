@@ -3,7 +3,7 @@ import sharp from "sharp";
 import { fetchLinkMetadata } from "./metadata.js";
 import { classifyText, classifyImage, isAiUnavailable } from "./anthropic.js";
 import type { Category } from "./categories.js";
-import { getEntitlement, refundUsage, remaining, reserveUsage } from "./plans.js";
+import { getAiGate, getEntitlement, refundUsage, remaining, reserveUsage, reserveUsageMany } from "./plans.js";
 import {
   ClassificationStatus,
   completeClassification,
@@ -11,6 +11,7 @@ import {
   listBacklogItems,
   countBacklog,
   getClassifyGate,
+  markBacklogPending,
   markClassificationPending,
   listPendingItems,
   markUnclassified,
@@ -250,12 +251,10 @@ export async function classifyBacklog(userId: string): Promise<{ started: number
   // Locked memos never go, so "left" doesn't count them either -- the number
   // after the run matches what a next run could still pick up.
   if (budget === 0) return { started: 0, left: await countBacklog(userId) };
-  const items = await listBacklogItems(userId, budget);
-  for (const item of items) {
-    const reservation = await reserveUsage(userId, "classify");
-    await markClassificationPending(item.id, userId);
-    enqueueClassification({ item, reservation });
-  }
+  const picked = await listBacklogItems(userId, budget);
+  const items = await markBacklogPending(userId, picked.map((it) => it.id));
+  const reservations = await reserveUsageMany(userId, "classify", items.length);
+  items.forEach((item, i) => enqueueClassification({ item, reservation: reservations[i] ?? null }));
   return { started: items.length, left: await countBacklog(userId) };
 }
 
@@ -313,14 +312,17 @@ async function runJob(job: ClassificationJob): Promise<void> {
   const { item } = job;
   // Last gate before anything leaves for the AI: consent may have been
   // withdrawn since the job was queued (or before a restart re-queued it).
-  const ent = await getEntitlement(item.user_id).catch(() => null);
+  // Read inside a slot, so a restart's hundreds of jobs don't all hit the
+  // database at once. A lookup that fails can't confirm consent: the item
+  // waits with reason 'failed' (not 'consent' -- they may well have agreed).
+  const ent = await withSlot(() => getAiGate(item.user_id)).catch(() => null);
   if (ent?.aiConsent !== "agreed") {
     if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
-    await markUnclassified(item.id, item.user_id, "consent").catch((e) => console.error("markUnclassified failed:", e));
+    await markUnclassified(item.id, item.user_id, ent ? "consent" : "failed").catch((e) => console.error("markUnclassified failed:", e));
     return;
   }
   // Locked or trashed since it was queued: it stays here, use handed back.
-  const gate = await getClassifyGate(item.id).catch(() => undefined);
+  const gate = await withSlot(() => getClassifyGate(item.id)).catch(() => undefined);
   if (gate === null) {
     if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
     return;

@@ -197,6 +197,23 @@ export async function reserveUsage(userId: string, kind: UsageKind): Promise<num
   return data.id as number;
 }
 
+// n uses in one insert (a whole "AI로 정리" run).
+export async function reserveUsageMany(userId: string, kind: UsageKind, n: number): Promise<number[]> {
+  if (n === 0) return [];
+  const rows = Array.from({ length: n }, () => ({ user_id: userId, kind }));
+  const { data, error } = await getClient().from("ai_usage").insert(rows).select("id");
+  if (error) throw new Error(`reserveUsageMany failed: ${error.message}`);
+  return (data ?? []).map((r) => r.id as number);
+}
+
+// Just the consent answer and language -- the queue's gate, one row read
+// instead of a whole entitlement (a restart re-queues hundreds at once).
+export async function getAiGate(userId: string): Promise<{ aiConsent: AiConsent; lang: string }> {
+  const { data, error } = await getClient().from("user_plans").select("ai_consent, lang").eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(`getAiGate failed: ${error.message}`);
+  return { aiConsent: data?.ai_consent ?? null, lang: data?.lang ?? DEFAULT_LANG };
+}
+
 export async function refundUsage(id: number): Promise<void> {
   const { error } = await getClient().from("ai_usage").delete().eq("id", id);
   if (error) throw new Error(`refundUsage failed: ${error.message}`);

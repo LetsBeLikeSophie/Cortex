@@ -195,6 +195,11 @@ export function friendlyError(err: unknown): string {
   return message;
 }
 
+// The app stopped waiting (the request may still finish on the server).
+export function isTimeout(err: unknown): boolean {
+  return !(err instanceof ApiError) && /abort/i.test(err instanceof Error ? err.message : String(err));
+}
+
 export function asQuotaError(err: unknown): QuotaError | null {
   if (err instanceof ApiError && err.status === 402 && (err.body as QuotaError | null)?.error === 'quota') {
     return err.body as QuotaError;
@@ -279,8 +284,10 @@ export function fetchPlan() {
 }
 
 // "AI로 정리": classifies as much of 미분류함 as this month's quota allows.
+// Waits as long as a big backlog takes to queue (the server finishes it
+// either way); 409: a run for this person is already going.
 export function classifyBacklog() {
-  return request<{ started: number; left: number }>('/items/classify-backlog', { method: 'POST' });
+  return request<{ started: number; left: number }>('/items/classify-backlog', { method: 'POST' }, 120_000);
 }
 
 // weekCount: saved in the last 7 days, across the whole archive (the list

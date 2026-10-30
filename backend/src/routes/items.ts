@@ -45,6 +45,8 @@ import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 // search text Claude read off the image, not something shown to edit.
 // 메모 내보내기 runs one at a time per person: it reads every memo.
 const exporting = new Set<string>();
+// People whose 'AI로 정리' run is queueing right now.
+const sorting = new Set<string>();
 
 const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
@@ -303,8 +305,15 @@ export async function itemsRoutes(app: FastifyInstance) {
   app.post("/items/classify-backlog", { config: { rateLimit: {} } }, async (req, reply) => {
     const userId = await resolveUserId(req);
     await requireAiConsent(userId);
-    const result = await classifyBacklog(userId);
-    return reply.send(result);
+    // A second tap while the first run is still queueing would pick the
+    // same rows; one run per person.
+    if (sorting.has(userId)) return reply.code(409).send({ error: "sort_running" });
+    sorting.add(userId);
+    try {
+      return reply.send(await classifyBacklog(userId));
+    } finally {
+      sorting.delete(userId);
+    }
   });
 
   // Re-runs an (edited) interpretation without calling Claude again -- what

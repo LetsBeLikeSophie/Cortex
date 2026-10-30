@@ -42,6 +42,9 @@ type DeleteState = 'idle' | 'confirming' | 'deleting';
 // snippet (the AI memo) isn't typed into -- it's only ever replaced by the
 // AI or put back with undo -- but it shares the save/undo plumbing.
 type EditField = 'title' | 'snippet' | 'rawText' | 'userNote';
+// The server's limits (UpdateItemSchema): typing or speaking stops here,
+// so a save never bounces and takes the new text back with it.
+const FIELD_MAX: Record<EditField, number> = { title: 200, snippet: 1000, rawText: 200_000, userNote: 1000 };
 
 const REORGANIZE_POLL_MS = 2000;
 const SNACK_MS = 6000;
@@ -689,7 +692,7 @@ export default function ItemDetailScreen() {
           voiceBaseRef.current = current.trim() ? `${current.trimEnd()} ` : '';
         }}
         onResult={(spoken, isFinal) => {
-          const text = voiceBaseRef.current + spoken;
+          const text = (voiceBaseRef.current + spoken).slice(0, FIELD_MAX[field]);
           setterOf(field)(text);
           if (isFinal) commit(field, text);
         }}
@@ -704,6 +707,7 @@ export default function ItemDetailScreen() {
       <TextInput
         value={valueOf(field)}
         onChangeText={setterOf(field)}
+        maxLength={FIELD_MAX[field]}
         onBlur={() => {
           commit(field);
           if (field === 'rawText') setEditingBody(false);

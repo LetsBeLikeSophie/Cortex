@@ -1,7 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { createClient } from "@supabase/supabase-js";
-import { required } from "../config.js";
-import { deleteUserAccount, logAnalyticsEvent } from "../lib/supabase.js";
+import { deleteUserAccount, findUserIdByEmail, findUserIdByKakaoId, logAnalyticsEvent } from "../lib/supabase.js";
 
 interface KakaoUnlinkBody {
   app_id?: string;
@@ -37,22 +35,17 @@ export async function webhookRoutes(app: FastifyInstance) {
     }
 
     try {
-      const admin = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
-      // Matches the synthetic email scheme in kakaoAuth.ts -- computed
-      // directly rather than searched for, so no separate kakao_id lookup
-      // table is needed.
-      const email = `kakao-${kakaoUserId}@users.cortex.app`;
-      const { data: userList, error: listError } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      if (listError) throw listError;
-
-      const user = userList.users.find((u) => u.email === email);
-      if (user) {
+      // kakao_users first (one row lookup); accounts older than that table
+      // are found by the synthetic email from kakaoAuth.ts.
+      const userId =
+        (await findUserIdByKakaoId(Number(kakaoUserId))) ?? (await findUserIdByEmail(`kakao-${kakaoUserId}@users.cortex.app`));
+      if (userId) {
         // Kakao login is the only way into this account, so "unlink" here
         // means the account itself is gone -- delete their items and
         // screenshots too rather than leaving them orphaned under a
         // user_id nothing can ever authenticate as again.
-        await logAnalyticsEvent({ eventType: "account_deleted", userId: user.id });
-        await deleteUserAccount(user.id);
+        await logAnalyticsEvent({ eventType: "account_deleted", userId });
+        await deleteUserAccount(userId);
         req.log.info({ kakaoUserId, referrerType: body?.referrer_type }, "kakao unlink webhook: account deleted");
       } else {
         req.log.info({ kakaoUserId }, "kakao unlink webhook: no matching account, nothing to do");

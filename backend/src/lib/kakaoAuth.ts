@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
-import { deleteUserAccount, findUserIdByKakaoId, linkKakaoUser, logAnalyticsEvent, seedSampleItem } from "./supabase.js";
+import { deleteUserAccount, findUserIdByEmail, findUserIdByKakaoId, linkKakaoUser, logAnalyticsEvent, seedSampleItem } from "./supabase.js";
 
 interface KakaoTokenResponse {
   access_token: string;
@@ -101,10 +101,9 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
       await logAnalyticsEvent({ eventType: "account_created", userId });
       await seedSampleItem(userId).catch(() => {});
     } else if (/already/i.test(createError.message)) {
-      const { data: userList } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      const existing = userList?.users.find((u) => u.email === syntheticEmail);
+      const existing = await findUserIdByEmail(syntheticEmail);
       if (!existing) throw new Error("account exists but could not be located");
-      userId = existing.id;
+      userId = existing;
       await admin.auth.admin.updateUserById(userId, { user_metadata: metadata });
       await linkKakaoUser(kakaoUser.id, userId);
     } else {

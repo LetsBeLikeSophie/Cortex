@@ -1032,6 +1032,30 @@ export async function getScreenshotUrl(userId: string, itemId: string): Promise<
   return signed.signedUrl;
 }
 
+// Every file name under "<userId>/" in the screenshots bucket. Storage
+// lists 100 by default and at most 1000 a page, so this pages until empty.
+async function listUserFiles(userId: string): Promise<string[]> {
+  const names: string[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await getClient().storage.from(SCREENSHOTS_BUCKET).list(userId, { limit: 1000, offset });
+    if (error) throw new Error(`failed to list screenshots: ${error.message}`);
+    names.push(...(data ?? []).map((f) => f.name));
+    if (!data || data.length < 1000) return names;
+  }
+}
+
+// An account by its email, paging through every account (legacy Kakao
+// accounts made before kakao_users existed; slow, so it's the fallback).
+export async function findUserIdByEmail(email: string): Promise<string | null> {
+  for (let page = 1; ; page++) {
+    const { data, error } = await getClient().auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw new Error(`findUserIdByEmail failed: ${error.message}`);
+    const hit = data.users.find((u) => u.email === email);
+    if (hit) return hit.id;
+    if (data.users.length < 1000) return null;
+  }
+}
+
 // Removes everything a user's account owns: uploaded screenshots (stored
 // under `${userId}/...` in the bucket, per uploadScreenshot above), item
 // rows, then the auth user itself. Called from both account-deletion paths
@@ -1040,10 +1064,9 @@ export async function getScreenshotUrl(userId: string, itemId: string): Promise<
 export async function deleteUserAccount(userId: string): Promise<void> {
   const client = getClient();
 
-  const { data: files, error: listError } = await client.storage.from(SCREENSHOTS_BUCKET).list(userId);
-  if (listError) throw new Error(`failed to list screenshots: ${listError.message}`);
-  if (files && files.length > 0) {
-    const paths = files.map((file) => `${userId}/${file.name}`);
+  const names = await listUserFiles(userId);
+  for (let i = 0; i < names.length; i += 1000) {
+    const paths = names.slice(i, i + 1000).map((name) => `${userId}/${name}`);
     const { error: removeError } = await client.storage.from(SCREENSHOTS_BUCKET).remove(paths);
     if (removeError) throw new Error(`failed to delete screenshots: ${removeError.message}`);
   }
@@ -1080,10 +1103,8 @@ export async function claimGuestAccount(targetId: string, guestId: string): Prom
 
   // Screenshot files live under "<userId>/..." -- move them first, so an
   // item never points at a path that doesn't exist yet.
-  const { data: files, error: listError } = await client.storage.from(SCREENSHOTS_BUCKET).list(guestId, { limit: 1000 });
-  if (listError) throw new Error(`claim: list screenshots failed: ${listError.message}`);
-  for (const file of files ?? []) {
-    const { error } = await client.storage.from(SCREENSHOTS_BUCKET).move(`${guestId}/${file.name}`, `${targetId}/${file.name}`);
+  for (const name of await listUserFiles(guestId)) {
+    const { error } = await client.storage.from(SCREENSHOTS_BUCKET).move(`${guestId}/${name}`, `${targetId}/${name}`);
     if (error) throw new Error(`claim: move screenshot failed: ${error.message}`);
   }
 

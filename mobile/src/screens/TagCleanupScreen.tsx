@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TAG_SUGGESTION_KEY } from '../auth/accountTraces';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -118,7 +119,7 @@ type Step = 'intro' | 'finding' | 'pick' | 'applying' | 'done';
 // The last suggestion, kept with the month it was bought in: a closed sheet
 // (swipe, cancel, the app quitting) doesn't throw away a paid-for answer.
 // Reopening this month shows it again; a successful merge clears it.
-const SAVED_KEY = 'cortex.tagCleanupSuggestion';
+const SAVED_KEY = TAG_SUGGESTION_KEY;
 const thisMonth = () => new Date().toISOString().slice(0, 7);
 type Saved = { month: string; groups: TagMergeGroup[]; left: number | null };
 

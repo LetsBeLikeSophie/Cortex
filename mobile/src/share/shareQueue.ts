@@ -5,6 +5,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as BackgroundTask from 'expo-background-task';
 import { fetchPlan, saveScreenshotItem } from '../api/client';
 import { tellMehhReceived } from '../native/mehh';
+import { supabase } from '../auth/supabase';
 import { createShareQueue, Progress, QueueState } from './shareQueueCore';
 
 // Screenshots shared in "send and forget" style (Mehh): copied into the app's
@@ -67,6 +68,7 @@ const queue = createShareQueue({
     return { unclassifiedReason: item.classification_status === 'unclassified' ? item.unclassified_reason ?? null : null };
   },
   consent: async () => (await fetchPlan()).aiConsent ?? null,
+  owner: async () => (await supabase.auth.getSession()).data.session?.user.id ?? null,
   tellMehh: tellMehhReceived,
   onProgress: (p) => {
     progress = p;
@@ -91,6 +93,7 @@ export const drainShareQueue = queue.drain;
 // or not -- then the copies Mehh wasn't told about are deleted.
 export const saveSharesWithoutAi = queue.saveWithoutAi;
 export const discardUnreceivedShares = queue.discardUnreceived;
+export const discardSharesOf = queue.discardOwnedBy;
 export const waitingShareCount = queue.waitingCount;
 // Home: how the shared photos landed since it last said so (then cleared).
 export const takeUnreportedShares = queue.takeUnreported;

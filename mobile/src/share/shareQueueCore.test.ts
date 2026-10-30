@@ -3,11 +3,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Consent, createShareQueue, MAX_ATTEMPTS, QueueState } from './shareQueueCore';
 
-function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; failUpload?: number; failStatus?: number } = {}) {
+function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; failUpload?: number; failStatus?: number; owner?: string } = {}) {
   let state: QueueState = { jobs: [], receipts: [] };
   const files = new Set<string>();
   const log: string[] = [];
   let answer = consent;
+  let owner = opts.owner ?? null;
   let uploadFailures = opts.failUpload ?? 0;
   let n = 0;
   const queue = createShareQueue({
@@ -37,6 +38,7 @@ function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; f
       if (answer === 'error') throw new Error('offline');
       return answer;
     },
+    owner: async () => owner,
     tellMehh: (count, ids) => log.push(`mehh count=${count} ids=${ids?.join(',') ?? '-'}`),
     now: () => 0,
     newId: () => `j${++n}`,
@@ -48,6 +50,9 @@ function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; f
     state: () => state,
     setConsent: (c: Consent) => {
       answer = c;
+    },
+    setOwner: (o: string | null) => {
+      owner = o;
     },
   };
 }
@@ -288,4 +293,27 @@ test('a failure below the limit keeps retrying', async () => {
   assert.equal((await t.queue.drain()).left, 1);
   assert.equal((await t.queue.drain()).left, 0);
   assert.deepEqual(await t.queue.takeUnreported(), { saved: 1, quota: 0 });
+});
+
+test('a photo received under one account never uploads under another', async () => {
+  const t = setup('agreed', { owner: 'u1', failUpload: 1, failStatus: 500 });
+  await t.queue.enqueue(['a'], ['101']);
+  await t.queue.drain(); // fails once, still u1's
+  t.setOwner('u2');
+  await t.queue.drain();
+  assert.equal(t.log.filter((l) => l.startsWith('upload')).length, 0);
+  t.setOwner('u1');
+  assert.equal((await t.queue.drain()).left, 0);
+  assert.equal(t.log.filter((l) => l.startsWith('upload')).length, 1);
+});
+
+test('deleting an account drops its waiting photos (and ownerless old ones), not others', async () => {
+  const t = setup(null, { owner: 'u1' });
+  await t.queue.enqueue(['a'], ['101']);
+  t.setOwner('u2');
+  await t.queue.enqueue(['b'], ['102']);
+  assert.equal(await t.queue.discardOwnedBy('u1'), 1);
+  assert.deepEqual(t.state().jobs.map((j) => j.ownerId), ['u2']);
+  assert.deepEqual(t.state().receipts, [{ jobIds: ['j2'], mehhIds: ['102'] }]);
+  assert.equal(t.files.size, 1);
 });

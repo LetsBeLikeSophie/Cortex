@@ -14,6 +14,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SAVE_DRAFT_KEY } from '../auth/accountTraces';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -237,7 +238,7 @@ const S = strings({
 // everything else (and for iOS, which has no share extension yet).
 type Status = 'input' | 'saving' | 'done' | 'error';
 
-const DRAFT_KEY = 'cortex.saveDraft';
+const DRAFT_KEY = SAVE_DRAFT_KEY;
 // The server's limit for a save's note (IncomingItemSchema).
 const NOTE_MAX = 1000;
 

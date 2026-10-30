@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 import { signOutOfGoogle } from './googleLogin';
+import { clearAccountTraces } from './accountTraces';
 import { API_BASE_URL } from '../api/client';
 import { strings } from '../i18n';
 
@@ -126,6 +127,9 @@ export async function signInWithKakao(): Promise<void> {
 // Real (Kakao) accounts only -- see AuthContext's pauseGuest for why a guest
 // session is never actually signed out of Supabase.
 export async function signOut(): Promise<void> {
+  // The next account on this phone doesn't see this one's draft, tag
+  // suggestion or reminders.
+  await clearAccountTraces();
   await supabase.auth.signOut();
   // A Google login also forgets the account choice on this phone.
   await signOutOfGoogle();

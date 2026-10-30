@@ -24,6 +24,9 @@ export interface Job {
   // MAX_ATTEMPTS times. The copy stays on the phone; it's no longer
   // uploaded, counted as 저장 중, or a reason to keep the background job.
   stopped?: boolean;
+  // The account signed in when it arrived; only that account uploads it.
+  // Jobs from older builds have none and go to whoever is signed in.
+  ownerId?: string;
 }
 
 // A share Mehh hasn't been told about yet: which copied jobs it covers and,
@@ -69,6 +72,8 @@ export interface QueueDeps {
   // The person's current answer. A failure to find out counts as "not
   // agreed" -- nothing is sent on a guess.
   consent(): Promise<Consent>;
+  // Who is signed in now (null: no one / unknown).
+  owner?(): Promise<string | null>;
   tellMehh(count: number, ids?: string[]): void;
   onProgress?(progress: Progress): void;
   // WorkManager fallback for when the app is closed.
@@ -110,6 +115,14 @@ export function createShareQueue(deps: QueueDeps) {
     return next;
   }
 
+  async function currentOwner(): Promise<string | null> {
+    try {
+      return (await deps.owner?.()) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async function currentConsent(): Promise<Consent> {
     try {
       return await deps.consent();
@@ -131,11 +144,12 @@ export function createShareQueue(deps: QueueDeps) {
         }
       })
     );
+    const ownerId = (await currentOwner()) ?? undefined;
     const jobs: Job[] = [];
     const ids: string[] = [];
     copied.forEach((c, i) => {
       if (!c) return;
-      jobs.push({ id: c.id, uri: c.uri, addedAt: deps.now(), attempts: 0 });
+      jobs.push({ id: c.id, uri: c.uri, addedAt: deps.now(), attempts: 0, ...(ownerId ? { ownerId } : null) });
       if (mehhIds) ids.push(mehhIds[i]);
     });
     if (jobs.length === 0) return 0;
@@ -168,7 +182,9 @@ export function createShareQueue(deps: QueueDeps) {
       return { left: 0, waitingConsent: false };
     }
     const agreed = (await currentConsent()) === 'agreed';
-    const eligible = (j: Job) => !j.stopped && (agreed || !!j.noAi);
+    const me = await currentOwner();
+    const mine = (j: Job) => !j.ownerId || j.ownerId === me;
+    const eligible = (j: Job) => !j.stopped && mine(j) && (agreed || !!j.noAi);
     if (!initialJobs.some(eligible)) {
       report({ pending: initialJobs.length, running: false, waitingConsent: true });
       return { left: initialJobs.length, waitingConsent: true };
@@ -289,6 +305,33 @@ export function createShareQueue(deps: QueueDeps) {
     return dropped.length;
   }
 
+  // The account is being deleted: its waiting photos (and ones from before
+  // jobs had an owner) are deleted here, and Mehh, if it wasn't told about
+  // them yet, never is.
+  async function discardOwnedBy(userId: string): Promise<number> {
+    let dropped: Job[] = [];
+    const state = await update((s) => {
+      dropped = s.jobs.filter((j) => !j.ownerId || j.ownerId === userId);
+      const gone = new Set(dropped.map((j) => j.id));
+      const receipts = s.receipts
+        .map((r) => {
+          const keep = r.jobIds.map((id, i) => (gone.has(id) ? -1 : i)).filter((i) => i >= 0);
+          return { jobIds: keep.map((i) => r.jobIds[i]), ...(r.mehhIds ? { mehhIds: keep.map((i) => r.mehhIds![i]) } : null) };
+        })
+        .filter((r) => r.jobIds.length > 0);
+      return { ...s, jobs: s.jobs.filter((j) => !gone.has(j.id)), receipts };
+    });
+    for (const j of dropped) {
+      try {
+        deps.remove(j.uri);
+      } catch {}
+    }
+    const left = live(state.jobs).length;
+    report({ pending: left });
+    if (left === 0) deps.unschedule?.();
+    return dropped.length;
+  }
+
   // The saves not yet told, cleared as they're handed over.
   async function takeUnreported(): Promise<{ saved: number; quota: number; failed?: number }> {
     let out: { saved: number; quota: number; failed?: number } = { saved: 0, quota: 0 };
@@ -299,5 +342,5 @@ export function createShareQueue(deps: QueueDeps) {
     return out;
   }
 
-  return { enqueue, drain, discardUnreceived, saveWithoutAi, waitingCount, takeUnreported, progress: () => progress };
+  return { enqueue, drain, discardUnreceived, discardOwnedBy, saveWithoutAi, waitingCount, takeUnreported, progress: () => progress };
 }

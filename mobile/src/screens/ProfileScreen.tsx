@@ -18,7 +18,7 @@ import { ConfirmCard } from '../components/ConfirmCard';
 import { GhostButton } from '../components/Buttons';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
-import { DeclinedChoice, getDeclinedChoice, setDeclinedChoice } from '../share/shareQueue';
+import { DeclinedChoice, discardSharesOf, getDeclinedChoice, setDeclinedChoice } from '../share/shareQueue';
 import { LANG, LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
 import { permissionToast, showToast } from '../native/toast';
 import { REMINDERS_SUPPORTED, ReminderKind, askNotifications, notificationsAllowed, refillCount, reminderOn, setReminderOn, syncReminders } from '../native/reminders';
@@ -478,6 +478,8 @@ export default function ProfileScreen() {
     setState('deleting');
     try {
       await deleteAccount();
+      // Its Mehh photos still waiting on this phone go too.
+      if (session) await discardSharesOf(session.user.id).catch(() => {});
       await signOut(); // the account is actually gone now -- clear the local session -> LoginScreen
     } catch (err) {
       setError(friendlyError(err));

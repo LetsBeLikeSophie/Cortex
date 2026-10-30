@@ -20,6 +20,10 @@ export interface Job {
   // The person declined AI but chose to keep these: uploaded without
   // waiting for consent (they land in 미분류함, unanalyzed).
   noAi?: boolean;
+  // Gave up: the server refused it (too large, unreadable) or it failed
+  // MAX_ATTEMPTS times. The copy stays on the phone; it's no longer
+  // uploaded, counted as 저장 중, or a reason to keep the background job.
+  stopped?: boolean;
 }
 
 // A share Mehh hasn't been told about yet: which copied jobs it covers and,
@@ -36,7 +40,8 @@ export interface QueueState {
   // Saves not yet told to the person (Home says it once, then clears):
   // how many landed, and how many of those went to 미분류함 because the
   // month's AI sorting ran out. Background uploads count too.
-  unreported?: { saved: number; quota: number };
+  // failed: photos that stopped (could not be saved), said once too.
+  unreported?: { saved: number; quota: number; failed?: number };
 }
 
 // What the server said about one saved photo.
@@ -74,6 +79,16 @@ export interface QueueDeps {
 }
 
 const CONCURRENCY = 3;
+// Tries before a photo that keeps failing stops (the background job runs
+// every 15 minutes, so about two and a half hours of retries).
+export const MAX_ATTEMPTS = 10;
+
+// 400 (unreadable) and 413 (too large) won't change on a retry.
+const isRefused = (err: unknown) => {
+  const status = (err as { status?: number } | null)?.status;
+  return status === 400 || status === 413;
+};
+const live = (jobs: Job[]) => jobs.filter((j) => !j.stopped);
 
 export function createShareQueue(deps: QueueDeps) {
   let progress: Progress = { pending: 0, running: false, waitingConsent: false };
@@ -146,16 +161,17 @@ export function createShareQueue(deps: QueueDeps) {
 
   async function run(): Promise<{ left: number; waitingConsent: boolean }> {
     const initial = await deps.load();
-    if (initial.jobs.length === 0 && initial.receipts.length === 0) {
+    const initialJobs = live(initial.jobs);
+    if (initialJobs.length === 0 && initial.receipts.length === 0) {
       report({ pending: 0, running: false, waitingConsent: false });
       deps.unschedule?.();
       return { left: 0, waitingConsent: false };
     }
     const agreed = (await currentConsent()) === 'agreed';
-    const eligible = (j: Job) => agreed || !!j.noAi;
-    if (!initial.jobs.some(eligible)) {
-      report({ pending: initial.jobs.length, running: false, waitingConsent: true });
-      return { left: initial.jobs.length, waitingConsent: true };
+    const eligible = (j: Job) => !j.stopped && (agreed || !!j.noAi);
+    if (!initialJobs.some(eligible)) {
+      report({ pending: initialJobs.length, running: false, waitingConsent: true });
+      return { left: initialJobs.length, waitingConsent: true };
     }
     report({ waitingConsent: false });
 
@@ -173,12 +189,12 @@ export function createShareQueue(deps: QueueDeps) {
     for (;;) {
       const { jobs } = await deps.load();
       const batch = jobs.filter((j) => eligible(j) && !tried.has(j.id)).slice(0, CONCURRENCY);
-      report({ pending: jobs.length, running: batch.length > 0 });
+      report({ pending: live(jobs).length, running: batch.length > 0 });
       if (batch.length === 0) break;
       batch.forEach((j) => tried.add(j.id));
       await Promise.all(batch.map(runJob));
     }
-    const { jobs: left } = await deps.load();
+    const left = live((await deps.load()).jobs);
     const waitingConsent = left.some((j) => !eligible(j));
     report({ pending: left.length, running: false, waitingConsent });
     if (left.length === 0) deps.unschedule?.();
@@ -190,7 +206,7 @@ export function createShareQueue(deps: QueueDeps) {
   // earlier consent whose upload failed before it was withdrawn.
   async function waitingCount(): Promise<number> {
     const s = await deps.load();
-    return s.jobs.filter((j) => !j.noAi).length;
+    return live(s.jobs).filter((j) => !j.noAi).length;
   }
 
   // The person declined AI but wants these kept: every waiting photo uploads
@@ -201,7 +217,7 @@ export function createShareQueue(deps: QueueDeps) {
     let kept = 0;
     await update((s) => {
       receipts = s.receipts;
-      kept = s.jobs.filter((j) => !j.noAi).length;
+      kept = live(s.jobs).filter((j) => !j.noAi).length;
       return { ...s, jobs: s.jobs.map((j) => (j.noAi ? j : { ...j, noAi: true })), receipts: [] };
     });
     for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
@@ -216,23 +232,35 @@ export function createShareQueue(deps: QueueDeps) {
     if (!deps.exists(job.uri)) {
       // The copy is gone -- nothing left to save, don't keep retrying.
       const s = await update((st) => ({ ...st, jobs: st.jobs.filter((j) => j.id !== job.id) }));
-      report({ pending: s.jobs.length });
+      report({ pending: live(s.jobs).length });
       return;
     }
     let result: UploadResult | void;
     try {
       result = await deps.upload(await deps.readBase64(job.uri), job.id);
-    } catch {
-      await update((st) => ({ ...st, jobs: st.jobs.map((j) => (j.id === job.id ? { ...j, attempts: j.attempts + 1 } : j)) }));
+    } catch (err) {
+      const s = await update((st) => {
+        let stopped = false;
+        const jobs = st.jobs.map((j) => {
+          if (j.id !== job.id) return j;
+          const attempts = j.attempts + 1;
+          stopped = isRefused(err) || attempts >= MAX_ATTEMPTS;
+          return { ...j, attempts, ...(stopped ? { stopped: true } : null) };
+        });
+        if (!stopped) return { ...st, jobs };
+        const u = st.unreported ?? { saved: 0, quota: 0 };
+        return { ...st, jobs, unreported: { ...u, failed: (u.failed ?? 0) + 1 } };
+      });
+      report({ pending: live(s.jobs).length });
       return;
     }
     const quota = result?.unclassifiedReason === 'quota' ? 1 : 0;
     const s = await update((st) => ({
       ...st,
       jobs: st.jobs.filter((j) => j.id !== job.id),
-      unreported: { saved: (st.unreported?.saved ?? 0) + 1, quota: (st.unreported?.quota ?? 0) + quota },
+      unreported: { ...st.unreported, saved: (st.unreported?.saved ?? 0) + 1, quota: (st.unreported?.quota ?? 0) + quota },
     }));
-    report({ pending: s.jobs.length });
+    report({ pending: live(s.jobs).length });
     try {
       deps.remove(job.uri);
     } catch {
@@ -255,14 +283,15 @@ export function createShareQueue(deps: QueueDeps) {
         deps.remove(j.uri);
       } catch {}
     }
-    report({ pending: state.jobs.length, waitingConsent: state.jobs.length > 0 });
-    if (state.jobs.length === 0) deps.unschedule?.();
+    const left = live(state.jobs).length;
+    report({ pending: left, waitingConsent: left > 0 });
+    if (left === 0) deps.unschedule?.();
     return dropped.length;
   }
 
   // The saves not yet told, cleared as they're handed over.
-  async function takeUnreported(): Promise<{ saved: number; quota: number }> {
-    let out = { saved: 0, quota: 0 };
+  async function takeUnreported(): Promise<{ saved: number; quota: number; failed?: number }> {
+    let out: { saved: number; quota: number; failed?: number } = { saved: 0, quota: 0 };
     await update((s) => {
       out = s.unreported ?? out;
       return { jobs: s.jobs, receipts: s.receipts };

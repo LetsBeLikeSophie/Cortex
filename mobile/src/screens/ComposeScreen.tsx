@@ -269,11 +269,14 @@ export default function ComposeScreen() {
   // minus locked and earlier composed memos. One past 50 is asked for only
   // to know whether older ones are left out (decision C3: say so).
   const [overFifty, setOverFifty] = useState(false);
+  // Earlier 모아서 만들기 results under this tag, left out like locked ones.
+  const [tagComposed, setTagComposed] = useState(0);
   useEffect(() => {
     if (itemIds || retryOf) return;
     if (pickedTag !== tag || count === undefined) {
       setTagCount(null);
       setLockedCount(0);
+      setTagComposed(0);
     }
     let cancelled = false;
     fetchItemsWithTag(pickedTag, 51)
@@ -282,6 +285,7 @@ export default function ComposeScreen() {
         const m = composeMaterials(res.items.slice(0, 50));
         setTagCount(m.usable.length);
         setLockedCount(m.locked);
+        setTagComposed(m.composed);
         setOverFifty(res.items.length > 50);
       })
       .catch(() => {});
@@ -296,6 +300,9 @@ export default function ComposeScreen() {
   const materials = itemIds && count === undefined ? itemIds.length : tagCount;
   // Fewer than 2 usable memos: the server would refuse, so don't offer it.
   const tooFew = materials !== null && materials < 2;
+  // Tag mode counts its own (the tab may have been changed here); a fixed
+  // pick keeps what the caller counted.
+  const composedShown = itemIds || retryOf ? composedOut : tagCount !== null ? tagComposed : pickedTag === tag ? composedOut : 0;
 
   const make = async () => {
     if (!remakeFree && left === 0) {
@@ -383,7 +390,7 @@ export default function ComposeScreen() {
           {tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
           {lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
           {overFifty ? S.recentFifty : ''}
-          {composedOut ? S.composedOut(composedOut) : ''}
+          {composedShown ? S.composedOut(composedShown) : ''}
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}
           {retryOf ? (remakeFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}

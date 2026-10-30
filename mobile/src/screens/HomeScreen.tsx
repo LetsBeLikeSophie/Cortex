@@ -13,7 +13,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
-import { forgetWeekly, syncReminders } from '../native/reminders';
+import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
@@ -319,7 +319,7 @@ export default function HomeScreen() {
     fetchPlan()
       .then((p) => {
         setPlan(p);
-        syncReminders(p.unclassifiedCount).catch(() => {});
+        syncReminders(refillCount(p)).catch(() => {});
       })
       .catch(() => {});
     fetchRecentItems()

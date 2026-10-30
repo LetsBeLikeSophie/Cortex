@@ -21,7 +21,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { DeclinedChoice, getDeclinedChoice, setDeclinedChoice } from '../share/shareQueue';
 import { LANG, LANG_PREF, LANGUAGE_NAMES, LangPref, PRIVACY_URL, TERMS_URL, setLanguage, strings } from '../i18n';
 import { permissionToast, showToast } from '../native/toast';
-import { REMINDERS_SUPPORTED, ReminderKind, askNotifications, notificationsAllowed, reminderOn, setReminderOn, syncReminders } from '../native/reminders';
+import { REMINDERS_SUPPORTED, ReminderKind, askNotifications, notificationsAllowed, refillCount, reminderOn, setReminderOn, syncReminders } from '../native/reminders';
 import { exportMemos } from '../data/exportMemos';
 import { COMMON } from '../i18n/common';
 
@@ -377,7 +377,7 @@ export default function ProfileScreen() {
     }
     await setReminderOn(kind, next);
     refreshRemind();
-    if (plan) syncReminders(plan.unclassifiedCount, true).catch(() => {});
+    if (plan) syncReminders(refillCount(plan), true).catch(() => {});
   };
   // 메모 내보내기: with a PIN set, it's asked first, and locked memos go
   // out too; cancelling the PIN cancels the export.

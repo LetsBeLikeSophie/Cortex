@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
-import { fetchLookback } from '../api/client';
+import { fetchLookback, type Plan } from '../api/client';
 import { strings } from '../i18n';
 
 // The app speaks first, two ways (decision B3, C, 2026-10-29), both local
@@ -82,6 +82,12 @@ export async function setReminderOn(kind: ReminderKind, on: boolean) {
     await AsyncStorage.setItem(offKey(kind), '1').catch(() => {});
     await Notifications.cancelScheduledNotificationAsync(kind).catch(() => {});
   }
+}
+
+// What the monthly reminder counts: only free accounts that agreed to AI
+// get a refill to hear about; for everyone else it's 0 (no reminder).
+export function refillCount(plan: Plan): number {
+  return plan.tier === 'free' && plan.aiConsent === 'agreed' ? plan.unclassifiedCount : 0;
 }
 
 // Called with each Home refresh; re-plans both notifications from what's

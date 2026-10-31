@@ -23,7 +23,7 @@ export type RootStackParamList = {
   // remadeFrom: what a 다른 모양으로 다시 just replaced -- offered as an undo.
   ItemDetail: { item: ApiItem; composedFrom?: { tag: string; count: number; freeRemake?: boolean }; remadeFrom?: { title: string; rawText: string } };
   // Why it opened -- picks the headline; omitted = opened from the profile.
-  Paywall: { reason?: 'classify' | 'search' | 'compose' | 'tag_cleanup' } | undefined;
+  Paywall: { reason?: 'classify' | 'search' | 'compose' | 'tag_cleanup' | 'trial_ending' | 'trial_ended' } | undefined;
   // Memo-lock PIN pad: 'check' opens a locked memo, 'set' makes a new PIN.
   Pin: { mode: 'set' | 'check' };
   // 태그 정리하기, from tag settings.

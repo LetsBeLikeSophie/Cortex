@@ -43,6 +43,7 @@ export function langFromLocale(locale: string): Lang {
 
 const DEVICE = deviceLocale();
 const LEGAL_BASE = 'https://itssophie.dev/cortex/legal/';
+export const TOKUSHOHO_URL = LEGAL_BASE + 'tokushoho.html';
 
 // Live bindings: reassigned by setLanguage, read where they're used.
 // DEVICE_LOCALE is what the server writes AI output in (a full locale such

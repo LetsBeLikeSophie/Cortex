@@ -118,8 +118,10 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
   try {
     const ent = await getEntitlement(userId);
     if (ent.aiConsent !== "agreed") waitReason = "consent";
-    else if (remaining(ent, "classify") === 0) waitReason = "quota";
-    else {
+    else if (remaining(ent, "classify") === 0) {
+      waitReason = "quota";
+      await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "classify" });
+    } else {
       classifyNow = true;
       reservation = await reserveUsage(userId, "classify");
     }

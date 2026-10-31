@@ -6,10 +6,11 @@ import { forgetReminders } from '../native/reminders';
 // suggestion, and the planned reminders (the weekly one names memos).
 export const SAVE_DRAFT_KEY = 'cortex.saveDraft';
 export const TAG_SUGGESTION_KEY = 'cortex.tagCleanupSuggestion';
+export const TRIAL_NOTICE_KEY = 'cortex.trialNoticeSeen';
 
 // Run on sign-out and account deletion of a real account. A guest's
 // "로그아웃" (pauseGuest) only hides the same account, so it keeps these.
 export async function clearAccountTraces(): Promise<void> {
   await forgetReminders();
-  await AsyncStorage.multiRemove([SAVE_DRAFT_KEY, TAG_SUGGESTION_KEY]).catch(() => {});
+  await AsyncStorage.multiRemove([SAVE_DRAFT_KEY, TAG_SUGGESTION_KEY, TRIAL_NOTICE_KEY]).catch(() => {});
 }

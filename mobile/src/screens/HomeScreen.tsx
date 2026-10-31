@@ -14,6 +14,9 @@ import { MONO, OUTLINE, Theme, allEdges, conceptOf, emToTracking, BODY_KR, BODY_
 import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
+import { useAuth } from '../auth/AuthContext';
+import { TRIAL_NOTICE_KEY } from '../auth/accountTraces';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
@@ -28,6 +31,8 @@ import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 import { COMMON, TIME, USES } from '../i18n/common';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const S = strings({
   ko: {
@@ -323,6 +328,23 @@ export default function HomeScreen() {
     }
   }, [plan, navigation]);
 
+  // Said once: the last day of the trial, or the next open after it ended.
+  // A guest's trial is over from the start, so a guest never gets this.
+  const { session } = useAuth();
+  const showTrialNotice = (p: Plan) => {
+    if (session?.user.is_anonymous) return;
+    const left = Date.parse(p.trialEndsAt) - Date.now();
+    const reason = p.tier === 'trial' && left <= DAY_MS ? 'trial_ending' : p.tier === 'free' && left <= 0 && left > -30 * DAY_MS ? 'trial_ended' : null;
+    if (!reason) return;
+    AsyncStorage.getItem(TRIAL_NOTICE_KEY)
+      .then((seen) => {
+        if (seen || !navigation.isFocused()) return;
+        AsyncStorage.setItem(TRIAL_NOTICE_KEY, '1').catch(() => {});
+        navigation.navigate('Paywall', { reason });
+      })
+      .catch(() => {});
+  };
+
   const load = React.useCallback(() => {
     setLoading(true);
     // Quota + 미분류함 count ride along with every refresh; a failure here
@@ -331,6 +353,7 @@ export default function HomeScreen() {
       .then((p) => {
         setPlan(p);
         syncReminders(refillCount(p)).catch(() => {});
+        showTrialNotice(p);
       })
       .catch(() => {});
     fetchRecentItems()

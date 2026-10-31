@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import { getClient } from "./supabase.js";
+import { getClient, logAnalyticsEvent } from "./supabase.js";
 import { getEntitlement } from "./plans.js";
 import {
   PlaySubscription,
@@ -65,7 +65,7 @@ async function upsertPurchase(row: {
 export async function applyGooglePurchase(userId: string, productId: string, token: string): Promise<void> {
   const { data: existing, error } = await getClient()
     .from("purchases")
-    .select("user_id")
+    .select("user_id, state")
     .eq("purchase_token", token)
     .maybeSingle();
   if (error) throw new Error(`purchase lookup failed: ${error.message}`);
@@ -76,11 +76,13 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
     const p = await getProductPurchase(productId, token);
     const state: PurchaseState = p.purchaseState === 0 ? "active" : p.purchaseState === 2 ? "pending" : "canceled";
     await upsertPurchase({ user_id: userId, product_id: productId, purchase_token: token, kind: "lifetime", expires_at: null, state, raw: p });
+    await logPurchaseChange(userId, existing?.state as PurchaseState | undefined, state, "lifetime");
     if (state === "active" && p.acknowledgementState === 0) await acknowledgeProduct(productId, token);
   } else if (productId === config.playSubscriptionId) {
     const s = await getSubscription(token);
     const { state, expiresAt } = subscriptionState(s);
     await upsertPurchase({ user_id: userId, product_id: productId, purchase_token: token, kind: "subscription", expires_at: expiresAt, state, raw: s });
+    await logPurchaseChange(userId, existing?.state as PurchaseState | undefined, state, s.lineItems?.[0]?.offerDetails?.basePlanId ?? "subscription");
     if (state === "active" && s.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
       await acknowledgeSubscription(productId, token);
     }
@@ -103,10 +105,34 @@ export async function refreshGooglePurchase(token: string, voided = false): Prom
   if (!data) return;
   if (voided) {
     await getClient().from("purchases").update({ state: "refunded", updated_at: new Date().toISOString() }).eq("purchase_token", token);
+    await logAnalyticsEvent({ eventType: "purchase_refunded", userId: data.user_id as string, detail: data.product_id as string });
     await recomputeProUntil(data.user_id as string);
     return;
   }
   await applyGooglePurchase(data.user_id as string, data.product_id as string, token);
+}
+
+// What the funnel counts: a state change, not every re-check of the same one.
+async function logPurchaseChange(userId: string, before: PurchaseState | undefined, after: PurchaseState, detail: string): Promise<void> {
+  if (before === after) return;
+  if (after === "active" && before !== "canceled") await logAnalyticsEvent({ eventType: "purchase_done", userId, detail });
+  else if (after === "canceled") await logAnalyticsEvent({ eventType: "subscription_canceled", userId, detail });
+  else if (after === "expired") await logAnalyticsEvent({ eventType: "subscription_expired", userId, detail });
+}
+
+// A renewal notice that never reached us would end Pro for someone who paid:
+// a subscription past its recorded end is asked about again when its owner
+// opens the app. Google's answer moves it on, so this runs once per lapse.
+export async function resyncLapsedPurchases(userId: string): Promise<void> {
+  const { data, error } = await getClient()
+    .from("purchases")
+    .select("purchase_token")
+    .eq("user_id", userId)
+    .eq("kind", "subscription")
+    .in("state", ["active", "canceled"])
+    .lt("expires_at", new Date().toISOString());
+  if (error) throw new Error(`lapsed purchases failed: ${error.message}`);
+  for (const row of (data ?? []) as { purchase_token: string }[]) await refreshGooglePurchase(row.purchase_token);
 }
 
 export async function recomputeProUntil(userId: string): Promise<void> {

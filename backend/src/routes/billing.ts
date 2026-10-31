@@ -65,9 +65,10 @@ export async function billingRoutes(app: FastifyInstance) {
   });
 
   // Real-time developer notifications (renewals, cancellations, refunds),
-  // pushed by a Pub/Sub subscription whose URL carries ?secret=. Always 200
-  // once the secret checks out, so a purchase we can't process doesn't make
-  // Pub/Sub redeliver it forever; failures are logged.
+  // pushed by a Pub/Sub subscription whose URL carries ?secret=. A failure
+  // that may pass (Google or the database down) answers 500, so Pub/Sub sends
+  // it again and a paid renewal isn't lost. One that can't ever succeed (a
+  // malformed body, a token Google no longer knows) still answers 200.
   app.post("/billing/google/rtdn", async (req, reply) => {
     const secret = (req.query as { secret?: string }).secret;
     if (!config.playRtdnSecret || secret !== config.playRtdnSecret) return reply.code(403).send({ error: "forbidden" });
@@ -86,6 +87,9 @@ export async function billingRoutes(app: FastifyInstance) {
       if (token) await refreshGooglePurchase(token, !!note.voidedPurchaseNotification);
     } catch (err) {
       req.log.error(err, "rtdn handling failed");
+      const hopeless =
+        err instanceof SyntaxError || (err instanceof PlayApiError && (err.status === 400 || err.status === 404 || err.status === 410));
+      if (!hopeless) return reply.code(500).send({ error: "retry" });
     }
     return reply.code(200).send({ ok: true });
   });

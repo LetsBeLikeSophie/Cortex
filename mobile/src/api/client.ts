@@ -245,6 +245,8 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         // AI output follows the device language (see i18n DEVICE_LOCALE).
         'X-Cortex-Lang': DEVICE_LOCALE,
+        // What "어제" in a search and the stats' days mean where the person is.
+        'X-Cortex-Utc-Offset': String(-new Date().getTimezoneOffset()),
       },
       signal: controller.signal,
       ...init,
@@ -492,6 +494,11 @@ export interface Offers {
   lifetimeId: string;
   lifetimeRemaining: number;
 }
+// Best effort: a lost count must never get in the way of the screen.
+export function logAppEvent(type: 'paywall_view' | 'purchase_started', detail: string) {
+  request<void>('/me/event', { method: 'POST', body: JSON.stringify({ type, detail }) }).catch(() => {});
+}
+
 export function fetchOffers() {
   return request<Offers>('/billing/offers');
 }

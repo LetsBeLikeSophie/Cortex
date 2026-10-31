@@ -102,9 +102,10 @@ create policy "users manage their own items" on items
 create table if not exists analytics_events (
   id uuid primary key default gen_random_uuid(),
   pseudonym text not null,
-  event_type text not null, -- 'account_created' | 'account_deleted' | 'item_saved'
+  event_type text not null, -- see AnalyticsEventType in src/lib/supabase.ts
   category item_category,
   source item_source,
+  detail text, -- which plan or screen, for the events on the way to Pro
   occurred_at timestamptz not null default now()
 );
 

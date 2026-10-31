@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { isUserCancelledError, useIAP, type Purchase } from 'expo-iap';
 
 import { Theme, BODY_KR } from '../theme/themes';
-import { classifyBacklog, friendlyError, Offers, Plan, verifyGooglePurchase } from '../api/client';
+import { classifyBacklog, friendlyError, Offers, Plan, verifyGooglePurchase, logAppEvent } from '../api/client';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { showToast } from '../native/toast';
 
 import type { PlanOption, StorePrices } from './types';
-import { strings } from '../i18n';
+import { LANG, TERMS_URL, TOKUSHOHO_URL, strings } from '../i18n';
 
 const S = strings({
   ko: {
@@ -25,7 +25,8 @@ const S = strings({
     start: 'Pro 시작하기',
     connecting: '스토어 연결 중...',
     restore: '구매 복원',
-    fine: 'Google Play로 결제돼요. 해지 전까지 자동 갱신되고, Play 스토어에서 해지할 수 있어요.',
+    fine: 'Google Play로 결제돼요. 해지 전까지 자동 갱신되고, Play 스토어에서 해지할 수 있어요. 결제 후 7일 안에 Pro로 늘어난 기능을 쓰지 않았다면 환불할 수 있어요.',
+    terms: '약관',
   },
   en: {
     backlogStarted: (first: string, n: number) => `${first} · Sorting ${n} items in Unsorted`,
@@ -41,7 +42,8 @@ const S = strings({
     start: 'Start Pro',
     connecting: 'Connecting to store...',
     restore: 'Restore purchase',
-    fine: 'Billed through Google Play. Renews automatically until you cancel, which you can do in the Play Store.',
+    fine: 'Billed through Google Play. Renews automatically until you cancel, which you can do in the Play Store. Refundable within 7 days if you haven\'t used what Pro adds.',
+    terms: 'Terms',
   },
   ja: {
     backlogStarted: (first: string, n: number) => `${first} · 未分類${n}件の整理を始めました`,
@@ -57,7 +59,8 @@ const S = strings({
     start: 'Proを始める',
     connecting: 'ストアに接続中...',
     restore: '購入を復元',
-    fine: 'Google Playで決済されます。解約するまで自動更新され、Play Storeで解約できます。',
+    fine: 'Google Playで決済されます。解約するまで自動更新され、Play Storeで解約できます。決済後7日以内でProの追加機能を使っていなければ返金できます。',
+    terms: '利用規約',
   },
   'zh-Hans': {
     backlogStarted: (first: string, n: number) => `${first} · 已开始整理 ${n} 条未分类`,
@@ -73,7 +76,8 @@ const S = strings({
     start: '开通 Pro',
     connecting: '正在连接商店...',
     restore: '恢复购买',
-    fine: '通过 Google Play 付款。取消前会自动续订，可在 Play Store 中取消。',
+    fine: '通过 Google Play 付款。取消前会自动续订，可在 Play Store 中取消。付款后 7 天内未使用 Pro 增加的功能可退款。',
+    terms: '条款',
   },
   'zh-Hant': {
     backlogStarted: (first: string, n: number) => `${first} · 已開始整理 ${n} 則未分類`,
@@ -89,7 +93,8 @@ const S = strings({
     start: '開通 Pro',
     connecting: '正在連線商店...',
     restore: '復原購買',
-    fine: '透過 Google Play 付款。取消前會自動續訂，可在 Play Store 中取消。',
+    fine: '透過 Google Play 付款。取消前會自動續訂，可在 Play Store 中取消。付款後 7 天內未使用 Pro 增加的功能可退款。',
+    terms: '條款',
   },
 });
 
@@ -178,12 +183,14 @@ export function AndroidPurchase({
       ...(monthly ? { monthly: S.perMonth(monthly.displayPrice) } : null),
       ...(yearly ? { yearly: S.perYear(yearly.displayPrice) } : null),
       ...(lifetime ? { lifetime: lifetime.displayPrice } : null),
+      ...(monthly?.price && yearly?.price ? { yearlySave: Math.floor((1 - yearly.price / (monthly.price * 12)) * 100) } : null),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sub, lifetime]);
 
   const buy = async () => {
     setError('');
+    logAppEvent('purchase_started', selected);
     try {
       if (selected === 'lifetime') {
         if (!lifetime) throw new Error(S.noLifetime);
@@ -247,7 +254,18 @@ export function AndroidPurchase({
         )}
       </Pressable>
       <Text style={[styles.fine, { color: theme.sub }]}>
-        {S.fine}
+        {S.fine}{' '}
+        <Text style={styles.fineLink} onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}>
+          {S.terms}
+        </Text>
+        {LANG === 'ja' && (
+          <>
+            {' · '}
+            <Text style={styles.fineLink} onPress={() => Linking.openURL(TOKUSHOHO_URL).catch(() => {})}>
+              特定商取引法に基づく表記
+            </Text>
+          </>
+        )}
       </Text>
     </View>
   );
@@ -258,5 +276,6 @@ const styles = StyleSheet.create({
   buttons: { marginTop: 16 },
   restore: { alignSelf: 'center', marginTop: 12, paddingVertical: 4 },
   restoreText: { fontSize: 12.5, textDecorationLine: 'underline', fontFamily: BODY_KR },
+  fineLink: { textDecorationLine: 'underline' },
   fine: { fontSize: 11.5, lineHeight: 17, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
 });

@@ -6,7 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { allEdges, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { frameStyle } from '../components/Card';
-import { fetchOffers, fetchPlan, Offers, Plan } from '../api/client';
+import { fetchOffers, fetchPlan, Offers, Plan, logAppEvent } from '../api/client';
 import { ModalSheet } from '../components/ModalSheet';
 import { SheetTitle } from '../components/Typography';
 import { ButtonRow, SolidButton } from '../components/Buttons';
@@ -35,6 +35,8 @@ const S = strings({
       search: '이번 달 AI 검색을 다 썼어요',
       compose: '이번 달 모아서 만들기를 다 썼어요',
       tag_cleanup: '이번 달 태그 정리하기를 다 썼어요',
+      trial_ending: 'Pro 체험이 곧 끝나요',
+      trial_ended: 'Pro 체험이 끝났어요',
       default: 'Cortex Pro',
     },
     date: (y: number, m: number, d: number) => `${y}년 ${m}월 ${d}일`,
@@ -54,9 +56,11 @@ const S = strings({
     monthly: '월간',
     monthlyNote: '매달 자동 갱신 · 언제든 해지할 수 있어요',
     yearly: '연간',
-    yearlyNote: '매년 자동 갱신 · 월간보다 31% 저렴',
+    yearlyNote: (save?: number) => `매년 자동 갱신 · 월간보다 ${save ? `${save}% ` : ''}저렴`,
     lifetime: '평생',
-    lifetimeNote: (n: number) => `선착순 · ${n}개 남음 · 한 번 결제로 계속`,
+    lifetimeNote: (n: number) => `선착순 · ${n}개 남음 · 서비스 운영 중 계속 이용`,
+    trialSafe: '저장은 계속 돼요 · 자동 결제 없어요',
+    trialUsed: (n: number) => `체험 중 AI가 ${n}건 정리했어요`,
     ranOut: '저장은 계속 돼요 · AI는 다음 달에 다시 채워져요',
     start: 'Pro 시작하기',
     manage: '구독 관리 · 해지 (Play 스토어)',
@@ -70,6 +74,8 @@ const S = strings({
       search: "You've used this month's AI search",
       compose: "You've used this month's Combine",
       tag_cleanup: "You've used this month's tag tidy-ups",
+      trial_ending: 'Your Pro trial ends soon',
+      trial_ended: 'Your Pro trial has ended',
       default: 'Cortex Pro',
     },
     date: (y: number, m: number, d: number) => `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]} ${d}, ${y}`,
@@ -89,9 +95,11 @@ const S = strings({
     monthly: 'Monthly',
     monthlyNote: 'Renews monthly · cancel anytime',
     yearly: 'Yearly',
-    yearlyNote: 'Renews yearly · 31% less than monthly',
+    yearlyNote: (save?: number) => `Renews yearly · ${save ? `${save}% ` : ''}less than monthly`,
     lifetime: 'Lifetime',
-    lifetimeNote: (n: number) => `Limited · ${n} left · pay once, keep it`,
+    lifetimeNote: (n: number) => `Limited · ${n} left · pay once, for as long as Cortex runs`,
+    trialSafe: 'Saving keeps working · no automatic charge',
+    trialUsed: (n: number) => `AI sorted ${n} during your trial`,
     ranOut: 'Saving still works · AI refills next month',
     start: 'Start Pro',
     manage: 'Manage · cancel subscription (Play Store)',
@@ -105,6 +113,8 @@ const S = strings({
       search: '今月のAI検索を使い切りました',
       compose: '今月の「まとめて作る」を使い切りました',
       tag_cleanup: '今月のタグ整理を使い切りました',
+      trial_ending: 'Proの体験がまもなく終わります',
+      trial_ended: 'Proの体験が終わりました',
       default: 'Cortex Pro',
     },
     date: (y: number, m: number, d: number) => `${y}年${m}月${d}日`,
@@ -124,9 +134,11 @@ const S = strings({
     monthly: '月額',
     monthlyNote: '毎月自動更新 · いつでも解約できます',
     yearly: '年額',
-    yearlyNote: '毎年自動更新 · 月額より31%お得',
+    yearlyNote: (save?: number) => `毎年自動更新 · 月額より${save ? `${save}%` : ''}お得`,
     lifetime: '買い切り',
-    lifetimeNote: (n: number) => `先着順 · 残り${n}個 · 1回の支払いでずっと`,
+    lifetimeNote: (n: number) => `先着順 · 残り${n}個 · サービス提供中ずっと利用可`,
+    trialSafe: '保存はそのまま使えます · 自動課金はありません',
+    trialUsed: (n: number) => `体験中にAIが${n}件整理しました`,
     ranOut: '保存はそのまま · AIは来月また使えます',
     start: 'Proを始める',
     manage: 'サブスクの管理・解約(Play Store)',
@@ -140,6 +152,8 @@ const S = strings({
       search: '本月的 AI 搜索已用完',
       compose: '本月的汇总生成已用完',
       tag_cleanup: '本月的整理标签次数已用完',
+      trial_ending: 'Pro 试用即将结束',
+      trial_ended: 'Pro 试用已结束',
       default: 'Cortex Pro',
     },
     date: (y: number, m: number, d: number) => `${y}年${m}月${d}日`,
@@ -159,9 +173,11 @@ const S = strings({
     monthly: '月付',
     monthlyNote: '每月自动续订 · 随时可取消',
     yearly: '年付',
-    yearlyNote: '每年自动续订 · 比按月便宜 31%',
+    yearlyNote: (save?: number) => `每年自动续订 · 比按月便宜${save ? ` ${save}%` : ''}`,
     lifetime: '终身',
-    lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 一次付款永久使用`,
+    lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 服务运营期间可持续使用`,
+    trialSafe: '保存功能不受影响 · 不会自动扣款',
+    trialUsed: (n: number) => `试用期间 AI 整理了 ${n} 项`,
     ranOut: '保存照常 · AI 下个月恢复',
     start: '开通 Pro',
     manage: '管理 · 取消订阅（Play Store）',
@@ -175,6 +191,8 @@ const S = strings({
       search: '本月的 AI 搜尋已用完',
       compose: '本月的彙整生成已用完',
       tag_cleanup: '本月的整理標籤次數已用完',
+      trial_ending: 'Pro 試用即將結束',
+      trial_ended: 'Pro 試用已結束',
       default: 'Cortex Pro',
     },
     date: (y: number, m: number, d: number) => `${y}年${m}月${d}日`,
@@ -194,9 +212,11 @@ const S = strings({
     monthly: '月繳',
     monthlyNote: '每月自動續訂 · 隨時可取消',
     yearly: '年繳',
-    yearlyNote: '每年自動續訂 · 比按月便宜 31%',
+    yearlyNote: (save?: number) => `每年自動續訂 · 比按月便宜${save ? ` ${save}%` : ''}`,
     lifetime: '終身',
-    lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 一次付款永久使用`,
+    lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 服務營運期間可持續使用`,
+    trialSafe: '儲存功能不受影響 · 不會自動扣款',
+    trialUsed: (n: number) => `試用期間 AI 整理了 ${n} 項`,
     ranOut: '儲存照常 · AI 下個月恢復',
     start: '開通 Pro',
     manage: '管理 · 取消訂閱（Play Store）',
@@ -235,6 +255,11 @@ export default function PaywallScreen() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    logAppEvent('paywall_view', reason ?? 'default');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const close = () => navigation.goBack();
 
   const pro = plan?.proLimits;
@@ -259,10 +284,17 @@ export default function PaywallScreen() {
           ? S.free(plan.classify.used, plan.classify.limit, plan.search.used, plan.search.limit)
           : '';
 
+  const trialReason = reason === 'trial_ending' || reason === 'trial_ended';
+  const subline = trialReason
+    ? (reason === 'trial_ending' && plan && plan.classify.used > 0 ? `${S.trialUsed(plan.classify.used)} · ` : '') + S.trialSafe
+    : reason
+      ? S.ranOut
+      : undefined;
+
   const lifetimeLeft = offers?.enabled ? offers.lifetimeRemaining : 0;
   const options: { key: PlanOption; label: string; note: string }[] = [
     { key: 'monthly', label: S.monthly, note: S.monthlyNote },
-    { key: 'yearly', label: S.yearly, note: S.yearlyNote },
+    { key: 'yearly', label: S.yearly, note: S.yearlyNote(prices.yearlySave) },
     ...(lifetimeLeft > 0 ? [{ key: 'lifetime' as const, label: S.lifetime, note: S.lifetimeNote(lifetimeLeft) }] : []),
   ];
   const isPro = plan?.tier === 'pro';
@@ -273,7 +305,7 @@ export default function PaywallScreen() {
       {/* Title, benefits and plans scroll; the buy / close area below stays
           pinned, so a small phone never pushes the button off the sheet. */}
       <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false}>
-        <SheetTitle theme={theme} title={S.headlines[reason ?? 'default']} sub={reason ? S.ranOut : undefined} />
+        <SheetTitle theme={theme} title={S.headlines[reason ?? 'default']} sub={subline} />
 
         <View style={[styles.card, { backgroundColor: theme.surface, ...frameStyle(theme), borderRadius: theme.cardRadius }]}>
           <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>

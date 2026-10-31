@@ -2,7 +2,9 @@
 // paywall can import these without pulling in expo-iap (native-only; the
 // web build must never load it).
 export type PlanOption = 'monthly' | 'yearly' | 'lifetime';
-export type StorePrices = Partial<Record<PlanOption, string>>;
+// yearlySave: how much cheaper yearly is here, from what Play charges in this
+// country (prices are set per country, so a fixed % could be untrue).
+export type StorePrices = Partial<Record<PlanOption, string>> & { yearlySave?: number };
 
 // Play's own subscription page for this app -- where a subscription is
 // cancelled (deleting the Cortex account does not cancel it).

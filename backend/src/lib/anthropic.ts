@@ -478,8 +478,8 @@ export const SearchInterpretationSchema = z.object({
   source: z.enum(["instagram", "kakaotalk", "safari", "youtube", "memo", "other"]).nullable(),
   captureType: z.enum(["link", "text", "screenshot"]).nullable(),
   category: z.enum(CATEGORIES).nullable(),
-  dateFrom: z.string().nullable().describe("Inclusive start date, YYYY-MM-DD, Korea time"),
-  dateTo: z.string().nullable().describe("Inclusive end date, YYYY-MM-DD, Korea time"),
+  dateFrom: z.string().nullable().describe("Inclusive start date, YYYY-MM-DD, the person's local date"),
+  dateTo: z.string().nullable().describe("Inclusive end date, YYYY-MM-DD, the person's local date"),
   sort: z
     .enum(["oldest", "newest"])
     .nullable()
@@ -531,7 +531,7 @@ export async function interpretSearch(query: string, today: string, userId?: str
     model: SEARCH_MODEL,
     max_tokens: 2048,
     system: SEARCH_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: `Today (Korea time): ${today}\nSearch: ${query}` }],
+    messages: [{ role: "user", content: `Today (the person's local date): ${today}\nSearch: ${query}` }],
     output_config: { effort: "low", format: zodOutputFormat(SearchInterpretationSchema) },
   });
   logAiCall("search", SEARCH_MODEL, response.usage, userId);

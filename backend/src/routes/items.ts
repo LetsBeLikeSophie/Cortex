@@ -1,5 +1,7 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
+import { resyncLapsedPurchases } from "../lib/billing.js";
+import { isPlayBillingConfigured } from "../lib/googlePlay.js";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
@@ -11,6 +13,8 @@ import {
   countItemsSince,
   getScreenshotUrl,
   getStats,
+  KST_OFFSET_MINUTES,
+  logAnalyticsEvent,
   listItems,
   listAllItems,
   listLookback,
@@ -111,11 +115,22 @@ const SmartSearchSchema = z.object({
   interpretation: SearchInterpretationSchema.extend({ sort: SearchInterpretationSchema.shape.sort.default(null) }),
 });
 
-// Korea-time calendar date (YYYY-MM-DD) -- what "지난달"/"어제" in a search
-// sentence are relative to, regardless of the server's own timezone.
-function todayInKorea(): string {
-  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+// Where the person is, from the app's X-Cortex-Utc-Offset (minutes east of
+// UTC): what "지난달"/"어제" in a search sentence and the stats' days mean.
+function utcOffsetOf(req: FastifyRequest): number {
+  const n = Number(req.headers["x-cortex-utc-offset"]);
+  return Number.isInteger(n) && n >= -720 && n <= 840 ? n : KST_OFFSET_MINUTES;
 }
+function localToday(utcOffsetMinutes: number): string {
+  return new Date(Date.now() + utcOffsetMinutes * 60 * 1000).toISOString().slice(0, 10);
+}
+
+// What the app reports on the way to Pro; anything else is refused, so this
+// can't turn into a place to send free text.
+const AppEventSchema = z.object({
+  type: z.enum(["paywall_view", "purchase_started"]),
+  detail: z.enum(["default", "classify", "search", "compose", "tag_cleanup", "trial_ending", "trial_ended", "monthly", "yearly", "lifetime"]),
+});
 
 const AddTagSchema = z.object({
   tag: z.string().min(1).max(30),
@@ -272,11 +287,13 @@ export async function itemsRoutes(app: FastifyInstance) {
         return null;
       });
       if (ent && remaining(ent, "search") === 0) {
+        await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "search" });
         return reply.code(402).send({ error: "quota", kind: "search", limit: ent.search.limit, tier: ent.tier, resetsAt: ent.resetsAt });
       }
-      const interpretation = await interpretSearch(parsed.data.query, todayInKorea(), userId);
+      const utcOffset = utcOffsetOf(req);
+      const interpretation = await interpretSearch(parsed.data.query, localToday(utcOffset), userId);
       await recordUsage(userId, "search").catch((err) => req.log.error(err));
-      const result = await searchItemsSmart(userId, interpretation);
+      const result = await searchItemsSmart(userId, interpretation, undefined, utcOffset);
       // Locked memos stay out of AI search.
       return reply.send({ interpretation, ...result, items: result.items.filter((it) => !it.locked) });
     }
@@ -286,8 +303,17 @@ export async function itemsRoutes(app: FastifyInstance) {
   app.get("/me/plan", async (req, reply) => {
     const userId = await resolveUserId(req);
     // The app sends its device language here; AI output follows it.
+    if (isPlayBillingConfigured()) await resyncLapsedPurchases(userId).catch((err) => req.log.error(err));
     await syncLang(userId, normalizeLang(req.headers["x-cortex-lang"])).catch((err) => req.log.warn(err));
     return reply.send(await getEntitlement(userId));
+  });
+
+  app.post("/me/event", async (req, reply) => {
+    const parsed = AppEventSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+    const userId = await resolveUserId(req);
+    await logAnalyticsEvent({ eventType: parsed.data.type, userId, detail: parsed.data.detail });
+    return reply.code(204).send();
   });
 
   // The answer to "send saved content to the AI abroad?" -- recorded with
@@ -324,14 +350,14 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
     }
     const userId = await resolveUserId(req);
-    const result = await searchItemsSmart(userId, clipInterpretation(parsed.data.interpretation));
+    const result = await searchItemsSmart(userId, clipInterpretation(parsed.data.interpretation), undefined, utcOffsetOf(req));
     return reply.send(result);
   });
 
   // Aggregate counts for the Stats screen (category/source/month/heatmap).
   app.get("/items/stats", async (req, reply) => {
     const userId = await resolveUserId(req);
-    const stats = await getStats(userId);
+    const stats = await getStats(userId, utcOffsetOf(req));
     return reply.send(stats);
   });
 
@@ -411,6 +437,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     const started = await reorganizeItem(userId, item);
     if (!started) {
       const ent = await getEntitlement(userId);
+      await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "classify" });
       return reply.code(402).send({ error: "quota", kind: "classify", limit: ent.classify.limit, tier: ent.tier, resetsAt: ent.resetsAt });
     }
     return reply.code(202).send({ ok: true });
@@ -434,6 +461,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (!free) {
       const ent = await getEntitlement(userId);
       if (remaining(ent, "compose") === 0) {
+        await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "compose" });
         return reply.code(402).send({ error: "quota", kind: "compose", limit: ent.compose.limit, tier: ent.tier, resetsAt: ent.resetsAt });
       }
     }
@@ -545,6 +573,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     await requireAiConsent(userId);
     const ent = await getEntitlement(userId);
     if (remaining(ent, "tag_cleanup") === 0) {
+      await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "tag_cleanup" });
       return reply.code(402).send({ error: "quota", kind: "tag_cleanup", limit: ent.tag_cleanup.limit, tier: ent.tier, resetsAt: ent.resetsAt });
     }
     const tags = await listTagCounts(userId);

@@ -897,10 +897,19 @@ export interface SmartSearchResult {
 // only rank across groups: an item matching 1 of 3 remembered keywords
 // still shows, just below one matching all 3, since half-remembering is
 // the whole premise here (unlike searchItems' strict AND for typed chips).
+// Requests without the app's offset (older app versions) mean Korea, where
+// they were all made so far.
+export const KST_OFFSET_MINUTES = 540;
+function isoOffset(minutes: number): string {
+  const abs = Math.abs(minutes);
+  return `${minutes < 0 ? "-" : "+"}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
+}
+
 export async function searchItemsSmart(
   userId: string,
   q: SearchInterpretation,
-  limit = 30
+  limit = 30,
+  utcOffsetMinutes = KST_OFFSET_MINUTES
 ): Promise<SmartSearchResult> {
   const groups = q.keywords
     .map((k) => [k.term, ...k.synonyms].map((w) => w.toLowerCase().trim()).filter(Boolean))
@@ -914,9 +923,10 @@ export async function searchItemsSmart(
       if (q.source) query = query.eq("source", q.source);
       if (q.captureType) query = query.eq("capture_type", q.captureType);
       if (q.category) query = query.eq("category", q.category);
-      // Dates come in as Korea-time calendar days; shared_at is UTC.
-      if (q.dateFrom && DATE_RE.test(q.dateFrom)) query = query.gte("shared_at", `${q.dateFrom}T00:00:00+09:00`);
-      if (q.dateTo && DATE_RE.test(q.dateTo)) query = query.lte("shared_at", `${q.dateTo}T23:59:59.999+09:00`);
+      // Dates come in as calendar days where the person is; shared_at is UTC.
+      const zone = isoOffset(utcOffsetMinutes);
+      if (q.dateFrom && DATE_RE.test(q.dateFrom)) query = query.gte("shared_at", `${q.dateFrom}T00:00:00${zone}`);
+      if (q.dateTo && DATE_RE.test(q.dateTo)) query = query.lte("shared_at", `${q.dateTo}T23:59:59.999${zone}`);
     }
     // "가장 오래된 ..." asks for the start of the archive, not the latest 500.
     const oldestFirst = q.sort === "oldest";
@@ -998,18 +1008,17 @@ export interface ItemStats {
 
 // The server runs in UTC, but every real user of this app is in Korea --
 // grouping by the server's local getDay()/getHours() would shift (and for
-// weekday, sometimes flip to the wrong day entirely) saves made late at
-// night KST. Shift into KST first and read the fields back with the UTC
-// getters so the result doesn't depend on the server's own TZ setting.
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-function toKST(iso: string): Date {
-  return new Date(new Date(iso).getTime() + KST_OFFSET_MS);
+// weekday, sometimes flip to the wrong day entirely) saves made late at night
+// where the person is. Shift into their time first and read the fields back
+// with the UTC getters, so the result doesn't depend on the server's TZ.
+function toLocal(iso: string, utcOffsetMinutes: number): Date {
+  return new Date(new Date(iso).getTime() + utcOffsetMinutes * 60 * 1000);
 }
 
 // REST/PostgREST has no GROUP BY, and at personal-archive volume fetching
 // everything and aggregating here is simpler than standing up an RPC for it
 // (same tradeoff as searchItems above).
-export async function getStats(userId: string): Promise<ItemStats> {
+export async function getStats(userId: string, utcOffsetMinutes = KST_OFFSET_MINUTES): Promise<ItemStats> {
   const rows = await selectAllRows<Pick<ItemRecord, "category" | "source" | "shared_at" | "tags" | "user_tags">>(
     userId,
     "category, source, shared_at, tags, user_tags",
@@ -1028,14 +1037,14 @@ export async function getStats(userId: string): Promise<ItemStats> {
     categoryCounts.set(row.category, (categoryCounts.get(row.category) ?? 0) + 1);
     sourceCounts.set(row.source, (sourceCounts.get(row.source) ?? 0) + 1);
 
-    const d = toKST(row.shared_at);
+    const d = toLocal(row.shared_at, utcOffsetMinutes);
     const weekday = d.getUTCDay();
     const band = Math.floor(d.getUTCHours() / 6);
     const key = `${weekday}-${band}`;
     heatmapCounts.set(key, (heatmapCounts.get(key) ?? 0) + 1);
   }
 
-  const now = toKST(new Date().toISOString());
+  const now = toLocal(new Date().toISOString(), utcOffsetMinutes);
   const monthCounts = new Map<string, number>();
   const monthKeys: string[] = [];
   for (let i = 5; i >= 0; i--) {
@@ -1045,7 +1054,7 @@ export async function getStats(userId: string): Promise<ItemStats> {
     monthCounts.set(key, 0);
   }
   for (const row of rows) {
-    const d = toKST(row.shared_at);
+    const d = toLocal(row.shared_at, utcOffsetMinutes);
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
     if (monthCounts.has(key)) monthCounts.set(key, (monthCounts.get(key) ?? 0) + 1);
   }
@@ -1239,13 +1248,26 @@ export async function linkKakaoUser(kakaoId: number, userId: string): Promise<vo
   if (error) throw new Error(`linkKakaoUser failed: ${error.message}`);
 }
 
-export type AnalyticsEventType = "account_created" | "account_deleted" | "item_saved";
+export type AnalyticsEventType =
+  | "account_created"
+  | "account_deleted"
+  | "item_saved"
+  // The way to Pro. `detail` says which plan or which screen, never anything
+  // the person wrote.
+  | "quota_hit"
+  | "paywall_view"
+  | "purchase_started"
+  | "purchase_done"
+  | "purchase_refunded"
+  | "subscription_canceled"
+  | "subscription_expired";
 
 export interface AnalyticsEvent {
   eventType: AnalyticsEventType;
   userId: string;
   category?: Category;
   source?: ItemSource;
+  detail?: string;
 }
 
 // One-way stand-in for the account: the same user always hashes to the same
@@ -1271,6 +1293,7 @@ export async function logAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
         event_type: event.eventType,
         category: event.category ?? null,
         source: event.source ?? null,
+        detail: event.detail ?? null,
       });
     if (error) throw error;
   } catch (err) {

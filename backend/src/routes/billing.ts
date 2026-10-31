@@ -84,7 +84,7 @@ export async function billingRoutes(app: FastifyInstance) {
         note.subscriptionNotification?.purchaseToken ??
         note.oneTimeProductNotification?.purchaseToken ??
         note.voidedPurchaseNotification?.purchaseToken;
-      if (token) await refreshGooglePurchase(token, !!note.voidedPurchaseNotification);
+      if (token) await refreshGooglePurchase(token, !!note.voidedPurchaseNotification, !!note.subscriptionNotification);
     } catch (err) {
       req.log.error(err, "rtdn handling failed");
       const hopeless =

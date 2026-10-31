@@ -92,17 +92,32 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
   await recomputeProUntil(userId);
 }
 
+// Resubscribing or changing plan in the Play Store makes a new token, and the
+// old one expires: without this the person pays while Pro ends. The new token
+// names the one it replaces, which says whose it is. Anything else unknown (a
+// purchase the app hasn't reported yet) waits for the app's verify call.
+async function adoptReplacementSubscription(token: string): Promise<void> {
+  const s = await getSubscription(token);
+  if (!s.linkedPurchaseToken) return;
+  const productId = s.lineItems?.[0]?.productId;
+  if (productId !== config.playSubscriptionId) return;
+  const { data, error } = await getClient().from("purchases").select("user_id").eq("purchase_token", s.linkedPurchaseToken).maybeSingle();
+  if (error) throw new Error(`purchase lookup failed: ${error.message}`);
+  if (data) await applyGooglePurchase(data.user_id as string, productId, token);
+}
+
 // Real-time developer notification: re-check whatever purchase it's about.
-// Unknown tokens (a purchase the app never reported) are ignored -- the
-// app's own verify call is what ties a purchase to an account.
-export async function refreshGooglePurchase(token: string, voided = false): Promise<void> {
+export async function refreshGooglePurchase(token: string, voided = false, isSubscription = false): Promise<void> {
   const { data, error } = await getClient()
     .from("purchases")
     .select("user_id, product_id")
     .eq("purchase_token", token)
     .maybeSingle();
   if (error) throw new Error(`purchase lookup failed: ${error.message}`);
-  if (!data) return;
+  if (!data) {
+    if (isSubscription && !voided) await adoptReplacementSubscription(token);
+    return;
+  }
   if (voided) {
     await getClient().from("purchases").update({ state: "refunded", updated_at: new Date().toISOString() }).eq("purchase_token", token);
     await logAnalyticsEvent({ eventType: "purchase_refunded", userId: data.user_id as string, detail: data.product_id as string });

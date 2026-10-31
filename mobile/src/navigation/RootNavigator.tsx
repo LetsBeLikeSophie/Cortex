@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
@@ -136,6 +136,10 @@ function AddBubble({ plan, bottom, onPress }: { plan: Plan; bottom: number; onPr
   );
 }
 
+// expo-iap is native-only; the web build must never load it.
+const PurchaseRescue: typeof import('../billing/AndroidPurchase').PurchaseRescue | null =
+  Platform.OS === 'android' ? require('../billing/AndroidPurchase').PurchaseRescue : null;
+
 function Tabs({ navigation }: NativeStackScreenProps<RootStackParamList>) {
   const [barHeight, setBarHeight] = useState(0);
   const [onHome, setOnHome] = useState(true);
@@ -151,6 +155,7 @@ function Tabs({ navigation }: NativeStackScreenProps<RootStackParamList>) {
   }, [navigation]);
   return (
     <View style={styles.tabs}>
+      {PurchaseRescue && <PurchaseRescue plan={plan} onPlan={setPlan} />}
       <Tab.Navigator
         tabBar={(props) => <TabBar {...props} onHeight={setBarHeight} />}
         screenOptions={{ headerShown: false }}

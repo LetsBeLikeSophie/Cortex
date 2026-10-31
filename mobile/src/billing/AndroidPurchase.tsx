@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { isUserCancelledError, useIAP, type Purchase } from 'expo-iap';
+import {
+  finishTransaction as finishPurchase,
+  getAvailablePurchases as listOwnedPurchases,
+  initConnection,
+  isUserCancelledError,
+  useIAP,
+  type Purchase,
+} from 'expo-iap';
 
 import { Theme, BODY_KR } from '../theme/themes';
-import { classifyBacklog, friendlyError, Offers, Plan, verifyGooglePurchase, logAppEvent } from '../api/client';
+import { ApiError, classifyBacklog, fetchOffers, friendlyError, Offers, Plan, verifyGooglePurchase, logAppEvent } from '../api/client';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { showToast } from '../native/toast';
 
@@ -102,6 +109,66 @@ const S = strings({
 // (Monetize > Subscriptions > cortex_pro).
 const BASE_PLAN: Record<'monthly' | 'yearly', string> = { monthly: 'monthly', yearly: 'yearly' };
 
+// The purchase is already paid for when this runs, so a dropped connection or
+// a restarting server gets more tries. A refusal (400, 409) stays one.
+const VERIFY_RETRY_MS = [2000, 5000];
+async function verifyWithRetry(productId: string, token: string): Promise<Plan> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await verifyGooglePurchase(productId, token);
+    } catch (err) {
+      const refused = err instanceof ApiError && err.status < 500 && err.status !== 429;
+      if (refused || attempt >= VERIFY_RETRY_MS.length) throw err;
+      await new Promise((resolve) => setTimeout(resolve, VERIFY_RETRY_MS[attempt]));
+    }
+  }
+}
+
+// Paid, but the server never heard (no signal, the app closed): Play refunds
+// anything left unacknowledged for 3 days. Whatever Play still holds that way
+// goes to the server now. Only unacknowledged ones: an acknowledged purchase
+// already has an account, and 구매 복원 is the way to move it. The connection
+// stays open, since closing it would cut off a paywall opened meanwhile.
+async function confirmWaitingPurchases(): Promise<Plan | null> {
+  const offers = await fetchOffers();
+  if (!offers.enabled || !(await initConnection())) return null;
+  const owned = await listOwnedPurchases();
+  let plan: Plan | null = null;
+  for (const purchase of owned) {
+    const ours = purchase.productId === offers.subscriptionId || purchase.productId === offers.lifetimeId;
+    const waiting = 'isAcknowledgedAndroid' in purchase && purchase.isAcknowledgedAndroid === false && purchase.purchaseState === 'purchased';
+    if (!ours || !waiting || !purchase.purchaseToken) continue;
+    try {
+      plan = await verifyWithRetry(purchase.productId, purchase.purchaseToken);
+      await finishPurchase({ purchase, isConsumable: false }).catch(() => {});
+    } catch {
+      // Another account's (409), or still unreachable: the next check retries.
+    }
+  }
+  return plan;
+}
+
+const RESCUE_EVERY_MS = 5 * 60 * 1000;
+let lastRescueAt = 0;
+
+// No screen: runs on app open and again when the plan refreshes, while this
+// person isn't Pro.
+export function PurchaseRescue({ plan, onPlan }: { plan: Plan | null; onPlan: (plan: Plan) => void }) {
+  useEffect(() => {
+    if (!plan || plan.tier === 'pro' || Date.now() - lastRescueAt < RESCUE_EVERY_MS) return;
+    lastRescueAt = Date.now();
+    confirmWaitingPurchases()
+      .then((next) => {
+        if (!next) return;
+        onPlan(next);
+        if (next.tier === 'pro') showToast(S.started);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan]);
+  return null;
+}
+
 // The Google Play part of the paywall, mounted only on Android when the
 // server says billing is set up (expo-iap has no web implementation).
 // Flow: load the products -> person picks a plan -> Play's own purchase
@@ -128,7 +195,7 @@ export function AndroidPurchase({
   const confirmWithServer = async (purchase: Purchase): Promise<Plan | null> => {
     const token = purchase.purchaseToken;
     if (!token) return null;
-    const plan = await verifyGooglePurchase(purchase.productId, token);
+    const plan = await verifyWithRetry(purchase.productId, token);
     await finishTransaction({ purchase, isConsumable: false }).catch(() => {});
     onPlan(plan);
     return plan;

@@ -87,6 +87,8 @@ export interface PlaySubscription {
     | "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED"
     | string;
   acknowledgementState?: "ACKNOWLEDGEMENT_STATE_PENDING" | "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED";
+  // Set on a resubscribe or plan change: the token this one replaces.
+  linkedPurchaseToken?: string;
   lineItems?: { productId: string; expiryTime?: string; offerDetails?: { basePlanId?: string } }[];
 }
 

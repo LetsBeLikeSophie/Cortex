@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { resyncLapsedPurchases } from "../lib/billing.js";
+import { ImageRejectedError } from "../lib/image.js";
 import { isPlayBillingConfigured } from "../lib/googlePlay.js";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
@@ -163,6 +164,7 @@ export async function itemsRoutes(app: FastifyInstance) {
       _req.log.error(err);
       return reply.code(503).send({ error: "ai_unavailable" });
     }
+    if (err instanceof ImageRejectedError) return reply.code(err.status).send({ error: err.message });
     reply.send(err);
   });
 

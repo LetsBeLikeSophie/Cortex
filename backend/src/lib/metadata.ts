@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { config } from "../config.js";
+import { fetchPublicHtml } from "./safeFetch.js";
 
 export interface LinkMetadata {
   title?: string;
@@ -16,6 +17,9 @@ export interface LinkMetadata {
 }
 
 const FETCH_TIMEOUT_MS = 8000;
+// Preview tags sit at the top of the page; nothing past this is read.
+const MAX_HTML_BYTES = 1_000_000;
+const MAX_REDIRECTS = 3;
 
 // Only ever reads what a site already opts to publish for link previews
 // (Open Graph tags, or YouTube's official oEmbed endpoint) -- deliberately
@@ -122,22 +126,18 @@ async function fetchYoutubeOEmbed(url: string): Promise<LinkMetadata | null> {
 
 async function fetchOpenGraph(url: string): Promise<LinkMetadata> {
   try {
-    const res = await fetch(url, {
-      redirect: "follow",
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      headers: {
+    const html = await fetchPublicHtml(
+      url,
+      {
         // A plain, identifiable UA -- not spoofing a browser -- since this
         // only ever reads publicly-published preview meta tags.
         "user-agent": "CortexArchiveBot/1.0 (+link preview fetch)",
         accept: "text/html",
       },
-    });
-    if (!res.ok) return {};
+      { timeoutMs: FETCH_TIMEOUT_MS, maxBytes: MAX_HTML_BYTES, maxRedirects: MAX_REDIRECTS }
+    );
+    if (html === null) return {};
 
-    const contentType = res.headers.get("content-type") ?? "";
-    if (!contentType.includes("text/html")) return {};
-
-    const html = await res.text();
     const $ = cheerio.load(html);
     const meta = (name: string) =>
       $(`meta[property="${name}"]`).attr("content") ?? $(`meta[name="${name}"]`).attr("content") ?? undefined;

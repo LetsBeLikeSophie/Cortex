@@ -1,5 +1,5 @@
 import { z } from "zod";
-import sharp from "sharp";
+import { compressScreenshot } from "./image.js";
 import { fetchLinkMetadata } from "./metadata.js";
 import { classifyText, classifyImage, isAiUnavailable } from "./anthropic.js";
 import type { Category } from "./categories.js";
@@ -24,28 +24,6 @@ import {
   ItemRecord,
   ItemSource,
 } from "./supabase.js";
-
-// Bounds both Storage growth and Claude vision cost, which scale with image
-// size -- downscale-only (a small screenshot stays as-is) and re-encoded as
-// JPEG so both the stored copy and the classification call use the smaller
-// version, regardless of the original format.
-//
-// The cap is on the LONG edge, matched to what Claude actually looks at
-// (it scales anything past ~1568px on the long edge down itself). A width
-// cap did almost nothing for phone screenshots, which are tall (1080x2400
-// stayed 1080x2400 and the AI threw the extra resolution away). 1600 long /
-// q75 halves a typical screenshot (~277KB -> ~120KB) with the same image
-// for classification; going lower would start blurring small text.
-const SCREENSHOT_MAX_EDGE = 1600;
-const SCREENSHOT_JPEG_QUALITY = 75;
-
-async function compressScreenshot(bytes: Buffer): Promise<Buffer> {
-  return sharp(bytes)
-    .rotate() // apply EXIF orientation before resizing (camera photos)
-    .resize({ width: SCREENSHOT_MAX_EDGE, height: SCREENSHOT_MAX_EDGE, fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: SCREENSHOT_JPEG_QUALITY })
-    .toBuffer();
-}
 
 const SOURCES = ["instagram", "kakaotalk", "safari", "youtube", "memo", "other"] as const satisfies readonly ItemSource[];
 
@@ -158,10 +136,11 @@ export async function processIncomingItem(input: IncomingItem, userId: string): 
       imageBase64 = compressed.toString("base64");
     }
   } catch (err) {
+    // Nothing was saved, so the quota hold goes back.
+    if (reservation !== null) await refundUsage(reservation).catch((e) => console.error("refundUsage failed:", e));
     // Two tries of the same save raced past the lookup: the other one won.
-    // Give back its quota hold and return what it made.
+    // Return what it made.
     if (err instanceof DuplicateRequestError && requestId) {
-      if (reservation !== null) await refundUsage(reservation).catch((e) => console.error("refundUsage failed:", e));
       const existing = await findItemByRequestId(userId, requestId);
       if (existing) return existing;
     }

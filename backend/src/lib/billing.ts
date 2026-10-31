@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import { getClient, logAnalyticsEvent } from "./supabase.js";
 import { getEntitlement } from "./plans.js";
+import { nextProUntil, type PurchaseRow, type PurchaseState } from "./billingRules.js";
 import {
   PlaySubscription,
   acknowledgeProduct,
@@ -11,14 +12,8 @@ import {
 
 // Purchases -> user_plans.pro_until. Every store purchase is a row in
 // `purchases` (2026-10-22 migration), checked with the store, and pro_until
-// is always recomputed from all of a person's rows: a lifetime pass means
-// "forever", a subscription its current expiry (a canceled one still runs
-// to the end of what was paid for). The web route will write rows the
-// same way, so one field keeps meaning "Pro until".
-
-const FOREVER = "9999-12-31T00:00:00.000Z";
-
-type PurchaseState = "active" | "pending" | "canceled" | "expired" | "refunded";
+// is always recomputed from all of a person's rows (billingRules.ts). The web
+// route will write rows the same way, so one field keeps meaning "Pro until".
 
 export class PurchaseConflictError extends Error {}
 export class UnknownProductError extends Error {}
@@ -188,24 +183,9 @@ export async function resyncLapsedPurchases(userId: string): Promise<void> {
 export async function recomputeProUntil(userId: string): Promise<void> {
   const { data, error } = await getClient().from("purchases").select("kind, state, expires_at").eq("user_id", userId);
   if (error) throw new Error(`recomputeProUntil failed: ${error.message}`);
-  let until: string | null = null;
-  for (const row of (data ?? []) as { kind: string; state: PurchaseState; expires_at: string | null }[]) {
-    const candidate =
-      row.kind === "lifetime"
-        ? row.state === "active"
-          ? FOREVER
-          : null
-        : (row.state === "active" || row.state === "canceled") && row.expires_at
-          ? row.expires_at
-          : null;
-    if (candidate && (!until || candidate > until)) until = candidate;
-  }
   // Make sure the plan row exists (it's created lazily), then set it.
   const before = await getEntitlement(userId);
-  // Pro ending early (refund, revoked lifetime) keeps the moment it ended
-  // instead of null, so the free share can count from there (decision B2).
-  const nowIso = new Date().toISOString();
-  if (before.proUntil && before.proUntil > nowIso && (!until || until < nowIso)) until = nowIso;
+  const until = nextProUntil((data ?? []) as PurchaseRow[], before.proUntil ?? null, new Date().toISOString());
   const { error: updateError } = await getClient().from("user_plans").update({ pro_until: until }).eq("user_id", userId);
   if (updateError) throw new Error(`pro_until update failed: ${updateError.message}`);
 }

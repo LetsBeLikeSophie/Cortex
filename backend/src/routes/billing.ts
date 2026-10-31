@@ -3,7 +3,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 import { getEntitlement } from "../lib/plans.js";
-import { isPlayBillingConfigured, PlayApiError } from "../lib/googlePlay.js";
+import { isPlayBillingConfigured, isPurchaseGone } from "../lib/googlePlay.js";
 import {
   PurchaseConflictError,
   UnknownProductError,
@@ -56,9 +56,7 @@ export async function billingRoutes(app: FastifyInstance) {
     } catch (err) {
       if (err instanceof PurchaseConflictError) return reply.code(409).send({ error: "purchase_other_account" });
       if (err instanceof UnknownProductError) return reply.code(400).send({ error: "unknown_product" });
-      if (err instanceof PlayApiError && (err.status === 400 || err.status === 404 || err.status === 410)) {
-        return reply.code(400).send({ error: "invalid_purchase" });
-      }
+      if (isPurchaseGone(err)) return reply.code(400).send({ error: "invalid_purchase" });
       throw err;
     }
     return reply.send(await getEntitlement(userId));
@@ -87,9 +85,7 @@ export async function billingRoutes(app: FastifyInstance) {
       if (token) await refreshGooglePurchase(token, !!note.voidedPurchaseNotification, !!note.subscriptionNotification);
     } catch (err) {
       req.log.error(err, "rtdn handling failed");
-      const hopeless =
-        err instanceof SyntaxError || (err instanceof PlayApiError && (err.status === 400 || err.status === 404 || err.status === 410));
-      if (!hopeless) return reply.code(500).send({ error: "retry" });
+      if (!(err instanceof SyntaxError) && !isPurchaseGone(err)) return reply.code(500).send({ error: "retry" });
     }
     return reply.code(200).send({ ok: true });
   });

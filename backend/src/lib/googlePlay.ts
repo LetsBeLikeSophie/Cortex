@@ -25,6 +25,9 @@ export function isPlayBillingConfigured(): boolean {
   return !!config.playServiceAccountPath;
 }
 
+// /me/plan waits on these calls, so a slow Google can't hold the app up long.
+const GOOGLE_TIMEOUT_MS = 10_000;
+
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
 async function accessToken(): Promise<string> {
@@ -46,6 +49,7 @@ async function accessToken(): Promise<string> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: `${unsigned}.${signature}` }),
+    signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Google token request failed: ${res.status} ${await res.text()}`);
   const body = (await res.json()) as { access_token: string; expires_in: number };
@@ -58,6 +62,7 @@ const BASE = () => `https://androidpublisher.googleapis.com/androidpublisher/v3/
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE()}${path}`, {
     ...init,
+    signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   if (!res.ok) throw new PlayApiError(res.status, await res.text());
@@ -72,6 +77,11 @@ export class PlayApiError extends Error {
   ) {
     super(`Play API ${status}: ${body.slice(0, 300)}`);
   }
+}
+
+// Google doesn't know this token (any more): asking again can't help.
+export function isPurchaseGone(err: unknown): boolean {
+  return err instanceof PlayApiError && (err.status === 400 || err.status === 404 || err.status === 410);
 }
 
 // https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptionsv2

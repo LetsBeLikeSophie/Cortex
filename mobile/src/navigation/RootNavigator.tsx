@@ -129,7 +129,7 @@ function AddBubble({ plan, bottom, onPress }: { plan: Plan; bottom: number; onPr
       label={agreed ? S.addLeft(left) : S.addConsent}
       tail="down"
       // '+' is centered in the last of the three tab slots.
-      tailInset={width / 6 - gutter - 4}
+      tailInset={width / 6 - gutter - 5}
       onPress={!agreed ? () => onPress('AiConsent') : left === 0 ? () => onPress('Paywall') : undefined}
       style={[styles.addBubble, { right: gutter, bottom: bottom + 8 }]}
     />

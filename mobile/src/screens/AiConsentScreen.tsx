@@ -7,7 +7,7 @@ import { fetchPlan, friendlyError, setAiConsent } from '../api/client';
 import { discardUnreceivedShares, drainShareQueue, saveSharesWithoutAi, setDeclinedChoice, waitingShareCount, useShareQueue } from '../share/shareQueue';
 import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
-import { Heading } from '../components/Typography';
+import { SheetTitle } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { PRIVACY_URL, strings } from '../i18n';
 
@@ -176,12 +176,7 @@ export default function AiConsentScreen() {
   if (askKeep !== null) {
     return (
       <ModalSheet theme={theme} onClose={busy ? () => {} : () => navigation.goBack()} paddingBottom={24} paddingHorizontal={20}>
-        <Heading theme={theme} size={22} style={styles.pad}>
-          {S.keepTitle(askKeep)}
-        </Heading>
-        <View style={styles.lines}>
-          <Text style={[styles.line, { color: theme.sub }]}>{S.keepNote}</Text>
-        </View>
+        <SheetTitle theme={theme} title={S.keepTitle(askKeep)} sub={S.keepNote} />
         <ButtonRow theme={theme} style={styles.buttons}>
           <GhostButton label={S.keepNo} theme={theme} onPress={() => keep(false)} disabled={busy !== null} />
           <SolidButton label={S.keepYes} theme={theme} onPress={() => keep(true)} loading={busy === 'agree'} disabled={busy !== null} />
@@ -193,9 +188,7 @@ export default function AiConsentScreen() {
   // Closing without answering counts as no answer -- asked again next time.
   return (
     <ModalSheet theme={theme} onClose={busy ? () => {} : () => navigation.goBack()} paddingBottom={24} paddingHorizontal={20}>
-      <Heading theme={theme} size={22} style={styles.pad}>
-        {S.title}
-      </Heading>
+      <SheetTitle theme={theme} title={S.title} />
       <View style={styles.lines}>
         <Text style={[styles.line, { color: theme.ink }]}>{S.what}</Text>
         <View style={styles.rows}>

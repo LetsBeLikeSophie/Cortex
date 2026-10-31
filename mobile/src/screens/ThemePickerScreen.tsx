@@ -7,7 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { LAYOUT_ORDER, LAYOUTS, LayoutKey, PALETTE_ORDER, PALETTES, PaletteKey, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { CheckIcon, LayoutIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
-import { Heading } from '../components/Typography';
+import { SheetTitle } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
 
@@ -42,9 +42,7 @@ export default function ThemePickerScreen() {
       grabberMarginBottom={18}
       maxHeightRatio={0.7}
     >
-      <Heading theme={theme} size={20} style={styles.heading}>
-        {S.title}
-      </Heading>
+      <SheetTitle theme={theme} title={S.title} style={styles.heading} />
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.flexShrink}>
         <Text style={[styles.sectionLabel, { color: theme.sub }]}>{S.layout}</Text>
@@ -116,7 +114,7 @@ export default function ThemePickerScreen() {
 
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
-  heading: { marginBottom: 14, paddingHorizontal: 4 },
+  heading: { marginBottom: 14 },
   sectionLabel: { fontSize: 12, fontFamily: BODY_KR_MEDIUM, marginBottom: 10, paddingHorizontal: 4 },
   colorSectionLabel: { marginTop: 22 },
   layoutRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 2 },

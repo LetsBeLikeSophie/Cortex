@@ -7,7 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { ModalSheet } from '../components/ModalSheet';
-import { Heading } from '../components/Typography';
+import { SheetTitle } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
 import { allEdges, OUTLINE, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
@@ -21,7 +21,7 @@ const S = strings({
   ko: {
     title: '태그 정리하기',
     intro: '비슷한 태그를 AI가 찾아 하나로 합쳐요',
-    cost: '태그 이름만 보내요',
+    useful: '태그가 너무 많아졌을 때 유용해요',
     merged: (n: number) => `합치면 메모 ${n}개`,
     agreeAndStart: '동의하고 정리하기',
     finding: '비슷한 태그를 찾고 있어요',
@@ -36,7 +36,7 @@ const S = strings({
   en: {
     title: 'Tidy up tags',
     intro: 'AI finds look-alike tags and merges them into one',
-    cost: 'Only tag names are sent',
+    useful: 'Handy when tags pile up',
     merged: (n: number) => `${n} item${n === 1 ? '' : 's'} once merged`,
     agreeAndStart: 'Allow AI and tidy up',
     finding: 'Looking for look-alike tags',
@@ -51,7 +51,7 @@ const S = strings({
   ja: {
     title: 'タグを整理',
     intro: '似たタグをAIが見つけて1つにまとめます',
-    cost: '送るのはタグ名だけ',
+    useful: 'タグが増えすぎたときに便利です',
     merged: (n: number) => `まとめるとメモ${n}件`,
     agreeAndStart: '同意して整理する',
     finding: '似たタグを探しています',
@@ -66,7 +66,7 @@ const S = strings({
   'zh-Hans': {
     title: '整理标签',
     intro: 'AI 找出相似标签并合并为一个',
-    cost: '只发送标签名',
+    useful: '标签太多时很有用',
     merged: (n: number) => `合并后 ${n} 项`,
     agreeAndStart: '同意并整理',
     finding: '正在查找相似标签',
@@ -81,7 +81,7 @@ const S = strings({
   'zh-Hant': {
     title: '整理標籤',
     intro: 'AI 找出相似標籤並合併為一個',
-    cost: '只傳送標籤名稱',
+    useful: '標籤太多時很實用',
     merged: (n: number) => `合併後 ${n} 項`,
     agreeAndStart: '同意並整理',
     finding: '正在尋找相似標籤',
@@ -224,18 +224,11 @@ export default function TagCleanupScreen() {
   const busy = step === 'finding' || step === 'applying';
   return (
     <ModalSheet theme={theme} onClose={busy ? () => {} : () => navigation.goBack()} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.85}>
-      <Heading theme={theme} size={20} style={styles.pad}>
-        {S.title}
-      </Heading>
-
-      {step === 'intro' && (
-        <>
-          <Text style={[styles.line, { color: theme.ink }]}>{S.intro}</Text>
-          <Text style={[styles.small, { color: theme.sub }]}>
-            {S.cost}
-          </Text>
-        </>
-      )}
+      <SheetTitle
+        theme={theme}
+        title={S.title}
+        sub={step === 'intro' ? `${S.intro}\n${S.useful}` : (step === 'pick' || step === 'applying') && groups.length > 0 ? S.pick : undefined}
+      />
 
       {step === 'finding' && (
         <View style={styles.wait}>
@@ -249,7 +242,6 @@ export default function TagCleanupScreen() {
           <Text style={[styles.line, { color: theme.ink }]}>{S.none}</Text>
         ) : (
           <>
-            <Text style={[styles.small, { color: theme.sub }]}>{S.pick}</Text>
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {groups.map((g, i) => {
                 const on = picked.has(i);
@@ -305,7 +297,6 @@ export default function TagCleanupScreen() {
 }
 
 const styles = StyleSheet.create({
-  pad: { paddingHorizontal: 4 },
   line: { fontSize: 14, lineHeight: 21, marginTop: 14, paddingHorizontal: 4, fontFamily: BODY_KR },
   small: { fontSize: 12.5, lineHeight: 18, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
   wait: { alignItems: 'center', gap: 4, marginTop: 24 },

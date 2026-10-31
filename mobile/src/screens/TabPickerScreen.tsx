@@ -64,7 +64,7 @@ const S = strings({
     noMatch: '沒有符合的標籤。',
   },
 });
-import { Heading } from '../components/Typography';
+import { SheetTitle } from '../components/Typography';
 import type { RootStackParamList } from '../navigation/types';
 
 import { BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
@@ -131,11 +131,8 @@ export default function TabPickerScreen() {
       keyboardOverflow={headerHeight}
     >
       <View style={styles.flexShrink}>
-        <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-          <Heading theme={theme} size={20} style={styles.heading}>
-            {S.title}
-          </Heading>
-          <Text style={[styles.sub, { color: theme.sub }]}>{S.sub}</Text>
+        <View style={styles.header} onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+          <SheetTitle theme={theme} title={S.title} sub={S.sub} />
           {listed.length > 1 && (
             <View style={styles.cleanupRow}>
               <Pressable onPress={() => navigation.navigate('TagCleanup')} hitSlop={6} style={styles.cleanup}>
@@ -193,13 +190,12 @@ export default function TabPickerScreen() {
 }
 
 const styles = StyleSheet.create({
-  cleanupRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 10 },
+  header: { paddingBottom: 16 },
+  cleanupRow: { flexDirection: 'row', alignItems: 'center', gap: 11, marginTop: 10, paddingHorizontal: 4 },
   cleanup: { paddingVertical: 4 },
   cleanupBubble: { alignSelf: 'center' },
   cleanupText: { fontSize: 13, fontFamily: BODY_KR_MEDIUM },
   flexShrink: { flexShrink: 1 },
-  heading: { marginBottom: 6, paddingHorizontal: 4 },
-  sub: { fontSize: 13, marginBottom: 16, paddingHorizontal: 4, fontFamily: BODY_KR, lineHeight: 19 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',

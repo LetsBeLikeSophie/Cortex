@@ -84,9 +84,9 @@ export const COMMON = strings({
 
 // What an AI action has left this month, in its Bubble.
 export const USES = strings({
-  ko: { left: (n: number) => `${n}번 남음` },
-  en: { left: (n: number) => `${n} left` },
-  ja: { left: (n: number) => `残り${n}回` },
-  'zh-Hans': { left: (n: number) => `剩 ${n} 次` },
-  'zh-Hant': { left: (n: number) => `剩 ${n} 次` },
+  ko: { left: (n: number) => `${n}번 남음`, photosLeft: (n: number) => `${n}장 남음` },
+  en: { left: (n: number) => `${n} left`, photosLeft: (n: number) => `${n} photo${n === 1 ? '' : 's'} left` },
+  ja: { left: (n: number) => `残り${n}回`, photosLeft: (n: number) => `残り${n}枚` },
+  'zh-Hans': { left: (n: number) => `剩 ${n} 次`, photosLeft: (n: number) => `剩 ${n} 张` },
+  'zh-Hant': { left: (n: number) => `剩 ${n} 次`, photosLeft: (n: number) => `剩 ${n} 張` },
 });

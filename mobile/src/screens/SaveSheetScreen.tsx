@@ -26,7 +26,7 @@ import { newRequestId, saveTextItem, saveLinkItem, saveScreenshotItem, addTag, f
 import { itemTitle, sourceLabel, captureTypeLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
-import { Heading } from '../components/Typography';
+import { Heading, SheetTitle, SHEET_TITLE_SIZE } from '../components/Typography';
 import { ModalSheet } from '../components/ModalSheet';
 import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
@@ -601,6 +601,8 @@ ${sharedNote ?? ''}`;
   const aiLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : null;
   const saveCount = selectedScreenshots.length > 0 ? selectedScreenshots.length : 1;
   const noConsent = !!plan && plan.aiConsent !== undefined && plan.aiConsent !== 'agreed';
+  // AI sorts each photo separately, so a photo save counts in 장.
+  const usesLeftLabel = image || selectedScreenshots.length > 0 ? USES.photosLeft : USES.left;
   const quotaBubble =
     aiLeft === null
       ? ''
@@ -611,7 +613,7 @@ ${sharedNote ?? ''}`;
           : saveCount > aiLeft
             ? S.quotaOver(saveCount - aiLeft)
             : saveCount > 1 || isLowOnUses(aiLeft)
-              ? USES.left(aiLeft)
+              ? usesLeftLabel(aiLeft)
               : '';
 
   const bulkUnclassified = savedBulk ? savedBulk.items.filter((it) => it.classification_status === 'unclassified').length : 0;
@@ -650,12 +652,7 @@ ${sharedNote ?? ''}`;
               the focused field under it). */}
           <View style={styles.flexShrink}>
           <ScrollView ref={scrollRef} style={styles.flexShrink} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Heading theme={theme} offset={2}>
-              {S.heading}
-            </Heading>
-            <Text style={[styles.savedSub, { color: theme.sub }]}>
-              {S.intro}
-            </Text>
+            <SheetTitle theme={theme} title={S.heading} sub={S.intro} inset={0} />
 
             {image ? (
               <View style={styles.imagePreviewWrap}>
@@ -864,7 +861,7 @@ ${sharedNote ?? ''}`;
                 >
                   {txt.savedLabel}
                 </Text>
-                <Heading theme={theme} offset={2} style={{ marginTop: 8 }}>
+                <Heading theme={theme} size={SHEET_TITLE_SIZE} style={{ marginTop: 8 }}>
                   {S.savedN(savedBulk.items.length)}
                 </Heading>
                 {savedBulk.failed > 0 && (
@@ -939,7 +936,7 @@ ${sharedNote ?? ''}`;
                   >
                     {txt.savedLabel}
                   </Text>
-                  <Heading theme={theme} offset={2} style={{ marginTop: 8 }}>
+                  <Heading theme={theme} size={SHEET_TITLE_SIZE} style={{ marginTop: 8 }}>
                     {txt.savedTitle}
                   </Heading>
                   <Text style={[styles.savedSub, { color: theme.sub }]}>{S.findLater}</Text>
@@ -1059,7 +1056,7 @@ const styles = StyleSheet.create({
   savedHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   savedMark: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   savedHeadBody: { flex: 1 },
-  savedSub: { fontSize: 13.5, marginTop: 7, lineHeight: 21.6, fontFamily: BODY_KR },
+  savedSub: { fontSize: 13, marginTop: 6, lineHeight: 19, fontFamily: BODY_KR },
   savedCard: { marginTop: 22 },
   savedCardMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   title: { fontSize: 15.5, lineHeight: 22.5, fontFamily: BODY_KR },

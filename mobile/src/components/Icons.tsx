@@ -305,6 +305,7 @@ export function SparkleIcon({ size = 18, color, strokeWidth = 1.3 }: IconProps) 
     <Svg width={size} height={size} viewBox="0 0 18 18" fill="none">
       <Path
         d="M9 1.8c.5 3.6 2.2 5.4 7.2 7.2-5 1.8-6.7 3.6-7.2 7.2-.5-3.6-2.2-5.4-7.2-7.2 5-1.8 6.7-3.6 7.2-7.2Z"
+        fill={color}
         stroke={color}
         strokeWidth={strokeWidth}
         strokeLinejoin="round"

@@ -8,7 +8,7 @@ import { allEdges, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { frameStyle } from '../components/Card';
 import { fetchOffers, fetchPlan, Offers, Plan } from '../api/client';
 import { ModalSheet } from '../components/ModalSheet';
-import { Heading } from '../components/Typography';
+import { SheetTitle } from '../components/Typography';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
@@ -273,14 +273,7 @@ export default function PaywallScreen() {
       {/* Title, benefits and plans scroll; the buy / close area below stays
           pinned, so a small phone never pushes the button off the sheet. */}
       <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false}>
-        <Heading theme={theme} size={24} style={styles.heading}>
-          {S.headlines[reason ?? 'default']}
-        </Heading>
-        {reason && (
-          <Text style={[styles.sub, { color: theme.sub }]}>
-            {S.ranOut}
-          </Text>
-        )}
+        <SheetTitle theme={theme} title={S.headlines[reason ?? 'default']} sub={reason ? S.ranOut : undefined} />
 
         <View style={[styles.card, { backgroundColor: theme.surface, ...frameStyle(theme), borderRadius: theme.cardRadius }]}>
           <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
@@ -356,8 +349,6 @@ export default function PaywallScreen() {
 
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
-  heading: { paddingHorizontal: 4 },
-  sub: { fontSize: 13.5, lineHeight: 20, marginTop: 8, paddingHorizontal: 4, fontFamily: BODY_KR },
   card: { padding: 18, marginTop: 18, gap: 12 },
   planName: { fontSize: 20, fontFamily: BODY_KR_MEDIUM, marginBottom: 2 },
   benefit: { flexDirection: 'row', alignItems: 'center', gap: 10 },

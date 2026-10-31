@@ -7,7 +7,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { ApiError, asQuotaError, composeMemo, fetchItemsWithTag, fetchPlan, friendlyError, Plan } from '../api/client';
 import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
-import { Heading } from '../components/Typography';
+import { SheetTitle } from '../components/Typography';
 import { composeMaterials } from '../api/format';
 import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
@@ -44,7 +44,7 @@ const S = strings({
     summarizeN: (n: number) => `메모 ${n}개를 한 메모로 정리해요`,
     summarize: '메모를 한 메모로 정리해요',
     retryFreeNote: ' · 처음 만들 때 1회 썼고, 이번엔 무료',
-    askLabel: '(선택) 정리 방식 · 안 고르면 AI가 알아서',
+    askLabel: '정리 방식',
     requestLabel: '(선택) 더 바라는 점',
     autoShape: 'AI가 알아서',
     placeholder: '예: 20명 갈 수 있는 곳만, 가격순',
@@ -58,9 +58,9 @@ const S = strings({
     slowToast: (tag: string) => `오래 걸려요 · 잠시 뒤 '${tag}' 탭을 확인해 주세요`,
     toPreview: '미리보기로',
     remakeFree: '다시 만들기 · 무료',
-    remakePaid: '다시 만들기 · 1회',
+    remakePaid: '다시 만들기',
     makePro: 'Pro로 만들기',
-    make: '만들기 · 1회',
+    make: '만들기',
     agreeAndMake: '동의하고 만들기',
     consentNote: ' · AI 분석에 동의하면 만들 수 있어요',
   },
@@ -82,7 +82,7 @@ const S = strings({
     summarizeN: (n: number) => `Turns ${n} items into one memo`,
     summarize: 'Turns items into one memo',
     retryFreeNote: ' · The first run used 1, this one is free',
-    askLabel: '(optional) How to arrange it · AI decides if you skip',
+    askLabel: 'How to arrange it',
     requestLabel: '(optional) Anything else',
     autoShape: 'Let AI decide',
     placeholder: 'e.g. only places for 20, by price',
@@ -96,9 +96,9 @@ const S = strings({
     slowToast: (tag: string) => `Taking a while · check the '${tag}' tab in a bit`,
     toPreview: 'Back to preview',
     remakeFree: 'Remake · Free',
-    remakePaid: 'Remake · 1 use',
+    remakePaid: 'Remake',
     makePro: 'Make with Pro',
-    make: 'Make · 1 use',
+    make: 'Make',
     agreeAndMake: 'Allow AI and make',
     consentNote: ' · Allow AI analysis to make it',
   },
@@ -120,7 +120,7 @@ const S = strings({
     summarizeN: (n: number) => `メモ${n}件を1つのメモにまとめます`,
     summarize: 'メモを1つのメモにまとめます',
     retryFreeNote: ' · 最初の作成で1回使ったので、今回は無料',
-    askLabel: '(任意) まとめ方 · 選ばなければAIにおまかせ',
+    askLabel: 'まとめ方',
     requestLabel: '(任意) ほかの希望',
     autoShape: 'AIにおまかせ',
     placeholder: '例: 20人で行ける所だけ、価格順',
@@ -134,9 +134,9 @@ const S = strings({
     slowToast: (tag: string) => `時間がかかっています · 少ししてから「${tag}」タブを確認してください`,
     toPreview: 'プレビューへ',
     remakeFree: 'もう一度作る · 無料',
-    remakePaid: 'もう一度作る · 1回',
+    remakePaid: 'もう一度作る',
     makePro: 'Proで作る',
-    make: '作る · 1回',
+    make: '作る',
     agreeAndMake: '同意して作る',
     consentNote: ' · AI分析に同意すると作れます',
   },
@@ -158,7 +158,7 @@ const S = strings({
     summarizeN: (n: number) => `把 ${n} 项内容整理成一条备注`,
     summarize: '把内容整理成一条备注',
     retryFreeNote: ' · 首次生成已用 1 次，这次免费',
-    askLabel: '（可选）整理方式 · 不选由 AI 决定',
+    askLabel: '整理方式',
     requestLabel: '（可选）其他要求',
     autoShape: '交给 AI',
     placeholder: '例：只要能容纳 20 人的地方，按价格排序',
@@ -172,9 +172,9 @@ const S = strings({
     slowToast: (tag: string) => `需要一些时间 · 稍后请查看「${tag}」标签`,
     toPreview: '回到预览',
     remakeFree: '重新生成 · 免费',
-    remakePaid: '重新生成 · 1 次',
+    remakePaid: '重新生成',
     makePro: '用 Pro 生成',
-    make: '生成 · 1 次',
+    make: '生成',
     agreeAndMake: '同意并生成',
     consentNote: ' · 同意 AI 分析后即可生成',
   },
@@ -196,7 +196,7 @@ const S = strings({
     summarizeN: (n: number) => `把 ${n} 項內容整理成一則備註`,
     summarize: '把內容整理成一則備註',
     retryFreeNote: ' · 首次產生已用 1 次，這次免費',
-    askLabel: '（選填）整理方式 · 不選由 AI 決定',
+    askLabel: '整理方式',
     requestLabel: '（選填）其他要求',
     autoShape: '交給 AI',
     placeholder: '例：只要能容納 20 人的地方，依價格排序',
@@ -210,9 +210,9 @@ const S = strings({
     slowToast: (tag: string) => `需要一些時間 · 稍後請查看「${tag}」標籤`,
     toPreview: '回到預覽',
     remakeFree: '重新產生 · 免費',
-    remakePaid: '重新產生 · 1 次',
+    remakePaid: '重新產生',
     makePro: '用 Pro 產生',
-    make: '產生 · 1 次',
+    make: '產生',
     agreeAndMake: '同意並產生',
     consentNote: ' · 同意 AI 分析後即可產生',
   },
@@ -229,6 +229,8 @@ export default function ComposeScreen() {
   const [ask, setAsk] = useState('');
   // Dictation appends to what's typed rather than replacing it.
   const askBase = useRef('');
+  const askFocused = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
@@ -354,15 +356,41 @@ export default function ComposeScreen() {
 
   const busy = working;
 
+  const description = [
+    // A remake replaces this very memo -- say so, and that hand edits go too.
+    retryOf ? S.replaces + (remakeBefore?.edited ? S.editsToo : '') + ' · ' : '',
+    tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize,
+    lockedCount > 0 ? S.lockedOut(lockedCount) : '',
+    overFifty ? S.recentFifty : '',
+    composedShown ? S.composedOut(composedShown) : '',
+    // Retrying: the first run already took this month's 1 -- say so, or the
+    // drop in the count reads as the retry's cost.
+    remakeFree ? S.retryFreeNote : '',
+    noAiConsent ? S.consentNote : '',
+  ].join('');
+
+  // The field is at the bottom of what scrolls: once the keyboard has shrunk
+  // the sheet, or typing has grown the field, keep it in view.
+  const keepFieldInView = () => {
+    if (askFocused.current) scrollRef.current?.scrollToEnd({ animated: true });
+  };
+
   return (
-    <ModalSheet theme={theme} onClose={close} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
-      <View style={styles.titleRow}>
-        <SparkleIcon color={theme.accent} size={18} strokeWidth={1.5} />
-        <Heading theme={theme} size={22}>
-          {retryOf ? S.remakeTitle : itemIds ? S.titlePicked(itemIds.length) : S.titleTag(pickedTag)}
-        </Heading>
-      </View>
-      <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ModalSheet theme={theme} onClose={close} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9} liftForKeyboard>
+      <SheetTitle
+        theme={theme}
+        icon={<SparkleIcon color={theme.accent} size={18} />}
+        title={retryOf ? S.remakeTitle : itemIds ? S.titlePicked(itemIds.length) : S.titleTag(pickedTag)}
+        sub={description}
+      />
+      <ScrollView
+        ref={scrollRef}
+        style={styles.flexShrink}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        onLayout={keepFieldInView}
+        onContentSizeChange={keepFieldInView}
+      >
         {/* Opened from a detail: which of the item's tags to gather. */}
         {!retryOf && tagChoices && tagChoices.length > 1 && (
           <View style={styles.tagChoices}>
@@ -375,19 +403,6 @@ export default function ComposeScreen() {
             ))}
           </View>
         )}
-        <Text style={[styles.sub, { color: theme.sub }]}>
-          {/* A remake replaces this very memo -- say so, and that hand edits go too. */}
-          {retryOf ? S.replaces + (remakeBefore?.edited ? S.editsToo : '') + ' · ' : ''}
-          {tooFew ? S.needTwo(materials) : materials !== null ? S.summarizeN(Math.min(materials, 50)) : S.summarize}
-          {lockedCount > 0 ? S.lockedOut(lockedCount) : ''}
-          {overFifty ? S.recentFifty : ''}
-          {composedShown ? S.composedOut(composedShown) : ''}
-          {/* Retrying: the first run already took this month's 1 -- say
-              so, or the drop in the count reads as the retry's cost. */}
-          {remakeFree ? S.retryFreeNote : ''}
-          {noAiConsent ? S.consentNote : ''}
-        </Text>
-
         <Text style={[styles.askLabel, { color: theme.ink }]}>{S.askLabel}</Text>
         <View style={styles.radios} accessibilityRole="radiogroup">
           {[null, ...S.examples].map((ex) => {
@@ -415,6 +430,12 @@ export default function ComposeScreen() {
           <TextInput
             value={ask}
             onChangeText={setAsk}
+            onFocus={() => {
+              askFocused.current = true;
+            }}
+            onBlur={() => {
+              askFocused.current = false;
+            }}
             editable={!busy}
             maxLength={100}
             multiline
@@ -455,7 +476,6 @@ export default function ComposeScreen() {
 const styles = StyleSheet.create({
   bubble: { alignSelf: 'flex-end', marginTop: 12, marginBottom: -6 },
   flexShrink: { flexShrink: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
   sub: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
   tagChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingHorizontal: 4 },
   dim: { opacity: 0.45 },

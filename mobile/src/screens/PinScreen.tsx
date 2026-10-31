@@ -4,7 +4,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 import { useTheme } from '../theme/ThemeContext';
 import { ModalSheet } from '../components/ModalSheet';
-import { Heading } from '../components/Typography';
+import { Heading, SHEET_TITLE_SIZE } from '../components/Typography';
 import { allEdges, OUTLINE, BODY_KR } from '../theme/themes';
 import { strings } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
@@ -147,7 +147,7 @@ export default function PinScreen() {
   const title = mode === 'check' ? S.check : first === null ? S.setNew : S.again;
   return (
     <ModalSheet theme={theme} onClose={() => close(false)} paddingBottom={24} paddingHorizontal={20}>
-      <Heading theme={theme} size={20} style={styles.center}>
+      <Heading theme={theme} size={SHEET_TITLE_SIZE} style={styles.center}>
         {title}
       </Heading>
       <View style={styles.dots}>

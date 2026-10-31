@@ -32,7 +32,7 @@ import { ConfirmCard } from '../components/ConfirmCard';
 import { ImageViewer } from '../components/ImageViewer';
 import { MemoText, refsIn, plainMemo } from '../components/MemoText';
 import { VoiceInputButton } from '../components/VoiceInputButton';
-import { Heading } from '../components/Typography';
+import { Heading, SHEET_TITLE_SIZE } from '../components/Typography';
 import type { ApiItem } from '../api/client';
 import type { RootStackParamList } from '../navigation/types';
 import { showToast } from '../native/toast';
@@ -101,11 +101,11 @@ const S = strings({
     tapToEdit: '눌러서 편집',
     imageFailed: '이미지를 불러오지 못했어요.',
     aiMemo: 'AI 메모',
-    waitConsent: 'AI 분석 동의 전에 저장됨 · ✦로 정리 (1건)',
-    waitFailed: 'AI 정리에 실패했어요 · ✦로 다시 정리 (1건)',
-    waitQuotaOut: '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리 (1건)',
-    waitQuota: 'AI 정리를 기다리는 중이에요 · ✦로 이것만 정리 (1건)',
-    waitOther: 'AI 정리가 아직 안 됐어요 · ✦로 다시 정리 (1건)',
+    waitConsent: 'AI 분석 동의 전에 저장됨 · ✦로 정리',
+    waitFailed: 'AI 정리에 실패했어요 · ✦로 다시 정리',
+    waitQuotaOut: '이번 달 AI 정리를 다 써서 기다리는 중이에요 · ✦로 이것만 정리',
+    waitQuota: 'AI 정리를 기다리는 중이에요 · ✦로 이것만 정리',
+    waitOther: 'AI 정리가 아직 안 됐어요 · ✦로 다시 정리',
     noAiMemo: '아직 AI 메모가 없어요',
     myNotePlaceholder: '내 메모 — 말하거나 눌러서 적어요',
     bodyPlaceholder: '본문 — 말하거나 눌러서 적어요',
@@ -162,11 +162,11 @@ const S = strings({
     tapToEdit: 'Tap to edit',
     imageFailed: "Couldn't load the image.",
     aiMemo: 'AI note',
-    waitConsent: 'Saved before AI consent · sort with ✦ (1 use)',
-    waitFailed: "AI couldn't sort this · retry with ✦ (1 use)",
-    waitQuotaOut: 'Waiting: AI quota used up this month · sort just this with ✦ (1 use)',
-    waitQuota: 'Waiting for AI · sort just this with ✦ (1 use)',
-    waitOther: 'Not sorted by AI yet · retry with ✦ (1 use)',
+    waitConsent: 'Saved before AI consent · sort with ✦',
+    waitFailed: "AI couldn't sort this · retry with ✦",
+    waitQuotaOut: 'Waiting: AI quota used up this month · sort just this with ✦',
+    waitQuota: 'Waiting for AI · sort just this with ✦',
+    waitOther: 'Not sorted by AI yet · retry with ✦',
     noAiMemo: 'No AI note yet',
     myNotePlaceholder: 'My note — speak or tap to write',
     bodyPlaceholder: 'Text — speak or tap to write',
@@ -223,11 +223,11 @@ const S = strings({
     tapToEdit: 'タップして編集',
     imageFailed: '画像を読み込めませんでした。',
     aiMemo: 'AIメモ',
-    waitConsent: 'AI分析の同意前に保存 · ✦で整理 (1件)',
-    waitFailed: 'AIの整理に失敗しました · ✦で再整理 (1件)',
-    waitQuotaOut: '今月のAI整理を使い切ったため待機中 · ✦でこれだけ整理 (1件)',
-    waitQuota: 'AIの整理待ちです · ✦でこれだけ整理 (1件)',
-    waitOther: 'まだAIで整理されていません · ✦で再整理 (1件)',
+    waitConsent: 'AI分析の同意前に保存 · ✦で整理',
+    waitFailed: 'AIの整理に失敗しました · ✦で再整理',
+    waitQuotaOut: '今月のAI整理を使い切ったため待機中 · ✦でこれだけ整理',
+    waitQuota: 'AIの整理待ちです · ✦でこれだけ整理',
+    waitOther: 'まだAIで整理されていません · ✦で再整理',
     noAiMemo: 'AIメモはまだありません',
     myNotePlaceholder: '自分のメモ — 話すかタップして入力',
     bodyPlaceholder: '本文 — 話すかタップして入力',
@@ -284,11 +284,11 @@ const S = strings({
     tapToEdit: '点按编辑',
     imageFailed: '图片加载失败。',
     aiMemo: 'AI 备注',
-    waitConsent: '在同意 AI 分析前保存 · 点 ✦ 整理 (1 次)',
-    waitFailed: 'AI 整理失败了 · 点 ✦ 重新整理 (1 次)',
-    waitQuotaOut: '本月 AI 整理次数已用完，等待中 · 点 ✦ 只整理这条 (1 次)',
-    waitQuota: '等待 AI 整理 · 点 ✦ 只整理这条 (1 次)',
-    waitOther: '还没被 AI 整理 · 点 ✦ 重新整理 (1 次)',
+    waitConsent: '在同意 AI 分析前保存 · 点 ✦ 整理',
+    waitFailed: 'AI 整理失败了 · 点 ✦ 重新整理',
+    waitQuotaOut: '本月 AI 整理次数已用完，等待中 · 点 ✦ 只整理这条',
+    waitQuota: '等待 AI 整理 · 点 ✦ 只整理这条',
+    waitOther: '还没被 AI 整理 · 点 ✦ 重新整理',
     noAiMemo: '还没有 AI 备注',
     myNotePlaceholder: '我的备注 — 说话或点按输入',
     bodyPlaceholder: '正文 — 说话或点按输入',
@@ -345,11 +345,11 @@ const S = strings({
     tapToEdit: '點按編輯',
     imageFailed: '圖片載入失敗。',
     aiMemo: 'AI 備註',
-    waitConsent: '在同意 AI 分析前儲存 · 點 ✦ 整理 (1 次)',
-    waitFailed: 'AI 整理失敗了 · 點 ✦ 重新整理 (1 次)',
-    waitQuotaOut: '本月 AI 整理次數已用完，等待中 · 點 ✦ 只整理這則 (1 次)',
-    waitQuota: '等待 AI 整理 · 點 ✦ 只整理這則 (1 次)',
-    waitOther: '還沒被 AI 整理 · 點 ✦ 重新整理 (1 次)',
+    waitConsent: '在同意 AI 分析前儲存 · 點 ✦ 整理',
+    waitFailed: 'AI 整理失敗了 · 點 ✦ 重新整理',
+    waitQuotaOut: '本月 AI 整理次數已用完，等待中 · 點 ✦ 只整理這則',
+    waitQuota: '等待 AI 整理 · 點 ✦ 只整理這則',
+    waitOther: '還沒被 AI 整理 · 點 ✦ 重新整理',
     noAiMemo: '還沒有 AI 備註',
     myNotePlaceholder: '我的備註 — 說話或點按輸入',
     bodyPlaceholder: '內文 — 說話或點按輸入',
@@ -895,7 +895,7 @@ export default function ItemDetailScreen() {
       <ModalSheet theme={theme} onClose={close} paddingBottom={24} paddingHorizontal={20}>
         <View style={styles.lockedGate}>
           <LockIcon size={22} color={theme.sub} strokeWidth={1.4} />
-          <Heading theme={theme} size={20} style={styles.lockedTitle}>
+          <Heading theme={theme} size={SHEET_TITLE_SIZE} style={styles.lockedTitle}>
             {itemTitle(item)}
           </Heading>
           <Text style={[styles.composedText, { color: theme.sub, textAlign: 'center' }]}>{S.lockedBody}</Text>

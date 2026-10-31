@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -33,7 +32,6 @@ import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast, showToast } from '../native/toast';
-import { pickStyle, pickTextStyle } from '../components/Fields';
 import { FieldRow, fieldTextStyle } from '../components/FieldRow';
 import { splitLinkText } from '../data/linkText';
 import type { RecentScreenshot } from '../data/photoBatch';
@@ -57,9 +55,8 @@ const S = strings({
     memoPlaceholder: '예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래',
     draftWaiting: '적던 글 있음 · ',
     draftLoad: '눌러서 불러오기',
-    addPhoto: '사진 추가',
-    pickAlbum: '앨범에서 선택',
-    takePhoto: '카메라로 촬영',
+    pickAlbum: '+ 앨범',
+    takePhoto: '+ 카메라',
     selectedCount: (n: number) => `${n}장 선택됨`,
     clearSelection: '선택 취소',
     savingProgress: (done: number, total: number) => `${done}/${total}장 저장 중...`,
@@ -94,9 +91,8 @@ const S = strings({
     memoPlaceholder: 'e.g. That new croffle place in Seongsu is amazing',
     draftWaiting: 'Unfinished note · ',
     draftLoad: 'tap to bring it back',
-    addPhoto: 'Add photo',
-    pickAlbum: 'Pick from album',
-    takePhoto: 'Take a photo',
+    pickAlbum: '+ Album',
+    takePhoto: '+ Camera',
     selectedCount: (n: number) => `${n} selected`,
     clearSelection: 'Clear',
     savingProgress: (done: number, total: number) => `Saving ${done}/${total}...`,
@@ -131,9 +127,8 @@ const S = strings({
     memoPlaceholder: '例: 聖水にできたクロッフルの店、すごく美味しいらしい',
     draftWaiting: '書きかけのメモあり · ',
     draftLoad: 'タップで呼び出す',
-    addPhoto: '写真を追加',
-    pickAlbum: 'アルバムから選ぶ',
-    takePhoto: 'カメラで撮る',
+    pickAlbum: '+ アルバム',
+    takePhoto: '+ カメラ',
     selectedCount: (n: number) => `${n}枚選択中`,
     clearSelection: '選択解除',
     savingProgress: (done: number, total: number) => `${done}/${total}枚 保存中...`,
@@ -168,9 +163,8 @@ const S = strings({
     memoPlaceholder: '例：圣水洞新开的可颂华夫店超好吃',
     draftWaiting: '有未写完的内容 · ',
     draftLoad: '点按恢复',
-    addPhoto: '添加照片',
-    pickAlbum: '从相册选择',
-    takePhoto: '拍照',
+    pickAlbum: '+ 相册',
+    takePhoto: '+ 拍照',
     selectedCount: (n: number) => `已选 ${n} 张`,
     clearSelection: '取消选择',
     savingProgress: (done: number, total: number) => `正在保存 ${done}/${total} 张...`,
@@ -205,9 +199,8 @@ const S = strings({
     memoPlaceholder: '例：聖水洞新開的可頌鬆餅店超好吃',
     draftWaiting: '有未寫完的內容 · ',
     draftLoad: '點按恢復',
-    addPhoto: '新增照片',
-    pickAlbum: '從相簿選擇',
-    takePhoto: '拍照',
+    pickAlbum: '+ 相簿',
+    takePhoto: '+ 拍照',
     selectedCount: (n: number) => `已選 ${n} 張`,
     clearSelection: '取消選擇',
     savingProgress: (done: number, total: number) => `正在儲存 ${done}/${total} 張...`,
@@ -480,24 +473,6 @@ export default function SaveSheetScreen() {
     }
   };
 
-  // Album or camera, in the system's own dialog.
-  const addPhoto = () => {
-    if (Platform.OS === 'web') {
-      pickFromLibrary();
-      return;
-    }
-    Alert.alert(
-      S.addPhoto,
-      undefined,
-      [
-        { text: COMMON.cancel, style: 'cancel' },
-        { text: S.takePhoto, onPress: takePhoto },
-        { text: S.pickAlbum, onPress: pickFromLibrary },
-      ],
-      { cancelable: true },
-    );
-  };
-
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -745,13 +720,11 @@ ${sharedNote ?? ''}`;
                   </Pressable>
                 )}
 
-                <Pressable
-                  onPress={addPhoto}
-                  disabled={status === 'saving'}
-                  style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
-                >
-                  <Text style={pickTextStyle(theme)}>{S.addPhoto}</Text>
-                </Pressable>
+                {/* The same chip as '+ 태그': adding something to this save. */}
+                <View style={styles.photoChips}>
+                  <TagAddChip label={S.pickAlbum} theme={theme} onPress={status === 'saving' ? undefined : pickFromLibrary} />
+                  <TagAddChip label={S.takePhoto} theme={theme} onPress={status === 'saving' ? undefined : takePhoto} />
+                </View>
 
                 {gridScreenshots.length > 0 ? (
                   <View style={styles.screenshotSection}>
@@ -1035,7 +1008,7 @@ ${sharedNote ?? ''}`;
 const styles = StyleSheet.create({
   draftLine: { marginTop: 8 },
   flexShrink: { flexShrink: 1 },
-  photoButton: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 9, marginTop: 12 },
+  photoChips: { flexDirection: 'row', gap: 8, marginTop: 14 },
   imagePreviewWrap: { marginTop: 18, alignItems: 'center' },
   imagePreview: { width: '100%', aspectRatio: 1, borderRadius: 14, borderWidth: 1 },
   savedImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, borderWidth: 1, marginBottom: 12 },

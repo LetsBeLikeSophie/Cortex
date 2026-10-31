@@ -59,6 +59,15 @@ async function upsertPurchase(row: {
   if (error) throw new Error(`upsertPurchase failed: ${error.message}`);
 }
 
+// Purchase rows outlive their account (kept for the records), so an owner may
+// be gone. A lookup that fails throws: that's not the same as gone.
+async function accountExists(userId: string): Promise<boolean> {
+  const { data, error } = await getClient().auth.admin.getUserById(userId);
+  if (data?.user) return true;
+  if (error && error.status !== 404) throw new Error(`account lookup failed: ${error.message}`);
+  return false;
+}
+
 // Checks a Google Play purchase with Google, records it for this account,
 // acknowledges it (unacknowledged purchases are refunded after 3 days),
 // and recomputes the account's pro_until.
@@ -69,8 +78,12 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
     .eq("purchase_token", token)
     .maybeSingle();
   if (error) throw new Error(`purchase lookup failed: ${error.message}`);
-  // One purchase, one account -- a token can't be replayed onto another.
-  if (existing && existing.user_id !== userId) throw new PurchaseConflictError("purchase belongs to another account");
+  // One purchase, one account -- a token can't be replayed onto another. Once
+  // the account that bought it is deleted, it moves to whoever restores it:
+  // someone who left and came back still owns what they paid for.
+  if (existing && existing.user_id !== userId && (await accountExists(existing.user_id as string))) {
+    throw new PurchaseConflictError("purchase belongs to another account");
+  }
 
   if (productId === config.playLifetimeId) {
     const p = await getProductPurchase(productId, token);
@@ -103,7 +116,25 @@ async function adoptReplacementSubscription(token: string): Promise<void> {
   if (productId !== config.playSubscriptionId) return;
   const { data, error } = await getClient().from("purchases").select("user_id").eq("purchase_token", s.linkedPurchaseToken).maybeSingle();
   if (error) throw new Error(`purchase lookup failed: ${error.message}`);
-  if (data) await applyGooglePurchase(data.user_id as string, productId, token);
+  if (data && (await accountExists(data.user_id as string))) await applyGooglePurchase(data.user_id as string, productId, token);
+}
+
+// A deleted account's purchase can still renew or get refunded. Only the row
+// changes: there's no plan to recompute, and an error here would have Pub/Sub
+// send the notice again for days.
+async function recordOrphanPurchase(token: string, productId: string, voided: boolean): Promise<void> {
+  const fields: { state: PurchaseState; expires_at?: string | null; raw?: unknown } = { state: "refunded" };
+  if (!voided && productId === config.playLifetimeId) {
+    const p = await getProductPurchase(productId, token);
+    fields.state = p.purchaseState === 0 ? "active" : p.purchaseState === 2 ? "pending" : "canceled";
+    fields.raw = p;
+  } else if (!voided) {
+    const s = await getSubscription(token);
+    const { state, expiresAt } = subscriptionState(s);
+    Object.assign(fields, { state, expires_at: expiresAt, raw: s });
+  }
+  const { error } = await getClient().from("purchases").update({ ...fields, updated_at: new Date().toISOString() }).eq("purchase_token", token);
+  if (error) throw new Error(`purchase update failed: ${error.message}`);
 }
 
 // Real-time developer notification: re-check whatever purchase it's about.
@@ -116,6 +147,10 @@ export async function refreshGooglePurchase(token: string, voided = false, isSub
   if (error) throw new Error(`purchase lookup failed: ${error.message}`);
   if (!data) {
     if (isSubscription && !voided) await adoptReplacementSubscription(token);
+    return;
+  }
+  if (!(await accountExists(data.user_id as string))) {
+    await recordOrphanPurchase(token, data.product_id as string, voided);
     return;
   }
   if (voided) {

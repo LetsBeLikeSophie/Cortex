@@ -14,7 +14,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { TagTab, loadHomeTabs, saveHomeTabs } from '../data/tabs';
-import { fetchTags } from '../api/client';
+import { fetchPlan, fetchTags, Plan } from '../api/client';
+import { Bubble, isLowOnUses } from '../components/Bubble';
+import { USES } from '../i18n/common';
 import { CheckIcon, SearchIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { fieldStyle } from '../components/Fields';
@@ -73,6 +75,16 @@ import { BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 // what's typed -- there's no fixed list to browse since tags are freeform.
 export default function TabPickerScreen() {
   const { theme } = useTheme();
+  // Uses left for ✦ 태그 정리하기, again on coming back from it.
+  const [plan, setPlan] = useState<Plan | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      fetchPlan()
+        .then(setPlan)
+        .catch(() => {});
+    }, []),
+  );
+  const cleanupLeft = plan?.tag_cleanup ? Math.max(0, plan.tag_cleanup.limit - plan.tag_cleanup.used) : null;
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [selected, setSelected] = useState<TagTab[]>([]);
   const [allTags, setAllTags] = useState<TagTab[]>([]);
@@ -125,9 +137,12 @@ export default function TabPickerScreen() {
           </Heading>
           <Text style={[styles.sub, { color: theme.sub }]}>{S.sub}</Text>
           {listed.length > 1 && (
-            <Pressable onPress={() => navigation.navigate('TagCleanup')} hitSlop={6} style={styles.cleanup}>
-              <Text style={[styles.cleanupText, { color: theme.accent }]}>{S.cleanup}</Text>
-            </Pressable>
+            <View style={styles.cleanupRow}>
+              <Pressable onPress={() => navigation.navigate('TagCleanup')} hitSlop={6} style={styles.cleanup}>
+                <Text style={[styles.cleanupText, { color: theme.accent }]}>{S.cleanup}</Text>
+              </Pressable>
+              {plan?.aiConsent === 'agreed' && isLowOnUses(cleanupLeft) && <Bubble theme={theme} label={USES.left(cleanupLeft)} tail="left" style={styles.cleanupBubble} />}
+            </View>
           )}
         </View>
 
@@ -178,7 +193,9 @@ export default function TabPickerScreen() {
 }
 
 const styles = StyleSheet.create({
-  cleanup: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 4 },
+  cleanupRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 10 },
+  cleanup: { paddingVertical: 4 },
+  cleanupBubble: { alignSelf: 'center' },
   cleanupText: { fontSize: 13, fontFamily: BODY_KR_MEDIUM },
   flexShrink: { flexShrink: 1 },
   heading: { marginBottom: 6, paddingHorizontal: 4 },

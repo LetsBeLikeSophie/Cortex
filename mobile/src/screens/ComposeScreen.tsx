@@ -9,6 +9,7 @@ import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { Heading } from '../components/Typography';
 import { composeMaterials } from '../api/format';
+import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { fieldStyle } from '../components/Fields';
 import { VoiceInputButton } from '../components/VoiceInputButton';
@@ -18,7 +19,7 @@ import { SparkleIcon } from '../components/Icons';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
-import { COMMON } from '../i18n/common';
+import { COMMON, USES } from '../i18n/common';
 
 // "모아서 만들기": a tag's items (or the ones picked in the tag tab) become
 // one memo. The AI picks the shape unless the person says what they want.
@@ -43,8 +44,6 @@ const S = strings({
     summarizeN: (n: number) => `메모 ${n}개를 한 메모로 정리해요`,
     summarize: '메모를 한 메모로 정리해요',
     retryFreeNote: ' · 처음 만들 때 1회 썼고, 이번엔 무료',
-    retryCost: (left: number) => ` · 1회 (${left}회 남음)`,
-    monthLeft: (left: number) => ` · 이번 달 ${left}회 남음`,
     askLabel: '(선택) 정리 방식 · 안 고르면 AI가 알아서',
     requestLabel: '(선택) 더 바라는 점',
     autoShape: 'AI가 알아서',
@@ -83,8 +82,6 @@ const S = strings({
     summarizeN: (n: number) => `Turns ${n} items into one memo`,
     summarize: 'Turns items into one memo',
     retryFreeNote: ' · The first run used 1, this one is free',
-    retryCost: (left: number) => ` · 1 use (${left} left)`,
-    monthLeft: (left: number) => ` · ${left} left this month`,
     askLabel: '(optional) How to arrange it · AI decides if you skip',
     requestLabel: '(optional) Anything else',
     autoShape: 'Let AI decide',
@@ -123,8 +120,6 @@ const S = strings({
     summarizeN: (n: number) => `メモ${n}件を1つのメモにまとめます`,
     summarize: 'メモを1つのメモにまとめます',
     retryFreeNote: ' · 最初の作成で1回使ったので、今回は無料',
-    retryCost: (left: number) => ` · 1回(残り${left}回)`,
-    monthLeft: (left: number) => ` · 今月残り${left}回`,
     askLabel: '(任意) まとめ方 · 選ばなければAIにおまかせ',
     requestLabel: '(任意) ほかの希望',
     autoShape: 'AIにおまかせ',
@@ -163,8 +158,6 @@ const S = strings({
     summarizeN: (n: number) => `把 ${n} 项内容整理成一条备注`,
     summarize: '把内容整理成一条备注',
     retryFreeNote: ' · 首次生成已用 1 次，这次免费',
-    retryCost: (left: number) => ` · 1 次（剩 ${left} 次）`,
-    monthLeft: (left: number) => ` · 本月剩 ${left} 次`,
     askLabel: '（可选）整理方式 · 不选由 AI 决定',
     requestLabel: '（可选）其他要求',
     autoShape: '交给 AI',
@@ -203,8 +196,6 @@ const S = strings({
     summarizeN: (n: number) => `把 ${n} 項內容整理成一則備註`,
     summarize: '把內容整理成一則備註',
     retryFreeNote: ' · 首次產生已用 1 次，這次免費',
-    retryCost: (left: number) => ` · 1 次（剩 ${left} 次）`,
-    monthLeft: (left: number) => ` · 本月剩 ${left} 次`,
     askLabel: '（選填）整理方式 · 不選由 AI 決定',
     requestLabel: '（選填）其他要求',
     autoShape: '交給 AI',
@@ -326,7 +317,7 @@ export default function ComposeScreen() {
       }
       navigation.replace('ItemDetail', {
         item: res.item,
-        composedFrom: { tag: pickedTag, count: res.sourceCount, left: left !== null ? Math.max(0, left - (remakeFree ? 0 : 1)) : undefined, freeRemake: res.freeRemake },
+        composedFrom: { tag: pickedTag, count: res.sourceCount, freeRemake: res.freeRemake },
         remadeFrom: retryOf && remakeBefore ? { title: remakeBefore.title, rawText: remakeBefore.rawText } : undefined,
       });
     } catch (err) {
@@ -393,7 +384,7 @@ export default function ComposeScreen() {
           {composedShown ? S.composedOut(composedShown) : ''}
           {/* Retrying: the first run already took this month's 1 -- say
               so, or the drop in the count reads as the retry's cost. */}
-          {retryOf ? (remakeFree ? S.retryFreeNote : left !== null ? S.retryCost(left) : '') : left !== null ? S.monthLeft(left) : ''}
+          {remakeFree ? S.retryFreeNote : ''}
           {noAiConsent ? S.consentNote : ''}
         </Text>
 
@@ -446,6 +437,7 @@ export default function ComposeScreen() {
       {working && <Text style={[styles.sub, { color: theme.sub }]}>{S.working}</Text>}
       {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
 
+      {!noAiConsent && !remakeFree && isLowOnUses(left) && <Bubble theme={theme} label={USES.left(left)} tail="down" tailInset={40} style={styles.bubble} />}
       <ButtonRow theme={theme} style={styles.buttons}>
         <GhostButton label={COMMON.cancel} theme={theme} onPress={close} />
         <SolidButton
@@ -461,6 +453,7 @@ export default function ComposeScreen() {
 }
 
 const styles = StyleSheet.create({
+  bubble: { alignSelf: 'flex-end', marginTop: 12, marginBottom: -6 },
   flexShrink: { flexShrink: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
   sub: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },

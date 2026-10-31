@@ -20,12 +20,14 @@ import { RecentRow } from '../components/ListItems';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
+import { Bubble, isLowOnUses } from '../components/Bubble';
 import { IconButton, SolidButton } from '../components/Buttons';
+import { ConfirmPopup } from '../components/ConfirmPopup';
 import { SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
-import { COMMON, TIME } from '../i18n/common';
+import { COMMON, TIME, USES } from '../i18n/common';
 
 const S = strings({
   ko: {
@@ -52,11 +54,10 @@ const S = strings({
     all: '모두',
     waitingCount: (n: number) => `${n}건 정리 대기`,
     refillsOn: (date: string) => `${date}에 다시 생겨요`,
-    usesRest: (n: number, date: string) => `남은 ${n}건을 다 써요 · 이후 저장은 ${date}까지 대기`,
-    recentFirst: (n: number, left: number) => `최근 것부터 ${n}건 · 이번 달 AI 정리 ${left}건 남음`,
     sortWithAi: (n: number) => `AI로 정리 (${n})`,
+    sortTitle: 'AI로 정리',
+    sortBody: '미분류 메모에 AI가 제목·태그를 달아요 · 최근 것부터',
     sortWithPro: 'Pro로 정리',
-    needConsent: 'AI 분석에 동의하면 정리돼요',
     allowAi: 'AI 분석 동의',
     selected: (n: number) => `${n}개 선택됨`,
     toTrash: '휴지통으로',
@@ -95,11 +96,10 @@ const S = strings({
     all: 'All',
     waitingCount: (n: number) => `${n} waiting to sort`,
     refillsOn: (date: string) => `Refills on ${date}`,
-    usesRest: (n: number, date: string) => `Uses your last ${n} · new saves wait until ${date}`,
-    recentFirst: (n: number, left: number) => `${n}, newest first · ${left} AI sorts left this month`,
     sortWithAi: (n: number) => `Sort with AI (${n})`,
+    sortTitle: 'Sort with AI',
+    sortBody: 'AI titles and tags your unsorted memos, newest first',
     sortWithPro: 'Sort with Pro',
-    needConsent: 'Sorted once you allow AI analysis',
     allowAi: 'Allow AI',
     selected: (n: number) => `${n} selected`,
     toTrash: 'Move to trash',
@@ -138,11 +138,10 @@ const S = strings({
     all: 'すべて',
     waitingCount: (n: number) => `${n}件 整理待ち`,
     refillsOn: (date: string) => `${date}に回復します`,
-    usesRest: (n: number, date: string) => `残り${n}件を使い切ります · 以降の保存は${date}まで待機`,
-    recentFirst: (n: number, left: number) => `新しい順に${n}件 · 今月のAI整理 残り${left}件`,
     sortWithAi: (n: number) => `AIで整理 (${n})`,
+    sortTitle: 'AIで整理',
+    sortBody: '未分類のメモにAIがタイトルとタグを付けます(新しい順)',
     sortWithPro: 'Proで整理',
-    needConsent: 'AI分析に同意すると整理されます',
     allowAi: 'AI分析に同意',
     selected: (n: number) => `${n}件選択中`,
     toTrash: 'ゴミ箱へ',
@@ -181,11 +180,10 @@ const S = strings({
     all: '全部',
     waitingCount: (n: number) => `${n} 项待整理`,
     refillsOn: (date: string) => `${date}恢复`,
-    usesRest: (n: number, date: string) => `将用完剩余 ${n} 次 · 之后的保存等到${date}`,
-    recentFirst: (n: number, left: number) => `从最新开始 ${n} 项 · 本月 AI 整理剩 ${left} 次`,
     sortWithAi: (n: number) => `用 AI 整理 (${n})`,
+    sortTitle: '用 AI 整理',
+    sortBody: 'AI 会为未分类的备注添加标题和标签（从最新开始）',
     sortWithPro: '用 Pro 整理',
-    needConsent: '同意 AI 分析后即可整理',
     allowAi: '同意 AI 分析',
     selected: (n: number) => `已选 ${n} 项`,
     toTrash: '移到回收站',
@@ -224,11 +222,10 @@ const S = strings({
     all: '全部',
     waitingCount: (n: number) => `${n} 項待整理`,
     refillsOn: (date: string) => `${date}恢復`,
-    usesRest: (n: number, date: string) => `將用完剩餘 ${n} 次 · 之後的儲存等到${date}`,
-    recentFirst: (n: number, left: number) => `從最新開始 ${n} 項 · 本月 AI 整理剩 ${left} 次`,
     sortWithAi: (n: number) => `用 AI 整理 (${n})`,
+    sortTitle: '用 AI 整理',
+    sortBody: 'AI 會為未分類的備註加上標題和標籤（從最新開始）',
     sortWithPro: '用 Pro 整理',
-    needConsent: '同意 AI 分析後即可整理',
     allowAi: '同意 AI 分析',
     selected: (n: number) => `已選 ${n} 項`,
     toTrash: '移到垃圾桶',
@@ -290,6 +287,7 @@ export default function HomeScreen() {
   // 50 often held none of the items 'AI로 정리' actually works on.
   const [waitingItems, setWaitingItems] = useState<ApiItem[] | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [askSort, setAskSort] = useState(false);
   const [sorting, setSorting] = useState(false);
   // A run that outlasted the wait (or one already going) keeps going on the
   // server; the button stays off so it isn't sent twice.
@@ -809,19 +807,10 @@ export default function HomeScreen() {
             <Text style={[styles.backlogTitle, { color: theme.ink }]} numberOfLines={1}>
               {S.waitingCount(unclassifiedCount)}
             </Text>
-            {/* When the press would spend the whole month's rest, say so --
-                every save after it waits here until the reset. */}
-            <Text style={[styles.backlogSub, { color: theme.sub }]} numberOfLines={2}>
-              {/* No AI consent: neither quota nor Pro would sort these. */}
-              {noAiConsent
-                ? S.needConsent
-                : classifyLeft === 0
-                ? S.refillsOn(resetLabel(plan?.resetsAt))
-                : classifyLeft <= unclassifiedCount
-                  ? S.usesRest(classifyLeft, resetLabel(plan?.resetsAt))
-                  : S.recentFirst(unclassifiedCount, classifyLeft)}
-            </Text>
           </View>
+          {!!plan && !noAiConsent && isLowOnUses(classifyLeft) && (
+            <Bubble theme={theme} tail="right" label={classifyLeft === 0 ? S.refillsOn(resetLabel(plan?.resetsAt)) : USES.left(classifyLeft)} style={styles.backlogBubble} />
+          )}
           <SolidButton
             label={noAiConsent ? S.allowAi : classifyLeft > 0 ? S.sortWithAi(Math.min(classifyLeft, unclassifiedCount)) : S.sortWithPro}
             theme={theme}
@@ -829,9 +818,22 @@ export default function HomeScreen() {
             flex={0}
             loading={sorting}
             disabled={sortHeld && !noAiConsent}
-            onPress={noAiConsent ? () => navigation.navigate('AiConsent') : sortBacklog}
+            onPress={noAiConsent ? () => navigation.navigate('AiConsent') : classifyLeft === 0 ? sortBacklog : () => setAskSort(true)}
           />
         </View>
+      )}
+
+      {askSort && (
+        <ConfirmPopup
+          theme={theme}
+          title={S.sortTitle}
+          body={S.sortBody}
+          onNo={() => setAskSort(false)}
+          onYes={() => {
+            setAskSort(false);
+            sortBacklog();
+          }}
+        />
       )}
 
       {activeTag === UNCLASSIFIED && items.length > 0 && (
@@ -1022,7 +1024,7 @@ const styles = StyleSheet.create({
   backlog: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 12, paddingBottom: 4 },
   backlogText: { flex: 1, minWidth: 0 },
   backlogTitle: { fontSize: 14, fontFamily: BODY_KR_MEDIUM },
-  backlogSub: { fontSize: 12, marginTop: 2, fontFamily: BODY_KR },
+  backlogBubble: { alignSelf: 'center', marginRight: 2 },
   headPad: {},
   shareQueueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   shareQueueText: { fontFamily: BODY_KR, fontSize: 12.5 },

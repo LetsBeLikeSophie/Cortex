@@ -28,6 +28,7 @@ import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { Heading } from '../components/Typography';
 import { ModalSheet } from '../components/ModalSheet';
+import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast, showToast } from '../native/toast';
@@ -36,18 +37,16 @@ import { splitLinkText } from '../data/linkText';
 import type { RecentScreenshot } from '../data/photoBatch';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
-import { COMMON, categoryLabel } from '../i18n/common';
+import { COMMON, USES, categoryLabel } from '../i18n/common';
 
 const S = strings({
   ko: {
     camera: '카메라',
     draftKept: "적던 글은 '+'에 남겨 뒀어요",
     allFailed: '전부 저장하지 못했어요',
-    quotaNoConsent: 'AI 분석 동의 전이라 미분류함에 들어가요 (저장은 돼요)',
-    quotaBulk: (n: number) => `AI가 한 장씩 제목·태그를 달아요 · 이번 달 ${n}건 남음`,
-    quotaOver: (n: number) => `${n}장은 미분류함에 들어가요 (저장은 돼요)`,
-    quotaUsedUp: '이번 달 AI 정리를 다 써서 미분류함에 들어가요 (저장은 돼요)',
-    quotaLeft: (n: number) => `이번 달 AI 정리 ${n}건 남음`,
+    quotaNoConsent: 'AI 동의 전 · 미분류함으로',
+    quotaOver: (n: number) => `${n}장은 미분류함으로`,
+    quotaUsedUp: 'AI 정리 다 씀 · 미분류함으로',
     heading: '무엇을 저장할까요?',
     intro: '붙여넣거나 사진을 골라 저장해요',
     repickPhoto: '사진 지우고 다시 선택',
@@ -81,11 +80,9 @@ const S = strings({
     camera: 'Camera',
     draftKept: "Your text is kept under '+'",
     allFailed: "Couldn't save any of them",
-    quotaNoConsent: 'No AI consent yet, so it goes to Unsorted (still saved)',
-    quotaBulk: (n: number) => `AI titles and tags each photo · ${n} left this month`,
-    quotaOver: (n: number) => `${n} will go to Unsorted (still saved)`,
-    quotaUsedUp: "This month's AI sorting is used up, so it goes to Unsorted (still saved)",
-    quotaLeft: (n: number) => `${n} AI sorts left this month`,
+    quotaNoConsent: 'No AI consent · to Unsorted',
+    quotaOver: (n: number) => `${n} to Unsorted`,
+    quotaUsedUp: 'AI sorts used up · to Unsorted',
     heading: 'What do you want to save?',
     intro: 'Paste text or pick a photo',
     repickPhoto: 'Remove photo and pick again',
@@ -119,11 +116,9 @@ const S = strings({
     camera: 'カメラ',
     draftKept: "書きかけの文は「+」に残しました",
     allFailed: 'どれも保存できませんでした',
-    quotaNoConsent: 'AI分析に未同意のため未分類に入ります(保存はされます)',
-    quotaBulk: (n: number) => `AIが1枚ずつタイトル・タグを付けます · 今月残り${n}件`,
-    quotaOver: (n: number) => `${n}枚は未分類に入ります(保存はされます)`,
-    quotaUsedUp: '今月のAI整理を使い切ったので未分類に入ります(保存はされます)',
-    quotaLeft: (n: number) => `今月のAI整理 残り${n}件`,
+    quotaNoConsent: 'AI未同意 · 未分類へ',
+    quotaOver: (n: number) => `${n}枚は未分類へ`,
+    quotaUsedUp: 'AI整理切れ · 未分類へ',
     heading: '何を保存しますか?',
     intro: '貼り付けるか写真を選んで保存',
     repickPhoto: '写真を消して選び直す',
@@ -157,11 +152,9 @@ const S = strings({
     camera: '相机',
     draftKept: '正在写的文字已保留在「+」里',
     allFailed: '全部保存失败',
-    quotaNoConsent: '尚未同意 AI 分析，将放入未分类（照样保存）',
-    quotaBulk: (n: number) => `AI 会逐张添加标题和标签 · 本月剩余 ${n} 次`,
-    quotaOver: (n: number) => `${n} 张将放入未分类（照样保存）`,
-    quotaUsedUp: '本月 AI 整理已用完，将放入未分类（照样保存）',
-    quotaLeft: (n: number) => `本月 AI 整理剩余 ${n} 次`,
+    quotaNoConsent: '未同意 AI · 放入未分类',
+    quotaOver: (n: number) => `${n} 张放入未分类`,
+    quotaUsedUp: 'AI 整理已用完 · 放入未分类',
     heading: '要保存什么？',
     intro: '粘贴文字或选张照片来保存',
     repickPhoto: '删除照片并重选',
@@ -195,11 +188,9 @@ const S = strings({
     camera: '相機',
     draftKept: '正在寫的文字已保留在「+」裡',
     allFailed: '全部儲存失敗',
-    quotaNoConsent: '尚未同意 AI 分析，將放入未分類（照樣儲存）',
-    quotaBulk: (n: number) => `AI 會逐張加上標題和標籤 · 本月剩餘 ${n} 次`,
-    quotaOver: (n: number) => `${n} 張將放入未分類（照樣儲存）`,
-    quotaUsedUp: '本月 AI 整理已用完，將放入未分類（照樣儲存）',
-    quotaLeft: (n: number) => `本月 AI 整理剩餘 ${n} 次`,
+    quotaNoConsent: '未同意 AI · 放入未分類',
+    quotaOver: (n: number) => `${n} 張放入未分類`,
+    quotaUsedUp: 'AI 整理已用完 · 放入未分類',
     heading: '要儲存什麼？',
     intro: '貼上文字或選張照片來儲存',
     repickPhoto: '刪除照片並重選',
@@ -273,7 +264,7 @@ export default function SaveSheetScreen() {
   // just be two text inputs saying the same kind of thing).
   const [note, setNote] = useState(route.params?.sharedNote ?? '');
   const [status, setStatus] = useState<Status>('input');
-  // This month's AI organize allowance, for the line above 저장하기.
+  // This month's AI organize allowance, for the bubble over 저장하기.
   const [plan, setPlan] = useState<Plan | null>(null);
   useEffect(() => {
     fetchPlan()
@@ -604,26 +595,24 @@ ${sharedNote ?? ''}`;
   for (const shot of [...sharedShots, ...selectedScreenshots]) {
     if (!gridScreenshots.some((g) => g.id === shot.id)) gridScreenshots.push(shot);
   }
-  // What this save will do to the month's AI organize count: for several
-  // photos always (and how many will wait in 미분류함 past the allowance);
-  // for a single save only once it's running low.
+  // What this save will do with AI: where it goes when AI can't take it,
+  // otherwise the uses left -- for several photos always, for a single save
+  // only once they're running low.
   const aiLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : null;
   const saveCount = selectedScreenshots.length > 0 ? selectedScreenshots.length : 1;
   const noConsent = !!plan && plan.aiConsent !== undefined && plan.aiConsent !== 'agreed';
-  const quotaLine =
+  const quotaBubble =
     aiLeft === null
       ? ''
       : noConsent
         ? S.quotaNoConsent
-        : saveCount > 1
-        ? [S.quotaBulk(aiLeft), saveCount > aiLeft ? S.quotaOver(saveCount - aiLeft) : null]
-            .filter(Boolean)
-            .join('\n')
         : aiLeft === 0
           ? S.quotaUsedUp
-          : aiLeft <= 10
-            ? S.quotaLeft(aiLeft)
-            : '';
+          : saveCount > aiLeft
+            ? S.quotaOver(saveCount - aiLeft)
+            : saveCount > 1 || isLowOnUses(aiLeft)
+              ? USES.left(aiLeft)
+              : '';
 
   const bulkUnclassified = savedBulk ? savedBulk.items.filter((it) => it.classification_status === 'unclassified').length : 0;
   const bulkConsent = !!savedBulk?.items.some((it) => it.unclassified_reason === 'consent');
@@ -836,7 +825,7 @@ ${sharedNote ?? ''}`;
           </ScrollView>
           </View>
 
-            {quotaLine !== '' && <Text style={[styles.quotaLine, { color: theme.sub }]}>{quotaLine}</Text>}
+            {quotaBubble !== '' && <Bubble theme={theme} label={quotaBubble} tail="down" tailInset={40} style={styles.quotaBubble} />}
 
             <ButtonRow theme={theme} style={styles.buttonRow}>
               <GhostButton label={COMMON.cancel} theme={theme} onPress={close} disabled={saving} />
@@ -1077,7 +1066,7 @@ const styles = StyleSheet.create({
   snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: BODY_KR },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   buttonRow: { marginTop: 26 },
-  quotaLine: { fontSize: 12.5, lineHeight: 18, marginTop: 18, marginBottom: -12, fontFamily: BODY_KR },
+  quotaBubble: { alignSelf: 'flex-end', marginTop: 18, marginBottom: -12 },
   input: {
     marginTop: 18,
     minHeight: 90,

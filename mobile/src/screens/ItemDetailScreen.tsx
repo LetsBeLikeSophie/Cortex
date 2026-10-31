@@ -23,7 +23,9 @@ import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchC
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle, composeMaterials } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { fieldStyle } from '../components/Fields';
+import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
+import { ConfirmPopup } from '../components/ConfirmPopup';
 import { LockIcon, ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
 import { ModalSheet } from '../components/ModalSheet';
 import { ConfirmCard } from '../components/ConfirmCard';
@@ -35,7 +37,7 @@ import type { ApiItem } from '../api/client';
 import type { RootStackParamList } from '../navigation/types';
 import { showToast } from '../native/toast';
 import { strings } from '../i18n';
-import { COMMON, categoryLabel } from '../i18n/common';
+import { COMMON, USES, categoryLabel } from '../i18n/common';
 import { LOCK_SUPPORTED, askPin, hasPin } from '../lock/memoLock';
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
@@ -59,13 +61,13 @@ const S = strings({
     taggedFull: 'AI가 제목·메모·태그를 달았어요',
     reorganizedText: 'AI가 제목·태그를 다시 정리했어요',
     reorganizedFull: 'AI가 제목·메모·태그를 다시 정리했어요',
-    leftThisMonth: (n: number) => ` · 이번 달 ${n}건 남음`,
     reorganize: 'AI로 다시 정리',
+    reorganizeTextBody: '제목·태그를 AI가 새로 정리해요 · 바꾼 뒤 되돌릴 수 있어요',
+    reorganizeFullBody: '제목·메모·태그를 AI가 새로 정리해요 · 바꾼 뒤 되돌릴 수 있어요',
     myNoteShare: (note: string) => `내 메모: ${note}`,
     share: '공유',
     moveToTrash: '휴지통으로 이동',
     composedFrom: (tag: string, n: number) => `'${tag}' 메모 ${n}개로 만들었어요`,
-    composeLeft: (n: number) => ` · 이번 달 ${n}회 남음`,
     otherShape: '다른 모양으로 →',
     otherShapeFree: '다른 모양으로 다시 · 무료 →',
     hideSources: '원본 메모 접기',
@@ -120,13 +122,13 @@ const S = strings({
     taggedFull: 'AI added a title, note and tags',
     reorganizedText: 'AI redid the title and tags',
     reorganizedFull: 'AI redid the title, note and tags',
-    leftThisMonth: (n: number) => ` · ${n} left this month`,
     reorganize: 'Sort again with AI',
+    reorganizeTextBody: 'AI rewrites the title and tags · you can undo it right after',
+    reorganizeFullBody: 'AI rewrites the title, note and tags · you can undo it right after',
     myNoteShare: (note: string) => `My note: ${note}`,
     share: 'Share',
     moveToTrash: 'Move to trash',
     composedFrom: (tag: string, n: number) => `Made from ${n} '${tag}' items`,
-    composeLeft: (n: number) => ` · ${n} left this month`,
     otherShape: 'Remake in another shape →',
     otherShapeFree: 'Remake in another shape · free →',
     hideSources: 'Hide source items',
@@ -181,13 +183,13 @@ const S = strings({
     taggedFull: 'AIがタイトル・メモ・タグを付けました',
     reorganizedText: 'AIがタイトルとタグを整理し直しました',
     reorganizedFull: 'AIがタイトル・メモ・タグを整理し直しました',
-    leftThisMonth: (n: number) => ` · 今月あと${n}件`,
     reorganize: 'AIで整理し直す',
+    reorganizeTextBody: 'タイトルとタグをAIが整理し直します · 直後なら元に戻せます',
+    reorganizeFullBody: 'タイトル・メモ・タグをAIが整理し直します · 直後なら元に戻せます',
     myNoteShare: (note: string) => `自分のメモ: ${note}`,
     share: '共有',
     moveToTrash: 'ゴミ箱に移動',
     composedFrom: (tag: string, n: number) => `「${tag}」のメモ${n}件から作りました`,
-    composeLeft: (n: number) => ` · 今月あと${n}回`,
     otherShape: '別の形で作り直す →',
     otherShapeFree: '別の形で作り直す · 無料 →',
     hideSources: '元のメモを閉じる',
@@ -242,13 +244,13 @@ const S = strings({
     taggedFull: 'AI 已添加标题、备注和标签',
     reorganizedText: 'AI 已重新整理标题和标签',
     reorganizedFull: 'AI 已重新整理标题、备注和标签',
-    leftThisMonth: (n: number) => ` · 本月还剩 ${n} 次`,
     reorganize: '用 AI 重新整理',
+    reorganizeTextBody: 'AI 会重新整理标题和标签 · 之后可以撤销',
+    reorganizeFullBody: 'AI 会重新整理标题、备注和标签 · 之后可以撤销',
     myNoteShare: (note: string) => `我的备注：${note}`,
     share: '分享',
     moveToTrash: '移到回收站',
     composedFrom: (tag: string, n: number) => `由 ${n} 项「${tag}」收藏内容生成`,
-    composeLeft: (n: number) => ` · 本月还剩 ${n} 次`,
     otherShape: '换个形式重做 →',
     otherShapeFree: '换个形式重做 · 免费 →',
     hideSources: '收起原始内容',
@@ -303,13 +305,13 @@ const S = strings({
     taggedFull: 'AI 已加上標題、備註和標籤',
     reorganizedText: 'AI 已重新整理標題和標籤',
     reorganizedFull: 'AI 已重新整理標題、備註和標籤',
-    leftThisMonth: (n: number) => ` · 本月還剩 ${n} 次`,
     reorganize: '用 AI 重新整理',
+    reorganizeTextBody: 'AI 會重新整理標題和標籤 · 之後可以復原',
+    reorganizeFullBody: 'AI 會重新整理標題、備註和標籤 · 之後可以復原',
     myNoteShare: (note: string) => `我的備註：${note}`,
     share: '分享',
     moveToTrash: '移到垃圾桶',
     composedFrom: (tag: string, n: number) => `由 ${n} 項「${tag}」收藏內容生成`,
-    composeLeft: (n: number) => ` · 本月還剩 ${n} 次`,
     otherShape: '換個形式重做 →',
     otherShapeFree: '換個形式重做 · 免費 →',
     hideSources: '收起原始內容',
@@ -413,9 +415,11 @@ export default function ItemDetailScreen() {
   // Still waiting in 미분류함 (never organized): ✦ is its first organize,
   // not a re-organize -- nothing to undo back to.
   const [waiting, setWaiting] = useState(item.classification_status === 'unclassified');
-  // This month's AI organizes left, read while the item waits -- whether it
-  // waits because the quota ran out (0) or because the AI failed on it.
+  // This month's AI organizes left: for ✦'s bubble and, while the item waits,
+  // for whether it waits because the quota ran out (0) or the AI failed on it.
   const [classifyLeft, setClassifyLeft] = useState<number | null>(null);
+  const [aiAgreed, setAiAgreed] = useState(false);
+  const [askReorganize, setAskReorganize] = useState(false);
   const [waitReason, setWaitReason] = useState(item.unclassified_reason ?? null);
   // A composed memo's sources, loaded when "원본 N개" is opened (decision Q7).
   const sourceIds = item.composed_from ?? [];
@@ -427,7 +431,7 @@ export default function ItemDetailScreen() {
   // The server files a composed memo's tag among the AI tags; a tag the
   // person added later (userTags) isn't what it was made from.
   const reopenTag = aiTags[0] ?? userTags[0];
-  const composeInfo: { tag: string; count: number; left?: number; freeRemake?: boolean } | null =
+  const composeInfo: { tag: string; count: number; freeRemake?: boolean } | null =
     composedFrom ?? (sourceIds.length > 0 && reopenTag ? { tag: reopenTag, count: sourceIds.length } : null);
   const [editingBody, setEditingBody] = useState(false);
   const [sources, setSources] = useState<ApiItem[] | null>(null);
@@ -567,10 +571,7 @@ export default function ItemDetailScreen() {
             return;
           }
           const what = item.capture_type === 'text' ? S.reorganizedText : S.reorganizedFull;
-          fetchPlan()
-            .then((p) => what + S.leftThisMonth(Math.max(0, p.classify.limit - p.classify.used)))
-            .catch(() => what)
-            .then((message) => showSnack(message, () => undoAi(before)));
+          showSnack(what, () => undoAi(before));
         })
         .catch(() => {});
     }, REORGANIZE_POLL_MS);
@@ -581,11 +582,13 @@ export default function ItemDetailScreen() {
   }, [organizing, item.id]);
 
   useEffect(() => {
-    if (!waiting || organizing) return;
+    if (organizing) return;
     let cancelled = false;
     fetchPlan()
       .then((p) => {
-        if (!cancelled) setClassifyLeft(Math.max(0, p.classify.limit - p.classify.used));
+        if (cancelled) return;
+        setClassifyLeft(Math.max(0, p.classify.limit - p.classify.used));
+        setAiAgreed(p.aiConsent === 'agreed');
       })
       .catch(() => {});
     return () => {
@@ -832,10 +835,20 @@ export default function ItemDetailScreen() {
     });
   };
 
+  // Replacing what's there says so first. Nothing to replace yet (a first
+  // organize), or a press the server turns into the consent sheet or Pro,
+  // goes straight on.
+  const pressSparkle = () => {
+    if (waiting || organizing || !aiAgreed || classifyLeft === 0) reorganize();
+    else setAskReorganize(true);
+  };
   const sparkleButton = (
-    <IconButton theme={theme} on="sheet" onPress={reorganize} label={S.reorganize}>
-      {organizing ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon size={15} color={theme.accent} strokeWidth={1.4} />}
-    </IconButton>
+    <View style={styles.sparkleRow}>
+      {aiAgreed && !organizing && isLowOnUses(classifyLeft) && <Bubble theme={theme} label={USES.left(classifyLeft)} tail="right" style={styles.sparkleBubble} />}
+      <IconButton theme={theme} on="sheet" onPress={pressSparkle} label={S.reorganize}>
+        {organizing ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon size={15} color={theme.accent} strokeWidth={1.4} />}
+      </IconButton>
+    </View>
   );
 
   // The system share sheet (카톡, 메시지, 복사 ...) with what's on screen:
@@ -942,12 +955,24 @@ export default function ItemDetailScreen() {
             </View>
           </View>
 
+          {askReorganize && (
+            <ConfirmPopup
+              theme={theme}
+              title={S.reorganize}
+              body={item.capture_type === 'text' ? S.reorganizeTextBody : S.reorganizeFullBody}
+              onNo={() => setAskReorganize(false)}
+              onYes={() => {
+                setAskReorganize(false);
+                reorganize();
+              }}
+            />
+          )}
+
           {composeInfo && (
             <View style={styles.composedNote}>
               <SparkleIcon size={13} color={theme.accent} strokeWidth={1.5} />
               <Text style={[styles.composedText, { color: theme.sub }]}>
                 {S.composedFrom(composeInfo.tag, composeInfo.count)}
-                {composeInfo.left !== undefined ? S.composeLeft(composeInfo.left) : ''}
               </Text>
               <Pressable
                 onPress={() =>
@@ -1264,6 +1289,8 @@ export default function ItemDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  sparkleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  sparkleBubble: { alignSelf: 'center' },
   lockedGate: { alignItems: 'center', gap: 10, paddingTop: 8 },
   lockedTitle: { textAlign: 'center' },
   sourcesBox: { gap: 6, marginTop: 8 },

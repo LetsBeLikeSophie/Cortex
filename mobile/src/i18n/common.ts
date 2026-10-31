@@ -75,9 +75,18 @@ export const TIME = strings({
 });
 
 export const COMMON = strings({
-  ko: { cancel: '취소', ok: '확인', close: '닫기', save: '저장', delete: '삭제', retry: '다시 시도', photo: '사진', waiting: '정리 대기', analyzing: '분석 중...', untitled: '(제목 없음)' },
-  en: { cancel: 'Cancel', ok: 'OK', close: 'Close', save: 'Save', delete: 'Delete', retry: 'Try again', photo: 'Photo', waiting: 'Waiting', analyzing: 'Analyzing...', untitled: '(Untitled)' },
-  ja: { cancel: 'キャンセル', ok: 'OK', close: '閉じる', save: '保存', delete: '削除', retry: 'もう一度', photo: '写真', waiting: '整理待ち', analyzing: '分析中...', untitled: '(タイトルなし)' },
-  'zh-Hans': { cancel: '取消', ok: '确定', close: '关闭', save: '保存', delete: '删除', retry: '重试', photo: '照片', waiting: '待整理', analyzing: '分析中...', untitled: '(无标题)' },
-  'zh-Hant': { cancel: '取消', ok: '確定', close: '關閉', save: '儲存', delete: '刪除', retry: '重試', photo: '照片', waiting: '待整理', analyzing: '分析中...', untitled: '(無標題)' },
+  ko: { yes: '예', no: '아니오', cancel: '취소', ok: '확인', close: '닫기', save: '저장', delete: '삭제', retry: '다시 시도', photo: '사진', waiting: '정리 대기', analyzing: '분석 중...', untitled: '(제목 없음)' },
+  en: { yes: 'Yes', no: 'No', cancel: 'Cancel', ok: 'OK', close: 'Close', save: 'Save', delete: 'Delete', retry: 'Try again', photo: 'Photo', waiting: 'Waiting', analyzing: 'Analyzing...', untitled: '(Untitled)' },
+  ja: { yes: 'はい', no: 'いいえ', cancel: 'キャンセル', ok: 'OK', close: '閉じる', save: '保存', delete: '削除', retry: 'もう一度', photo: '写真', waiting: '整理待ち', analyzing: '分析中...', untitled: '(タイトルなし)' },
+  'zh-Hans': { yes: '是', no: '否', cancel: '取消', ok: '确定', close: '关闭', save: '保存', delete: '删除', retry: '重试', photo: '照片', waiting: '待整理', analyzing: '分析中...', untitled: '(无标题)' },
+  'zh-Hant': { yes: '是', no: '否', cancel: '取消', ok: '確定', close: '關閉', save: '儲存', delete: '刪除', retry: '重試', photo: '照片', waiting: '待整理', analyzing: '分析中...', untitled: '(無標題)' },
+});
+
+// What an AI action has left this month, in its Bubble.
+export const USES = strings({
+  ko: { left: (n: number) => `${n}번 남음` },
+  en: { left: (n: number) => `${n} left` },
+  ja: { left: (n: number) => `残り${n}回` },
+  'zh-Hans': { left: (n: number) => `剩 ${n} 次` },
+  'zh-Hant': { left: (n: number) => `剩 ${n} 次` },
 });

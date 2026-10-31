@@ -36,7 +36,8 @@ import { useChipQuery } from '../hooks/useChipQuery';
 import { looksLikeSentence as looksLikeSentenceText } from '../data/sentenceDetect';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
-import { categoryLabel, COMMON } from '../i18n/common';
+import { Bubble } from '../components/Bubble';
+import { categoryLabel, COMMON, USES } from '../i18n/common';
 
 const S = strings({
   ko: {
@@ -66,14 +67,10 @@ const S = strings({
     quotaOut: '이번 달 AI 검색을 다 썼어요',
     looksLikeSentence: '문장처럼 보여요 → ',
     needConsent: 'AI 분석에 동의하면 문장으로 찾을 수 있어요',
-    costLeft: (n: number) => ` (1회 · ${n}회 남음)`,
-    costOne: ' (1회)',
     aiReading: 'AI가 문장을 읽는 중...',
     searching: '검색 중...',
     tagFiltered: ' · 태그 조건 적용',
-    left: (n: number) => `${n}회 남음`,
     compose: (tag: string) => `'${tag}' 모아서 만들기`,
-    aiLeftMonth: (n: number) => `AI 검색은 이번 달 ${n}회 남았어요.`,
     noResults: '결과가 없어요.',
     relaxed: (n: number) => `기간·출처 같은 조건을 빼면 ${n}건 있어요. 조건 빼고 보기`,
     clearAbove: '위 조건을 ×로 지워 보세요.',
@@ -106,14 +103,10 @@ const S = strings({
     quotaOut: "You've used this month's AI searches",
     looksLikeSentence: 'Looks like a sentence → ',
     needConsent: 'Allow AI analysis to search by sentence',
-    costLeft: (n: number) => ` (1 use · ${n} left)`,
-    costOne: ' (1 use)',
     aiReading: 'AI is reading...',
     searching: 'Searching...',
     tagFiltered: ' · tag filter on',
-    left: (n: number) => `${n} left`,
     compose: (tag: string) => `Combine '${tag}'`,
-    aiLeftMonth: (n: number) => `${n} AI searches left this month.`,
     noResults: 'No results.',
     relaxed: (n: number) => `${n} found without the date/source filters. Show them`,
     clearAbove: 'Try removing a condition above with ×.',
@@ -146,14 +139,10 @@ const S = strings({
     quotaOut: '今月のAI検索を使い切りました',
     looksLikeSentence: '文章のようです → ',
     needConsent: 'AI分析に同意すると文章で検索できます',
-    costLeft: (n: number) => `（1回 · 残り${n}回）`,
-    costOne: '（1回）',
     aiReading: 'AIが文章を読んでいます...',
     searching: '検索中...',
     tagFiltered: ' · タグ条件あり',
-    left: (n: number) => `残り${n}回`,
     compose: (tag: string) => `「${tag}」をまとめて作る`,
-    aiLeftMonth: (n: number) => `今月のAI検索は残り${n}回です。`,
     noResults: '結果がありません。',
     relaxed: (n: number) => `期間・出どころの条件を外すと${n}件あります。条件を外して見る`,
     clearAbove: '上の条件を × で外してみてください。',
@@ -186,14 +175,10 @@ const S = strings({
     quotaOut: '本月 AI 搜索已用完',
     looksLikeSentence: '像是一句话 → ',
     needConsent: '同意 AI 分析后即可用句子搜索',
-    costLeft: (n: number) => `（1 次 · 剩 ${n} 次）`,
-    costOne: '（1 次）',
     aiReading: 'AI 正在读句子...',
     searching: '搜索中...',
     tagFiltered: ' · 已按标签筛选',
-    left: (n: number) => `剩 ${n} 次`,
     compose: (tag: string) => `汇总生成「${tag}」`,
-    aiLeftMonth: (n: number) => `本月还剩 ${n} 次 AI 搜索。`,
     noResults: '没有结果。',
     relaxed: (n: number) => `去掉时间、来源等条件有 ${n} 条。去掉条件查看`,
     clearAbove: '试试用 × 去掉上面的条件。',
@@ -226,14 +211,10 @@ const S = strings({
     quotaOut: '本月 AI 搜尋已用完',
     looksLikeSentence: '看起來像一句話 → ',
     needConsent: '同意 AI 分析後即可用句子搜尋',
-    costLeft: (n: number) => `（1 次 · 剩 ${n} 次）`,
-    costOne: '（1 次）',
     aiReading: 'AI 正在讀句子...',
     searching: '搜尋中...',
     tagFiltered: ' · 已依標籤篩選',
-    left: (n: number) => `剩 ${n} 次`,
     compose: (tag: string) => `彙整生成「${tag}」`,
-    aiLeftMonth: (n: number) => `本月還剩 ${n} 次 AI 搜尋。`,
     noResults: '沒有結果。',
     relaxed: (n: number) => `拿掉時間、來源等條件有 ${n} 筆。拿掉條件查看`,
     clearAbove: '試試用 × 拿掉上面的條件。',
@@ -659,11 +640,17 @@ export default function SearchScreen() {
               {tags.chips.length ? S.tagConditions(tags.chips.length) : S.narrowByTag} {filterOpen ? '▴' : '▾'}
             </Text>
           </Pressable>
-          {tags.chips.length > 0 && (
-            <Pressable onPress={tags.clearChips} hitSlop={8}>
-              <Text style={[styles.filterLabel, { color: theme.sub }]}>{S.clear}</Text>
-            </Pressable>
-          )}
+          <View style={styles.filterRight}>
+            {tags.chips.length > 0 && (
+              <Pressable onPress={tags.clearChips} hitSlop={8}>
+                <Text style={[styles.filterLabel, { color: theme.sub }]}>{S.clear}</Text>
+              </Pressable>
+            )}
+            {/* ✦ spends one on every press, so while it can be pressed. */}
+            {!!trimmed && !aiMode && !asking && !noAiConsent && aiLeft !== null && (
+              <Bubble theme={theme} label={USES.left(aiLeft)} tail="up" tailInset={10} style={styles.aiBubble} />
+            )}
+          </View>
         </View>
         {filterOpen && (
           <View style={styles.filterPanel}>
@@ -730,7 +717,6 @@ export default function SearchScreen() {
               </View>
               <Text style={{ flexShrink: 1, fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>
                 {S.looksLikeSentence}<Text style={{ color: theme.accent, fontFamily: BODY_KR_MEDIUM }}>{S.askAi}</Text>
-                {aiLeft !== null ? S.costLeft(aiLeft) : S.costOne}
               </Text>
             </Pressable>
           ))}
@@ -741,7 +727,7 @@ export default function SearchScreen() {
               {asking ? S.aiReading : loading ? S.searching : txt.hits(shown.length) + (aiTagFiltered ? S.tagFiltered : '')}
             </Text>
             <Text style={metaStyle} numberOfLines={1}>
-              {aiMode ? `✦ ${orderLabel}${aiLeft !== null ? ` · ${S.left(aiLeft)}` : ''}` : orderLabel}
+              {aiMode ? `✦ ${orderLabel}` : orderLabel}
             </Text>
           </View>
         )}
@@ -762,11 +748,7 @@ export default function SearchScreen() {
         )}
       </View>
 
-      {!hasQuery ? (
-        <View style={{ marginTop: 28, paddingHorizontal: boxed ? 24 : 26 }}>
-          {aiLeft !== null && <Text style={[styles.help, { color: theme.sub }]}>{S.aiLeftMonth(aiLeft)}</Text>}
-        </View>
-      ) : (
+      {!hasQuery ? null : (
         <AsyncStateView
           theme={theme}
           loading={loading && shown.length === 0}
@@ -830,7 +812,10 @@ const styles = StyleSheet.create({
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   searchInput: { fontSize: 17, flex: 1, padding: 0 },
   aiButton: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
-  filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  // Tall enough for ✦'s bubble, so the list doesn't jump when it appears.
+  filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, minHeight: 30 },
+  filterRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  aiBubble: { alignSelf: 'center' },
   filterToggle: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   filterLabel: { fontSize: 12.5, fontFamily: BODY_KR },
   filterPanel: { marginTop: 8 },

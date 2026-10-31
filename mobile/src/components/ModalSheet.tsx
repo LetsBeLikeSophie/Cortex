@@ -198,6 +198,9 @@ const SHEET: Record<
   },
 };
 
+// What a sheet is painted with, for a popup that should look like one.
+export const sheetBackground = (theme: Theme) => SHEET[conceptOf(theme)].bg(theme);
+
 const SHADOW = {
   shadowColor: '#000',
   shadowOffset: { width: 0, height: -6 },

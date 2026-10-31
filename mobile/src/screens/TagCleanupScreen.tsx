@@ -14,101 +14,82 @@ import { allEdges, OUTLINE, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { ApiError, applyTagCleanup, asQuotaError, fetchPlan, fetchTags, friendlyError, Plan, suggestTagCleanup, TagMergeGroup } from '../api/client';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import { strings } from '../i18n';
+import { COMMON } from '../i18n/common';
 import type { RootStackParamList } from '../navigation/types';
 
 const S = strings({
   ko: {
     title: '태그 정리하기',
     intro: '비슷한 태그를 AI가 찾아 하나로 합쳐요',
-    cost: '태그 이름만 보내요 · 1회 차감',
+    cost: '태그 이름만 보내요',
     merged: (n: number) => `합치면 메모 ${n}개`,
-    start: '정리 제안 받기',
-    monthLeft: (n: number) => ` · 이번 달 ${n}회 남음`,
     agreeAndStart: '동의하고 정리하기',
-    consentNote: ' · AI 분석에 동의하면 쓸 수 있어요',
     finding: '비슷한 태그를 찾고 있어요',
     none: '합칠 만한 태그가 없어요. 이미 깔끔해요.',
     pick: '합칠 묶음을 골라 주세요',
     apply: (n: number) => `${n}개 묶음 합치기`,
     willChange: (n: number) => `메모 ${n}개의 태그가 바뀌어요 · 되돌릴 수 없어요`,
     applied: (n: number) => `메모 ${n}개의 태그를 정리했어요`,
-    left: (n: number) => `이번 달 ${n}회 남음`,
     cancel: '취소',
     done: '확인',
   },
   en: {
     title: 'Tidy up tags',
     intro: 'AI finds look-alike tags and merges them into one',
-    cost: 'Only tag names are sent · uses 1 this month',
+    cost: 'Only tag names are sent',
     merged: (n: number) => `${n} item${n === 1 ? '' : 's'} once merged`,
-    start: 'Get suggestions',
-    monthLeft: (n: number) => ` · ${n} left this month`,
     agreeAndStart: 'Allow AI and tidy up',
-    consentNote: ' · Allow AI analysis to use it',
     finding: 'Looking for look-alike tags',
     none: 'Nothing to merge. Your tags are already tidy.',
     pick: 'Pick the groups to merge',
     apply: (n: number) => `Merge ${n} ${n === 1 ? 'group' : 'groups'}`,
     willChange: (n: number) => `Tags change on ${n} item${n === 1 ? '' : 's'} · this can't be undone`,
     applied: (n: number) => `Tidied the tags of ${n} ${n === 1 ? 'memo' : 'memos'}`,
-    left: (n: number) => `${n} left this month`,
     cancel: 'Cancel',
     done: 'OK',
   },
   ja: {
     title: 'タグを整理',
     intro: '似たタグをAIが見つけて1つにまとめます',
-    cost: '送るのはタグ名だけ · 今月1回分',
+    cost: '送るのはタグ名だけ',
     merged: (n: number) => `まとめるとメモ${n}件`,
-    start: '整理の提案をもらう',
-    monthLeft: (n: number) => ` · 今月残り${n}回`,
     agreeAndStart: '同意して整理する',
-    consentNote: ' · AI分析に同意すると使えます',
     finding: '似たタグを探しています',
     none: '統合できるタグはありません。すでに整っています。',
     pick: '統合するグループを選んでください',
     apply: (n: number) => `${n}グループを統合`,
     willChange: (n: number) => `メモ${n}件のタグが変わります · 元に戻せません`,
     applied: (n: number) => `メモ${n}件のタグを整理しました`,
-    left: (n: number) => `今月あと${n}回`,
     cancel: 'キャンセル',
     done: 'OK',
   },
   'zh-Hans': {
     title: '整理标签',
     intro: 'AI 找出相似标签并合并为一个',
-    cost: '只发送标签名 · 本月计 1 次',
+    cost: '只发送标签名',
     merged: (n: number) => `合并后 ${n} 项`,
-    start: '获取整理建议',
-    monthLeft: (n: number) => ` · 本月剩 ${n} 次`,
     agreeAndStart: '同意并整理',
-    consentNote: ' · 同意 AI 分析后即可使用',
     finding: '正在查找相似标签',
     none: '没有可合并的标签，已经很整齐了。',
     pick: '选择要合并的组',
     apply: (n: number) => `合并 ${n} 组`,
     willChange: (n: number) => `${n} 项内容的标签会改变 · 无法撤销`,
     applied: (n: number) => `已整理 ${n} 条笔记的标签`,
-    left: (n: number) => `本月剩 ${n} 次`,
     cancel: '取消',
     done: '确定',
   },
   'zh-Hant': {
     title: '整理標籤',
     intro: 'AI 找出相似標籤並合併為一個',
-    cost: '只傳送標籤名稱 · 本月計 1 次',
+    cost: '只傳送標籤名稱',
     merged: (n: number) => `合併後 ${n} 項`,
-    start: '取得整理建議',
-    monthLeft: (n: number) => ` · 本月剩 ${n} 次`,
     agreeAndStart: '同意並整理',
-    consentNote: ' · 同意 AI 分析後即可使用',
     finding: '正在尋找相似標籤',
     none: '沒有可合併的標籤，已經很整齊了。',
     pick: '選擇要合併的組',
     apply: (n: number) => `合併 ${n} 組`,
     willChange: (n: number) => `${n} 項內容的標籤會改變 · 無法復原`,
     applied: (n: number) => `已整理 ${n} 則筆記的標籤`,
-    left: (n: number) => `本月剩 ${n} 次`,
     cancel: '取消',
     done: '確定',
   },
@@ -121,7 +102,7 @@ type Step = 'intro' | 'finding' | 'pick' | 'applying' | 'done';
 // Reopening this month shows it again; a successful merge clears it.
 const SAVED_KEY = TAG_SUGGESTION_KEY;
 const thisMonth = () => new Date().toISOString().slice(0, 7);
-type Saved = { month: string; groups: TagMergeGroup[]; left: number | null };
+type Saved = { month: string; groups: TagMergeGroup[] };
 
 // 태그 정리하기: AI proposes merges from tag names only; the person ticks
 // which groups to apply. Opened from tag settings.
@@ -131,7 +112,6 @@ export default function TagCleanupScreen() {
   const [step, setStep] = useState<Step>('intro');
   const [groups, setGroups] = useState<TagMergeGroup[]>([]);
   const [picked, setPicked] = useState<Set<number>>(new Set());
-  const [left, setLeft] = useState<number | null>(null);
   const [changed, setChanged] = useState(0);
   const [error, setError] = useState('');
 
@@ -154,7 +134,6 @@ export default function TagCleanupScreen() {
       if (cancelled || still.length === 0) return;
       setGroups(still);
       setPicked(new Set());
-      setLeft(saved.left);
       setStep((cur) => (cur === 'intro' ? 'pick' : cur));
     })();
     return () => {
@@ -190,12 +169,11 @@ export default function TagCleanupScreen() {
     try {
       const res = await suggestTagCleanup();
       if (res.groups.length > 0) {
-        AsyncStorage.setItem(SAVED_KEY, JSON.stringify({ month: thisMonth(), groups: res.groups, left: res.left } satisfies Saved)).catch(() => {});
+        AsyncStorage.setItem(SAVED_KEY, JSON.stringify({ month: thisMonth(), groups: res.groups } satisfies Saved)).catch(() => {});
       }
       setGroups(res.groups);
       // Nothing is merged unless the person ticks it.
       setPicked(new Set());
-      setLeft(res.left);
       setStep('pick');
     } catch (err) {
       if (asQuotaError(err)) {
@@ -255,7 +233,6 @@ export default function TagCleanupScreen() {
           <Text style={[styles.line, { color: theme.ink }]}>{S.intro}</Text>
           <Text style={[styles.small, { color: theme.sub }]}>
             {S.cost}
-            {noAiConsent ? S.consentNote : usesLeft !== null ? S.monthLeft(usesLeft) : ''}
           </Text>
         </>
       )}
@@ -272,7 +249,7 @@ export default function TagCleanupScreen() {
           <Text style={[styles.line, { color: theme.ink }]}>{S.none}</Text>
         ) : (
           <>
-            <Text style={[styles.small, { color: theme.sub }]}>{S.pick}{left !== null ? ` · ${S.left(left)}` : ''}</Text>
+            <Text style={[styles.small, { color: theme.sub }]}>{S.pick}</Text>
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {groups.map((g, i) => {
                 const on = picked.has(i);
@@ -311,8 +288,8 @@ export default function TagCleanupScreen() {
       <ButtonRow theme={theme} style={styles.buttons}>
         {step === 'intro' || step === 'finding' ? (
           <>
-            <GhostButton label={S.cancel} theme={theme} onPress={() => navigation.goBack()} disabled={busy} />
-            <SolidButton label={noAiConsent ? S.agreeAndStart : S.start} theme={theme} onPress={find} loading={step === 'finding'} />
+            <GhostButton label={COMMON.no} theme={theme} onPress={() => navigation.goBack()} disabled={busy} />
+            <SolidButton label={noAiConsent ? S.agreeAndStart : COMMON.yes} theme={theme} onPress={find} loading={step === 'finding'} />
           </>
         ) : step === 'done' || groups.length === 0 ? (
           <SolidButton label={S.done} theme={theme} onPress={() => navigation.goBack()} />

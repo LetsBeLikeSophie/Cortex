@@ -8,7 +8,7 @@ import { PRIVACY_URL, TERMS_URL, strings } from '../i18n';
 import { BODY_KR } from '../theme/themes';
 const S = strings({
   ko: { text: '10월 말 약관·방침이 바뀌어요', terms: '약관', privacy: '방침', close: '공지 닫기' },
-  en: { text: 'Terms and privacy change end of Oct', terms: 'Terms', privacy: 'Privacy', close: 'Close notice' },
+  en: { text: 'Terms and privacy change in late Oct', terms: 'Terms', privacy: 'Privacy', close: 'Close notice' },
   ja: { text: '10月末に規約・ポリシーが変わります', terms: '規約', privacy: 'ポリシー', close: 'お知らせを閉じる' },
   'zh-Hans': { text: '10月底条款与隐私政策变更', terms: '条款', privacy: '隐私', close: '关闭通知' },
   'zh-Hant': { text: '10月底條款與隱私權政策變更', terms: '條款', privacy: '隱私', close: '關閉通知' },

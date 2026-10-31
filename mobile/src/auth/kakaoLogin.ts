@@ -19,7 +19,7 @@ const S = strings({
     noCode: "Didn't get a code from Kakao",
   },
   ja: {
-    exchangeFailed: (status: number, body: string) => `Kakaoログイン処理に失敗 (${status}): ${body}`,
+    exchangeFailed: (status: number, body: string) => `Kakaoログイン処理に失敗しました (${status}): ${body}`,
     cancelled: 'ログインがキャンセルされました',
     noCode: 'Kakaoの認可コードを受け取れませんでした',
   },

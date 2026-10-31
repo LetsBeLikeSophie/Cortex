@@ -32,8 +32,8 @@ import { strings } from '../i18n';
 
 const S = strings({
   ko: { home: '보관함', search: '검색', add: '추가', addLeft: (n: number) => `AI 정리 ${n}번 남음`, addConsent: 'AI 동의하면 자동 정리돼요' },
-  en: { home: 'Archive', search: 'Search', add: 'Add', addLeft: (n: number) => `${n} AI sorts left`, addConsent: 'Agree to AI for auto-sorting' },
-  ja: { home: 'アーカイブ', search: '検索', add: '追加', addLeft: (n: number) => `AI整理 残り${n}回`, addConsent: 'AIに同意すると自動で整理' },
+  en: { home: 'Archive', search: 'Search', add: 'Add', addLeft: (n: number) => `${n} AI sort${n === 1 ? '' : 's'} left`, addConsent: 'Allow AI for auto-sorting' },
+  ja: { home: 'アーカイブ', search: '検索', add: '追加', addLeft: (n: number) => `AI整理 残り${n}回`, addConsent: 'AI分析に同意すると自動で整理' },
   'zh-Hans': { home: '收藏', search: '搜索', add: '添加', addLeft: (n: number) => `AI 整理剩 ${n} 次`, addConsent: '同意 AI 即可自动整理' },
   'zh-Hant': { home: '收藏', search: '搜尋', add: '新增', addLeft: (n: number) => `AI 整理剩 ${n} 次`, addConsent: '同意 AI 即可自動整理' },
 });

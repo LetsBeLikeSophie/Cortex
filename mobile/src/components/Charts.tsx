@@ -131,7 +131,7 @@ export function HorizontalBars({
 // Read per render (S.x), so the language picked in the profile applies.
 const L = strings({
   ko: { WEEKDAY_LABELS: ['일', '월', '화', '수', '목', '금', '토'], BAND_LABELS: ['새벽', '아침', '오후', '저녁'] },
-  en: { WEEKDAY_LABELS: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], BAND_LABELS: ['Dawn', 'Morn', 'Aft', 'Eve'] },
+  en: { WEEKDAY_LABELS: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'], BAND_LABELS: ['Dawn', 'AM', 'PM', 'Eve'] },
   ja: { WEEKDAY_LABELS: ['日', '月', '火', '水', '木', '金', '土'], BAND_LABELS: ['早朝', '朝', '午後', '夜'] },
   'zh-Hans': { WEEKDAY_LABELS: ['日', '一', '二', '三', '四', '五', '六'], BAND_LABELS: ['凌晨', '早上', '下午', '晚上'] },
   'zh-Hant': { WEEKDAY_LABELS: ['日', '一', '二', '三', '四', '五', '六'], BAND_LABELS: ['凌晨', '早上', '下午', '晚上'] },

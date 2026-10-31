@@ -54,7 +54,7 @@ const S = strings({
   },
   en: {
     heroLabel: 'Saved memories',
-    heroSuffix: 'memories\nkept',
+    heroSuffix: 'saved\nso far',
     weekCount: (n: number) => `+${n} this week`,
     lastSaved: (when: string) => `saved ${when}`,
     searchTitle: 'Search',
@@ -70,8 +70,8 @@ const S = strings({
     lastSaved: (when: string) => `最終保存 ${when}`,
     searchTitle: '検索',
     hits: (n: number) => `${n}件`,
-    savedLabel: '保存しました',
-    savedTitle: 'ちゃんと保管しました',
+    savedLabel: '保存完了',
+    savedTitle: '保管しました',
     tagLabel: '自動で付いたタグ',
   },
   'zh-Hans': {

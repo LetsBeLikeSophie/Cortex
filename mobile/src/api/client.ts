@@ -125,7 +125,7 @@ const ERR = strings({
     offline: '인터넷 연결을 확인해 주세요.',
   },
   en: {
-    aiConsent: 'AI analysis consent is needed.',
+    aiConsent: 'Please allow AI analysis.',
     aiUnavailable: 'AI is taking a short break. Please try again shortly.',
     quota: "You've used up this month's limit.",
     tooMany: 'Too many requests. Please try again shortly.',
@@ -138,10 +138,10 @@ const ERR = strings({
   },
   ja: {
     aiConsent: 'AI分析への同意が必要です。',
-    aiUnavailable: 'AIが一時的に休止中です。しばらくしてからもう一度お試しください。',
+    aiUnavailable: 'AIを一時的に利用できません。しばらくしてからもう一度お試しください。',
     quota: '今月の利用回数を使い切りました。',
     tooMany: 'リクエストが多すぎます。しばらくしてからもう一度お試しください。',
-    signedOut: 'ログインが切れました。もう一度ログインしてください。',
+    signedOut: 'ログアウトされました。もう一度ログインしてください。',
     tooLarge: '写真が大きすぎます。',
     server: 'サーバーで問題が発生しました。しばらくしてからもう一度お試しください。',
     generic: 'リクエストを処理できませんでした。',
@@ -151,7 +151,7 @@ const ERR = strings({
   'zh-Hans': {
     aiConsent: '需要先同意 AI 分析。',
     aiUnavailable: 'AI 暂时休息中，请稍后再试。',
-    quota: '本月用量已用完。',
+    quota: '本月额度已用完。',
     tooMany: '请求太多，请稍后再试。',
     signedOut: '登录已失效，请重新登录。',
     tooLarge: '照片太大了。',
@@ -163,7 +163,7 @@ const ERR = strings({
   'zh-Hant': {
     aiConsent: '需要先同意 AI 分析。',
     aiUnavailable: 'AI 暫時休息中，請稍後再試。',
-    quota: '本月用量已用完。',
+    quota: '本月額度已用完。',
     tooMany: '請求太多，請稍後再試。',
     signedOut: '登入已失效，請重新登入。',
     tooLarge: '照片太大了。',

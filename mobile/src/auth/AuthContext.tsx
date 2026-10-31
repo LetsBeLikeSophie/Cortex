@@ -12,7 +12,7 @@ const S = strings({
   en: { claimLater: "Guest memos aren't moved yet · they'll move when you reopen the app" },
   ja: { claimLater: 'ゲストのメモはまだ移せていません · アプリを開き直すと続きを移します' },
   'zh-Hans': { claimLater: '访客笔记还没转移 · 重新打开应用会继续' },
-  'zh-Hant': { claimLater: '訪客筆記還沒轉移 · 重新開啟應用程式會繼續' },
+  'zh-Hant': { claimLater: '訪客筆記還沒轉移 · 重新開啟 App 會繼續' },
 });
 
 // Set right before a guest signs in with Kakao/Google (which replaces the

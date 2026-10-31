@@ -16,7 +16,7 @@ const S = strings({
   },
   en: {
     heading: (date: string, n: number) => `Cortex memos · ${date} · ${n}`,
-    photosNote: (n: number) => `${n} photos stay in the app`,
+    photosNote: (n: number) => `${n} photo${n === 1 ? ' stays' : 's stay'} in the app`,
     myNote: 'My note',
     photo: '[Photo]',
     untitled: '(Untitled)',
@@ -31,14 +31,14 @@ const S = strings({
   'zh-Hans': {
     heading: (date: string, n: number) => `Cortex 笔记 · ${date} · ${n} 条`,
     photosNote: (n: number) => `${n} 张照片可在应用中查看`,
-    myNote: '我的备注',
+    myNote: '我的笔记',
     photo: '[照片]',
     untitled: '(无标题)',
   },
   'zh-Hant': {
     heading: (date: string, n: number) => `Cortex 筆記 · ${date} · ${n} 則`,
-    photosNote: (n: number) => `${n} 張照片可在應用程式中查看`,
-    myNote: '我的備註',
+    photosNote: (n: number) => `${n} 張照片可在 App 中查看`,
+    myNote: '我的筆記',
     photo: '[照片]',
     untitled: '(無標題)',
   },

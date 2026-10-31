@@ -37,7 +37,7 @@ const S = strings({
   ja: {
     savePhotoPerm: '写真の保存',
     saved: 'アルバムに保存しました',
-    saveFailed: '保存できませんでした。少ししてからお試しください',
+    saveFailed: '保存できませんでした。しばらくしてからもう一度お試しください',
     saveToAlbum: 'アルバムに保存',
     hint: '2本指でズーム · タップで閉じる',
   },

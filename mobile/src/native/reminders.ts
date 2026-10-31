@@ -22,13 +22,13 @@ const S = strings({
   },
   en: {
     channel: 'Reminders',
-    monthlyTitle: 'AI sorting is refilled',
-    monthlyBody: (n: number) => `${n} unsorted · sort them now`,
+    monthlyTitle: 'Your AI sorts are back',
+    monthlyBody: (n: number) => `${n} unsorted · sort now`,
     weeklyTitle: 'Look back',
   },
   ja: {
-    channel: 'お知らせ',
-    monthlyTitle: 'AI整理が補充されました',
+    channel: '通知',
+    monthlyTitle: 'AI整理がまた使えます',
     monthlyBody: (n: number) => `未分類 ${n}件 · 今すぐ整理`,
     weeklyTitle: 'ふりかえり',
   },

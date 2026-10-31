@@ -29,7 +29,7 @@ import { AsyncStateView } from '../components/AsyncStateView';
 import { Heading } from '../components/Typography';
 import { ChipQueryRow, SearchChip } from '../components/Chips';
 import { HashIcon, SearchIcon, SparkleIcon } from '../components/Icons';
-import { fieldStyle } from '../components/Fields';
+import { FieldRow, fieldTextStyle } from '../components/FieldRow';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { useChipQuery } from '../hooks/useChipQuery';
@@ -654,17 +654,19 @@ export default function SearchScreen() {
         </View>
         {filterOpen && (
           <View style={styles.filterPanel}>
-            <TextInput
-              value={tags.draft}
-              onChangeText={tags.setDraft}
-              onSubmitEditing={tags.commitDraft}
-              onKeyPress={tags.onKeyPress}
-              blurOnSubmit={false}
-              returnKeyType="done"
-              placeholder={S.tagPlaceholder}
-              placeholderTextColor={theme.sub}
-              style={[styles.tagInput, fieldStyle(theme), { color: theme.ink, fontFamily: BODY_KR, outlineWidth: 0 }]}
-            />
+            <FieldRow theme={theme}>
+              <TextInput
+                value={tags.draft}
+                onChangeText={tags.setDraft}
+                onSubmitEditing={tags.commitDraft}
+                onKeyPress={tags.onKeyPress}
+                blurOnSubmit={false}
+                returnKeyType="done"
+                placeholder={S.tagPlaceholder}
+                placeholderTextColor={theme.sub}
+                style={[fieldTextStyle, { color: theme.ink, outlineWidth: 0 }]}
+              />
+            </FieldRow>
             <ChipQueryRow chips={tags.chips} theme={theme} onToggle={tags.toggleChip} onRemove={tags.removeChip} />
             {suggestions.length > 0 && (
               <View style={styles.suggestRow}>
@@ -819,7 +821,6 @@ const styles = StyleSheet.create({
   filterToggle: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   filterLabel: { fontSize: 12.5, fontFamily: BODY_KR },
   filterPanel: { marginTop: 8 },
-  tagInput: { fontSize: 14, paddingHorizontal: 12, paddingVertical: 8 },
   // Wraps instead of running off the right edge (long English, big text, a
   // long tag name); on two lines the ✦ stays with the first.
   suggestLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 12 },

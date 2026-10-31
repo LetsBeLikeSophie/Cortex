@@ -22,8 +22,8 @@ import { forgetWeekly } from '../native/reminders';
 import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle, composeMaterials } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
-import { fieldStyle } from '../components/Fields';
-import { Bubble, isLowOnUses } from '../components/Bubble';
+import { FieldRow } from '../components/FieldRow';
+import { Bubble } from '../components/Bubble';
 import { ButtonRow, GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { ConfirmPopup } from '../components/ConfirmPopup';
 import { LockIcon, ReportIcon, ShareIcon, SparkleIcon, TrashIcon, SourceIcon } from '../components/Icons';
@@ -686,21 +686,19 @@ export default function ItemDetailScreen() {
   };
 
   const voiceButton = (field: EditField) => (
-    <View style={styles.micSlot}>
-      <VoiceInputButton
-        theme={theme}
-        size={16}
-        onStart={() => {
-          const current = valueOf(field);
-          voiceBaseRef.current = current.trim() ? `${current.trimEnd()} ` : '';
-        }}
-        onResult={(spoken, isFinal) => {
-          const text = (voiceBaseRef.current + spoken).slice(0, FIELD_MAX[field]);
-          setterOf(field)(text);
-          if (isFinal) commit(field, text);
-        }}
-      />
-    </View>
+    <VoiceInputButton
+      theme={theme}
+      size={16}
+      onStart={() => {
+        const current = valueOf(field);
+        voiceBaseRef.current = current.trim() ? `${current.trimEnd()} ` : '';
+      }}
+      onResult={(spoken, isFinal) => {
+        const text = (voiceBaseRef.current + spoken).slice(0, FIELD_MAX[field]);
+        setterOf(field)(text);
+        if (isFinal) commit(field, text);
+      }}
+    />
   );
 
   // A TextInput dressed exactly like the text it replaces -- tapping just
@@ -844,7 +842,8 @@ export default function ItemDetailScreen() {
   };
   const sparkleButton = (
     <View style={styles.sparkleRow}>
-      {aiAgreed && !organizing && isLowOnUses(classifyLeft) && <Bubble theme={theme} label={USES.left(classifyLeft)} tail="right" style={styles.sparkleBubble} />}
+      {/* Every press spends one, so while it can be pressed (like sentence search). */}
+      {aiAgreed && !organizing && classifyLeft !== null && <Bubble theme={theme} label={USES.left(classifyLeft)} tail="right" style={styles.sparkleBubble} />}
       <IconButton theme={theme} on="sheet" onPress={pressSparkle} label={S.reorganize}>
         {organizing ? <ActivityIndicator size="small" color={theme.accent} /> : <SparkleIcon size={15} color={theme.accent} strokeWidth={1.4} />}
       </IconButton>
@@ -1145,13 +1144,10 @@ export default function ItemDetailScreen() {
               accent) from the AI memo above, since it isn't generated. */}
           {item.capture_type !== 'text' && (
             // Dressed as a field (like 태그 검색), so it reads as a place to type.
-            <View style={[styles.editRow, styles.fieldRow, fieldStyle(theme)]}>
-              <View style={styles.flex1}>
-                {/* The person's own words: ink (accent is reserved for AI/status). */}
-                {inlineInput('userNote', [styles.body, styles.inField, { color: theme.ink, fontStyle: 'italic' }], S.myNotePlaceholder)}
-              </View>
-              {voiceButton('userNote')}
-            </View>
+            <FieldRow theme={theme} style={styles.fieldRow} mic={voiceButton('userNote')}>
+              {/* The person's own words: ink (accent is reserved for AI/status). */}
+              {inlineInput('userNote', [styles.body, styles.inField, { color: theme.ink, fontStyle: 'italic' }], S.myNotePlaceholder)}
+            </FieldRow>
           )}
 
           {item.capture_type === 'text' &&
@@ -1175,10 +1171,9 @@ export default function ItemDetailScreen() {
                 />
               </Pressable>
             ) : (
-              <View style={[styles.editRow, styles.fieldRow, fieldStyle(theme)]}>
-                <View style={styles.flex1}>{inlineInput('rawText', [styles.body, styles.inField, { color: theme.ink }], S.bodyPlaceholder)}</View>
-                {voiceButton('rawText')}
-              </View>
+              <FieldRow theme={theme} style={styles.fieldRow} mic={voiceButton('rawText')}>
+                {inlineInput('rawText', [styles.body, styles.inField, { color: theme.ink }], S.bodyPlaceholder)}
+              </FieldRow>
             ))}
 
           {editError !== '' && <Text style={[styles.errorText, { color: theme.danger }]}>{editError}</Text>}
@@ -1298,7 +1293,6 @@ const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerActions: { flexDirection: 'row', gap: 8 },
-  micSlot: { marginTop: 10 },
   imageBox: { marginTop: 16, borderRadius: 14, borderWidth: 1, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', aspectRatio: 1 },
   body: { fontSize: 14.5, lineHeight: 22.5, marginTop: 14, fontFamily: BODY_KR },
@@ -1308,10 +1302,8 @@ const styles = StyleSheet.create({
   // Placed under the mirror's top margin (top is set per field).
   inlineWebFill: { position: 'absolute', left: 0, right: 0, bottom: 0, marginTop: 0, overflow: 'hidden' } as object,
   editRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  // Padding for a text field box; fieldStyle drops it for the line and
-  // vintage layouts, which write on an underline / the card's ruling.
-  fieldRow: { marginTop: 14, paddingHorizontal: 14, paddingVertical: 10 },
-  inField: { marginTop: 0 },
+  fieldRow: { marginTop: 14 },
+  inField: { marginTop: 0, lineHeight: 22, includeFontPadding: false },
   flex1: { flex: 1 },
   aiMemo: { marginTop: 16 },
   composedNote: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 10 },

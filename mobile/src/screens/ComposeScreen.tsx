@@ -11,7 +11,7 @@ import { SheetTitle } from '../components/Typography';
 import { composeMaterials } from '../api/format';
 import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
-import { fieldStyle } from '../components/Fields';
+import { FieldRow, fieldTextStyle } from '../components/FieldRow';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { OUTLINE, allEdges, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { TagChip } from '../components/Chips';
@@ -426,7 +426,20 @@ export default function ComposeScreen() {
           })}
         </View>
         <Text style={[styles.askLabel, { color: theme.ink }]}>{S.requestLabel}</Text>
-        <View>
+        <FieldRow
+          theme={theme}
+          style={styles.askField}
+          mic={
+            <VoiceInputButton
+              theme={theme}
+              size={16}
+              onStart={() => {
+                askBase.current = ask.trim() ? `${ask.trimEnd()} ` : '';
+              }}
+              onResult={(spoken) => setAsk((askBase.current + spoken).slice(0, 100))}
+            />
+          }
+        >
           <TextInput
             value={ask}
             onChangeText={setAsk}
@@ -441,18 +454,9 @@ export default function ComposeScreen() {
             multiline
             placeholder={S.placeholder}
             placeholderTextColor={theme.sub}
-            style={[styles.askInput, fieldStyle(theme), { color: theme.ink, outlineWidth: 0 }]}
+            style={[fieldTextStyle, { color: theme.ink, outlineWidth: 0 }]}
           />
-          <View style={styles.micInField}>
-            <VoiceInputButton
-              theme={theme}
-              onStart={() => {
-                askBase.current = ask.trim() ? `${ask.trimEnd()} ` : '';
-              }}
-              onResult={(spoken) => setAsk((askBase.current + spoken).slice(0, 100))}
-            />
-          </View>
-        </View>
+        </FieldRow>
       </ScrollView>
 
       {working && <Text style={[styles.sub, { color: theme.sub }]}>{S.working}</Text>}
@@ -474,7 +478,8 @@ export default function ComposeScreen() {
 }
 
 const styles = StyleSheet.create({
-  bubble: { alignSelf: 'flex-end', marginTop: 12, marginBottom: -6 },
+  // Doesn't shrink: the keyboard taking the room squashed it flat.
+  bubble: { alignSelf: 'flex-end', flexShrink: 0, marginTop: 12, marginBottom: -6 },
   flexShrink: { flexShrink: 1 },
   sub: { fontSize: 13, lineHeight: 19, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
   tagChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12, paddingHorizontal: 4 },
@@ -485,8 +490,7 @@ const styles = StyleSheet.create({
   radioRing: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   radioDot: { width: 9, height: 9, borderRadius: 4.5 },
   radioText: { fontSize: 14.5, fontFamily: BODY_KR },
-  micInField: { position: 'absolute', right: 4, bottom: 6 },
-  askInput: { marginTop: 10, paddingHorizontal: 14, paddingRight: 44, paddingVertical: 11, minHeight: 48, fontSize: 14, fontFamily: BODY_KR },
+  askField: { marginTop: 8 },
   previewLabel: { fontSize: 13, fontFamily: BODY_KR_MEDIUM },
   previewTitle: { marginTop: 12, paddingHorizontal: 4 },
   previewBodyBox: { marginTop: 10, paddingHorizontal: 4 },

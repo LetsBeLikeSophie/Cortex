@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -32,7 +33,8 @@ import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { permissionToast, showToast } from '../native/toast';
-import { fieldStyle, pickStyle, pickTextStyle } from '../components/Fields';
+import { pickStyle, pickTextStyle } from '../components/Fields';
+import { FieldRow, fieldTextStyle } from '../components/FieldRow';
 import { splitLinkText } from '../data/linkText';
 import type { RecentScreenshot } from '../data/photoBatch';
 import type { RootStackParamList } from '../navigation/types';
@@ -55,6 +57,7 @@ const S = strings({
     memoPlaceholder: '예: 성수동에 새로 생긴 크로플 맛집 완전 대박이래',
     draftWaiting: '적던 글 있음 · ',
     draftLoad: '눌러서 불러오기',
+    addPhoto: '사진 추가',
     pickAlbum: '앨범에서 선택',
     takePhoto: '카메라로 촬영',
     selectedCount: (n: number) => `${n}장 선택됨`,
@@ -91,6 +94,7 @@ const S = strings({
     memoPlaceholder: 'e.g. That new croffle place in Seongsu is amazing',
     draftWaiting: 'Unfinished note · ',
     draftLoad: 'tap to bring it back',
+    addPhoto: 'Add photo',
     pickAlbum: 'Pick from album',
     takePhoto: 'Take a photo',
     selectedCount: (n: number) => `${n} selected`,
@@ -127,6 +131,7 @@ const S = strings({
     memoPlaceholder: '例: 聖水にできたクロッフルの店、すごく美味しいらしい',
     draftWaiting: '書きかけのメモあり · ',
     draftLoad: 'タップで呼び出す',
+    addPhoto: '写真を追加',
     pickAlbum: 'アルバムから選ぶ',
     takePhoto: 'カメラで撮る',
     selectedCount: (n: number) => `${n}枚選択中`,
@@ -163,6 +168,7 @@ const S = strings({
     memoPlaceholder: '例：圣水洞新开的可颂华夫店超好吃',
     draftWaiting: '有未写完的内容 · ',
     draftLoad: '点按恢复',
+    addPhoto: '添加照片',
     pickAlbum: '从相册选择',
     takePhoto: '拍照',
     selectedCount: (n: number) => `已选 ${n} 张`,
@@ -199,6 +205,7 @@ const S = strings({
     memoPlaceholder: '例：聖水洞新開的可頌鬆餅店超好吃',
     draftWaiting: '有未寫完的內容 · ',
     draftLoad: '點按恢復',
+    addPhoto: '新增照片',
     pickAlbum: '從相簿選擇',
     takePhoto: '拍照',
     selectedCount: (n: number) => `已選 ${n} 張`,
@@ -473,6 +480,24 @@ export default function SaveSheetScreen() {
     }
   };
 
+  // Album or camera, in the system's own dialog.
+  const addPhoto = () => {
+    if (Platform.OS === 'web') {
+      pickFromLibrary();
+      return;
+    }
+    Alert.alert(
+      S.addPhoto,
+      undefined,
+      [
+        { text: COMMON.cancel, style: 'cancel' },
+        { text: S.takePhoto, onPress: takePhoto },
+        { text: S.pickAlbum, onPress: pickFromLibrary },
+      ],
+      { cancelable: true },
+    );
+  };
+
   const takePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -676,44 +701,33 @@ ${sharedNote ?? ''}`;
               </View>
             ) : (
               <>
-                <View style={styles.memoRow}>
-                <TextInput
-                  value={text}
-                  onChangeText={setText}
-                  multiline
-                  editable={status !== 'saving'}
-                  onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50)}
-                  placeholder={
-                    selectedScreenshots.length > 0
-                      ? S.memoBulkPlaceholder
-                      : S.memoPlaceholder
-                  }
-                  placeholderTextColor={theme.sub}
-                  style={[
-                    styles.input,
-                    fieldStyle(theme),
-                    {
-                      marginTop: 0,
-                      paddingRight: 44,
-                      color: theme.ink,
-                      fontFamily: BODY_KR,
-                      outlineWidth: 0,
-                    },
-                  ]}
-                />
                 {/* Speaking adds onto whatever's already typed rather than
-                    replacing it -- this is the main memo, not a one-liner.
-                    Sits inside the field's bottom-right corner. */}
-                <View style={styles.micInMemo}>
-                  <VoiceInputButton
-                    theme={theme}
-                    onStart={() => {
-                      voiceBase.current = text.trim() ? `${text.trimEnd()} ` : '';
-                    }}
-                    onResult={(spoken) => setText(voiceBase.current + spoken)}
+                    replacing it -- this is the main memo, not a one-liner. */}
+                <FieldRow
+                  theme={theme}
+                  style={styles.memoRow}
+                  mic={
+                    <VoiceInputButton
+                      theme={theme}
+                      size={16}
+                      onStart={() => {
+                        voiceBase.current = text.trim() ? `${text.trimEnd()} ` : '';
+                      }}
+                      onResult={(spoken) => setText(voiceBase.current + spoken)}
+                    />
+                  }
+                >
+                  <TextInput
+                    value={text}
+                    onChangeText={setText}
+                    multiline
+                    editable={status !== 'saving'}
+                    onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50)}
+                    placeholder={selectedScreenshots.length > 0 ? S.memoBulkPlaceholder : S.memoPlaceholder}
+                    placeholderTextColor={theme.sub}
+                    style={[fieldTextStyle, { color: theme.ink, outlineWidth: 0 }]}
                   />
-                </View>
-                </View>
+                </FieldRow>
 
                 {offeredDraft !== null && !text.trim() && selectedScreenshots.length === 0 && (
                   <Pressable
@@ -731,30 +745,13 @@ ${sharedNote ?? ''}`;
                   </Pressable>
                 )}
 
-                {/* Same pill shape + border convention as GhostButton (the
-                    bottom 취소/저장 row) -- just not the component itself,
-                    since GhostButton's full size/label scale was built for
-                    a primary action, not a pair of small pickers. */}
-                <View style={styles.photoButtonRow}>
-                  <Pressable
-                    onPress={pickFromLibrary}
-                    disabled={status === 'saving'}
-                    style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
-                  >
-                    <Text style={pickTextStyle(theme)}>
-                      {S.pickAlbum}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={takePhoto}
-                    disabled={status === 'saving'}
-                    style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
-                  >
-                    <Text style={pickTextStyle(theme)}>
-                      {S.takePhoto}
-                    </Text>
-                  </Pressable>
-                </View>
+                <Pressable
+                  onPress={addPhoto}
+                  disabled={status === 'saving'}
+                  style={({ pressed }) => [styles.photoButton, pickStyle(theme), { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Text style={pickTextStyle(theme)}>{S.addPhoto}</Text>
+                </Pressable>
 
                 {gridScreenshots.length > 0 ? (
                   <View style={styles.screenshotSection}>
@@ -787,7 +784,11 @@ ${sharedNote ?? ''}`;
             )}
 
             {(image || linkUrl) && selectedScreenshots.length === 0 && (
-              <View style={styles.noteRow}>
+              <FieldRow
+                theme={theme}
+                style={styles.noteRow}
+                mic={<VoiceInputButton theme={theme} size={16} onResult={(text) => setNote(text)} />}
+              >
                 <TextInput
                   value={note}
                   onChangeText={setNote}
@@ -796,22 +797,9 @@ ${sharedNote ?? ''}`;
                   multiline
                   placeholder={S.notePlaceholder}
                   placeholderTextColor={theme.sub}
-                  style={[
-                    styles.input,
-                    styles.noteInput,
-                    fieldStyle(theme),
-                    {
-                      paddingRight: 44,
-                      color: theme.ink,
-                      fontFamily: BODY_KR,
-                      outlineWidth: 0,
-                    },
-                  ]}
+                  style={[fieldTextStyle, { color: theme.ink, outlineWidth: 0 }]}
                 />
-                <View style={styles.micInNote}>
-                  <VoiceInputButton theme={theme} onResult={(text) => setNote(text)} />
-                </View>
-              </View>
+              </FieldRow>
             )}
 
             {status === 'error' && (
@@ -1047,8 +1035,7 @@ ${sharedNote ?? ''}`;
 const styles = StyleSheet.create({
   draftLine: { marginTop: 8 },
   flexShrink: { flexShrink: 1 },
-  photoButtonRow: { flexDirection: 'row', gap: 10, marginTop: 12 },
-  photoButton: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: 'center' },
+  photoButton: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 9, marginTop: 12 },
   imagePreviewWrap: { marginTop: 18, alignItems: 'center' },
   imagePreview: { width: '100%', aspectRatio: 1, borderRadius: 14, borderWidth: 1 },
   savedImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
@@ -1063,21 +1050,9 @@ const styles = StyleSheet.create({
   snippet: { fontSize: 13, marginTop: 7, lineHeight: 20.8, fontFamily: BODY_KR },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   buttonRow: { marginTop: 26 },
-  quotaBubble: { alignSelf: 'flex-end', marginTop: 18, marginBottom: -12 },
-  input: {
-    marginTop: 18,
-    minHeight: 90,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 15,
-    textAlignVertical: 'top',
-  },
-  noteRow: { position: 'relative', marginTop: 14 },
-  memoRow: { position: 'relative', marginTop: 18 },
-  micInMemo: { position: 'absolute', right: 4, bottom: 6 },
-  micInNote: { position: 'absolute', right: 4, top: 0, bottom: 0, justifyContent: 'center' },
-  noteInput: { marginTop: 0, minHeight: 0, maxHeight: 160, paddingVertical: 12, fontSize: 13.5, textAlignVertical: 'top' },
+  quotaBubble: { alignSelf: 'flex-end', flexShrink: 0, marginTop: 18, marginBottom: -12 },
+  noteRow: { marginTop: 14 },
+  memoRow: { marginTop: 18 },
   analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   screenshotSection: { marginTop: 18 },
   bulkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },

@@ -18,8 +18,8 @@ export function fieldStyle(theme: Theme): ViewStyle {
       // A slightly different paper tone instead of an outline.
       return { ...layerEdge(theme), borderRadius: 14, backgroundColor: theme.bg };
     case 'vintage':
-      // Written on the index card's own ruling (RuledLines behind the sheet).
-      return { ...allEdges(0, 'transparent'), borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
+      // Same underline as line: the card's ruling alone doesn't say where to type.
+      return { ...bottomEdge(OUTLINE, theme.line), borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
   }
 }
 

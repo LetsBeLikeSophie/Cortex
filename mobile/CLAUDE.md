@@ -11,6 +11,7 @@ The theme = a Layout (line / thinBorder / layered / layeredVintage) × a Palette
 - Buttons come from `src/components/Buttons.tsx`: `SolidButton` (variant `primary` | `danger`), `GhostButton`, each `size` `md` | `sm`, plus `IconButton`. Need a new look? Add it there as a variant, not as a one-off Pressable in a screen.
 - Cards and boxes: `<Card>` / `cardShellStyle` / `frameStyle` / `isBoxed` / `screenGutter` from `src/components/Card.tsx`; destructive confirms use `<ConfirmCard>`.
 - Sheets open with `<SheetTitle>` from `src/components/Typography.tsx`: the title (one size everywhere), its description right under it, and only then the content (tags, lists, fields). No per-sheet title sizes.
+- A place to type is `<FieldRow>` from `src/components/FieldRow.tsx`: same field edge, same text size, the mic on the first line at the right. `fieldStyle` never goes on a TextInput itself.
 - Values that differ per theme are fields on Layout or Palette. A `conceptOf(theme)` branch in a component only picks which field to read; it doesn't invent new numbers. Never branch on a value no layout has.
 - Color roles: ink = selected / primary, accent = meaning (AI, 미분류, recording), danger = errors and delete. No error text in accent; text on an accent fill uses `onAccent`.
 - After a UI change, check all four layouts with their signature colors (line+Paper, thinBorder+Sage, layered+Blush, layeredVintage+Ink).

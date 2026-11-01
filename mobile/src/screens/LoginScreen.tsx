@@ -9,6 +9,7 @@ import { frameStyle } from '../components/Card';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { COMMON } from '../i18n/common';
 import { signInWithKakao } from '../auth/kakaoLogin';
+import { ProgressRow } from '../components/ProgressRow';
 import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
 import { GoogleIcon } from '../components/Icons';
 import { useAuth } from '../auth/AuthContext';
@@ -28,6 +29,11 @@ const S = strings({
     google: 'Google로 계속하기',
     lastUsed: '최근 로그인',
     guestTitle: '게스트로 시작할까요?',
+    moveTitle: (n: number) => `게스트 메모 ${n}개를 로그인할 계정으로 옮길까요?`,
+    moveNote: '안 옮기면 게스트로 들어올 때 그대로 있어요',
+    moveYes: '옮기기',
+    moveNo: '안 옮기기',
+    moving: '기록을 옮기는 중',
     guestStart: '시작',
     guestLines: ['체험 없이 무료로 시작해요', '기록은 이 기기에서만 볼 수 있어요', '나중에 설정에서 계정을 연결하면 기록을 옮길 수 있어요'],
     policyPre: '계속하면 ',
@@ -48,6 +54,11 @@ const S = strings({
     google: 'Continue with Google',
     lastUsed: 'Last used',
     guestTitle: 'Start as a guest?',
+    moveTitle: (n: number) => `Move ${n} guest memos to the account you log in with?`,
+    moveNote: "If not, they're still here when you come back as a guest",
+    moveYes: 'Move',
+    moveNo: "Don't move",
+    moving: 'Moving your saves',
     guestStart: 'Start',
     guestLines: ['Starts free, without the trial', 'Only this device can open your saves', 'Link an account in settings later to keep them'],
     policyPre: 'By continuing, you agree to the ',
@@ -68,6 +79,11 @@ const S = strings({
     google: 'Googleで続ける',
     lastUsed: '前回のログイン',
     guestTitle: 'ゲストで始めますか？',
+    moveTitle: (n: number) => `ゲストのメモ${n}件をログインするアカウントに移しますか？`,
+    moveNote: '移さない場合、ゲストで入ればそのまま見られます',
+    moveYes: '移す',
+    moveNo: '移さない',
+    moving: '記録を移しています',
     guestStart: '始める',
     guestLines: ['体験なしの無料プランで始まります', '記録はこの端末でのみ見られます', 'あとで設定からアカウントを連携すれば記録を移せます'],
     policyPre: '続けると',
@@ -88,6 +104,11 @@ const S = strings({
     google: '使用 Google 继续',
     lastUsed: '上次登录',
     guestTitle: '以访客身份开始？',
+    moveTitle: (n: number) => `把 ${n} 条访客笔记转到要登录的账号吗？`,
+    moveNote: '不转的话，以访客身份进入时仍然都在',
+    moveYes: '转移',
+    moveNo: '不转移',
+    moving: '正在转移记录',
     guestStart: '开始',
     guestLines: ['免费开始，不含试用', '记录只能在这台设备上查看', '之后在设置中关联账号即可转移记录'],
     policyPre: '继续即表示你同意',
@@ -108,6 +129,11 @@ const S = strings({
     google: '使用 Google 繼續',
     lastUsed: '上次登入',
     guestTitle: '以訪客身分開始？',
+    moveTitle: (n: number) => `把 ${n} 則訪客筆記轉到要登入的帳號嗎？`,
+    moveNote: '不轉的話，以訪客身分進入時仍然都在',
+    moveYes: '轉移',
+    moveNo: '不轉移',
+    moving: '正在轉移紀錄',
     guestStart: '開始',
     guestLines: ['免費開始，不含試用', '紀錄只能在這台裝置上查看', '之後在設定中連結帳號即可轉移紀錄'],
     policyPre: '繼續即表示你同意',
@@ -142,7 +168,27 @@ function rememberLogin(method: Method) {
 
 export default function LoginScreen() {
   const { theme } = useTheme();
-  const { signInAsGuest } = useAuth();
+  const { signInAsGuest, startLinking, movingGuest, pausedGuestCount, keepPausedGuest, cancelLinking } = useAuth();
+  const [askMove, setAskMove] = useState<{ count: number; login: () => Promise<void> } | null>(null);
+  // A guest logged out on this phone with memos of its own: moving them is
+  // the person's choice, since this may not be the same person.
+  const askAboutGuest = async (login: () => Promise<void>) => {
+    const count = await pausedGuestCount().catch(() => 0);
+    if (count > 1) {
+      setStatus('idle');
+      setAskMove({ count, login });
+      return;
+    }
+    await keepPausedGuest();
+    await login();
+  };
+  const answerMove = async (move: boolean) => {
+    if (!askMove) return;
+    setAskMove(null);
+    if (move) await startLinking();
+    else await keepPausedGuest();
+    await askMove.login();
+  };
   const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   const [lastMethod, setLastMethod] = useState<Method | null>(null);
@@ -153,7 +199,7 @@ export default function LoginScreen() {
       .catch(() => {});
   }, []);
 
-  const onPress = async () => {
+  const loginKakao = async () => {
     setStatus('kakaoLoading');
     setError('');
     try {
@@ -165,12 +211,18 @@ export default function LoginScreen() {
       // AuthContext's onAuthStateChange listener flips the app over.
       setStatus('idle');
     } catch (err) {
+      await cancelLinking();
       setError(friendlyError(err));
       setStatus('error');
     }
   };
+  const onPress = () => {
+    setStatus('kakaoLoading');
+    setError('');
+    return askAboutGuest(loginKakao);
+  };
 
-  const onGooglePress = async () => {
+  const loginGoogle = async () => {
     setStatus('googleLoading');
     setError('');
     try {
@@ -182,6 +234,7 @@ export default function LoginScreen() {
       await seedSampleItem().catch(() => {});
       setStatus('idle');
     } catch (err) {
+      await cancelLinking();
       if (err instanceof GoogleSignInCancelled) {
         setStatus('idle');
         return;
@@ -189,6 +242,11 @@ export default function LoginScreen() {
       setError(friendlyError(err));
       setStatus('error');
     }
+  };
+  const onGooglePress = () => {
+    setStatus('googleLoading');
+    setError('');
+    return askAboutGuest(loginGoogle);
   };
 
   // Anonymous Supabase auth -- a real, isolated account (own user_id, own
@@ -318,6 +376,17 @@ export default function LoginScreen() {
           </Pressable>
           {lastMethod === 'guest' && <LastUsed theme={theme} label={S.lastUsed} />}
         </View>
+        {askMove && (
+          <View style={[styles.guestConfirm, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
+            <Text style={[styles.guestConfirmTitle, { color: theme.ink }]}>{S.moveTitle(askMove.count)}</Text>
+            <Text style={[styles.guestNote, { color: theme.sub }]}>{S.moveNote}</Text>
+            <ButtonRow theme={theme} style={{ marginTop: 6 }}>
+              <GhostButton label={S.moveNo} theme={theme} size="sm" onPress={() => void answerMove(false)} />
+              <SolidButton label={S.moveYes} theme={theme} size="sm" onPress={() => void answerMove(true)} />
+            </ButtonRow>
+          </View>
+        )}
+        {movingGuest && <ProgressRow theme={theme} label={S.moving} />}
         {confirmGuest && (
           <View style={[styles.guestConfirm, frameStyle(theme), { borderRadius: theme.cardRadius }]}>
             <Text style={[styles.guestConfirmTitle, { color: theme.ink }]}>{S.guestTitle}</Text>

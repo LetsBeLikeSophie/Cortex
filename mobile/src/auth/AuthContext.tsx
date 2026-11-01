@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import type { Session } from '@supabase/supabase-js';
 import { refreshDetached, supabase } from './supabase';
 import { completePendingWebLogin } from './kakaoLogin';
-import { ApiError, claimGuest, seedSampleItem } from '../api/client';
+import { ApiError, claimGuest, fetchRecentItems, seedSampleItem } from '../api/client';
 import { moveGuestTabs } from '../data/tabs';
 import { showToast } from '../native/toast';
 import { strings } from '../i18n';
@@ -40,6 +40,11 @@ async function readPending(): Promise<PendingClaim | null> {
   // Written by an older build: the bare access token.
   return { access: raw, refresh: null };
 }
+
+// A guest who logged in with an account without moving their memos: its
+// session, to pick up again at the next '게스트로 시작'. Gone with the app's
+// data, so a reset phone starts as someone new.
+const KEPT_GUEST_KEY = 'cortex.keptGuest';
 
 const forgetPending = () => AsyncStorage.removeItem(PENDING_CLAIM_KEY).catch(() => {});
 
@@ -109,6 +114,12 @@ interface AuthState {
   startLinking: () => Promise<void>;
   // Signed in, guest's saves still moving; the session changes after this.
   movingGuest: boolean;
+  // Memos of the guest logged out on this phone, if there is one.
+  pausedGuestCount: () => Promise<number>;
+  // Before logging in on the login screen: the guest stays reachable.
+  keepPausedGuest: () => Promise<void>;
+  // The login didn't happen, so nothing is moved later by surprise.
+  cancelLinking: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -118,6 +129,9 @@ const AuthContext = createContext<AuthState>({
   pauseGuest: () => {},
   startLinking: async () => {},
   movingGuest: false,
+  pausedGuestCount: async () => 0,
+  keepPausedGuest: async () => {},
+  cancelLinking: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -175,6 +189,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: null };
       }
 
+      const keptToken = await AsyncStorage.getItem(KEPT_GUEST_KEY).catch(() => null);
+      if (keptToken) {
+        const { data: kept, error: keptError } = await supabase.auth.refreshSession({ refresh_token: keptToken });
+        if (!keptError && kept.session) {
+          await AsyncStorage.removeItem(KEPT_GUEST_KEY).catch(() => {});
+          setSession(kept.session);
+          return { error: null };
+        }
+        // Offline, not gone: try again next time instead of starting over.
+        const status = (keptError as { status?: number } | null)?.status;
+        if (status === undefined || status < 400 || status >= 500) return { error: keptError?.message ?? 'guest refresh failed' };
+        await AsyncStorage.removeItem(KEPT_GUEST_KEY).catch(() => {});
+      }
+
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) return { error: error.message };
       // Best-effort: a seeding hiccup shouldn't strand a real, working
@@ -205,8 +233,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const pausedGuestCount = async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session?.user.is_anonymous) return 0;
+    return (await fetchRecentItems(1)).total;
+  };
+
+  const keepPausedGuest = async () => {
+    const { data } = await supabase.auth.getSession();
+    const s = data.session;
+    if (s?.user.is_anonymous && s.refresh_token) await AsyncStorage.setItem(KEPT_GUEST_KEY, s.refresh_token).catch(() => {});
+  };
+
   return (
-    <AuthContext.Provider value={{ session, loading, signInAsGuest, pauseGuest, startLinking, movingGuest }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ session, loading, signInAsGuest, pauseGuest, startLinking, movingGuest, pausedGuestCount, keepPausedGuest, cancelLinking: forgetPending }}>{children}</AuthContext.Provider>
   );
 }
 

@@ -21,6 +21,7 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { CJK_SYSTEM_FONT } from './src/theme/themes';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import LoginScreen from './src/screens/LoginScreen';
 import { loadLanguage, onLanguageChange } from './src/i18n';
 
@@ -45,7 +46,9 @@ function AppShell() {
           <ActivityIndicator color={theme.accent} />
         </View>
       ) : session ? (
-        <RootNavigator />
+        <ErrorBoundary theme={theme}>
+          <RootNavigator />
+        </ErrorBoundary>
       ) : (
         <LoginScreen />
       )}

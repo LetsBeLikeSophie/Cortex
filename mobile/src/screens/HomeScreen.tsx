@@ -17,9 +17,11 @@ import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { useAuth } from '../auth/AuthContext';
 import { TRIAL_NOTICE_KEY } from '../auth/accountTraces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
+import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
+import { appendPage } from '../api/itemPages';
+import { useRunningComposes } from '../compose/running';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
@@ -67,6 +69,7 @@ const S = strings({
     selected: (n: number) => `${n}개 선택됨`,
     toTrash: '휴지통으로',
     select: '선택',
+    composing: (tag: string) => `'${tag}' 모아서 만드는 중`,
     composeSelected: '✦ 모아서 만들기',
     compose: '모아서 만들기',
     addTag: '태그 추가',
@@ -109,6 +112,7 @@ const S = strings({
     selected: (n: number) => `${n} selected`,
     toTrash: 'Move to trash',
     select: 'Select',
+    composing: (tag: string) => `Combining '${tag}'`,
     composeSelected: '✦ Combine',
     compose: 'Combine',
     addTag: 'Add tag',
@@ -151,6 +155,7 @@ const S = strings({
     selected: (n: number) => `${n}件選択中`,
     toTrash: 'ゴミ箱へ',
     select: '選択',
+    composing: (tag: string) => `「${tag}」をまとめています`,
     composeSelected: '✦ まとめて作る',
     compose: 'まとめて作る',
     addTag: 'タグ追加',
@@ -193,6 +198,7 @@ const S = strings({
     selected: (n: number) => `已选 ${n} 项`,
     toTrash: '移到回收站',
     select: '选择',
+    composing: (tag: string) => `正在汇总“${tag}”`,
     composeSelected: '✦ 汇总生成',
     compose: '汇总生成',
     addTag: '添加标签',
@@ -235,6 +241,7 @@ const S = strings({
     selected: (n: number) => `已選 ${n} 項`,
     toTrash: '移到垃圾桶',
     select: '選擇',
+    composing: (tag: string) => `正在彙整「${tag}」`,
     composeSelected: '✦ 彙整生成',
     compose: '彙整生成',
     addTag: '新增標籤',
@@ -345,6 +352,10 @@ export default function HomeScreen() {
       .catch(() => {});
   };
 
+  // The rows paged in so far, so a refresh brings back as many.
+  const loadedCount = React.useRef(0);
+  loadedCount.current = rawItems.length;
+  const reachedEnd = React.useRef(false);
   const load = React.useCallback(() => {
     setLoading(true);
     // Quota + 미분류함 count ride along with every refresh; a failure here
@@ -356,8 +367,9 @@ export default function HomeScreen() {
         showTrialNotice(p);
       })
       .catch(() => {});
-    fetchRecentItems()
+    fetchRecentUpTo(loadedCount.current)
       .then((res) => {
+        reachedEnd.current = false;
         setRawItems(res.items);
         setTotal(res.total);
         setServerWeekCount(res.weekCount ?? null);
@@ -409,6 +421,16 @@ export default function HomeScreen() {
     if (shareQueue.pending < lastPending.current) load();
     lastPending.current = shareQueue.pending;
   }, [shareQueue.pending, load]);
+  // 모아서 만들기 going on after its sheet closed; its memo shows when done.
+  const composing = useRunningComposes();
+  const lastComposing = React.useRef(composing.length);
+  useEffect(() => {
+    if (composing.length < lastComposing.current) {
+      load();
+      loadHomeTabs().then(setCustomTabs);
+    }
+    lastComposing.current = composing.length;
+  }, [composing.length, load]);
   // Once the queue is idle (and whenever the app comes back), say once if
   // shared photos landed in 미분류함 because the month's AI sorting ran out
   // -- including ones saved in the background meanwhile.
@@ -619,6 +641,21 @@ export default function HomeScreen() {
         : rawItems.filter((it) => it.tags.includes(activeTag) || it.user_tags.includes(activeTag))
       : null;
   const listSource = tagList ?? rawItems;
+  const [loadingMore, setLoadingMore] = useState(false);
+  // '모두' goes back through the whole archive, a page at a time.
+  const loadMore = () => {
+    const last = rawItems[rawItems.length - 1];
+    if (activeTag !== null || loadingMore || reachedEnd.current || !last || rawItems.length >= total) return;
+    setLoadingMore(true);
+    fetchRecentItems(50, last.shared_at)
+      .then((res) => {
+        const next = appendPage(rawItems, res.items);
+        if (next.length === rawItems.length) reachedEnd.current = true;
+        setRawItems(next);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
   const filtered =
     activeTag === UNCLASSIFIED
       ? waitingItems ?? rawItems.filter((it) => it.classification_status === 'unclassified')
@@ -704,6 +741,12 @@ export default function HomeScreen() {
           </View>
         </View>
         <PolicyNotice theme={theme} />
+        {composing.map((tag, i) => (
+          <View key={tag + i} style={styles.shareQueueRow}>
+            <ActivityIndicator color={theme.sub} size="small" />
+            <Text style={[styles.shareQueueText, styles.composingText, { color: theme.sub }]}>{S.composing(tag)}</Text>
+          </View>
+        ))}
         {shareQueue.pending > 0 &&
           (shareQueue.waitingConsent ? (
             <Pressable onPress={() => navigation.navigate('AiConsent')} hitSlop={6} style={styles.shareQueueRow}>
@@ -1000,9 +1043,12 @@ export default function HomeScreen() {
         <FlatList
           // Android's default clips each row to its measured frame, which
           // can drop an outlined card's bottom edge on fractional heights.
-          // These lists are short (≤50), so there's nothing to gain from it.
+          // Few rows are on screen at once, so there's nothing to gain from it.
           removeClippedSubviews={false}
           data={items}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={theme.sub} style={styles.moreSpinner} /> : null}
           keyExtractor={(item, i) => item.no + i}
           renderItem={({ item, index }) => {
             const rawId = filtered[index].id;
@@ -1054,6 +1100,8 @@ const styles = StyleSheet.create({
   headPad: {},
   shareQueueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   shareQueueText: { fontFamily: BODY_KR, fontSize: 12.5 },
+  composingText: { flexShrink: 1 },
+  moreSpinner: { marginTop: 16 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   heroWrap: { position: 'relative' },

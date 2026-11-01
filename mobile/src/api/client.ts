@@ -1,6 +1,6 @@
 import { DEVICE_LOCALE, strings } from '../i18n';
 import { Platform } from 'react-native';
-import { supabase } from '../auth/supabase';
+import { supabase } from '../auth/supabase';import { appendPage } from './itemPages';
 
 export type ItemSource = 'instagram' | 'kakaotalk' | 'safari' | 'youtube' | 'memo' | 'other';
 export type ItemCategory = '가볼 곳' | '살 것' | '배울 것' | '볼 것' | '기억할 것' | '기타';
@@ -296,8 +296,24 @@ export function classifyBacklog() {
 
 // weekCount: saved in the last 7 days, across the whole archive (the list
 // itself is only the newest `limit`). Optional: older servers didn't send it.
-export function fetchRecentItems(limit = 50) {
-  return request<{ items: ApiItem[]; total: number; weekCount?: number | null }>(`/items?limit=${limit}`);
+export function fetchRecentItems(limit = 50, before?: string) {
+  const from = before ? `&before=${encodeURIComponent(before)}` : '';
+  return request<{ items: ApiItem[]; total: number; weekCount?: number | null }>(`/items?limit=${limit}${from}`);
+}
+
+// A refresh of '모두' keeps as many rows as were already paged in, so coming
+// back from a memo doesn't drop the list to its first page.
+export async function fetchRecentUpTo(count: number) {
+  const first = await fetchRecentItems(Math.min(Math.max(count, 50), 100));
+  let items = first.items;
+  const want = Math.min(count, first.total);
+  while (items.length > 0 && items.length < want) {
+    const page = await fetchRecentItems(100, items[items.length - 1].shared_at);
+    const next = appendPage(items, page.items);
+    if (next.length === items.length) break;
+    items = next;
+  }
+  return { ...first, items };
 }
 
 // Every memo outside the trash, for 메모 내보내기.

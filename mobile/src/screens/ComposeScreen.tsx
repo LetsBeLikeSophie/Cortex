@@ -9,6 +9,7 @@ import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { SheetTitle } from '../components/Typography';
 import { composeMaterials } from '../api/format';
+import { composeEnded, composeStarted } from '../compose/running';
 import { Bubble, isLowOnUses } from '../components/Bubble';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { FieldRow, fieldTextStyle } from '../components/FieldRow';
@@ -304,6 +305,7 @@ export default function ComposeScreen() {
     }
     setError('');
     setWorking(true);
+    composeStarted(pickedTag);
     // The memo lives under its tag -- make sure that tag is a home tab,
     // once there is a memo (a too_few refusal adds no tab).
     const keepTab = async () => {
@@ -351,6 +353,8 @@ export default function ComposeScreen() {
         setError(friendlyError(err));
       }
       setWorking(false);
+    } finally {
+      composeEnded(pickedTag);
     }
   };
 

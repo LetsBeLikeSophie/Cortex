@@ -1,6 +1,7 @@
 import { DEVICE_LOCALE, strings } from '../i18n';
 import { Platform } from 'react-native';
-import { supabase } from '../auth/supabase';import { appendPage } from './itemPages';
+import { supabase } from '../auth/supabase';
+import { appendPage } from './itemPages';
 
 export type ItemSource = 'instagram' | 'kakaotalk' | 'safari' | 'youtube' | 'memo' | 'other';
 export type ItemCategory = '가볼 곳' | '살 것' | '배울 것' | '볼 것' | '기억할 것' | '기타';

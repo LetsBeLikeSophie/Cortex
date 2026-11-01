@@ -5,6 +5,7 @@ import { recordOnlyRaw } from "./billingRules.js";
 import { Category } from "./categories.js";
 import type { SearchInterpretation } from "./anthropic.js";
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG } from "./sourceCatalog.js";
+import { newestOfBoth, tagArrayLiteral } from "./tagQuery.js";
 
 const SCREENSHOTS_BUCKET = "item-screenshots";
 
@@ -267,17 +268,17 @@ export async function getItemForUser(userId: string, itemId: string): Promise<It
 }
 
 // Oldest first, so "AI로 정리" clears the backlog in the order it piled up.
-export async function listUnclassifiedItems(userId: string, limit: number): Promise<ItemRecord[]> {
-  const { data, error } = await getClient()
+export async function listUnclassifiedItems(userId: string, limit: number, before?: string): Promise<ItemRecord[]> {
+  let query = getClient()
     .from("items")
     .select()
     .eq("user_id", userId)
     .eq("classification_status", "unclassified")
-    .is("deleted_at", null)
-    // Newest first: what was just saved is what people look for next, so
-    // 'AI로 정리' (classifyBacklog) spends the month's allowance there first.
-    .order("shared_at", { ascending: false })
-    .limit(limit);
+    .is("deleted_at", null);
+  if (before) query = query.lte("shared_at", before);
+  // Newest first: what was just saved is what people look for next, so
+  // 'AI로 정리' (classifyBacklog) spends the month's allowance there first.
+  const { data, error } = await query.order("shared_at", { ascending: false }).limit(limit);
   if (error) throw new Error(`listUnclassifiedItems failed: ${error.message}`);
   return (data ?? []) as ItemRecord[];
 }
@@ -779,16 +780,16 @@ export async function listItemsByIds(userId: string, ids: string[]): Promise<Ite
   return (data ?? []) as ItemRecord[];
 }
 
-export async function listItemsWithTag(userId: string, tag: string, max = 50): Promise<ItemRecord[]> {
-  const { data, error } = await getClient()
-    .from("items")
-    .select()
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .order("shared_at", { ascending: false })
-    .limit(1000);
-  if (error) throw new Error(`listItemsWithTag failed: ${error.message}`);
-  return ((data ?? []) as ItemRecord[]).filter((it) => it.tags.includes(tag) || it.user_tags.includes(tag)).slice(0, max);
+export async function listItemsWithTag(userId: string, tag: string, max = 50, before?: string): Promise<ItemRecord[]> {
+  const inColumn = async (column: "tags" | "user_tags") => {
+    let query = getClient().from("items").select().eq("user_id", userId).is("deleted_at", null).contains(column, tagArrayLiteral(tag));
+    if (before) query = query.lte("shared_at", before);
+    const { data, error } = await query.order("shared_at", { ascending: false }).limit(max);
+    if (error) throw new Error(`listItemsWithTag failed: ${error.message}`);
+    return (data ?? []) as ItemRecord[];
+  };
+  const [ai, mine] = await Promise.all([inColumn("tags"), inColumn("user_tags")]);
+  return newestOfBoth(ai, mine, max);
 }
 
 // The tags this person uses most (AI + their own), most-used first -- fed to

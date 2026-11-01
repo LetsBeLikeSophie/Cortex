@@ -328,14 +328,28 @@ export function fetchLookback() {
 }
 
 // The 미분류 tab's items, newest first (the order 'AI로 정리' takes them).
-export function fetchUnclassifiedItems(limit = 100) {
-  return request<{ items: ApiItem[]; total: number }>(`/items?status=unclassified&limit=${limit}`);
+export function fetchUnclassifiedItems(limit = 100, before?: string) {
+  const from = before ? `&before=${encodeURIComponent(before)}` : '';
+  return request<{ items: ApiItem[]; total: number }>(`/items?status=unclassified&limit=${limit}${from}`);
 }
 
-// One home tag tab's items from the whole archive (newest first, up to 100)
-// -- filtering the recent 50 hid older memos with that tag.
-export function fetchItemsWithTag(tag: string, limit = 100) {
-  return request<{ items: ApiItem[]; total: number }>(`/items?tag=${encodeURIComponent(tag)}&limit=${limit}`);
+// One home tag tab's items from the whole archive, newest first, a page at a
+// time -- filtering the recent 50 hid older memos with that tag.
+export function fetchItemsWithTag(tag: string, limit = 100, before?: string) {
+  const from = before ? `&before=${encodeURIComponent(before)}` : '';
+  return request<{ items: ApiItem[]; total: number }>(`/items?tag=${encodeURIComponent(tag)}&limit=${limit}${from}`);
+}
+
+// A tab's refresh keeps as many rows as were already paged in.
+export async function fetchTabUpTo(fetchPage: (before?: string) => Promise<{ items: ApiItem[] }>, count: number) {
+  let { items } = await fetchPage();
+  while (items.length > 0 && items.length < count) {
+    const page = await fetchPage(items[items.length - 1].shared_at);
+    const next = appendPage(items, page.items);
+    if (next.length === items.length) break;
+    items = next;
+  }
+  return items;
 }
 
 // `include` terms are AND'd together, `exclude` terms are NOT'd -- see the

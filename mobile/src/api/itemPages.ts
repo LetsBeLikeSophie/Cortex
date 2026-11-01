@@ -17,6 +17,15 @@ export function mergeFirstPage<T extends { id: string }>(list: T[], page: T[]): 
   return same ? list : merged;
 }
 
+// A tab's newest rows, fresh: down to the page's oldest row the page is the
+// truth (a memo that left the tab goes); older rows paged in stay.
+export function replaceNewest<T extends { id: string; shared_at: string }>(list: T[], page: T[], pageSize: number): T[] {
+  if (page.length < pageSize) return page;
+  const inPage = new Set(page.map((it) => it.id));
+  const oldest = Date.parse(page[page.length - 1].shared_at);
+  return [...page, ...list.filter((it) => !inPage.has(it.id) && Date.parse(it.shared_at) < oldest)];
+}
+
 // Rows fetched one by one replace their old selves, where they are.
 export function updateRows<T extends { id: string }>(list: T[], rows: T[]): T[] {
   const byId = new Map(rows.map((it) => [it.id, it]));

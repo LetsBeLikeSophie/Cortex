@@ -85,7 +85,7 @@ const remadeFree = new Set<string>();
 
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
-  // The next page of '모두': the shared_at of the last row so far.
+  // The next page of a list: the shared_at of the last row so far.
   before: z.iso.datetime({ offset: true }).optional(),
   // A home tag tab: that tag's items across the whole archive, not just
   // whatever is among the newest `limit`.
@@ -225,11 +225,11 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
     const userId = await resolveUserId(req);
     if (parsed.data.status === "unclassified") {
-      const items = await listUnclassifiedItems(userId, parsed.data.limit ?? 100);
+      const items = await listUnclassifiedItems(userId, parsed.data.limit ?? 100, parsed.data.before);
       return reply.send({ items, total: items.length });
     }
     if (parsed.data.tag) {
-      const items = await listItemsWithTag(userId, parsed.data.tag, parsed.data.limit ?? 100);
+      const items = await listItemsWithTag(userId, parsed.data.tag, parsed.data.limit ?? 100, parsed.data.before);
       return reply.send({ items, total: items.length });
     }
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();

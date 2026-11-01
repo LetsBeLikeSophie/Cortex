@@ -1,7 +1,7 @@
 // npm test -- '모두' keeps every memo once as it pages back.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendPage, mergeFirstPage, updateRows } from './itemPages';
+import { appendPage, mergeFirstPage, replaceNewest, updateRows } from './itemPages';
 
 const row = (id: string) => ({ id });
 
@@ -28,6 +28,13 @@ test('a row fetched on its own changes in place', () => {
   const list = [{ id: 'a', status: 'done' }, { id: 'b', status: 'pending' }];
   assert.deepEqual(updateRows(list, [{ id: 'b', status: 'done' }])[1], { id: 'b', status: 'done' });
   assert.equal(updateRows(list, [{ id: 'b', status: 'pending' }]), list);
+});
+
+test("a tab's fresh rows drop a memo that left and keep older ones paged in", () => {
+  const at = (id: string, day: number) => ({ id, shared_at: `2026-11-0${day}T00:00:00Z` });
+  const list = [at('a', 5), at('left', 4), at('b', 3), at('old', 1)];
+  assert.deepEqual(replaceNewest(list, [at('a', 5), at('b', 3)], 2).map((it) => it.id), ['a', 'b', 'old']);
+  assert.deepEqual(replaceNewest(list, [at('a', 5)], 2).map((it) => it.id), ['a']);
 });
 
 test('a page with nothing new leaves the same length, which ends the paging', () => {

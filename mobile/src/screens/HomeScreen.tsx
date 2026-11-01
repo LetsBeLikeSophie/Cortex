@@ -17,11 +17,11 @@ import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { useAuth } from '../auth/AuthContext';
 import { TRIAL_NOTICE_KEY } from '../auth/accountTraces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchItem, fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
+import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { ProgressRow } from '../components/ProgressRow';
-import { appendPage, mergeFirstPage, updateRows } from '../api/itemPages';
+import { appendPage, mergeFirstPage, replaceNewest, updateRows } from '../api/itemPages';
 import { useRunningComposes } from '../compose/running';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
@@ -318,6 +318,8 @@ export default function HomeScreen() {
   // The 미분류 tab's own list from the server (oldest first) -- the recent
   // 50 often held none of the items 'AI로 정리' actually works on.
   const [waitingItems, setWaitingItems] = useState<ApiItem[] | null>(null);
+  // Goes up with each full refresh of the list, which the open tab follows.
+  const [listVersion, setListVersion] = useState(0);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [askSort, setAskSort] = useState(false);
   const [sorting, setSorting] = useState(false);
@@ -378,6 +380,28 @@ export default function HomeScreen() {
   const itemsNow = React.useRef(rawItems);
   itemsNow.current = rawItems;
   const reachedEnd = React.useRef(false);
+  // The open tab's lists, for its refresh and its next page. A tab reached its
+  // end when a next page added nothing.
+  const activeTagNow = React.useRef(activeTag);
+  activeTagNow.current = activeTag;
+  const tagItemsNow = React.useRef(tagItems);
+  tagItemsNow.current = tagItems;
+  const waitingNow = React.useRef(waitingItems);
+  waitingNow.current = waitingItems;
+  const tabEnded = React.useRef<string | null>(null);
+  // While memos are being sorted: only the open tab's newest rows.
+  const refreshTabTop = React.useCallback(() => {
+    const tab = activeTagNow.current;
+    if (tab === UNCLASSIFIED) {
+      fetchUnclassifiedItems(FIRST_PAGE)
+        .then((res) => setWaitingItems((current) => replaceNewest(current ?? [], res.items, FIRST_PAGE)))
+        .catch(() => {});
+    } else if (tab) {
+      fetchItemsWithTag(tab, FIRST_PAGE)
+        .then((res) => setTagItems((current) => (current?.tag === tab ? { tag: tab, items: replaceNewest(current.items, res.items, FIRST_PAGE) } : current)))
+        .catch(() => {});
+    }
+  }, []);
   // Quota + 미분류함 count ride along with every refresh; a failure here
   // just leaves the last known plan on screen.
   const refreshPlan = React.useCallback(() => {
@@ -396,6 +420,7 @@ export default function HomeScreen() {
       .then((res) => {
         reachedEnd.current = false;
         setRawItems(res.items);
+        setListVersion((v) => v + 1);
         setTotal(res.total);
         setServerWeekCount(res.weekCount ?? null);
         setError(null);
@@ -458,6 +483,7 @@ export default function HomeScreen() {
         if (inFirstPage.length > 0) {
           const first = await fetchRecentItems(FIRST_PAGE);
           if (stopped) return;
+          if (mergeFirstPage(itemsNow.current, first.items) !== itemsNow.current) refreshTabTop();
           setRawItems((current) => mergeFirstPage(current, first.items));
           setTotal(first.total);
           setServerWeekCount(first.weekCount ?? null);
@@ -486,7 +512,7 @@ export default function HomeScreen() {
         stopped = true;
         clearTimeout(timer);
       };
-    }, [hasPending, refreshPlan])
+    }, [hasPending, refreshPlan, refreshTabTop])
   );
   // All sorted: the uses left and the 미분류함 count are current again.
   const wasPending = useRef(false);
@@ -601,10 +627,11 @@ export default function HomeScreen() {
   // -edit at all, so leaving a tag tab always drops out of select mode too.
   // Fetch the tag tab's items whenever it's opened or Home refreshes.
   const loadTag = React.useCallback((tag: string | null) => {
+    tabEnded.current = null;
     if (tag === UNCLASSIFIED) {
       setTagItems(null);
-      fetchUnclassifiedItems()
-        .then((res) => setWaitingItems(res.items))
+      fetchTabUpTo((before) => fetchUnclassifiedItems(FIRST_PAGE, before), waitingNow.current?.length ?? 0)
+        .then(setWaitingItems)
         .catch(() => {});
       return;
     }
@@ -612,13 +639,14 @@ export default function HomeScreen() {
       setTagItems(null);
       return;
     }
-    fetchItemsWithTag(tag)
-      .then((res) => setTagItems({ tag, items: res.items }))
+    const shown = tagItemsNow.current?.tag === tag ? tagItemsNow.current.items.length : 0;
+    fetchTabUpTo((before) => fetchItemsWithTag(tag, FIRST_PAGE, before), shown)
+      .then((items) => setTagItems({ tag, items }))
       .catch(() => {});
   }, []);
   useEffect(() => {
     loadTag(activeTag);
-  }, [activeTag, rawItems, loadTag]);
+  }, [activeTag, listVersion, loadTag]);
 
   const changeTag = (tag: TagTab | null) => {
     setActiveTag(tag);
@@ -729,10 +757,30 @@ export default function HomeScreen() {
       : null;
   const listSource = tagList ?? rawItems;
   const [loadingMore, setLoadingMore] = useState(false);
+  // A tag tab or 미분류함, a page at a time like '모두'.
+  const loadMoreOfTab = (tab: string) => {
+    const current = tab === UNCLASSIFIED ? waitingItems : tagItems?.tag === tab ? tagItems.items : null;
+    if (!current || current.length < FIRST_PAGE || tabEnded.current === tab) return;
+    const before = current[current.length - 1].shared_at;
+    setLoadingMore(true);
+    (tab === UNCLASSIFIED ? fetchUnclassifiedItems(FIRST_PAGE, before) : fetchItemsWithTag(tab, FIRST_PAGE, before))
+      .then((res) => {
+        if (appendPage(current, res.items).length === current.length) tabEnded.current = tab;
+        if (tab === UNCLASSIFIED) setWaitingItems((list) => appendPage(list ?? [], res.items));
+        else setTagItems((list) => (list?.tag === tab ? { tag: tab, items: appendPage(list.items, res.items) } : list));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  };
   // '모두' goes back through the whole archive, a page at a time.
   const loadMore = () => {
+    if (loadingMore) return;
+    if (activeTag !== null) {
+      loadMoreOfTab(activeTag);
+      return;
+    }
     const last = rawItems[rawItems.length - 1];
-    if (activeTag !== null || loadingMore || reachedEnd.current || !last || rawItems.length >= total) return;
+    if (reachedEnd.current || !last || rawItems.length >= total) return;
     setLoadingMore(true);
     fetchRecentItems(50, last.shared_at)
       .then((res) => {

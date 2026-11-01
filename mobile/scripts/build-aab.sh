@@ -29,4 +29,6 @@ fi
 ./gradlew bundleRelease -q
 mkdir -p "$OUT"
 cp app/build/outputs/bundle/release/app-release.aab "$TARGET"
+# What turns the code positions in app_errors back into file names and lines.
+cp app/build/generated/sourcemaps/react/release/index.android.bundle.map "${TARGET%.aab}.js.map" 2>/dev/null || echo "no JS source map found" >&2
 echo "$TARGET"

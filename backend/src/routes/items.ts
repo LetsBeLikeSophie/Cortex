@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { resyncLapsedPurchases } from "../lib/billing.js";
+import { onlyStackFrames, safeErrorName } from "../lib/appErrors.js";
 import { ImageRejectedError } from "../lib/image.js";
 import { isPlayBillingConfigured } from "../lib/googlePlay.js";
 import { config } from "../config.js";
@@ -16,6 +17,7 @@ import {
   getStats,
   KST_OFFSET_MINUTES,
   logAnalyticsEvent,
+  logAppError,
   listItems,
   listAllItems,
   listLookback,
@@ -128,6 +130,12 @@ function localToday(utcOffsetMinutes: number): string {
 
 // What the app reports on the way to Pro; anything else is refused, so this
 // can't turn into a place to send free text.
+const AppErrorSchema = z.object({
+  appVersion: z.string().max(32),
+  name: z.string().max(200),
+  stack: z.string().max(16_000),
+});
+
 const AppEventSchema = z.object({
   type: z.enum(["paywall_view", "purchase_started"]),
   detail: z.enum(["default", "classify", "search", "compose", "tag_cleanup", "trial_ending", "trial_ended", "monthly", "yearly", "lifetime"]),
@@ -315,6 +323,17 @@ export async function itemsRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
     const userId = await resolveUserId(req);
     await logAnalyticsEvent({ eventType: parsed.data.type, userId, detail: parsed.data.detail });
+    return reply.code(204).send();
+  });
+
+  // Where the app broke (decision E1). Signed in so it can't be spammed from
+  // outside, but no account is stored.
+  app.post("/me/error", { config: { rateLimit: {} } }, async (req, reply) => {
+    const parsed = AppErrorSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+    await resolveUserId(req);
+    const stack = onlyStackFrames(parsed.data.stack);
+    if (stack) await logAppError({ appVersion: parsed.data.appVersion, name: safeErrorName(parsed.data.name), stack }).catch((err) => req.log.error(err));
     return reply.code(204).send();
   });
 

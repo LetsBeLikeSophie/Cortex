@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { getClient, logAnalyticsEvent } from "./supabase.js";
 import { getEntitlement } from "./plans.js";
-import { nextProUntil, type PurchaseRow, type PurchaseState } from "./billingRules.js";
+import { buyerAccount, nextProUntil, recordOnlyRaw, type PurchaseRow, type PurchaseState } from "./billingRules.js";
 import {
   PlaySubscription,
   acknowledgeProduct,
@@ -55,9 +55,10 @@ async function upsertPurchase(row: {
   if (error) throw new Error(`upsertPurchase failed: ${error.message}`);
 }
 
-// Purchase rows outlive their account (kept for the records), so an owner may
-// be gone. A lookup that fails throws: that's not the same as gone.
-async function accountExists(userId: string): Promise<boolean> {
+// Purchase rows outlive their account (kept for the records, with no owner), so
+// an owner may be gone. A lookup that fails throws: that's not the same as gone.
+async function accountExists(userId: string | null): Promise<boolean> {
+  if (!userId) return false;
   const { data, error } = await getClient().auth.admin.getUserById(userId);
   if (data?.user) return true;
   if (error && error.status !== 404) throw new Error(`account lookup failed: ${error.message}`);
@@ -77,18 +78,20 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
   // One purchase, one account -- a token can't be replayed onto another. Once
   // the account that bought it is deleted, it moves to whoever restores it:
   // someone who left and came back still owns what they paid for.
-  if (existing && existing.user_id !== userId && (await accountExists(existing.user_id as string))) {
+  if (existing && existing.user_id !== userId && (await accountExists(existing.user_id as string | null))) {
     throw new PurchaseConflictError("purchase belongs to another account");
   }
 
   if (productId === config.playLifetimeId) {
     const p = await getProductPurchase(productId, token);
+    if (existing?.user_id !== userId) await refuseIfBoughtByAnother(buyerAccount(p), userId);
     const state: PurchaseState = p.purchaseState === 0 ? "active" : p.purchaseState === 2 ? "pending" : "canceled";
     await upsertPurchase({ user_id: userId, product_id: productId, purchase_token: token, kind: "lifetime", expires_at: null, state, raw: p });
     await logPurchaseChange(userId, existing?.state as PurchaseState | undefined, state, "lifetime");
     if (state === "active" && p.acknowledgementState === 0) await acknowledgeProduct(productId, token);
   } else if (productId === config.playSubscriptionId) {
     const s = await getSubscription(token);
+    if (existing?.user_id !== userId) await refuseIfBoughtByAnother(buyerAccount(s), userId);
     const { state, expiresAt } = subscriptionState(s);
     await upsertPurchase({ user_id: userId, product_id: productId, purchase_token: token, kind: "subscription", expires_at: expiresAt, state, raw: s });
     await logPurchaseChange(userId, existing?.state as PurchaseState | undefined, state, s.lineItems?.[0]?.offerDetails?.basePlanId ?? "subscription");
@@ -101,18 +104,33 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
   await recomputeProUntil(userId);
 }
 
-// Resubscribing or changing plan in the Play Store makes a new token, and the
-// old one expires: without this the person pays while Pro ends. The new token
-// names the one it replaces, which says whose it is. Anything else unknown (a
-// purchase the app hasn't reported yet) waits for the app's verify call.
-async function adoptReplacementSubscription(token: string): Promise<void> {
+// Bought on one account, then the app was opened on another: it stays with the
+// buyer, unless that account is gone.
+async function refuseIfBoughtByAnother(buyer: string | null, userId: string): Promise<void> {
+  if (buyer && buyer !== userId && (await accountExists(buyer))) throw new PurchaseConflictError("purchase belongs to another account");
+}
+
+// A notice about a token we haven't seen. Paid, but the app never reported it
+// (no signal, never opened again), or a resubscribe or plan change in the Play
+// Store, which makes a new token while the old one expires. Either way the
+// purchase says whose it is: the token it replaces, or the account the app sent.
+// Without this the person pays and Pro stays off, then Play refunds after 3 days.
+async function adoptSubscription(token: string): Promise<void> {
   const s = await getSubscription(token);
-  if (!s.linkedPurchaseToken) return;
   const productId = s.lineItems?.[0]?.productId;
   if (productId !== config.playSubscriptionId) return;
-  const { data, error } = await getClient().from("purchases").select("user_id").eq("purchase_token", s.linkedPurchaseToken).maybeSingle();
-  if (error) throw new Error(`purchase lookup failed: ${error.message}`);
-  if (data && (await accountExists(data.user_id as string))) await applyGooglePurchase(data.user_id as string, productId, token);
+  let owner = buyerAccount(s);
+  if (s.linkedPurchaseToken) {
+    const { data, error } = await getClient().from("purchases").select("user_id").eq("purchase_token", s.linkedPurchaseToken).maybeSingle();
+    if (error) throw new Error(`purchase lookup failed: ${error.message}`);
+    owner = (data?.user_id as string | null | undefined) ?? owner;
+  }
+  if (owner && (await accountExists(owner))) await applyGooglePurchase(owner, productId, token);
+}
+
+async function adoptLifetime(productId: string, token: string): Promise<void> {
+  const owner = buyerAccount(await getProductPurchase(productId, token));
+  if (owner && (await accountExists(owner))) await applyGooglePurchase(owner, productId, token);
 }
 
 // A deleted account's purchase can still renew or get refunded. Only the row
@@ -123,18 +141,18 @@ async function recordOrphanPurchase(token: string, productId: string, voided: bo
   if (!voided && productId === config.playLifetimeId) {
     const p = await getProductPurchase(productId, token);
     fields.state = p.purchaseState === 0 ? "active" : p.purchaseState === 2 ? "pending" : "canceled";
-    fields.raw = p;
+    fields.raw = recordOnlyRaw(p);
   } else if (!voided) {
     const s = await getSubscription(token);
     const { state, expiresAt } = subscriptionState(s);
-    Object.assign(fields, { state, expires_at: expiresAt, raw: s });
+    Object.assign(fields, { state, expires_at: expiresAt, raw: recordOnlyRaw(s) });
   }
   const { error } = await getClient().from("purchases").update({ ...fields, updated_at: new Date().toISOString() }).eq("purchase_token", token);
   if (error) throw new Error(`purchase update failed: ${error.message}`);
 }
 
 // Real-time developer notification: re-check whatever purchase it's about.
-export async function refreshGooglePurchase(token: string, voided = false, isSubscription = false): Promise<void> {
+export async function refreshGooglePurchase(token: string, voided = false, isSubscription = false, sku?: string): Promise<void> {
   const { data, error } = await getClient()
     .from("purchases")
     .select("user_id, product_id")
@@ -142,10 +160,12 @@ export async function refreshGooglePurchase(token: string, voided = false, isSub
     .maybeSingle();
   if (error) throw new Error(`purchase lookup failed: ${error.message}`);
   if (!data) {
-    if (isSubscription && !voided) await adoptReplacementSubscription(token);
+    if (voided) return;
+    if (isSubscription) await adoptSubscription(token);
+    else if (sku === config.playLifetimeId) await adoptLifetime(sku, token);
     return;
   }
-  if (!(await accountExists(data.user_id as string))) {
+  if (!(await accountExists(data.user_id as string | null))) {
     await recordOrphanPurchase(token, data.product_id as string, voided);
     return;
   }

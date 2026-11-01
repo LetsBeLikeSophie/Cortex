@@ -1,7 +1,39 @@
 // npm test -- pro_until after each way a purchase can change.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FOREVER, nextProUntil, PurchaseRow } from "./billingRules.js";
+import { buyerAccount, FOREVER, nextProUntil, PurchaseRow, recordOnlyRaw } from "./billingRules.js";
+
+const ACCOUNT = "3f2b8c1e-9a4d-4e7b-8f10-2c6d5e4a1b09";
+
+test("the buyer comes from either kind of Play answer", () => {
+  assert.equal(buyerAccount({ obfuscatedExternalAccountId: ACCOUNT }), ACCOUNT);
+  assert.equal(buyerAccount({ externalAccountIdentifiers: { obfuscatedExternalAccountId: ACCOUNT } }), ACCOUNT);
+});
+
+test("an older purchase, or a value that isn't an account id, names nobody", () => {
+  assert.equal(buyerAccount({}), null);
+  assert.equal(buyerAccount({ obfuscatedExternalAccountId: "someone@example.com" }), null);
+});
+
+test("after deletion only what a refund or tax question needs stays", () => {
+  const kept = recordOnlyRaw({
+    orderId: "GPA.1",
+    latestOrderId: "GPA.2",
+    regionCode: "KR",
+    obfuscatedExternalAccountId: ACCOUNT,
+    externalAccountIdentifiers: { obfuscatedExternalAccountId: ACCOUNT },
+    subscribeWithGoogleInfo: { emailAddress: "someone@example.com" },
+    lineItems: [{ productId: "cortex_pro", expiryTime: "2026-12-01", offerDetails: { basePlanId: "monthly" } }],
+    somethingNew: "x",
+  });
+  assert.deepEqual(kept, {
+    orderId: "GPA.1",
+    latestOrderId: "GPA.2",
+    regionCode: "KR",
+    lineItems: [{ productId: "cortex_pro", expiryTime: "2026-12-01", latestSuccessfulOrderId: undefined }],
+  });
+  assert.equal(recordOnlyRaw(null), null);
+});
 
 const NOW = "2026-11-15T00:00:00.000Z";
 const PAST = "2026-11-01T00:00:00.000Z";

@@ -13,6 +13,7 @@ import { Theme, BODY_KR } from '../theme/themes';
 import { ApiError, classifyBacklog, fetchOffers, friendlyError, Offers, Plan, verifyGooglePurchase, logAppEvent } from '../api/client';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { showToast } from '../native/toast';
+import { useAuth } from '../auth/AuthContext';
 
 import type { PlanOption, StorePrices } from './types';
 import { LANG, TERMS_URL, TOKUSHOHO_URL, strings } from '../i18n';
@@ -191,6 +192,9 @@ export function AndroidPurchase({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Whose purchase this is, for Play to hand back: the server can then turn Pro
+  // on from Google's notice even if this app never opens again.
+  const accountId = useAuth().session?.user.id;
 
   const confirmWithServer = async (purchase: Purchase): Promise<Plan | null> => {
     const token = purchase.purchaseToken;
@@ -262,14 +266,14 @@ export function AndroidPurchase({
       if (selected === 'lifetime') {
         if (!lifetime) throw new Error(S.noLifetime);
         setBusy(true);
-        await requestPurchase({ type: 'in-app', request: { google: { skus: [offers.lifetimeId] } } });
+        await requestPurchase({ type: 'in-app', request: { google: { skus: [offers.lifetimeId], obfuscatedAccountId: accountId } } });
       } else {
         const offer = offerFor(selected);
         if (!offer?.offerTokenAndroid) throw new Error(S.noSub);
         setBusy(true);
         await requestPurchase({
           type: 'subs',
-          request: { google: { skus: [offers.subscriptionId], subscriptionOffers: [{ sku: offers.subscriptionId, offerToken: offer.offerTokenAndroid }] } },
+          request: { google: { skus: [offers.subscriptionId], obfuscatedAccountId: accountId, subscriptionOffers: [{ sku: offers.subscriptionId, offerToken: offer.offerTokenAndroid }] } },
         });
       }
     } catch (err) {

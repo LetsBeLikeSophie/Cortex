@@ -22,10 +22,12 @@ import { CJK_SYSTEM_FONT } from './src/theme/themes';
 import { AuthProvider, useAuth } from './src/auth/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { installErrorReporting } from './src/errors/report';
 import LoginScreen from './src/screens/LoginScreen';
 import { loadLanguage, onLanguageChange } from './src/i18n';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+installErrorReporting();
 
 function AppShell() {
   const { theme } = useTheme();

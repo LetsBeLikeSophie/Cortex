@@ -5,6 +5,7 @@ import { Theme } from '../theme/themes';
 import { SolidButton } from './Buttons';
 import { Heading, SHEET_TITLE_SIZE } from './Typography';
 import { strings } from '../i18n';
+import { reportError } from '../errors/report';
 
 const S = strings({
   ko: { title: '문제가 생겼어요', reopen: '다시 열기' },
@@ -21,6 +22,10 @@ export class ErrorBoundary extends React.Component<{ theme: Theme; children: Rea
 
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    reportError(error);
   }
 
   render() {

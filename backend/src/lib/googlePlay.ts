@@ -99,6 +99,8 @@ export interface PlaySubscription {
   acknowledgementState?: "ACKNOWLEDGEMENT_STATE_PENDING" | "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED";
   // Set on a resubscribe or plan change: the token this one replaces.
   linkedPurchaseToken?: string;
+  // What the app sent with the purchase: the buyer's account id.
+  externalAccountIdentifiers?: { obfuscatedExternalAccountId?: string };
   lineItems?: { productId: string; expiryTime?: string; offerDetails?: { basePlanId?: string } }[];
 }
 
@@ -118,6 +120,7 @@ export interface PlayProductPurchase {
   purchaseState: number; // 0 purchased, 1 canceled, 2 pending
   acknowledgementState: number; // 0 not yet, 1 acknowledged
   orderId?: string;
+  obfuscatedExternalAccountId?: string;
 }
 
 export function getProductPurchase(productId: string, token: string): Promise<PlayProductPurchase> {

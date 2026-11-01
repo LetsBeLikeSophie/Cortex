@@ -75,17 +75,17 @@ export async function billingRoutes(app: FastifyInstance) {
     try {
       const note = JSON.parse(Buffer.from(parsed.data.message.data, "base64").toString("utf8")) as {
         subscriptionNotification?: { purchaseToken: string };
-        oneTimeProductNotification?: { purchaseToken: string };
+        oneTimeProductNotification?: { purchaseToken: string; sku?: string };
         voidedPurchaseNotification?: { purchaseToken: string };
       };
       const token =
         note.subscriptionNotification?.purchaseToken ??
         note.oneTimeProductNotification?.purchaseToken ??
         note.voidedPurchaseNotification?.purchaseToken;
-      if (token) await refreshGooglePurchase(token, !!note.voidedPurchaseNotification, !!note.subscriptionNotification);
+      if (token) await refreshGooglePurchase(token, !!note.voidedPurchaseNotification, !!note.subscriptionNotification, note.oneTimeProductNotification?.sku);
     } catch (err) {
       req.log.error(err, "rtdn handling failed");
-      if (!(err instanceof SyntaxError) && !isPurchaseGone(err)) return reply.code(500).send({ error: "retry" });
+      if (!(err instanceof SyntaxError) && !(err instanceof PurchaseConflictError) && !isPurchaseGone(err)) return reply.code(500).send({ error: "retry" });
     }
     return reply.code(200).send({ ok: true });
   });

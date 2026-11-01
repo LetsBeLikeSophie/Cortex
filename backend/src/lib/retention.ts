@@ -9,6 +9,8 @@ import { getClient } from "./supabase.js";
 //   handful of rows per month.
 // - ai_usage (quota counter): only the current month is ever read, so rows
 //   from before last month are dropped.
+// - purchases of deleted accounts: kept 5 years for refunds and tax.
+// - app_errors: 90 days.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BATCH = 1000;
@@ -84,6 +86,16 @@ async function pruneAiUsage(): Promise<void> {
   if (error) throw new Error(`ai_usage prune failed: ${error.message}`);
 }
 
+async function pruneOldRecords(): Promise<void> {
+  const client = getClient();
+  const fiveYears = new Date(Date.now() - 5 * 365 * DAY_MS).toISOString();
+  const { error: purchasesError } = await client.from("purchases").delete().is("user_id", null).lt("updated_at", fiveYears);
+  if (purchasesError) throw new Error(`retention purchases failed: ${purchasesError.message}`);
+  const ninetyDays = new Date(Date.now() - 90 * DAY_MS).toISOString();
+  const { error: errorsError } = await client.from("app_errors").delete().lt("created_at", ninetyDays);
+  if (errorsError) throw new Error(`retention app_errors failed: ${errorsError.message}`);
+}
+
 export async function runRetention(log: { info: (msg: string) => void; error: (err: unknown, msg: string) => void }): Promise<void> {
   try {
     const pruned = await rollUpAndPruneAiCalls();
@@ -95,6 +107,11 @@ export async function runRetention(log: { info: (msg: string) => void; error: (e
     await pruneAiUsage();
   } catch (err) {
     log.error(err, "retention: ai_usage step failed");
+  }
+  try {
+    await pruneOldRecords();
+  } catch (err) {
+    log.error(err, "retention: old records step failed");
   }
 }
 

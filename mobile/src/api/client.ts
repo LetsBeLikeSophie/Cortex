@@ -501,6 +501,10 @@ export function logAppEvent(type: 'paywall_view' | 'purchase_started', detail: s
   request<void>('/me/event', { method: 'POST', body: JSON.stringify({ type, detail }) }).catch(() => {});
 }
 
+export function reportAppError(report: { appVersion: string; name: string; stack: string }) {
+  return request<void>('/me/error', { method: 'POST', body: JSON.stringify(report) });
+}
+
 export function fetchOffers() {
   return request<Offers>('/billing/offers');
 }

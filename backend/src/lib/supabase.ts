@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { config, required } from "../config.js";
+import { recordOnlyRaw } from "./billingRules.js";
 import { Category } from "./categories.js";
 import type { SearchInterpretation } from "./anthropic.js";
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG } from "./sourceCatalog.js";
@@ -1151,6 +1152,14 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   if (usageError) throw new Error(`failed to delete usage log: ${usageError.message}`);
   const { error: reportsError } = await client.from("ai_reports").delete().eq("user_id", userId);
   if (reportsError) throw new Error(`failed to delete AI reports: ${reportsError.message}`);
+  // Purchases stay 5 years for refunds and tax, no longer saying whose they were
+  // (decision C2). The token stays: it can be restored on a new account.
+  const { data: purchases, error: purchasesError } = await client.from("purchases").select("id, raw").eq("user_id", userId);
+  if (purchasesError) throw new Error(`failed to read purchases: ${purchasesError.message}`);
+  for (const row of purchases ?? []) {
+    const { error } = await client.from("purchases").update({ user_id: null, raw: recordOnlyRaw(row.raw) }).eq("id", row.id);
+    if (error) throw new Error(`failed to detach purchase: ${error.message}`);
+  }
   // Per-call cost log: keep the rows (aggregate cost), drop who made them.
   const { error: callsError } = await client.from("ai_calls").update({ user_id: null }).eq("user_id", userId);
   if (callsError) console.error(`failed to detach ai_calls: ${callsError.message}`);
@@ -1246,6 +1255,11 @@ export async function findUserIdByKakaoId(kakaoId: number): Promise<string | nul
 export async function linkKakaoUser(kakaoId: number, userId: string): Promise<void> {
   const { error } = await getClient().from("kakao_users").insert({ kakao_id: String(kakaoId), user_id: userId });
   if (error) throw new Error(`linkKakaoUser failed: ${error.message}`);
+}
+
+export async function logAppError(row: { appVersion: string; name: string; stack: string }): Promise<void> {
+  const { error } = await getClient().from("app_errors").insert({ app_version: row.appVersion, name: row.name, stack: row.stack });
+  if (error) throw new Error(`logAppError failed: ${error.message}`);
 }
 
 export type AnalyticsEventType =

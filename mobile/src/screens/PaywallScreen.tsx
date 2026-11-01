@@ -263,9 +263,10 @@ export default function PaywallScreen() {
   const close = () => navigation.goBack();
 
   const pro = plan?.proLimits;
+  const backlogCount = plan?.backlogCount ?? plan?.unclassifiedCount ?? 0;
   const benefits = [
     pro ? S.classifyN(pro.classify.toLocaleString()) : S.classify,
-    plan && plan.unclassifiedCount > 0 ? S.backlogN(plan.unclassifiedCount) : S.backlog,
+    backlogCount > 0 ? S.backlogN(backlogCount) : S.backlog,
     pro ? S.searchN(pro.search.toLocaleString()) : S.search,
     pro?.compose ? S.composeN(pro.compose.toLocaleString()) : S.compose,
     // Opened because tag cleanup ran out: say what Pro gives for it (only

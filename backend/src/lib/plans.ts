@@ -1,6 +1,6 @@
 import { config } from "../config.js";
 import { DEFAULT_LANG } from "./anthropic.js";
-import { getClient, logAnalyticsEvent } from "./supabase.js";
+import { countBacklog, getClient, logAnalyticsEvent } from "./supabase.js";
 
 // Free vs Pro, and the monthly AI quotas behind them. Saving is never
 // limited -- only the Claude-backed work is: auto-classification (over
@@ -37,6 +37,8 @@ export interface Entitlement {
   // When this month's quota resets (start of next month, Korea time).
   resetsAt: string;
   unclassifiedCount: number;
+  // What 'AI로 정리' can take: the same without locked memos.
+  backlogCount: number;
 }
 
 const KST_MS = 9 * 60 * 60 * 1000;
@@ -125,12 +127,13 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
       if (at && at > since) since = at;
     }
   }
-  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount] = await Promise.all([
+  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount, backlogCount] = await Promise.all([
     countUsage(userId, "classify", since),
     countUsage(userId, "search", since),
     countUsage(userId, "compose", since),
     countUsage(userId, "tag_cleanup", since),
     countUnclassified(userId),
+    countBacklog(userId),
   ]);
   return {
     tier,
@@ -145,6 +148,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     proLimits: { classify: config.proClassifyMonthly, search: config.proSearchMonthly, compose: config.proComposeMonthly, tag_cleanup: config.proTagCleanupMonthly },
     resetsAt: next.toISOString(),
     unclassifiedCount,
+    backlogCount,
   };
 }
 

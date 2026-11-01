@@ -204,7 +204,7 @@ export function AndroidPurchase({
   // The paywall promised '미분류함 N건도 한 번에 정리돼요' -- so once Pro is
   // on, start that right away and say so.
   const announcePro = async (plan: Plan | null, first: string) => {
-    const waiting = plan?.unclassifiedCount ?? 0;
+    const waiting = plan?.backlogCount ?? plan?.unclassifiedCount ?? 0;
     if (waiting === 0) {
       showToast(first);
       return;

@@ -32,6 +32,8 @@ export interface Plan {
   proLimits?: { classify: number; search: number; compose?: number; tag_cleanup?: number };
   resetsAt: string;
   unclassifiedCount: number;
+  // What 'AI로 정리' can take, without locked memos (optional: older servers).
+  backlogCount?: number;
 }
 
 export interface ApiItem {

@@ -624,6 +624,7 @@ export default function HomeScreen() {
       ? waitingItems ?? rawItems.filter((it) => it.classification_status === 'unclassified')
       : tagList ?? rawItems;
   const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;
+  const backlogCount = plan?.backlogCount ?? unclassifiedCount;
   const classifyLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : 0;
   // Never agreed (or declined): the 미분류 strip asks for consent instead of
   // offering a sort the server would refuse (and Pro would not fix).
@@ -831,18 +832,20 @@ export default function HomeScreen() {
               {S.waitingCount(unclassifiedCount)}
             </Text>
           </View>
-          {!!plan && !noAiConsent && isLowOnUses(classifyLeft) && (
+          {!!plan && !noAiConsent && backlogCount > 0 && isLowOnUses(classifyLeft) && (
             <Bubble theme={theme} tail="right" label={classifyLeft === 0 ? S.refillsOn(resetLabel(plan?.resetsAt)) : USES.left(classifyLeft)} style={styles.backlogBubble} />
           )}
-          <SolidButton
-            label={noAiConsent ? S.allowAi : classifyLeft > 0 ? S.sortWithAi(Math.min(classifyLeft, unclassifiedCount)) : S.sortWithPro}
-            theme={theme}
-            size="sm"
-            flex={0}
-            loading={sorting}
-            disabled={sortHeld && !noAiConsent}
-            onPress={noAiConsent ? () => navigation.navigate('AiConsent') : classifyLeft === 0 ? sortBacklog : () => setAskSort(true)}
-          />
+          {(noAiConsent || backlogCount > 0) && (
+            <SolidButton
+              label={noAiConsent ? S.allowAi : classifyLeft > 0 ? S.sortWithAi(Math.min(classifyLeft, backlogCount)) : S.sortWithPro}
+              theme={theme}
+              size="sm"
+              flex={0}
+              loading={sorting}
+              disabled={sortHeld && !noAiConsent}
+              onPress={noAiConsent ? () => navigation.navigate('AiConsent') : classifyLeft === 0 ? sortBacklog : () => setAskSort(true)}
+            />
+          )}
         </View>
       )}
 

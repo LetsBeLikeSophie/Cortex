@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { compressScreenshot } from "./image.js";
+import { createSlots } from "./slots.js";
 import { fetchLinkMetadata } from "./metadata.js";
 import { classifyText, classifyImage, isAiUnavailable } from "./anthropic.js";
 import type { Category } from "./categories.js";
@@ -235,7 +236,7 @@ export async function classifyBacklog(userId: string): Promise<{ started: number
   const picked = await listBacklogItems(userId, budget);
   const items = await markBacklogPending(userId, picked.map((it) => it.id));
   const reservations = await reserveUsageMany(userId, "classify", items.length);
-  items.forEach((item, i) => enqueueClassification({ item, reservation: reservations[i] ?? null }));
+  items.forEach((item, i) => enqueueClassification({ item, reservation: reservations[i] ?? null, background: true }));
   return { started: items.length, left: await countBacklog(userId) };
 }
 
@@ -267,21 +268,11 @@ interface ClassificationJob {
   useEditsAsHint?: boolean;
   reservation: number | null;
   onDone?: (category: Category) => Promise<void>;
+  // Backlog or restart work: waits behind anything a person just asked for.
+  background?: boolean;
 }
 
-let active = 0;
-const waiting: (() => void)[] = [];
-
-async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
-  if (active >= MAX_CONCURRENT) await new Promise<void>((resolve) => waiting.push(resolve));
-  active++;
-  try {
-    return await fn();
-  } finally {
-    active--;
-    waiting.shift()?.();
-  }
-}
+const withSlot = createSlots(MAX_CONCURRENT);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -296,14 +287,14 @@ async function runJob(job: ClassificationJob): Promise<void> {
   // Read inside a slot, so a restart's hundreds of jobs don't all hit the
   // database at once. A lookup that fails can't confirm consent: the item
   // waits with reason 'failed' (not 'consent' -- they may well have agreed).
-  const ent = await withSlot(() => getAiGate(item.user_id)).catch(() => null);
+  const ent = await withSlot(() => getAiGate(item.user_id), job.background).catch(() => null);
   if (ent?.aiConsent !== "agreed") {
     if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
     await markUnclassified(item.id, item.user_id, ent ? "consent" : "failed").catch((e) => console.error("markUnclassified failed:", e));
     return;
   }
   // Locked or trashed since it was queued: it stays here, use handed back.
-  const gate = await withSlot(() => getClassifyGate(item.id)).catch(() => undefined);
+  const gate = await withSlot(() => getClassifyGate(item.id), job.background).catch(() => undefined);
   if (gate === null) {
     if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
     return;
@@ -315,7 +306,7 @@ async function runJob(job: ClassificationJob): Promise<void> {
   }
   for (let attempt = 0; ; attempt++) {
     try {
-      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64, job.useEditsAsHint, ent.lang));
+      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64, job.useEditsAsHint, ent.lang), job.background);
       await job.onDone?.(category).catch((err) => console.error("classification onDone failed:", err));
       return;
     } catch (err) {
@@ -341,6 +332,6 @@ async function runJob(job: ClassificationJob): Promise<void> {
 // saved, so no new reservation (and no refund to give back if they fail).
 export async function resumePendingClassifications(): Promise<number> {
   const items = await listPendingItems(500);
-  for (const item of items) enqueueClassification({ item, reservation: null });
+  for (const item of items) enqueueClassification({ item, reservation: null, background: true });
   return items.length;
 }

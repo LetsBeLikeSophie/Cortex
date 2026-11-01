@@ -9,7 +9,9 @@ import { AiPurpose, logAiCall } from "./aiLog.js";
 // (ANTHROPIC_API_KEY_CLASSIFY / _SEARCH / _VOICE), so the Anthropic console
 // can split usage and cost by feature. Unset -> falls back to the shared
 // ANTHROPIC_API_KEY, which keeps everything working before the keys exist.
-const clientFor = (envName: string) => new Anthropic({ apiKey: process.env[envName] || process.env.ANTHROPIC_API_KEY });
+// A stuck connection holds one of the few queue slots (SDK default: 10 minutes,
+// 2 retries), and the queue already retries on its own.
+const clientFor = (envName: string) => new Anthropic({ apiKey: process.env[envName] || process.env.ANTHROPIC_API_KEY, timeout: 60_000, maxRetries: 1 });
 const classifyClient = clientFor("ANTHROPIC_API_KEY_CLASSIFY");
 const searchClient = clientFor("ANTHROPIC_API_KEY_SEARCH");
 const voiceClient = clientFor("ANTHROPIC_API_KEY_VOICE");
@@ -729,7 +731,7 @@ export async function composeFromItems(
       },
     ],
     output_config: { effort: "medium", format: zodOutputFormat(ComposeSchema) },
-  });
+  }, { timeout: 120_000 });
   logAiCall("compose", MODEL, response.usage, userId);
   const out = response.parsed_output;
   if (!out) throw new Error("Claude response did not parse against the compose schema");

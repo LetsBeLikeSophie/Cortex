@@ -9,6 +9,7 @@ import { CJK_SYSTEM_FONT, LAYOUTS, PALETTES, allEdges, conceptOf, BODY_KR, BODY_
 import { useAuth } from '../auth/AuthContext';
 import { signInWithKakao, signOut } from '../auth/kakaoLogin';
 import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
+import { forgetAccountOnPhone } from '../auth/accountTraces';
 import { deleteAccount, fetchPlan, Plan, friendlyError, unlockAllItems } from '../api/client';
 import { LOCK_SUPPORTED, askPin, biometricAvailable, biometricOn, clearPin, hasPin, setBiometricOn } from '../lock/memoLock';
 import { ProfileIcon } from '../components/Icons';
@@ -485,6 +486,7 @@ export default function ProfileScreen() {
       await deleteAccount();
       // Its Mehh photos still waiting on this phone go too.
       if (session) await discardSharesOf(session.user.id).catch(() => {});
+      await forgetAccountOnPhone();
       await signOut(); // the account is actually gone now -- clear the local session -> LoginScreen
     } catch (err) {
       setError(friendlyError(err));

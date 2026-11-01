@@ -3,6 +3,8 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
+import { pinWaitMs } from './pinWait';
+
 // Memo lock: a 4-digit PIN kept only on this device (Android keystore via
 // SecureStore), optionally opened with the fingerprint/face the phone
 // already has. The server just stores which memos are locked, so AI search
@@ -13,6 +15,9 @@ import { Platform } from 'react-native';
 
 const PIN_KEY = 'cortex.memoLock.pin';
 const BIO_KEY = 'cortex.memoLock.biometric';
+// { wrong: tries in a row, until: no tries before this time }. Kept on disk so
+// closing the app doesn't start the count over.
+const WAIT_KEY = 'cortex.memoLock.wait';
 
 // Native only: there is no keystore on the web build.
 export const LOCK_SUPPORTED = Platform.OS !== 'web';
@@ -24,16 +29,42 @@ export async function hasPin(): Promise<boolean> {
 
 export async function setPin(pin: string): Promise<void> {
   await SecureStore.setItemAsync(PIN_KEY, pin);
+  await AsyncStorage.removeItem(WAIT_KEY).catch(() => {});
+}
+
+async function readWait(): Promise<{ wrong: number; until: number }> {
+  const raw = await AsyncStorage.getItem(WAIT_KEY).catch(() => null);
+  try {
+    const saved = raw ? JSON.parse(raw) : null;
+    return { wrong: Number(saved?.wrong) || 0, until: Number(saved?.until) || 0 };
+  } catch {
+    return { wrong: 0, until: 0 };
+  }
+}
+
+// When the pad opens again (a time, or 0 when it's open now).
+export async function pinOpensAt(): Promise<number> {
+  const { until } = await readWait();
+  return until > Date.now() ? until : 0;
 }
 
 export async function checkPin(pin: string): Promise<boolean> {
+  if (await pinOpensAt()) return false;
   const stored = await SecureStore.getItemAsync(PIN_KEY).catch(() => null);
-  return !!stored && stored === pin;
+  if (stored && stored === pin) {
+    await AsyncStorage.removeItem(WAIT_KEY).catch(() => {});
+    return true;
+  }
+  const wrong = (await readWait()).wrong + 1;
+  const wait = pinWaitMs(wrong);
+  await AsyncStorage.setItem(WAIT_KEY, JSON.stringify({ wrong, until: wait ? Date.now() + wait : 0 })).catch(() => {});
+  return false;
 }
 
 export async function clearPin(): Promise<void> {
   await SecureStore.deleteItemAsync(PIN_KEY).catch(() => {});
   await AsyncStorage.removeItem(BIO_KEY).catch(() => {});
+  await AsyncStorage.removeItem(WAIT_KEY).catch(() => {});
 }
 
 // Whether the phone can open locks with a fingerprint/face at all.

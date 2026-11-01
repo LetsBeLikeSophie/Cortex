@@ -8,7 +8,7 @@ import { Heading, SHEET_TITLE_SIZE } from '../components/Typography';
 import { allEdges, OUTLINE, BODY_KR } from '../theme/themes';
 import { strings } from '../i18n';
 import type { RootStackParamList } from '../navigation/types';
-import { checkPin, confirmDeviceOwner, finishPin, setPin } from '../lock/memoLock';
+import { checkPin, confirmDeviceOwner, finishPin, pinOpensAt, setPin } from '../lock/memoLock';
 
 const S = strings({
   ko: {
@@ -16,6 +16,8 @@ const S = strings({
     setNew: '새 비밀번호 (숫자 4자리)',
     again: '한 번 더 입력해 주세요',
     wrong: '비밀번호가 맞지 않아요',
+    waitSec: (n: number) => `${n}초 뒤에 다시 입력해 주세요`,
+    waitMin: (n: number) => `${n}분 뒤에 다시 입력해 주세요`,
     mismatch: '두 번 입력한 숫자가 달라요. 처음부터 다시 입력해 주세요.',
     forgot: '비밀번호를 잊었어요',
     owner: '휴대폰 잠금으로 본인 확인',
@@ -28,6 +30,8 @@ const S = strings({
     setNew: 'New PIN (4 digits)',
     again: 'Enter it once more',
     wrong: "That PIN isn't right",
+    waitSec: (n: number) => `Try again in ${n} sec`,
+    waitMin: (n: number) => `Try again in ${n} min`,
     mismatch: "The two PINs didn't match. Please start again.",
     forgot: 'I forgot my PIN',
     owner: "Confirm with your phone's screen lock",
@@ -40,6 +44,8 @@ const S = strings({
     setNew: '新しい暗証番号(数字4桁)',
     again: 'もう一度入力してください',
     wrong: '暗証番号が違います',
+    waitSec: (n: number) => `${n}秒後にもう一度入力してください`,
+    waitMin: (n: number) => `${n}分後にもう一度入力してください`,
     mismatch: '2回の入力が一致しません。最初から入力してください。',
     forgot: '暗証番号を忘れた',
     owner: '端末の画面ロックで本人確認',
@@ -52,6 +58,8 @@ const S = strings({
     setNew: '新密码（4 位数字）',
     again: '请再输入一次',
     wrong: '密码不正确',
+    waitSec: (n: number) => `请在 ${n} 秒后重试`,
+    waitMin: (n: number) => `请在 ${n} 分钟后重试`,
     mismatch: '两次输入不一致，请重新输入。',
     forgot: '忘记密码',
     owner: '用手机锁屏验证身份',
@@ -64,6 +72,8 @@ const S = strings({
     setNew: '新密碼（4 位數字）',
     again: '請再輸入一次',
     wrong: '密碼不正確',
+    waitSec: (n: number) => `請在 ${n} 秒後重試`,
+    waitMin: (n: number) => `請在 ${n} 分鐘後重試`,
     mismatch: '兩次輸入不一致，請重新輸入。',
     forgot: '忘記密碼',
     owner: '用手機螢幕鎖定驗證身分',
@@ -87,6 +97,27 @@ export default function PinScreen() {
   const [first, setFirst] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const done = useRef(false);
+  // While wrong tries make the pad wait: seconds left, ticking down.
+  const [opensAt, setOpensAt] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  useEffect(() => {
+    if (mode === 'check') pinOpensAt().then(setOpensAt);
+    else setOpensAt(0);
+  }, [mode]);
+  useEffect(() => {
+    if (!opensAt) return setSecondsLeft(0);
+    const tick = () => {
+      const left = Math.ceil((opensAt - Date.now()) / 1000);
+      setSecondsLeft(Math.max(left, 0));
+      if (left <= 0) {
+        setOpensAt(0);
+        setMessage('');
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [opensAt]);
 
   const close = (ok: boolean) => {
     if (done.current) return;
@@ -107,6 +138,7 @@ export default function PinScreen() {
       if (await checkPin(pin)) return close(true);
       setMessage(S.wrong);
       setDigits('');
+      setOpensAt(await pinOpensAt());
       return;
     }
     if (first === null) {
@@ -127,7 +159,7 @@ export default function PinScreen() {
 
   const press = (key: string) => {
     if (key === 'del') return setDigits((d) => d.slice(0, -1));
-    if (!key || digits.length >= LENGTH) return;
+    if (!key || digits.length >= LENGTH || secondsLeft > 0) return;
     const next = digits + key;
     setDigits(next);
     if (next.length === LENGTH) submit(next);
@@ -158,7 +190,9 @@ export default function PinScreen() {
           />
         ))}
       </View>
-      <Text style={[styles.message, { color: theme.danger }]}>{message}</Text>
+      <Text style={[styles.message, { color: theme.danger }]}>
+        {secondsLeft > 60 ? S.waitMin(Math.ceil(secondsLeft / 60)) : secondsLeft > 0 ? S.waitSec(secondsLeft) : message}
+      </Text>
       <View style={styles.pad}>
         {KEYS.map((key, i) => (
           <Pressable

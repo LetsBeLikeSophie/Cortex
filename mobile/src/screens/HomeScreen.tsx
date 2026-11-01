@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
+import { ProgressRow } from '../components/ProgressRow';
 import { appendPage } from '../api/itemPages';
 import { useRunningComposes } from '../compose/running';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -70,6 +71,9 @@ const S = strings({
     toTrash: '휴지통으로',
     select: '선택',
     composing: (tag: string) => `'${tag}' 모아서 만드는 중`,
+    sorting: (n: number) => `AI가 메모 ${n}개 정리 중`,
+    sortingSlow: '오래 걸려요 · 앱을 닫아도 계속돼요',
+    sortFailed: (n: number) => `메모 ${n}개는 AI 정리가 안 됐어요 · 미분류함에 있어요 · 횟수는 그대로예요`,
     composeSelected: '✦ 모아서 만들기',
     compose: '모아서 만들기',
     addTag: '태그 추가',
@@ -113,6 +117,9 @@ const S = strings({
     toTrash: 'Move to trash',
     select: 'Select',
     composing: (tag: string) => `Combining '${tag}'`,
+    sorting: (n: number) => `AI is sorting ${n} memo${n === 1 ? '' : 's'}`,
+    sortingSlow: 'Taking a while · keeps going if you close the app',
+    sortFailed: (n: number) => `${n} memo${n === 1 ? '' : 's'} couldn't be sorted · in Unsorted · no use spent`,
     composeSelected: '✦ Combine',
     compose: 'Combine',
     addTag: 'Add tag',
@@ -156,6 +163,9 @@ const S = strings({
     toTrash: 'ゴミ箱へ',
     select: '選択',
     composing: (tag: string) => `「${tag}」をまとめています`,
+    sorting: (n: number) => `AIがメモ${n}件を整理中`,
+    sortingSlow: '時間がかかっています · アプリを閉じても続きます',
+    sortFailed: (n: number) => `メモ${n}件はAI整理できませんでした · 未分類にあります · 回数は減っていません`,
     composeSelected: '✦ まとめて作る',
     compose: 'まとめて作る',
     addTag: 'タグ追加',
@@ -199,6 +209,9 @@ const S = strings({
     toTrash: '移到回收站',
     select: '选择',
     composing: (tag: string) => `正在汇总“${tag}”`,
+    sorting: (n: number) => `AI 正在整理 ${n} 条笔记`,
+    sortingSlow: '需要一点时间 · 关闭应用也会继续',
+    sortFailed: (n: number) => `${n} 条笔记未能整理 · 在未分类中 · 未扣次数`,
     composeSelected: '✦ 汇总生成',
     compose: '汇总生成',
     addTag: '添加标签',
@@ -242,6 +255,9 @@ const S = strings({
     toTrash: '移到垃圾桶',
     select: '選擇',
     composing: (tag: string) => `正在彙整「${tag}」`,
+    sorting: (n: number) => `AI 正在整理 ${n} 則筆記`,
+    sortingSlow: '需要一點時間 · 關閉 App 也會繼續',
+    sortFailed: (n: number) => `${n} 則筆記未能整理 · 在未分類中 · 未扣次數`,
     composeSelected: '✦ 彙整生成',
     compose: '彙整生成',
     addTag: '新增標籤',
@@ -401,7 +417,25 @@ export default function HomeScreen() {
   // back to Home. items.length already keeps AsyncStateView's loading
   // state from flickering (see its `loading && items.length === 0` guard
   // below), so reusing `load()` here is safe.
-  const hasPending = rawItems.some((it) => it.classification_status === 'pending');
+  const pendingCount = rawItems.filter((it) => it.classification_status === 'pending').length;
+  const hasPending = pendingCount > 0;
+  // A minute in, say that it's slow, not stuck.
+  const [sortingSlow, setSortingSlow] = useState(false);
+  useEffect(() => {
+    setSortingSlow(false);
+    if (!hasPending) return;
+    const id = setTimeout(() => setSortingSlow(true), 60_000);
+    return () => clearTimeout(id);
+  }, [hasPending]);
+  // A memo that was being sorted and ended up in 미분류함 says so once, on
+  // Home. A later visit still reports one that failed while elsewhere.
+  const watchedPending = React.useRef(new Set<string>());
+  useEffect(() => {
+    if (!navigation.isFocused()) return;
+    const failed = rawItems.filter((it) => watchedPending.current.has(it.id) && it.classification_status === 'unclassified' && it.unclassified_reason !== 'consent').length;
+    watchedPending.current = new Set(rawItems.filter((it) => it.classification_status === 'pending').map((it) => it.id));
+    if (failed > 0) showToast(S.sortFailed(failed));
+  }, [rawItems, navigation]);
   useEffect(() => {
     if (!hasPending) return;
     const id = setInterval(load, 3000);
@@ -742,21 +776,16 @@ export default function HomeScreen() {
         </View>
         <PolicyNotice theme={theme} />
         {composing.map((tag, i) => (
-          <View key={tag + i} style={styles.shareQueueRow}>
-            <ActivityIndicator color={theme.sub} size="small" />
-            <Text style={[styles.shareQueueText, styles.composingText, { color: theme.sub }]}>{S.composing(tag)}</Text>
-          </View>
+          <ProgressRow key={tag + i} theme={theme} label={S.composing(tag)} style={styles.shareQueueRow} />
         ))}
+        {hasPending && <ProgressRow theme={theme} label={sortingSlow ? S.sortingSlow : S.sorting(pendingCount)} style={styles.shareQueueRow} />}
         {shareQueue.pending > 0 &&
           (shareQueue.waitingConsent ? (
             <Pressable onPress={() => navigation.navigate('AiConsent')} hitSlop={6} style={styles.shareQueueRow}>
               <Text style={[styles.shareQueueText, { color: theme.accent }]}>{S.sharedWaitingConsent(shareQueue.pending)}</Text>
             </Pressable>
           ) : (
-            <View style={styles.shareQueueRow}>
-              {shareQueue.running && <ActivityIndicator color={theme.sub} size="small" />}
-              <Text style={[styles.shareQueueText, { color: theme.sub }]}>{S.sharedSaving(shareQueue.pending)}</Text>
-            </View>
+            <ProgressRow theme={theme} label={S.sharedSaving(shareQueue.pending)} spinning={shareQueue.running} style={styles.shareQueueRow} />
           ))}
 
         {/* No shadow/elevation here -- 'card' (retired) paired elevation
@@ -1100,7 +1129,6 @@ const styles = StyleSheet.create({
   headPad: {},
   shareQueueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   shareQueueText: { fontFamily: BODY_KR, fontSize: 12.5 },
-  composingText: { flexShrink: 1 },
   moreSpinner: { marginTop: 16 },
   brandRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandRowActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -842,6 +842,8 @@ export default function ItemDetailScreen() {
   };
   const sparkleButton = (
     <View style={styles.sparkleRow}>
+      {/* A text memo has no AI memo line to say this. */}
+      {organizing && item.capture_type === 'text' && <Text style={[styles.sparkleWorking, { color: theme.sub }]}>{S.organizing}</Text>}
       {/* Every press spends one, so while it can be pressed (like sentence search). */}
       {aiAgreed && !organizing && classifyLeft !== null && <Bubble theme={theme} label={USES.left(classifyLeft)} tail="right" style={styles.sparkleBubble} />}
       <IconButton theme={theme} on="sheet" onPress={pressSparkle} label={S.reorganize}>
@@ -1286,6 +1288,7 @@ export default function ItemDetailScreen() {
 const styles = StyleSheet.create({
   sparkleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   sparkleBubble: { alignSelf: 'center' },
+  sparkleWorking: { flexShrink: 1, fontFamily: BODY_KR, fontSize: 12.5 },
   lockedGate: { alignItems: 'center', gap: 10, paddingTop: 8 },
   lockedTitle: { textAlign: 'center' },
   sourcesBox: { gap: 6, marginTop: 8 },

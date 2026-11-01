@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -36,6 +35,7 @@ import { FieldRow, fieldTextStyle } from '../components/FieldRow';
 import { splitLinkText } from '../data/linkText';
 import type { RecentScreenshot } from '../data/photoBatch';
 import type { RootStackParamList } from '../navigation/types';
+import { ProgressRow } from '../components/ProgressRow';
 import { strings } from '../i18n';
 import { COMMON, USES, categoryLabel } from '../i18n/common';
 
@@ -937,12 +937,7 @@ ${sharedNote ?? ''}`;
                         are actually pending there, so this shows it as-is
                         rather than hiding it behind the spinner too. */}
                     {saved.raw_text && <Text style={[styles.title, { color: theme.ink }]} numberOfLines={4}>{saved.raw_text}</Text>}
-                    <View style={styles.analyzingRow}>
-                      <ActivityIndicator size="small" color={theme.accent} />
-                      <Text style={{ color: theme.sub, fontFamily: BODY_KR, fontSize: 13.5 }}>
-                        {S.analyzingTags}
-                      </Text>
-                    </View>
+                    <ProgressRow theme={theme} label={S.analyzingTags} style={styles.analyzingRow} />
                   </>
                 ) : saved.classification_status === 'unclassified' ? (
                   // Saved past this month's AI quota: kept, but not sorted --
@@ -1026,7 +1021,7 @@ const styles = StyleSheet.create({
   quotaBubble: { alignSelf: 'flex-end', flexShrink: 0, marginTop: 18, marginBottom: -12 },
   noteRow: { marginTop: 14 },
   memoRow: { marginTop: 18 },
-  analyzingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  analyzingRow: { marginTop: 6 },
   screenshotSection: { marginTop: 18 },
   bulkHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   newTagBox: { borderWidth: 1, borderStyle: 'dashed', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, alignSelf: 'flex-start' },

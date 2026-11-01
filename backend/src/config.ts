@@ -65,6 +65,9 @@ export const config = {
   // Detailed per-call AI log retention (src/lib/retention.ts); older rows
   // are summed into ai_calls_monthly, then deleted.
   aiCallsRetentionDays: Number(optional("AI_CALLS_RETENTION_DAYS") ?? 90),
+  // Service-wide AI spend per UTC day (src/lib/aiBudget.ts); past it new memos
+  // wait in 미분류함. 0 turns it off.
+  aiDailyLimitUsd: Number(optional("AI_DAILY_LIMIT_USD") ?? 5),
 
   // Anthropic SDK reads ANTHROPIC_API_KEY itself; kept here only so routes
   // can check readiness before making a call.

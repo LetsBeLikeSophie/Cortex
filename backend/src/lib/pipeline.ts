@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { compressScreenshot } from "./image.js";
 import { createSlots } from "./slots.js";
+import { dailyAiBudget } from "./aiLog.js";
 import { fetchLinkMetadata } from "./metadata.js";
 import { classifyText, classifyImage, isAiUnavailable } from "./anthropic.js";
 import type { Category } from "./categories.js";
@@ -302,6 +303,12 @@ async function runJob(job: ClassificationJob): Promise<void> {
   if (gate === undefined || gate.locked || gate.deleted) {
     if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
     await markUnclassified(item.id, item.user_id, gate === undefined ? "failed" : null).catch((e) => console.error("markUnclassified failed:", e));
+    return;
+  }
+  // Past today's service-wide ceiling: saved, not sent. 'AI로 정리' picks it up.
+  if (await dailyAiBudget.isOver()) {
+    if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
+    await markUnclassified(item.id, item.user_id).catch((e) => console.error("markUnclassified failed:", e));
     return;
   }
   for (let attempt = 0; ; attempt++) {

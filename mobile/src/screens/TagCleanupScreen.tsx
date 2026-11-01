@@ -27,6 +27,8 @@ const S = strings({
     finding: '비슷한 태그를 찾고 있어요',
     none: '합칠 만한 태그가 없어요. 이미 깔끔해요.',
     pick: '합칠 묶음을 골라 주세요',
+    pickRest: '남긴 묶음은 이번 달 안에 다시 고를 수 있어요',
+    findNew: '새로 찾기 · 1회',
     apply: (n: number) => `${n}개 묶음 합치기`,
     willChange: (n: number) => `메모 ${n}개의 태그가 바뀌어요 · 되돌릴 수 없어요`,
     applied: (n: number) => `메모 ${n}개의 태그를 정리했어요`,
@@ -42,6 +44,8 @@ const S = strings({
     finding: 'Looking for similar tags',
     none: 'Nothing to merge. Your tags are already tidy.',
     pick: 'Pick the groups to merge',
+    pickRest: 'Groups you leave stay here this month',
+    findNew: 'Find new · 1 use',
     apply: (n: number) => `Merge ${n} ${n === 1 ? 'group' : 'groups'}`,
     willChange: (n: number) => `Tags change on ${n} memo${n === 1 ? '' : 's'} · this can't be undone`,
     applied: (n: number) => `Tidied the tags of ${n} ${n === 1 ? 'memo' : 'memos'}`,
@@ -57,6 +61,8 @@ const S = strings({
     finding: '似たタグを探しています',
     none: '統合できるタグはありません。すでに整っています。',
     pick: '統合するグループを選んでください',
+    pickRest: '残したグループは今月中にまた選べます',
+    findNew: '新しく探す · 1回',
     apply: (n: number) => `${n}グループを統合`,
     willChange: (n: number) => `メモ${n}件のタグが変わります · 元に戻せません`,
     applied: (n: number) => `メモ${n}件のタグを整理しました`,
@@ -72,6 +78,8 @@ const S = strings({
     finding: '正在查找相似标签',
     none: '没有可合并的标签，已经很整齐了。',
     pick: '选择要合并的组',
+    pickRest: '留下的组本月内还能再选',
+    findNew: '重新查找 · 1 次',
     apply: (n: number) => `合并 ${n} 组`,
     willChange: (n: number) => `${n} 条笔记的标签会改变 · 无法撤销`,
     applied: (n: number) => `已整理 ${n} 条笔记的标签`,
@@ -87,6 +95,8 @@ const S = strings({
     finding: '正在尋找相似標籤',
     none: '沒有可合併的標籤，已經很整齊了。',
     pick: '選擇要合併的組',
+    pickRest: '留下的組本月內還能再選',
+    findNew: '重新尋找 · 1 次',
     apply: (n: number) => `合併 ${n} 組`,
     willChange: (n: number) => `${n} 則筆記的標籤會改變 · 無法復原`,
     applied: (n: number) => `已整理 ${n} 則筆記的標籤`,
@@ -114,6 +124,7 @@ export default function TagCleanupScreen() {
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [changed, setChanged] = useState(0);
   const [error, setError] = useState('');
+  const [fromSaved, setFromSaved] = useState(false);
 
   // A suggestion bought earlier this month: straight to its list (nothing
   // ticked), without tags that have since gone.
@@ -133,6 +144,7 @@ export default function TagCleanupScreen() {
         .filter((g) => g.merge.length > 0);
       if (cancelled || still.length === 0) return;
       setGroups(still);
+      setFromSaved(true);
       setPicked(new Set());
       setStep((cur) => (cur === 'intro' ? 'pick' : cur));
     })();
@@ -172,6 +184,7 @@ export default function TagCleanupScreen() {
         AsyncStorage.setItem(SAVED_KEY, JSON.stringify({ month: thisMonth(), groups: res.groups } satisfies Saved)).catch(() => {});
       }
       setGroups(res.groups);
+      setFromSaved(false);
       // Nothing is merged unless the person ticks it.
       setPicked(new Set());
       setStep('pick');
@@ -200,7 +213,10 @@ export default function TagCleanupScreen() {
       const next = [...new Set(tabs.map((t) => rename.get(t) ?? t))];
       if (next.join('\n') !== tabs.join('\n')) await saveHomeTabs(next);
       setChanged(res.changed);
-      AsyncStorage.removeItem(SAVED_KEY).catch(() => {});
+      // The use paid for the whole list: what wasn't ticked stays for later.
+      const rest = groups.filter((_, i) => !picked.has(i));
+      if (rest.length > 0) AsyncStorage.setItem(SAVED_KEY, JSON.stringify({ month: thisMonth(), groups: rest } satisfies Saved)).catch(() => {});
+      else AsyncStorage.removeItem(SAVED_KEY).catch(() => {});
       setStep('done');
     } catch (err) {
       setError(friendlyError(err));
@@ -227,7 +243,7 @@ export default function TagCleanupScreen() {
       <SheetTitle
         theme={theme}
         title={S.title}
-        sub={step === 'intro' ? `${S.intro}\n${S.useful}` : (step === 'pick' || step === 'applying') && groups.length > 0 ? S.pick : undefined}
+        sub={step === 'intro' ? `${S.intro}\n${S.useful}` : (step === 'pick' || step === 'applying') && groups.length > 0 ? (groups.length > 1 ? `${S.pick}\n${S.pickRest}` : S.pick) : undefined}
       />
 
       {step === 'finding' && (
@@ -264,6 +280,12 @@ export default function TagCleanupScreen() {
             </ScrollView>
           </>
         )
+      )}
+
+      {step === 'pick' && fromSaved && !!usesLeft && (
+        <Pressable onPress={find} hitSlop={6}>
+          <Text style={[styles.small, { color: theme.sub }]}>{S.findNew}</Text>
+        </Pressable>
       )}
 
       {step === 'done' && <Text style={[styles.line, { color: theme.ink }]}>{S.applied(changed)}</Text>}

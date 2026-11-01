@@ -17,11 +17,11 @@ import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { useAuth } from '../auth/AuthContext';
 import { TRIAL_NOTICE_KEY } from '../auth/accountTraces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
+import { fetchItem, fetchItemsWithTag, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { ProgressRow } from '../components/ProgressRow';
-import { appendPage } from '../api/itemPages';
+import { appendPage, mergeFirstPage, updateRows } from '../api/itemPages';
 import { useRunningComposes } from '../compose/running';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
@@ -301,6 +301,10 @@ function heroShellStyle(theme: Theme): ViewStyle {
   }
 }
 
+const FIRST_PAGE = 100;
+const SLOW_POLL_MS = 30_000;
+const FAR_ROWS_PER_POLL = 10;
+
 export default function HomeScreen() {
   const { theme, layoutKey, paletteKey } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -371,11 +375,12 @@ export default function HomeScreen() {
   // The rows paged in so far, so a refresh brings back as many.
   const loadedCount = React.useRef(0);
   loadedCount.current = rawItems.length;
+  const itemsNow = React.useRef(rawItems);
+  itemsNow.current = rawItems;
   const reachedEnd = React.useRef(false);
-  const load = React.useCallback(() => {
-    setLoading(true);
-    // Quota + 미분류함 count ride along with every refresh; a failure here
-    // just leaves the last known plan on screen.
+  // Quota + 미분류함 count ride along with every refresh; a failure here
+  // just leaves the last known plan on screen.
+  const refreshPlan = React.useCallback(() => {
     fetchPlan()
       .then((p) => {
         setPlan(p);
@@ -383,6 +388,10 @@ export default function HomeScreen() {
         showTrialNotice(p);
       })
       .catch(() => {});
+  }, []);
+  const load = React.useCallback(() => {
+    setLoading(true);
+    refreshPlan();
     fetchRecentUpTo(loadedCount.current)
       .then((res) => {
         reachedEnd.current = false;
@@ -396,7 +405,7 @@ export default function HomeScreen() {
       // wipe real saved items out from under someone who's just browsing.
       .catch((err) => setError(friendlyError(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshPlan]);
 
   // Refetch whenever Home regains focus (e.g. after saving a new item, or
   // coming back from the tab picker) rather than just once on mount.
@@ -414,9 +423,7 @@ export default function HomeScreen() {
   // Classification now finishes after the save response, in the
   // background -- poll while anything here is still 'pending' so a "분석
   // 중" row picks up its real title/tags without needing to leave and come
-  // back to Home. items.length already keeps AsyncStateView's loading
-  // state from flickering (see its `loading && items.length === 0` guard
-  // below), so reusing `load()` here is safe.
+  // back to Home.
   const pendingCount = rawItems.filter((it) => it.classification_status === 'pending').length;
   const hasPending = pendingCount > 0;
   // A minute in, say that it's slow, not stuck.
@@ -436,11 +443,57 @@ export default function HomeScreen() {
     watchedPending.current = new Set(rawItems.filter((it) => it.classification_status === 'pending').map((it) => it.id));
     if (failed > 0) showToast(S.sortFailed(failed));
   }, [rawItems, navigation]);
+  // Only on Home, one request at a time, and only the newest rows, however far
+  // someone has scrolled: a pending row further down is looked up on its own.
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!hasPending) return;
+      const started = Date.now();
+      let lastFar = started;
+      let lastPlan = started;
+      let stopped = false;
+      let timer: ReturnType<typeof setTimeout>;
+      const poll = async () => {
+        const inFirstPage = itemsNow.current.slice(0, FIRST_PAGE).filter((it) => it.classification_status === 'pending');
+        if (inFirstPage.length > 0) {
+          const first = await fetchRecentItems(FIRST_PAGE);
+          if (stopped) return;
+          setRawItems((current) => mergeFirstPage(current, first.items));
+          setTotal(first.total);
+          setServerWeekCount(first.weekCount ?? null);
+        }
+        if (Date.now() - lastFar >= SLOW_POLL_MS) {
+          lastFar = Date.now();
+          const far = itemsNow.current.slice(FIRST_PAGE).filter((it) => it.classification_status === 'pending').slice(0, FAR_ROWS_PER_POLL);
+          const rows = await Promise.allSettled(far.map((it) => fetchItem(it.id)));
+          if (stopped) return;
+          const found = rows.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+          if (found.length > 0) setRawItems((current) => updateRows(current, found));
+        }
+        if (Date.now() - lastPlan >= SLOW_POLL_MS) {
+          lastPlan = Date.now();
+          refreshPlan();
+        }
+      };
+      const next = () => {
+        if (stopped) return;
+        timer = setTimeout(() => {
+          poll().catch(() => {}).finally(next);
+        }, Date.now() - started >= 60_000 ? 10_000 : 3_000);
+      };
+      next();
+      return () => {
+        stopped = true;
+        clearTimeout(timer);
+      };
+    }, [hasPending, refreshPlan])
+  );
+  // All sorted: the uses left and the 미분류함 count are current again.
+  const wasPending = useRef(false);
   useEffect(() => {
-    if (!hasPending) return;
-    const id = setInterval(load, 3000);
-    return () => clearInterval(id);
-  }, [hasPending, load]);
+    if (wasPending.current && !hasPending) refreshPlan();
+    wasPending.current = hasPending;
+  }, [hasPending, refreshPlan]);
 
   // Android-only for now (expo-share-intent's disableIOS: true) -- someone
   // shared into Cortex from another app. Hand it to the save sheet

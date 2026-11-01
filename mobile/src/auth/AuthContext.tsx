@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { refreshDetached, supabase } from './supabase';
 import { completePendingWebLogin } from './kakaoLogin';
 import { ApiError, claimGuest, seedSampleItem } from '../api/client';
+import { moveGuestTabs } from '../data/tabs';
 import { showToast } from '../native/toast';
 import { strings } from '../i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +27,7 @@ const PENDING_CLAIM_KEY = 'cortex.pendingGuestClaim';
 interface PendingClaim {
   access: string;
   refresh: string | null;
+  guestId?: string;
 }
 
 async function readPending(): Promise<PendingClaim | null> {
@@ -49,20 +51,24 @@ let claiming: Promise<number | null> | null = null;
 
 // Auth events can fire several times around a login (initial session,
 // token refresh); one move runs at a time.
-function claimPendingGuest(): Promise<number | null> {
-  claiming ??= runClaim().finally(() => {
+function claimPendingGuest(userId: string): Promise<number | null> {
+  claiming ??= runClaim(userId).finally(() => {
     claiming = null;
   });
   return claiming;
 }
 
-async function runClaim(): Promise<number | null> {
+async function runClaim(userId: string): Promise<number | null> {
   let pending = await readPending();
   if (!pending) return null;
+  const finished = async () => {
+    if (pending?.guestId) await moveGuestTabs(pending.guestId, userId);
+    await forgetPending();
+  };
   try {
     try {
       const { moved } = await claimGuest(pending.access);
-      await forgetPending();
+      await finished();
       return moved;
     } catch (err) {
       if (!isExpired(err)) throw err;
@@ -77,10 +83,10 @@ async function runClaim(): Promise<number | null> {
         if (status !== undefined && status >= 400 && status < 500) await forgetPending();
         throw error ?? new Error('guest refresh failed');
       }
-      pending = { access: data.session.access_token, refresh: data.session.refresh_token };
+      pending = { access: data.session.access_token, refresh: data.session.refresh_token, guestId: pending.guestId };
       await AsyncStorage.setItem(PENDING_CLAIM_KEY, JSON.stringify(pending)).catch(() => {});
       const { moved } = await claimGuest(pending.access);
-      await forgetPending();
+      await finished();
       return moved;
     }
   } catch (err) {
@@ -143,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (newSession && !newSession.user.is_anonymous) {
         const shown = new Promise((resolve) => setTimeout(resolve, 20_000));
         setMovingGuest(true);
-        void Promise.race([claimPendingGuest(), shown]).finally(() => {
+        void Promise.race([claimPendingGuest(newSession.user.id), shown]).finally(() => {
           setSession(newSession);
           setMovingGuest(false);
         });
@@ -194,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data } = await supabase.auth.getSession();
     const s = data.session;
     if (s?.user.is_anonymous) {
-      const pending: PendingClaim = { access: s.access_token, refresh: s.refresh_token };
+      const pending: PendingClaim = { access: s.access_token, refresh: s.refresh_token, guestId: s.user.id };
       await AsyncStorage.setItem(PENDING_CLAIM_KEY, JSON.stringify(pending)).catch(() => {});
     }
   };

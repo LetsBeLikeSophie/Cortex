@@ -37,6 +37,7 @@ const S = strings({
     asGoogle: 'Google 계정으로 로그인됨',
     linkTitle: '계정 연결',
     linkNote: '연결하면 지금 기록을 그 계정으로 옮겨요',
+    linkMoving: '기록을 옮기는 중',
     linkKakao: '카카오로 연결',
     linkGoogle: 'Google로 연결',
     confirmGuest: '정말 삭제하시겠어요?',
@@ -94,6 +95,7 @@ const S = strings({
     asGoogle: 'Logged in with Google',
     linkTitle: 'Link an account',
     linkNote: 'Your saves move to that account',
+    linkMoving: 'Moving your saves',
     linkKakao: 'Link Kakao',
     linkGoogle: 'Link Google',
     confirmGuest: 'Delete everything?',
@@ -151,6 +153,7 @@ const S = strings({
     asGoogle: 'Googleアカウントでログイン中',
     linkTitle: 'アカウント連携',
     linkNote: '今の記録がそのアカウントに移ります',
+    linkMoving: '記録を移しています',
     linkKakao: 'Kakaoで連携',
     linkGoogle: 'Googleで連携',
     confirmGuest: '本当に削除しますか？',
@@ -208,6 +211,7 @@ const S = strings({
     asGoogle: '已使用 Google 账号登录',
     linkTitle: '关联账号',
     linkNote: '现在的记录会转到该账号',
+    linkMoving: '正在转移记录',
     linkKakao: '关联 Kakao',
     linkGoogle: '关联 Google',
     confirmGuest: '确定要删除吗？',
@@ -265,6 +269,7 @@ const S = strings({
     asGoogle: '已使用 Google 帳號登入',
     linkTitle: '連結帳號',
     linkNote: '現在的紀錄會轉到該帳號',
+    linkMoving: '正在轉移紀錄',
     linkKakao: '連結 Kakao',
     linkGoogle: '連結 Google',
     confirmGuest: '確定要刪除嗎？',
@@ -317,7 +322,7 @@ type FooterState = 'idle' | 'signingOut' | 'confirmingDelete' | 'deleting' | 'de
 
 export default function ProfileScreen() {
   const { theme, layoutKey, paletteKey } = useTheme();
-  const { session, pauseGuest, startLinking } = useAuth();
+  const { session, pauseGuest, startLinking, movingGuest } = useAuth();
   const [linking, setLinking] = useState<'kakao' | 'google' | null>(null);
   const [langOpen, setLangOpen] = useState(false);
   // Memo lock: whether a PIN exists, and the fingerprint/face option.
@@ -544,10 +549,11 @@ export default function ProfileScreen() {
                 <Text style={[styles.signOutLabel, { color: theme.ink }]}>{S.linkTitle}</Text>
                 <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR }}>{S.linkNote}</Text>
                 <View style={styles.linkButtons}>
-                  <GhostButton label={S.linkKakao} theme={theme} size="sm" onPress={() => link('kakao')} disabled={linking !== null} />
-                  <GhostButton label={S.linkGoogle} theme={theme} size="sm" onPress={() => link('google')} disabled={linking !== null} />
+                  <GhostButton label={S.linkKakao} theme={theme} size="sm" onPress={() => link('kakao')} disabled={linking !== null || movingGuest} />
+                  <GhostButton label={S.linkGoogle} theme={theme} size="sm" onPress={() => link('google')} disabled={linking !== null || movingGuest} />
                 </View>
-                {linking !== null && <ActivityIndicator color={theme.ink} />}
+                {(linking !== null || movingGuest) && <ActivityIndicator color={theme.ink} />}
+                {movingGuest && <Text style={{ fontSize: 13, color: theme.sub, fontFamily: BODY_KR, textAlign: 'center' }}>{S.linkMoving}</Text>}
                 {linkError !== '' && <Text style={{ fontSize: 12.5, color: theme.danger, fontFamily: BODY_KR }}>{linkError}</Text>}
               </View>
             )}

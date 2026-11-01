@@ -101,6 +101,8 @@ interface AuthState {
   pauseGuest: () => void;
   // Call right before signing a guest in with Kakao/Google.
   startLinking: () => Promise<void>;
+  // Signed in, guest's saves still moving; the session changes after this.
+  movingGuest: boolean;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -109,11 +111,13 @@ const AuthContext = createContext<AuthState>({
   signInAsGuest: async () => ({ error: null }),
   pauseGuest: () => {},
   startLinking: async () => {},
+  movingGuest: false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [movingGuest, setMovingGuest] = useState(false);
   // supabase.auth.onAuthStateChange below fires (and would flip `loading`
   // back off) the instant signInAnonymously()'s network call resolves --
   // before signInAsGuest below gets a chance to seed the new account. This
@@ -138,7 +142,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // login more than 20s; a longer move finishes in the background).
       if (newSession && !newSession.user.is_anonymous) {
         const shown = new Promise((resolve) => setTimeout(resolve, 20_000));
-        void Promise.race([claimPendingGuest(), shown]).finally(() => setSession(newSession));
+        setMovingGuest(true);
+        void Promise.race([claimPendingGuest(), shown]).finally(() => {
+          setSession(newSession);
+          setMovingGuest(false);
+        });
         return;
       }
       setSession(newSession);
@@ -192,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, loading, signInAsGuest, pauseGuest, startLinking }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ session, loading, signInAsGuest, pauseGuest, startLinking, movingGuest }}>{children}</AuthContext.Provider>
   );
 }
 

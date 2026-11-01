@@ -49,6 +49,21 @@ table("by feature", (r) => r.purpose);
 table("by day", (r) => r.created_at.slice(0, 10));
 table("by account (top 10 shown first)", (r) => r.user_id ?? "(deleted account)");
 
+// Can a new guest's free uses be farmed? Reinstalling makes a new guest, so
+// watch for guests appearing fast or their share of the cost growing.
+const guests = new Map<string, string>();
+for (let page = 1; ; page++) {
+  const { data, error } = await getClient().auth.admin.listUsers({ page, perPage: 1000 });
+  if (error) throw error;
+  for (const u of data.users) if (u.is_anonymous) guests.set(u.id, u.created_at.slice(0, 10));
+  if (data.users.length < 1000) break;
+}
+table("guests or accounts", (r) => (r.user_id === null ? "(deleted account)" : guests.has(r.user_id) ? "guest" : "account"));
+const newGuests = new Map<string, number>();
+for (const day of guests.values()) if (day >= since.slice(0, 10)) newGuests.set(day, (newGuests.get(day) ?? 0) + 1);
+console.log("\n== new guests by day (still existing)");
+for (const [day, n] of [...newGuests.entries()].sort()) console.log(`${day}  ${n}`);
+
 // Older than the detailed-log window: what retention.ts summed up per month.
 const { data: monthly, error: monthlyError } = await getClient()
   .from("ai_calls_monthly")

@@ -305,15 +305,14 @@ async function runJob(job: ClassificationJob): Promise<void> {
     await markUnclassified(item.id, item.user_id, gate === undefined ? "failed" : null).catch((e) => console.error("markUnclassified failed:", e));
     return;
   }
-  // Past today's service-wide ceiling: saved, not sent. 'AI로 정리' picks it up.
-  if (await dailyAiBudget.isOver()) {
-    if (job.reservation !== null) await refundUsage(job.reservation).catch((e) => console.error("refundUsage failed:", e));
-    await markUnclassified(item.id, item.user_id).catch((e) => console.error("markUnclassified failed:", e));
-    return;
-  }
   for (let attempt = 0; ; attempt++) {
     try {
-      const category = await withSlot(() => classifyAndComplete(item, job.imageBase64, job.useEditsAsHint, ent.lang), job.background);
+      // Past today's service-wide ceiling, also after waiting for the slot or
+      // a retry: saved, not sent. 'AI로 정리' picks it up.
+      const category = await withSlot(async () => {
+        await dailyAiBudget.assertOpen();
+        return classifyAndComplete(item, job.imageBase64, job.useEditsAsHint, ent.lang);
+      }, job.background);
       await job.onDone?.(category).catch((err) => console.error("classification onDone failed:", err));
       return;
     } catch (err) {

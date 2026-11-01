@@ -9,6 +9,7 @@ import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
 import { AiConsentRequiredError, getEntitlement, recordUsage, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang } from "../lib/plans.js";
 import { normalizeLang, DEFAULT_LANG } from "../lib/anthropic.js";
+import { dailyAiBudget } from "../lib/aiLog.js";
 import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, suggestTagMerges, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
@@ -302,6 +303,7 @@ export async function itemsRoutes(app: FastifyInstance) {
         await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "search" });
         return reply.code(402).send({ error: "quota", kind: "search", limit: ent.search.limit, tier: ent.tier, resetsAt: ent.resetsAt });
       }
+      await dailyAiBudget.assertOpen();
       const utcOffset = utcOffsetOf(req);
       const interpretation = await interpretSearch(parsed.data.query, localToday(utcOffset), userId);
       await recordUsage(userId, "search").catch((err) => req.log.error(err));
@@ -494,6 +496,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     const items = (picked ? await listItemsByIds(userId, picked) : await listItemsWithTag(userId, tag)).filter((it) => !it.composed_from && !it.locked);
     if (items.length < 2) return reply.code(400).send({ error: "too_few", count: items.length });
 
+    await dailyAiBudget.assertOpen();
     const reservation = free ? null : await reserveUsage(userId, "compose");
     let composed: { title: string; body: string };
     try {
@@ -601,6 +604,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
     const tags = await listTagCounts(userId);
     if (tags.length < 2) return reply.send({ groups: [], left: remaining(ent, "tag_cleanup") });
+    await dailyAiBudget.assertOpen();
     const reservation = await reserveUsage(userId, "tag_cleanup");
     try {
       const groups = await suggestTagMerges(tags.slice(0, 400), userId, normalizeLang(req.headers["x-cortex-lang"]) ?? ent.lang ?? DEFAULT_LANG);
@@ -687,6 +691,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     // per-call usage log, the result itself isn't scoped to a user.
     const userId = await resolveUserId(req);
     await requireAiConsent(userId);
+    await dailyAiBudget.assertOpen();
     const tag = await tagFromText(parsed.data.text, userId);
     return reply.send({ tag });
   });

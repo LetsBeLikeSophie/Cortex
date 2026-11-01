@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { CATEGORIES } from "./categories.js";
+import { AiBudgetExceeded } from "./aiBudget.js";
 import { AiPurpose, logAiCall } from "./aiLog.js";
 
 // Keys come from the environment only -- never hardcode a key.
@@ -20,6 +21,7 @@ const voiceClient = clientFor("ANTHROPIC_API_KEY_VOICE");
 // account's prepaid credit ran out, or the key is rejected. Distinct from a
 // transient failure (overload, timeout), which is worth retrying.
 export function isAiUnavailable(err: unknown): boolean {
+  if (err instanceof AiBudgetExceeded) return true;
   if (!(err instanceof Anthropic.APIError)) return false;
   if (err.status === 401 || err.status === 403) return true;
   return err.status === 400 && /credit balance/i.test(err.message);

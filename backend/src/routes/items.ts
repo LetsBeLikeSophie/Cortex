@@ -85,6 +85,8 @@ const remadeFree = new Set<string>();
 
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
+  // The next page of '모두': the shared_at of the last row so far.
+  before: z.iso.datetime({ offset: true }).optional(),
   // A home tag tab: that tag's items across the whole archive, not just
   // whatever is among the newest `limit`.
   tag: z.string().min(1).max(60).optional(),
@@ -232,7 +234,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const [{ items, total }, weekCount] = await Promise.all([
-      listItems(userId, { limit: parsed.data.limit }),
+      listItems(userId, { limit: parsed.data.limit, before: parsed.data.before }),
       countSavedSince(userId, weekAgo).catch(() => null),
     ]);
     return reply.send({ items, total, weekCount });

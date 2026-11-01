@@ -610,16 +610,15 @@ export async function removeAiTag(userId: string, itemId: string, tag: string): 
 
 export interface ListItemsOptions {
   limit?: number;
+  // The next page: this time and older. Includes the time itself, since two
+  // rows can share one; the app drops the repeat.
+  before?: string;
 }
 
 export async function listItems(userId: string, options: ListItemsOptions = {}): Promise<{ items: ItemRecord[]; total: number }> {
-  const { data, error, count } = await getClient()
-    .from("items")
-    .select("*", { count: "exact" })
-    .eq("user_id", userId)
-    .is("deleted_at", null)
-    .order("shared_at", { ascending: false })
-    .limit(options.limit ?? 30);
+  let query = getClient().from("items").select("*", { count: "exact" }).eq("user_id", userId).is("deleted_at", null);
+  if (options.before) query = query.lte("shared_at", options.before);
+  const { data, error, count } = await query.order("shared_at", { ascending: false }).limit(options.limit ?? 30);
 
   if (error) throw new Error(`listItems failed: ${error.message}`);
   return { items: (data ?? []) as ItemRecord[], total: count ?? 0 };

@@ -1,7 +1,7 @@
 // npm test -- the share queue's consent rules, with fake storage/files/API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Consent, createShareQueue, MAX_ATTEMPTS, QueueState } from './shareQueueCore';
+import { Consent, createShareQueue, MAX_ATTEMPTS, QueueState, REVIVE_AFTER_MS } from './shareQueueCore';
 
 function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; failUpload?: number; failStatus?: number; owner?: string } = {}) {
   let state: QueueState = { jobs: [], receipts: [] };
@@ -10,6 +10,7 @@ function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; f
   let answer = consent;
   let owner = opts.owner ?? null;
   let uploadFailures = opts.failUpload ?? 0;
+  let clock = 0;
   let n = 0;
   const queue = createShareQueue({
     load: async () => structuredClone(state),
@@ -40,7 +41,7 @@ function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; f
     },
     owner: async () => owner,
     tellMehh: (count, ids) => log.push(`mehh count=${count} ids=${ids?.join(',') ?? '-'}`),
-    now: () => 0,
+    now: () => clock,
     newId: () => `j${++n}`,
   });
   return {
@@ -53,6 +54,12 @@ function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; f
     },
     setOwner: (o: string | null) => {
       owner = o;
+    },
+    setNow: (ms: number) => {
+      clock = ms;
+    },
+    failNext: (times: number) => {
+      uploadFailures = times;
     },
   };
 }
@@ -275,7 +282,7 @@ test('server refuses a photo (too large): it stops at once, keeps its copy, and 
 });
 
 test('a photo that keeps failing stops after MAX_ATTEMPTS runs', async () => {
-  const t = setup('agreed', { failUpload: MAX_ATTEMPTS + 5 });
+  const t = setup('agreed', { failUpload: MAX_ATTEMPTS + 5, failStatus: 500 });
   await t.queue.enqueue(['a'], ['101']);
   for (let i = 1; i < MAX_ATTEMPTS; i++) assert.equal((await t.queue.drain()).left, 1);
   assert.deepEqual(await t.queue.drain(), { left: 0, waitingConsent: false });
@@ -284,6 +291,56 @@ test('a photo that keeps failing stops after MAX_ATTEMPTS runs', async () => {
   assert.equal(job.attempts, MAX_ATTEMPTS);
   assert.equal(t.files.size, 1);
   assert.deepEqual(await t.queue.takeUnreported(), { saved: 0, quota: 0, failed: 1 });
+});
+
+for (const [name, failStatus] of [['no signal', undefined], ['429', 429]] as const) {
+  test(`${name} never uses up the tries`, async () => {
+    const t = setup('agreed', { failUpload: MAX_ATTEMPTS + 5, failStatus });
+    await t.queue.enqueue(['a'], ['101']);
+    for (let i = 0; i < MAX_ATTEMPTS + 5; i++) assert.equal((await t.queue.drain()).left, 1);
+    assert.equal(t.state().jobs[0].attempts, 0);
+    assert.equal(t.state().jobs[0].stopped, undefined);
+    assert.equal((await t.queue.drain()).left, 0);
+    assert.deepEqual(await t.queue.takeUnreported(), { saved: 1, quota: 0 });
+  });
+}
+
+test('a server error stop gets another round after a day, not before', async () => {
+  const t = setup('agreed', { failUpload: MAX_ATTEMPTS, failStatus: 500 });
+  await t.queue.enqueue(['a'], ['101']);
+  for (let i = 0; i < MAX_ATTEMPTS; i++) await t.queue.drain();
+  assert.equal(t.state().jobs[0].stopped, true);
+  assert.deepEqual(await t.queue.takeUnreported(), { saved: 0, quota: 0, failed: 1 });
+  t.setNow(REVIVE_AFTER_MS - 1);
+  assert.equal((await t.queue.drain()).left, 0);
+  assert.equal(t.log.filter((l) => l.startsWith('upload')).length, 0);
+  t.setNow(REVIVE_AFTER_MS);
+  assert.equal((await t.queue.drain()).left, 0);
+  assert.equal(t.state().jobs.length, 0);
+  assert.equal(t.log.filter((l) => l.startsWith('upload')).length, 1);
+  assert.deepEqual(await t.queue.takeUnreported(), { saved: 1, quota: 0 });
+});
+
+test('a revived photo that stops again is not reported twice', async () => {
+  const t = setup('agreed', { failUpload: MAX_ATTEMPTS, failStatus: 500 });
+  await t.queue.enqueue(['a'], ['101']);
+  for (let i = 0; i < MAX_ATTEMPTS; i++) await t.queue.drain();
+  await t.queue.takeUnreported();
+  t.setNow(REVIVE_AFTER_MS);
+  t.failNext(MAX_ATTEMPTS);
+  for (let i = 0; i < MAX_ATTEMPTS; i++) await t.queue.drain();
+  assert.equal(t.state().jobs[0].stopped, true);
+  assert.deepEqual(await t.queue.takeUnreported(), { saved: 0, quota: 0 });
+});
+
+test('a refused photo (413) stays stopped', async () => {
+  const t = setup('agreed', { failUpload: 1, failStatus: 413 });
+  await t.queue.enqueue(['a'], ['101']);
+  await t.queue.drain();
+  t.setNow(REVIVE_AFTER_MS * 2);
+  await t.queue.drain();
+  assert.equal(t.state().jobs[0].stopped, true);
+  assert.equal(t.log.filter((l) => l.startsWith('upload')).length, 0);
 });
 
 test('a failure below the limit keeps retrying', async () => {

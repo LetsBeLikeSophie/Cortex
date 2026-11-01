@@ -24,6 +24,12 @@ export interface Job {
   // MAX_ATTEMPTS times. The copy stays on the phone; it's no longer
   // uploaded, counted as 저장 중, or a reason to keep the background job.
   stopped?: boolean;
+  // Why and when it stopped. A server error may pass, so that photo gets
+  // another round later (REVIVE_AFTER_MS).
+  stoppedStatus?: number;
+  stoppedAt?: number;
+  // The person was already told this one failed: another round doesn't say so twice.
+  failureTold?: boolean;
   // The account signed in when it arrived; only that account uploads it.
   // Jobs from older builds have none and go to whoever is signed in.
   ownerId?: string;
@@ -85,14 +91,17 @@ export interface QueueDeps {
 
 const CONCURRENCY = 3;
 // Tries before a photo that keeps failing stops (the background job runs
-// every 15 minutes, so about two and a half hours of retries).
+// every 15 minutes, so about two and a half hours of retries). No signal and
+// 429 (too many saves in a row) don't count: those pass on their own.
 export const MAX_ATTEMPTS = 10;
+// Mehh may have deleted its original and no screen brings a stopped photo back,
+// so one stopped by a server error starts over once the server has had a day.
+export const REVIVE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 // 400 (unreadable) and 413 (too large) won't change on a retry.
-const isRefused = (err: unknown) => {
-  const status = (err as { status?: number } | null)?.status;
-  return status === 400 || status === 413;
-};
+const statusOf = (err: unknown) => (err as { status?: number } | null)?.status;
+const isRefused = (err: unknown) => statusOf(err) === 400 || statusOf(err) === 413;
+const passesOnItsOwn = (err: unknown) => statusOf(err) === undefined || statusOf(err) === 429;
 const live = (jobs: Job[]) => jobs.filter((j) => !j.stopped);
 
 export function createShareQueue(deps: QueueDeps) {
@@ -173,7 +182,24 @@ export function createShareQueue(deps: QueueDeps) {
     return running;
   }
 
+  // Runs at the start of every drain. Once nothing is live the background job
+  // is off, so in practice this happens when the app opens.
+  async function reviveStopped() {
+    const due = (j: Job) => !!j.stopped && (j.stoppedStatus ?? 0) >= 500 && deps.now() - (j.stoppedAt ?? deps.now()) >= REVIVE_AFTER_MS;
+    if (!(await deps.load()).jobs.some(due)) return;
+    await update((s) => ({
+      ...s,
+      jobs: s.jobs.map((j) => {
+        if (!due(j)) return j;
+        const { stopped, stoppedStatus, stoppedAt, ...rest } = j;
+        return { ...rest, attempts: 0 };
+      }),
+    }));
+    deps.schedule?.();
+  }
+
   async function run(): Promise<{ left: number; waitingConsent: boolean }> {
+    await reviveStopped();
     const initial = await deps.load();
     const initialJobs = live(initial.jobs);
     if (initialJobs.length === 0 && initial.receipts.length === 0) {
@@ -252,18 +278,24 @@ export function createShareQueue(deps: QueueDeps) {
       return;
     }
     let result: UploadResult | void;
+    let uploading = false;
     try {
-      result = await deps.upload(await deps.readBase64(job.uri), job.id);
+      const base64 = await deps.readBase64(job.uri);
+      uploading = true;
+      result = await deps.upload(base64, job.id);
     } catch (err) {
+      if (uploading && passesOnItsOwn(err)) return;
       const s = await update((st) => {
         let stopped = false;
+        let tell = false;
         const jobs = st.jobs.map((j) => {
           if (j.id !== job.id) return j;
           const attempts = j.attempts + 1;
           stopped = isRefused(err) || attempts >= MAX_ATTEMPTS;
-          return { ...j, attempts, ...(stopped ? { stopped: true } : null) };
+          tell = stopped && !j.failureTold;
+          return { ...j, attempts, ...(stopped ? { stopped: true, stoppedStatus: statusOf(err), stoppedAt: deps.now(), failureTold: true } : null) };
         });
-        if (!stopped) return { ...st, jobs };
+        if (!tell) return { ...st, jobs };
         const u = st.unreported ?? { saved: 0, quota: 0 };
         return { ...st, jobs, unreported: { ...u, failed: (u.failed ?? 0) + 1 } };
       });

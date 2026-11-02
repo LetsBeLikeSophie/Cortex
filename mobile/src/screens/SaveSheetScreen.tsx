@@ -340,8 +340,8 @@ export default function SaveSheetScreen() {
   // is never kept -- it can just be shared again.
   const openedByShare = !!(route.params?.sharedText || route.params?.sharedUrl || route.params?.sharedImageUri || route.params?.sharedImageUris?.length);
   const longDraft = useRef<string | null>(null);
-  const draftRef = useRef({ text, status });
-  draftRef.current = { text, status };
+  const draftRef = useRef({ text, note, status });
+  draftRef.current = { text, note, status };
   // The kept draft isn't poured into the box (decision S1, C): someone
   // opening "+" for a new thought would stop at "when did I write this?",
   // and with photos picked it would become every photo's note. It's offered
@@ -358,7 +358,9 @@ export default function SaveSheetScreen() {
         .catch(() => {});
     }
     return () => {
-      const { text: last, status: end } = draftRef.current;
+      const { text: typed, note: movedToNote, status: end } = draftRef.current;
+      // With a photo attached, what was typed sits in its note box (UX-103).
+      const last = typed.trim() ? typed : movedToNote;
       // Typed text too long to become a photo's note: kept whatever happens.
       if (longDraft.current) {
         AsyncStorage.setItem(DRAFT_KEY, longDraft.current).catch(() => {});

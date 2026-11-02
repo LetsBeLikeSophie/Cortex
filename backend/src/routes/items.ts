@@ -262,7 +262,7 @@ export async function itemsRoutes(app: FastifyInstance) {
   });
 
   // Search across title/snippet/raw text for the Search screen.
-  app.get("/items/search", async (req, reply) => {
+  app.get("/items/search", { config: { rateLimit: { max: config.wordSearchRateLimitMax } } }, async (req, reply) => {
     const parsed = SearchQuerySchema.safeParse(req.query);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid query", details: parsed.error.flatten() });
@@ -369,7 +369,7 @@ export async function itemsRoutes(app: FastifyInstance) {
 
   // Re-runs an (edited) interpretation without calling Claude again -- what
   // removing/toggling one of the interpreted chips hits.
-  app.post("/items/search/smart", async (req, reply) => {
+  app.post("/items/search/smart", { config: { rateLimit: { max: config.searchRateLimitMax } } }, async (req, reply) => {
     const parsed = SmartSearchSchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });

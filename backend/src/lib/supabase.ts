@@ -826,7 +826,23 @@ export async function listFrequentTags(userId: string, max = 150): Promise<strin
 // alternative (silently excluding it) reads as "search is broken" rather
 // than "working as designed." The route marks matches by their deleted_at
 // so the client can badge/offer-restore instead of opening them normally.
-function matchesTerm(item: ItemRecord, needle: string): boolean {
+// Only the columns matching reads, so a search scan doesn't pull whole rows;
+// the few results are then read in full by id (fullRowsInOrder).
+const SEARCH_COLUMNS = "id,shared_at,source,capture_type,title,snippet,raw_text,user_note,tags,user_tags";
+type SearchRow = Pick<
+  ItemRecord,
+  "id" | "shared_at" | "source" | "capture_type" | "title" | "snippet" | "raw_text" | "user_note" | "tags" | "user_tags"
+>;
+
+async function fullRowsInOrder(userId: string, ids: string[]): Promise<ItemRecord[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await getClient().from("items").select().eq("user_id", userId).in("id", ids);
+  if (error) throw new Error(error.message);
+  const byId = new Map(((data ?? []) as ItemRecord[]).map((row) => [row.id, row]));
+  return ids.map((id) => byId.get(id)).filter((row): row is ItemRecord => !!row);
+}
+
+function matchesTerm(item: SearchRow, needle: string): boolean {
   if (item.title?.toLowerCase().includes(needle)) return true;
   if (item.snippet?.toLowerCase().includes(needle)) return true;
   if (item.raw_text?.toLowerCase().includes(needle)) return true;
@@ -862,31 +878,32 @@ export async function searchItems(
 
   const tagInc = tags.map((t) => t.toLowerCase()).filter(Boolean);
   const tagExc = excludeTags.map((t) => t.toLowerCase()).filter(Boolean);
-  const hasTag = (item: ItemRecord, tag: string) => [...item.tags, ...item.user_tags].some((t) => t.toLowerCase() === tag);
+  const hasTag = (item: SearchRow, tag: string) => [...item.tags, ...item.user_tags].some((t) => t.toLowerCase() === tag);
 
-  const keep = (item: ItemRecord) => {
+  const keep = (item: SearchRow) => {
     if (exc.some((needle) => matchesTerm(item, needle))) return false;
     if (tagExc.some((tag) => hasTag(item, tag))) return false;
     if (!tagInc.every((tag) => hasTag(item, tag))) return false;
     return inc.every((needle) => matchesTerm(item, needle));
   };
   // Newest first, so the first `limit` matches are the answer.
-  const matches = await scanPages<ItemRecord>(
-    (from, to) =>
-      getClient()
-        .from("items")
-        .select()
-        .eq("user_id", userId)
-        .order("shared_at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(from, to),
-    keep,
-    (n) => n >= limit
-  ).catch((err: Error) => {
-    throw new Error(`searchItems failed: ${err.message}`);
-  });
-
-  return matches.slice(0, limit);
+  try {
+    const ids = await scanPages<SearchRow, string>(
+      (from, to) =>
+        getClient()
+          .from("items")
+          .select(SEARCH_COLUMNS)
+          .eq("user_id", userId)
+          .order("shared_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, to),
+      (item) => (keep(item) ? item.id : undefined),
+      (n) => n >= limit
+    );
+    return await fullRowsInOrder(userId, ids.slice(0, limit));
+  } catch (err) {
+    throw new Error(`searchItems failed: ${(err as Error).message}`);
+  }
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -927,7 +944,7 @@ export async function searchItemsSmart(
 
   const run = async (withFilters: boolean) => {
     const build = () => {
-      let query = getClient().from("items").select().eq("user_id", userId);
+      let query = getClient().from("items").select(SEARCH_COLUMNS).eq("user_id", userId);
       if (withFilters) {
         if (q.source) query = query.eq("source", q.source);
         if (q.captureType) query = query.eq("capture_type", q.captureType);
@@ -941,30 +958,36 @@ export async function searchItemsSmart(
       const oldestFirst = q.sort === "oldest";
       return query.order("shared_at", { ascending: oldestFirst }).order("id", { ascending: oldestFirst });
     };
-    // Every match is scored, so the whole archive is read (scanPages bounds it).
-    const rows = await scanPages<ItemRecord>(
+    // Every match is scored, so the whole archive is read (scanPages bounds
+    // it); only id + score is kept per match.
+    const scored = await scanPages<SearchRow, { id: string; matched_count: number }>(
       (from, to) => build().range(from, to),
-      (item) => !exc.some((needle) => matchesTerm(item, needle))
+      (item) => {
+        if (exc.some((needle) => matchesTerm(item, needle))) return undefined;
+        const matched_count = groups.filter((g) => g.some((needle) => matchesTerm(item, needle))).length;
+        // No keywords at all ("지난달 인스타에서 저장한 거") means the filters
+        // alone are the query -- everything they let through counts.
+        return groups.length === 0 || matched_count > 0 ? { id: item.id, matched_count } : undefined;
+      }
     ).catch((err: Error) => {
       throw new Error(`searchItemsSmart failed: ${err.message}`);
     });
-
-    return rows
-      .map((item) => ({
-        ...item,
-        matched_count: groups.filter((g) => g.some((needle) => matchesTerm(item, needle))).length,
-      }))
-      // No keywords at all ("지난달 인스타에서 저장한 거") means the filters
-      // alone are the query -- everything they let through counts.
-      .filter((item) => groups.length === 0 || item.matched_count > 0)
-      // Stable sort, so equal scores keep the query's date order. An
-      // explicit order (oldest/newest) wins outright: it was asked for.
-      .sort((a, b) => (q.sort ? 0 : b.matched_count - a.matched_count));
+    // Stable sort, so equal scores keep the query's date order. An
+    // explicit order (oldest/newest) wins outright: it was asked for.
+    return scored.sort((a, b) => (q.sort ? 0 : b.matched_count - a.matched_count));
   };
 
-  const items = await run(true);
-  const relaxed_count = items.length === 0 && hasFilter && groups.length > 0 ? (await run(false)).length : null;
-  return { items: items.slice(0, limit), relaxed_count };
+  const scored = await run(true);
+  const relaxed_count = scored.length === 0 && hasFilter && groups.length > 0 ? (await run(false)).length : null;
+  const top = scored.slice(0, limit);
+  const rows = await fullRowsInOrder(
+    userId,
+    top.map((s) => s.id)
+  ).catch((err: Error) => {
+    throw new Error(`searchItemsSmart failed: ${err.message}`);
+  });
+  const score = new Map(top.map((s) => [s.id, s.matched_count]));
+  return { items: rows.map((row) => ({ ...row, matched_count: score.get(row.id) ?? 0 })), relaxed_count };
 }
 
 // Uploads a screenshot capture to Supabase Storage and returns its storage

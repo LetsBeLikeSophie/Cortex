@@ -26,6 +26,9 @@ export const config = {
   // Burst limit for natural-language search (its own, separate from
   // rateLimitMax). The monthly free quota on it lives in plans.ts.
   searchRateLimitMax: Number(optional("SEARCH_RATE_LIMIT_MAX") ?? 60),
+  // Word search runs as the person types (one request per pause), and each
+  // one reads the archive, so it has a ceiling too -- far above typing.
+  wordSearchRateLimitMax: Number(optional("WORD_SEARCH_RATE_LIMIT_MAX") ?? 300),
   maxImageBytes: Number(optional("MAX_IMAGE_BYTES") ?? 8 * 1024 * 1024),
 
   // Plans (see src/lib/plans.ts). Free classification is enough for a

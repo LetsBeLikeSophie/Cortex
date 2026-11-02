@@ -416,11 +416,16 @@ export default function SearchScreen() {
   const exclude = words.filter(isExcl).map((w) => w.slice(1));
   const termsKey = JSON.stringify([include, exclude, chipTags, chipExcl]);
 
+  // Only the latest request's answer is shown: a slow one for "제" must not
+  // land over the results for "제주 맛집".
+  const searchSeq = React.useRef(0);
   const runSearch = React.useCallback((inc: string[], exc: string[], tagInc: string[], tagExc: string[]) => {
+    const seq = ++searchSeq.current;
     setLoading(true);
     const hasTag = (raw: ApiItem, t: string) => [...raw.tags, ...raw.user_tags].some((x) => x.toLowerCase() === t.toLowerCase());
     apiSearchItems(inc, exc, 30, tagInc, tagExc)
       .then((res) => {
+        if (seq !== searchSeq.current) return;
         const next = res.items
           .filter((raw) => tagInc.every((t) => hasTag(raw, t)) && !tagExc.some((t) => hasTag(raw, t)))
           .map((raw) => ({ raw, result: toSearchResult(raw, inc) }))
@@ -429,19 +434,25 @@ export default function SearchScreen() {
         setError(null);
       })
       .catch((err) => {
+        if (seq !== searchSeq.current) return;
         setHits([]);
         setError(friendlyError(err));
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (seq === searchSeq.current) setLoading(false);
+      });
   }, []);
 
   // Instant search, debounced -- skipped while showing AI results for the
   // exact text in the box.
   useEffect(() => {
+    // A word search still on its way is dropped once the box changes.
+    searchSeq.current++;
     if (aiMode) return;
     setInterpretation(null);
     setRelaxedCount(null);
     if (include.length === 0 && exclude.length === 0 && chipExcl.length === 0) {
+      setLoading(false);
       setHits([]);
       setError(null);
       return;

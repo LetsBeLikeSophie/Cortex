@@ -266,11 +266,16 @@ export default function SaveSheetScreen() {
   const [status, setStatus] = useState<Status>('input');
   // This month's AI organize allowance, for the bubble over 저장하기.
   const [plan, setPlan] = useState<Plan | null>(null);
+  // Again on coming back from the consent sheet, so the bubble follows.
   useEffect(() => {
-    fetchPlan()
-      .then(setPlan)
-      .catch(() => {});
-  }, []);
+    const refreshPlan = () => {
+      fetchPlan()
+        .then(setPlan)
+        .catch(() => {});
+    };
+    refreshPlan();
+    return navigation.addListener('focus', refreshPlan);
+  }, [navigation]);
   const [saved, setSaved] = useState<ApiItem | null>(null);
   const [error, setError] = useState('');
 

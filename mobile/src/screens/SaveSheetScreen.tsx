@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  BackHandler,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -324,7 +325,14 @@ export default function SaveSheetScreen() {
     setSelectedScreenshots(shots);
   }, [sharedImageUris]);
 
-  const doneButton = <SolidButton label={COMMON.ok} theme={theme} onPress={() => close()} />;
+  // Opened by a share: 확인 also leaves Cortex, back to the app the share
+  // came from, so saving from Instagram doesn't strand the person on Home
+  // (decision U1). Android's back on the root screen moves the task back.
+  const finish = () => {
+    close();
+    if (openedByShare && Platform.OS === 'android') BackHandler.exitApp();
+  };
+  const doneButton = <SolidButton label={COMMON.ok} theme={theme} onPress={finish} />;
 
   const scrollRef = useRef<ScrollView>(null);
   // Text already in the memo when a voice dictation starts -- live partial

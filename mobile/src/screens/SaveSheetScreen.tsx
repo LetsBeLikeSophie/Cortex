@@ -762,7 +762,16 @@ ${sharedNote ?? ''}`;
               <FieldRow
                 theme={theme}
                 style={styles.noteRow}
-                mic={<VoiceInputButton theme={theme} size={16} onResult={(text) => setNote(text)} />}
+                mic={
+                  <VoiceInputButton
+                    theme={theme}
+                    size={16}
+                    onStart={() => {
+                      voiceBase.current = note.trim() ? `${note.trimEnd()} ` : '';
+                    }}
+                    onResult={(spoken) => setNote((voiceBase.current + spoken).slice(0, NOTE_MAX))}
+                  />
+                }
               >
                 <TextInput
                   value={note}

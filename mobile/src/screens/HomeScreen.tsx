@@ -15,7 +15,7 @@ import { copyFor } from '../data/content';
 import { TagTab, loadHomeTabs } from '../data/tabs';
 import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { useAuth } from '../auth/AuthContext';
-import { TRIAL_NOTICE_KEY } from '../auth/accountTraces';
+import { IMPORT_OFFER_KEY, TRIAL_NOTICE_KEY } from '../auth/accountTraces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
@@ -27,7 +27,7 @@ import { LayeredBack, VintageWallpaper } from '../components/Decor';
 import { AsyncStateView } from '../components/AsyncStateView';
 import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
 import { Bubble, isLowOnUses } from '../components/Bubble';
-import { IconButton, SolidButton } from '../components/Buttons';
+import { GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { ConfirmPopup } from '../components/ConfirmPopup';
 import { SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import { showToast } from '../native/toast';
@@ -61,6 +61,9 @@ const S = strings({
     account: '내 계정',
     all: '모두',
     waitingCount: (n: number) => `${n}건 정리 대기`,
+    importOld: '쌓인 캡처 넣기 · 100장까지',
+    importPick: '고르기',
+    importLater: '다음에',
     refillsOn: (date: string) => `${date}에 다시 생겨요`,
     sortWithAi: (n: number) => `AI로 정리 (${n})`,
     sortTitle: 'AI로 정리',
@@ -107,6 +110,9 @@ const S = strings({
     account: 'My account',
     all: 'All',
     waitingCount: (n: number) => `${n} waiting to sort`,
+    importOld: 'Add old screenshots · up to 100',
+    importPick: 'Choose',
+    importLater: 'Later',
     refillsOn: (date: string) => `Refills on ${date}`,
     sortWithAi: (n: number) => `Sort with AI (${n})`,
     sortTitle: 'Sort with AI',
@@ -153,6 +159,9 @@ const S = strings({
     account: 'マイアカウント',
     all: 'すべて',
     waitingCount: (n: number) => `${n}件 整理待ち`,
+    importOld: '溜まったキャプチャを追加 · 100枚まで',
+    importPick: '選ぶ',
+    importLater: 'あとで',
     refillsOn: (date: string) => `${date}に回復します`,
     sortWithAi: (n: number) => `AIで整理 (${n})`,
     sortTitle: 'AIで整理',
@@ -199,6 +208,9 @@ const S = strings({
     account: '我的账号',
     all: '全部',
     waitingCount: (n: number) => `${n} 项待整理`,
+    importOld: '导入以前的截图 · 最多100张',
+    importPick: '选择',
+    importLater: '以后',
     refillsOn: (date: string) => `${date}恢复`,
     sortWithAi: (n: number) => `用 AI 整理 (${n})`,
     sortTitle: '用 AI 整理',
@@ -245,6 +257,9 @@ const S = strings({
     account: '我的帳號',
     all: '全部',
     waitingCount: (n: number) => `${n} 項待整理`,
+    importOld: '匯入以前的截圖 · 最多100張',
+    importPick: '選擇',
+    importLater: '以後',
     refillsOn: (date: string) => `${date}恢復`,
     sortWithAi: (n: number) => `用 AI 整理 (${n})`,
     sortTitle: '用 AI 整理',
@@ -372,6 +387,23 @@ export default function HomeScreen() {
         navigation.navigate('Paywall', { reason });
       })
       .catch(() => {});
+  };
+
+  // An account's first home offers, once, to bring in screenshots already
+  // piling up on the phone (decision P2) -- finding those is what the trial
+  // is for. Guests aren't offered it. Gone after either button.
+  const importKey = session && !session.user.is_anonymous ? `${IMPORT_OFFER_KEY}.${session.user.id}` : null;
+  const [offerImport, setOfferImport] = useState(false);
+  useEffect(() => {
+    if (!importKey) return;
+    AsyncStorage.getItem(importKey)
+      .then((seen) => setOfferImport(!seen))
+      .catch(() => {});
+  }, [importKey]);
+  const closeImportOffer = (pick: boolean) => {
+    setOfferImport(false);
+    if (importKey) AsyncStorage.setItem(importKey, '1').catch(() => {});
+    if (pick) navigation.navigate('SaveSheet', { pickPhotos: true });
   };
 
   // The rows paged in so far, so a refresh brings back as many.
@@ -996,6 +1028,18 @@ export default function HomeScreen() {
         ))}
         <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </ScrollView>
+
+      {offerImport && activeTag !== UNCLASSIFIED && !selectMode && (
+        <View style={[styles.backlog, { paddingHorizontal: boxed ? 24 : 26 }]}>
+          <View style={styles.backlogText}>
+            <Text style={[styles.backlogTitle, { color: theme.ink }]} numberOfLines={2}>
+              {S.importOld}
+            </Text>
+          </View>
+          <GhostButton label={S.importLater} theme={theme} size="sm" flex={0} onPress={() => closeImportOffer(false)} />
+          <SolidButton label={S.importPick} theme={theme} size="sm" flex={0} onPress={() => closeImportOffer(true)} />
+        </View>
+      )}
 
       {activeTag === UNCLASSIFIED && (
         // One compact strip, so the list underneath stays visible.

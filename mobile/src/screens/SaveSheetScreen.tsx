@@ -428,6 +428,8 @@ export default function SaveSheetScreen() {
       base64: onWeb,
       quality: onWeb ? 0.8 : 1,
       allowsMultipleSelection: true,
+      // One batch at most 100 (decision P2): storage and the month's AI uses.
+      selectionLimit: 100,
     });
     if (result.canceled || result.assets.length === 0) return;
 
@@ -461,6 +463,11 @@ export default function SaveSheetScreen() {
     setStatus('input');
     setImage({ base64, previewUri: asset.uri });
   };
+  // Opened from Home's "쌓인 캡처 넣기": straight to the photo picker.
+  useEffect(() => {
+    if (route.params?.pickPhotos) pickFromLibrary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Picking one photo turns the sheet into a photo save, whose box is the
   // note -- so what was typed moves there (a note holds 1000, and the box

@@ -7,6 +7,9 @@ import { forgetReminders } from '../native/reminders';
 export const SAVE_DRAFT_KEY = 'cortex.saveDraft';
 export const TAG_SUGGESTION_KEY = 'cortex.tagCleanupSuggestion';
 export const TRIAL_NOTICE_KEY = 'cortex.trialNoticeSeen';
+// Per account id (`.${id}`): the first home's photo import offer was answered.
+// Kept through sign-out, so coming back doesn't offer it again.
+export const IMPORT_OFFER_KEY = 'cortex.importOffered';
 
 // An account has been used on this phone, so the login screen offers that
 // instead of a guest. Stays through a sign-out; goes with the account.

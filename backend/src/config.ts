@@ -14,14 +14,13 @@ function required(name: string): string {
 export const config = {
   port: Number(optional("PORT") ?? 8787),
 
-  // Cost safety: dailyItemLimit is checked per real signed-in user id (see
-  // resolveUserId), rateLimitMax is IP-keyed (fastify/rate-limit's default)
-  // since it runs before auth resolves.
+  // Cost safety: both are checked per real signed-in user id (see
+  // resolveUserId; rateLimitMax falls back to the IP without a valid token).
   // Saving is unlimited by plan; these two are only abuse ceilings, set
-  // well above any real burst (a 30-photo multi-pick, several in a row).
+  // well above any real burst (two 100-photo imports in a row).
   // AI cost is bounded separately by the monthly quotas below.
   dailyItemLimit: Number(optional("DAILY_ITEM_LIMIT") ?? 500),
-  rateLimitMax: Number(optional("RATE_LIMIT_MAX") ?? 150),
+  rateLimitMax: Number(optional("RATE_LIMIT_MAX") ?? 300),
   rateLimitWindowMs: Number(optional("RATE_LIMIT_WINDOW_MS") ?? 15 * 60 * 1000),
   // Burst limit for natural-language search (its own, separate from
   // rateLimitMax). The monthly free quota on it lives in plans.ts.

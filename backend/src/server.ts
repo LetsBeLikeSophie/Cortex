@@ -11,6 +11,7 @@ import { resumePendingClassifications } from "./lib/pipeline.js";
 import { startRetentionJob } from "./lib/retention.js";
 import { aiRefusing } from "./lib/aiHealth.js";
 import { dailyAiBudget } from "./lib/aiLog.js";
+import { resolveUserId } from "./lib/auth.js";
 
 // Base64 inflates bytes by ~33%, so give Fastify's own body-size cap enough
 // headroom above maxImageBytes that our friendlier "image too large" check
@@ -40,8 +41,7 @@ await app.register(cors, { origin: true, methods: ["GET", "HEAD", "POST", "PATCH
 await app.register(formbody);
 
 // Burst protection for the one expensive route (POST /items, which calls
-// Claude) -- keyed by IP since there's no per-user key to use before auth
-// resolves. The daily quota in routes/items.ts catches steady (non-burst)
+// Claude) and the other opted-in routes. The daily quota in routes/items.ts catches steady (non-burst)
 // abuse this doesn't. global:false + registering here (before the routes)
 // means nothing is throttled unless a route opts in via
 // { config: { rateLimit: {} } } -- see routes/items.ts's POST /items.
@@ -50,10 +50,22 @@ await app.register(formbody);
 // budget as the AI-classification endpoint -- easy to exhaust just by
 // browsing, which read as the whole app being slow/broken rather than what
 // it actually was, silent 429s.
+// Counted per signed-in account (an IP can be a whole carrier's CGNAT, and a
+// 100-photo import twice in 15 minutes is one person's normal use); requests
+// without a valid token fall back to the IP. preHandler, so the body is parsed
+// and the token check is the cached one the route itself then uses.
 await app.register(rateLimit, {
   global: false,
   max: config.rateLimitMax,
   timeWindow: config.rateLimitWindowMs,
+  hook: "preHandler",
+  keyGenerator: async (req) => {
+    try {
+      return `u:${await resolveUserId(req)}`;
+    } catch {
+      return req.ip;
+    }
+  },
 });
 
 app.get("/health", async () => ({

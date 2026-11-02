@@ -1249,21 +1249,33 @@ export async function claimGuestAccount(targetId: string, guestId: string): Prom
 
   // A Pro bought as a guest belongs to the person too (the plan is
   // recomputed from purchases by the caller).
-  await client.from("purchases").update({ user_id: targetId }).eq("user_id", guestId);
-  // This month's AI use follows the person (no fresh quota by switching).
-  await client.from("ai_usage").update({ user_id: targetId }).eq("user_id", guestId);
-  await client.from("ai_calls").update({ user_id: targetId }).eq("user_id", guestId);
+  // Each move is checked: the guest is deleted below, so a move that failed
+  // unnoticed would lose the purchase for good. Thrown, the app's retry runs
+  // the whole claim again.
+  const moves = [
+    ["purchases", await client.from("purchases").update({ user_id: targetId }).eq("user_id", guestId)],
+    // This month's AI use follows the person (no fresh quota by switching).
+    ["ai_usage", await client.from("ai_usage").update({ user_id: targetId }).eq("user_id", guestId)],
+    ["ai_calls", await client.from("ai_calls").update({ user_id: targetId }).eq("user_id", guestId)],
+  ] as const;
+  for (const [table, { error }] of moves) {
+    if (error) throw new Error(`claim: move ${table} failed: ${error.message}`);
+  }
 
   // The consent answer and language are the same person's -- carry them
   // over only where the account hasn't answered itself.
-  const { data: plans } = await client.from("user_plans").select("user_id, ai_consent, ai_consent_at, ai_consent_version, lang").in("user_id", [guestId, targetId]);
+  const { data: plans, error: plansError } = await client.from("user_plans").select("user_id, ai_consent, ai_consent_at, ai_consent_version, lang").in("user_id", [guestId, targetId]);
+  if (plansError) throw new Error(`claim: read plans failed: ${plansError.message}`);
   const guestPlan = plans?.find((p) => p.user_id === guestId);
   const targetPlan = plans?.find((p) => p.user_id === targetId);
   if (guestPlan && targetPlan && !targetPlan.ai_consent && guestPlan.ai_consent) {
     await client
       .from("user_plans")
       .update({ ai_consent: guestPlan.ai_consent, ai_consent_at: guestPlan.ai_consent_at, ai_consent_version: guestPlan.ai_consent_version })
-      .eq("user_id", targetId);
+      .eq("user_id", targetId)
+      .then(({ error }) => {
+        if (error) throw new Error(`claim: copy consent failed: ${error.message}`);
+      });
   }
   if (guestPlan && targetPlan && !targetPlan.lang && guestPlan.lang) {
     await client.from("user_plans").update({ lang: guestPlan.lang }).eq("user_id", targetId);

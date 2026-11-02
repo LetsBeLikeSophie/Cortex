@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import { createDailyBudget } from "./aiBudget.js";
 import { estimateCostUsd } from "./aiCost.js";
+import { noteAiAnswered } from "./aiHealth.js";
 import { getClient } from "./supabase.js";
 
 // One row per Claude call: what it was for, which model, tokens, and an
@@ -34,6 +35,7 @@ export function logAiCall(purpose: AiPurpose, model: string, usage: Usage, userI
   const input = usage.input_tokens + (usage.cache_read_input_tokens ?? 0) + (usage.cache_creation_input_tokens ?? 0);
   const cost = estimateCostUsd(model, input, usage.output_tokens);
   dailyAiBudget.add(cost);
+  noteAiAnswered();
   void Promise.resolve(
     getClient()
       .from("ai_calls")

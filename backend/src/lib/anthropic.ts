@@ -3,6 +3,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { CATEGORIES } from "./categories.js";
 import { AiBudgetExceeded } from "./aiBudget.js";
+import { noteAiRefused } from "./aiHealth.js";
 import { AiPurpose, logAiCall } from "./aiLog.js";
 
 // Keys come from the environment only -- never hardcode a key.
@@ -23,8 +24,10 @@ const voiceClient = clientFor("ANTHROPIC_API_KEY_VOICE");
 export function isAiUnavailable(err: unknown): boolean {
   if (err instanceof AiBudgetExceeded) return true;
   if (!(err instanceof Anthropic.APIError)) return false;
-  if (err.status === 401 || err.status === 403) return true;
-  return err.status === 400 && /credit balance/i.test(err.message);
+  const refused = err.status === 401 || err.status === 403 || (err.status === 400 && /credit balance/i.test(err.message));
+  // Told to the monitor through /health/ai.
+  if (refused) noteAiRefused();
+  return refused;
 }
 
 // Runs on every single save (text or vision), so cost scales directly with

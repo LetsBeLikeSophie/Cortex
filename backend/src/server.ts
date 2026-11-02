@@ -9,6 +9,8 @@ import { webhookRoutes } from "./routes/webhooks.js";
 import { billingRoutes } from "./routes/billing.js";
 import { resumePendingClassifications } from "./lib/pipeline.js";
 import { startRetentionJob } from "./lib/retention.js";
+import { aiRefusing } from "./lib/aiHealth.js";
+import { dailyAiBudget } from "./lib/aiLog.js";
 
 // Base64 inflates bytes by ~33%, so give Fastify's own body-size cap enough
 // headroom above maxImageBytes that our friendlier "image too large" check
@@ -59,6 +61,15 @@ app.get("/health", async () => ({
   anthropicConfigured: config.hasAnthropicKey,
   supabaseConfigured: config.hasSupabase,
 }));
+
+// For the outside monitor (decision M1): 503 while AI can't be used -- today's
+// spending ceiling is reached, or Claude refused (credit, key) and hasn't
+// answered since. Says nothing about anyone's memos.
+app.get("/health/ai", async (_req, reply) => {
+  if (aiRefusing()) return reply.code(503).send({ ok: false, reason: "refused" });
+  if (await dailyAiBudget.isOver().catch(() => false)) return reply.code(503).send({ ok: false, reason: "daily_limit" });
+  return { ok: true };
+});
 
 await app.register(itemsRoutes);
 await app.register(authRoutes);

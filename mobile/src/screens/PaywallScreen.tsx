@@ -62,6 +62,7 @@ const S = strings({
     trialSafe: '저장은 계속 돼요 · 자동 결제 없어요',
     trialUsed: (n: number) => `체험 중 AI가 ${n}건 정리했어요`,
     ranOut: '저장은 계속 돼요 · AI는 다음 달에 다시 채워져요',
+    promise: '링크와 캡처 속 글자까지, 기억나는 말로 찾아 드려요',
     start: 'Pro 시작하기',
     manage: '구독 관리 · 해지 (Play 스토어)',
     appOnly: '결제는 안드로이드 앱(플레이스토어에서 설치)에서 할 수 있어요.',
@@ -101,6 +102,7 @@ const S = strings({
     trialSafe: 'Saving keeps working · no automatic charge',
     trialUsed: (n: number) => `AI sorted ${n} during your trial`,
     ranOut: 'Saving still works · AI refills next month',
+    promise: 'Find it by what you remember, even words inside links and screenshots',
     start: 'Start Pro',
     manage: 'Manage or cancel (Play Store)',
     appOnly: 'You can buy Pro in the Android app (from the Play Store).',
@@ -140,6 +142,7 @@ const S = strings({
     trialSafe: '保存は続けられます · 自動課金はありません',
     trialUsed: (n: number) => `体験中にAIが${n}件整理しました`,
     ranOut: '保存は続けられます · AIは来月また使えます',
+    promise: 'リンクやキャプチャの中の文字まで、覚えている言葉で探せます',
     start: 'Proを始める',
     manage: 'サブスクの管理・解約(Play Store)',
     appOnly: '購入はAndroidアプリ(Play Storeからインストール)でできます。',
@@ -179,6 +182,7 @@ const S = strings({
     trialSafe: '保存功能不受影响 · 不会自动扣款',
     trialUsed: (n: number) => `试用期间 AI 整理了 ${n} 项`,
     ranOut: '保存照常 · AI 下个月恢复',
+    promise: '链接和截图里的文字也算，用记得的话就能找到',
     start: '开通 Pro',
     manage: '管理 · 取消订阅（Play 商店）',
     appOnly: '请在 Android 应用（从 Play 商店安装）中付款。',
@@ -218,6 +222,7 @@ const S = strings({
     trialSafe: '儲存功能不受影響 · 不會自動扣款',
     trialUsed: (n: number) => `試用期間 AI 整理了 ${n} 項`,
     ranOut: '儲存照常 · AI 下個月恢復',
+    promise: '連結和截圖裡的文字也算，用記得的話就能找到',
     start: '開通 Pro',
     manage: '管理 · 取消訂閱（Play 商店）',
     appOnly: '請在 Android App（從 Play 商店安裝）中付款。',
@@ -290,7 +295,7 @@ export default function PaywallScreen() {
     ? (reason === 'trial_ending' && plan && plan.classify.used > 0 ? `${S.trialUsed(plan.classify.used)} · ` : '') + S.trialSafe
     : reason
       ? S.ranOut
-      : undefined;
+      : S.promise;
 
   const lifetimeLeft = offers?.enabled ? offers.lifetimeRemaining : 0;
   const options: { key: PlanOption; label: string; note: string }[] = [

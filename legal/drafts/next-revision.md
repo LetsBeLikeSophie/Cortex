@@ -43,6 +43,7 @@
 - 탈퇴 후 결제 기록: "탈퇴하면 결제 기록에서 계정과의 연결을 지우고, 환불·세무 대응을 위해 주문번호·상품·기간·국가만 5년 보관합니다." (결정 C2, 코드 반영됨)
 - Google로 보내는 항목: 결제 요청에 "이름이나 이메일이 들어 있지 않은 임의의 계정 ID"을 함께 보냄. 위탁·국외 이전의 Google 항목에 추가 (결정 P1, 코드 반영됨)
 - 오류 정보: "앱 오류가 나면 앱 버전, 오류 종류, 코드 위치를 운영자 서버로 보내 90일 보관합니다. 계정과 메모 내용은 포함하지 않습니다." 수집 항목에 추가 (결정 E1, 코드 반영됨)
+- 카카오 연결 해제 (결정 K1, 코드 반영됨, SQL `backend/db/migrations/2026-11-03-kakao-unlink-hold.sql` 먼저): 3항 보유 기간에 추가 — "카카오 설정에서 Cortex 연결을 끊으면 계정은 로그인할 수 없는 상태로 30일 보관한 뒤 계정 정보와 저장한 콘텐츠 전체를 삭제합니다. 그 사이 같은 카카오 계정으로 다시 로그인하면 그대로 이용할 수 있습니다." 영어: "If you disconnect Cortex in your Kakao settings, your account is kept, unable to sign in, for 30 days, then your account data and all saved content are deleted. Signing in again with the same Kakao account within that time restores it." Play 데이터 보안 신고는 바꿀 것 없음(새로 모으는 정보 없음, 삭제 요청 방법은 그대로)
 - 8항 제외 지역: 약관 제4조와 같게
 - 15항 등 책임자: 판매자 정보와 같게
 

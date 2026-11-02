@@ -1,6 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
-import { deleteUserAccount, findUserIdByEmail, findUserIdByKakaoId, linkKakaoUser, logAnalyticsEvent, seedSampleItem } from "./supabase.js";
+import {
+  clearKakaoUnlinked,
+  deleteUserAccount,
+  findUserIdByEmail,
+  findUserIdByKakaoId,
+  isKakaoUnlinked,
+  linkKakaoUser,
+  logAnalyticsEvent,
+  seedSampleItem,
+} from "./supabase.js";
 
 interface KakaoTokenResponse {
   access_token: string;
@@ -88,7 +97,14 @@ export async function loginWithKakaoCode(code: string, redirectUri: string): Pro
   // legacy account instead of on every login forever.
   let userId = await findUserIdByKakaoId(kakaoUser.id);
   if (userId) {
-    await admin.auth.admin.updateUserById(userId, { user_metadata: metadata });
+    // Back within 30 days of unlinking from Kakao's side: the held account
+    // comes back as it was (decision K1).
+    if (await isKakaoUnlinked(kakaoUser.id)) {
+      await admin.auth.admin.updateUserById(userId, { user_metadata: metadata, ban_duration: "none" });
+      await clearKakaoUnlinked(kakaoUser.id);
+    } else {
+      await admin.auth.admin.updateUserById(userId, { user_metadata: metadata });
+    }
   } else {
     const { data: createData, error: createError } = await admin.auth.admin.createUser({
       email: syntheticEmail,

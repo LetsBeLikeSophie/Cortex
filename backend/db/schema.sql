@@ -132,6 +132,11 @@ create table if not exists kakao_users (
 
 create index if not exists kakao_users_user_id_idx on kakao_users (user_id);
 
+-- Migration (2026-11-03, decision K1): set when Kakao's unlink webhook arrives;
+-- the account is deleted 30 days later unless the person logs in again.
+alter table kakao_users add column if not exists unlinked_at timestamptz;
+create index if not exists kakao_users_unlinked_at_idx on kakao_users (unlinked_at) where unlinked_at is not null;
+
 alter table kakao_users enable row level security;
 
 -- Migration (2026-10-01): topic-based categories -> intent-based.

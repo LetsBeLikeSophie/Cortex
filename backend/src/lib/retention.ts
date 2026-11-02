@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import { getClient } from "./supabase.js";
+import { deleteUserAccount, getClient, listExpiredKakaoUnlinks, logAnalyticsEvent } from "./supabase.js";
 
 // Keeps the two usage logs from growing forever. Runs at startup and then
 // once a day (see startRetentionJob).
@@ -11,6 +11,7 @@ import { getClient } from "./supabase.js";
 //   from before last month are dropped.
 // - purchases of deleted accounts: kept 5 years for refunds and tax.
 // - app_errors: 90 days.
+// - accounts unlinked from Kakao's side: deleted 30 days after (decision K1).
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BATCH = 1000;
@@ -96,6 +97,20 @@ async function pruneOldRecords(): Promise<void> {
   if (errorsError) throw new Error(`retention app_errors failed: ${errorsError.message}`);
 }
 
+async function purgeUnlinkedKakaoAccounts(): Promise<number> {
+  let purged = 0;
+  for (;;) {
+    const userIds = await listExpiredKakaoUnlinks();
+    if (userIds.length === 0) return purged;
+    for (const userId of userIds) {
+      await logAnalyticsEvent({ eventType: "account_deleted", userId });
+      // Also removes the kakao_users row, so the next read moves on.
+      await deleteUserAccount(userId);
+      purged++;
+    }
+  }
+}
+
 export async function runRetention(log: { info: (msg: string) => void; error: (err: unknown, msg: string) => void }): Promise<void> {
   try {
     const pruned = await rollUpAndPruneAiCalls();
@@ -112,6 +127,12 @@ export async function runRetention(log: { info: (msg: string) => void; error: (e
     await pruneOldRecords();
   } catch (err) {
     log.error(err, "retention: old records step failed");
+  }
+  try {
+    const purged = await purgeUnlinkedKakaoAccounts();
+    if (purged > 0) log.info(`retention: deleted ${purged} account(s) unlinked from Kakao 30+ days ago`);
+  } catch (err) {
+    log.error(err, "retention: kakao unlink step failed");
   }
 }
 

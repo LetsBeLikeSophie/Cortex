@@ -1266,6 +1266,38 @@ export async function findUserIdByKakaoId(kakaoId: number): Promise<string | nul
   return data?.user_id ?? null;
 }
 
+// Unlinked from Kakao's side (their Kakao settings): the account is held 30
+// days, then deleted by the retention job (decision K1). Logging in with the
+// same Kakao account in between clears it (see kakaoAuth.ts).
+export const KAKAO_UNLINK_HOLD_DAYS = 30;
+
+export async function isKakaoUnlinked(kakaoId: number): Promise<boolean> {
+  const { data, error } = await getClient().from("kakao_users").select("unlinked_at").eq("kakao_id", String(kakaoId)).maybeSingle();
+  if (error) throw new Error(`isKakaoUnlinked failed: ${error.message}`);
+  return !!data?.unlinked_at;
+}
+
+// Upsert: an account older than kakao_users (found by its email) gets its
+// row here, already marked.
+export async function markKakaoUnlinked(kakaoId: number, userId: string): Promise<void> {
+  const { error } = await getClient()
+    .from("kakao_users")
+    .upsert({ kakao_id: String(kakaoId), user_id: userId, unlinked_at: new Date().toISOString() }, { onConflict: "kakao_id" });
+  if (error) throw new Error(`markKakaoUnlinked failed: ${error.message}`);
+}
+
+export async function clearKakaoUnlinked(kakaoId: number): Promise<void> {
+  const { error } = await getClient().from("kakao_users").update({ unlinked_at: null }).eq("kakao_id", String(kakaoId));
+  if (error) throw new Error(`clearKakaoUnlinked failed: ${error.message}`);
+}
+
+export async function listExpiredKakaoUnlinks(limit = 100): Promise<string[]> {
+  const cutoff = new Date(Date.now() - KAKAO_UNLINK_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await getClient().from("kakao_users").select("user_id").lt("unlinked_at", cutoff).limit(limit);
+  if (error) throw new Error(`listExpiredKakaoUnlinks failed: ${error.message}`);
+  return (data ?? []).map((r: { user_id: string }) => r.user_id);
+}
+
 export async function linkKakaoUser(kakaoId: number, userId: string): Promise<void> {
   const { error } = await getClient().from("kakao_users").insert({ kakao_id: String(kakaoId), user_id: userId });
   if (error) throw new Error(`linkKakaoUser failed: ${error.message}`);

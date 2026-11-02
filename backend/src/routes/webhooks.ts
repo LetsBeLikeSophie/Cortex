@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createClient } from "@supabase/supabase-js";
 import { required } from "../config.js";
-import { findUserIdByEmail, findUserIdByKakaoId, KAKAO_UNLINK_HOLD_DAYS, markKakaoUnlinked } from "../lib/supabase.js";
+import { findUserIdByEmail, findUserIdByKakaoId, markKakaoUnlinked } from "../lib/supabase.js";
 
 interface KakaoUnlinkBody {
   app_id?: string;
@@ -46,10 +46,12 @@ export async function webhookRoutes(app: FastifyInstance) {
         // means the account is going: held 30 days (a mistaken unlink can be
         // undone by logging in again), then the retention job deletes it
         // with its memos and photos (decision K1). Banned meanwhile, so the
-        // old session can't be refreshed.
+        // old session can't be refreshed -- with no end date, since the job
+        // runs once a day and a ban that lapsed first would let the old
+        // session back in; logging in again lifts it (kakaoAuth.ts).
         await markKakaoUnlinked(Number(kakaoUserId), userId);
         const admin = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"));
-        await admin.auth.admin.updateUserById(userId, { ban_duration: `${KAKAO_UNLINK_HOLD_DAYS * 24}h` });
+        await admin.auth.admin.updateUserById(userId, { ban_duration: "876000h" });
         req.log.info({ kakaoUserId, referrerType: body?.referrer_type }, "kakao unlink webhook: account held for deletion");
       } else {
         req.log.info({ kakaoUserId }, "kakao unlink webhook: no matching account, nothing to do");

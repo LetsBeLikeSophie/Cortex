@@ -1314,9 +1314,12 @@ export async function clearKakaoUnlinked(kakaoId: number): Promise<void> {
   if (error) throw new Error(`clearKakaoUnlinked failed: ${error.message}`);
 }
 
-export async function listExpiredKakaoUnlinks(limit = 100): Promise<string[]> {
+// Oldest first; `skip` is accounts that already failed in this run.
+export async function listExpiredKakaoUnlinks(skip: string[] = [], limit = 100): Promise<string[]> {
   const cutoff = new Date(Date.now() - KAKAO_UNLINK_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const { data, error } = await getClient().from("kakao_users").select("user_id").lt("unlinked_at", cutoff).limit(limit);
+  let query = getClient().from("kakao_users").select("user_id").lt("unlinked_at", cutoff);
+  if (skip.length > 0) query = query.not("user_id", "in", `(${skip.join(",")})`);
+  const { data, error } = await query.order("unlinked_at", { ascending: true }).limit(limit);
   if (error) throw new Error(`listExpiredKakaoUnlinks failed: ${error.message}`);
   return (data ?? []).map((r: { user_id: string }) => r.user_id);
 }

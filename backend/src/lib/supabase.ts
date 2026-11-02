@@ -4,6 +4,7 @@ import { config, required } from "../config.js";
 import { recordOnlyRaw } from "./billingRules.js";
 import { Category } from "./categories.js";
 import type { SearchInterpretation } from "./anthropic.js";
+import { scanPages } from "./scanPages.js";
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG } from "./sourceCatalog.js";
 import { newestOfBoth, tagArrayLiteral } from "./tagQuery.js";
 
@@ -856,15 +857,6 @@ export async function searchItems(
   tags: string[] = [],
   excludeTags: string[] = []
 ): Promise<ItemRecord[]> {
-  const { data, error } = await getClient()
-    .from("items")
-    .select()
-    .eq("user_id", userId)
-    .order("shared_at", { ascending: false })
-    .limit(500);
-
-  if (error) throw new Error(`searchItems failed: ${error.message}`);
-
   const inc = include.map((w) => w.toLowerCase()).filter(Boolean);
   const exc = exclude.map((w) => w.toLowerCase()).filter(Boolean);
 
@@ -872,14 +864,29 @@ export async function searchItems(
   const tagExc = excludeTags.map((t) => t.toLowerCase()).filter(Boolean);
   const hasTag = (item: ItemRecord, tag: string) => [...item.tags, ...item.user_tags].some((t) => t.toLowerCase() === tag);
 
-  const matches = (data ?? []).filter((item: ItemRecord) => {
+  const keep = (item: ItemRecord) => {
     if (exc.some((needle) => matchesTerm(item, needle))) return false;
     if (tagExc.some((tag) => hasTag(item, tag))) return false;
     if (!tagInc.every((tag) => hasTag(item, tag))) return false;
     return inc.every((needle) => matchesTerm(item, needle));
+  };
+  // Newest first, so the first `limit` matches are the answer.
+  const matches = await scanPages<ItemRecord>(
+    (from, to) =>
+      getClient()
+        .from("items")
+        .select()
+        .eq("user_id", userId)
+        .order("shared_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    keep,
+    (n) => n >= limit
+  ).catch((err: Error) => {
+    throw new Error(`searchItems failed: ${err.message}`);
   });
 
-  return matches.slice(0, limit) as ItemRecord[];
+  return matches.slice(0, limit);
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -919,23 +926,30 @@ export async function searchItemsSmart(
   const hasFilter = !!(q.source || q.captureType || q.category || q.dateFrom || q.dateTo);
 
   const run = async (withFilters: boolean) => {
-    let query = getClient().from("items").select().eq("user_id", userId);
-    if (withFilters) {
-      if (q.source) query = query.eq("source", q.source);
-      if (q.captureType) query = query.eq("capture_type", q.captureType);
-      if (q.category) query = query.eq("category", q.category);
-      // Dates come in as calendar days where the person is; shared_at is UTC.
-      const zone = isoOffset(utcOffsetMinutes);
-      if (q.dateFrom && DATE_RE.test(q.dateFrom)) query = query.gte("shared_at", `${q.dateFrom}T00:00:00${zone}`);
-      if (q.dateTo && DATE_RE.test(q.dateTo)) query = query.lte("shared_at", `${q.dateTo}T23:59:59.999${zone}`);
-    }
-    // "가장 오래된 ..." asks for the start of the archive, not the latest 500.
-    const oldestFirst = q.sort === "oldest";
-    const { data, error } = await query.order("shared_at", { ascending: oldestFirst }).limit(500);
-    if (error) throw new Error(`searchItemsSmart failed: ${error.message}`);
+    const build = () => {
+      let query = getClient().from("items").select().eq("user_id", userId);
+      if (withFilters) {
+        if (q.source) query = query.eq("source", q.source);
+        if (q.captureType) query = query.eq("capture_type", q.captureType);
+        if (q.category) query = query.eq("category", q.category);
+        // Dates come in as calendar days where the person is; shared_at is UTC.
+        const zone = isoOffset(utcOffsetMinutes);
+        if (q.dateFrom && DATE_RE.test(q.dateFrom)) query = query.gte("shared_at", `${q.dateFrom}T00:00:00${zone}`);
+        if (q.dateTo && DATE_RE.test(q.dateTo)) query = query.lte("shared_at", `${q.dateTo}T23:59:59.999${zone}`);
+      }
+      // "가장 오래된 ..." asks for the start of the archive, not the newest.
+      const oldestFirst = q.sort === "oldest";
+      return query.order("shared_at", { ascending: oldestFirst }).order("id", { ascending: oldestFirst });
+    };
+    // Every match is scored, so the whole archive is read (scanPages bounds it).
+    const rows = await scanPages<ItemRecord>(
+      (from, to) => build().range(from, to),
+      (item) => !exc.some((needle) => matchesTerm(item, needle))
+    ).catch((err: Error) => {
+      throw new Error(`searchItemsSmart failed: ${err.message}`);
+    });
 
-    return ((data ?? []) as ItemRecord[])
-      .filter((item) => !exc.some((needle) => matchesTerm(item, needle)))
+    return rows
       .map((item) => ({
         ...item,
         matched_count: groups.filter((g) => g.some((needle) => matchesTerm(item, needle))).length,

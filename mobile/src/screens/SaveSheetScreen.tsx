@@ -420,6 +420,16 @@ export default function SaveSheetScreen() {
 
     if (result.assets.length > 1) {
       // The memo box stays: with several photos it's their shared note.
+      // Longer than a note can be: kept, as with one photo.
+      const typed = text.trim();
+      if (typed.length > NOTE_MAX) {
+        carriedText.current = typed;
+        if (!openedByShare) {
+          longDraft.current = typed;
+          showToast(S.draftKept);
+        }
+        setText('');
+      }
       setLinkUrl(null);
       setImage(null);
       setNote('');
@@ -446,6 +456,15 @@ export default function SaveSheetScreen() {
   // Shared-in text is held only for "사진 지우고 다시 선택", never as the
   // "+" draft (UX-92).
   const carriedText = useRef<string | null>(null);
+  // The photos were unselected: the long text set aside for them comes back.
+  const photoCount = selectedScreenshots.length;
+  useEffect(() => {
+    if (photoCount > 0 || image || !carriedText.current || text.trim()) return;
+    setText(carriedText.current);
+    carriedText.current = null;
+    longDraft.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoCount]);
   const carryTextToNote = () => {
     const typed = text.trim();
     if (typed.length > NOTE_MAX) {
@@ -690,7 +709,10 @@ ${sharedNote ?? ''}`;
                       onStart={() => {
                         voiceBase.current = text.trim() ? `${text.trimEnd()} ` : '';
                       }}
-                      onResult={(spoken) => setText(voiceBase.current + spoken)}
+                      onResult={(spoken) => {
+                        const said = voiceBase.current + spoken;
+                        setText(selectedScreenshots.length > 0 ? said.slice(0, NOTE_MAX) : said);
+                      }}
                     />
                   }
                 >
@@ -698,6 +720,7 @@ ${sharedNote ?? ''}`;
                     value={text}
                     onChangeText={setText}
                     multiline
+                    maxLength={selectedScreenshots.length > 0 ? NOTE_MAX : undefined}
                     editable={status !== 'saving'}
                     onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50)}
                     placeholder={selectedScreenshots.length > 0 ? S.memoBulkPlaceholder : S.memoPlaceholder}

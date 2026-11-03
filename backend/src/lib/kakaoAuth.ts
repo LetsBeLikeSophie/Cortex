@@ -42,6 +42,8 @@ async function exchangeKakaoCode(code: string, redirectUri: string): Promise<str
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" },
     body: params.toString(),
+    // A slow Kakao can't hold a login request for minutes (server rule 2026-11-01).
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`kakao token exchange failed: ${await res.text()}`);
   const data = (await res.json()) as KakaoTokenResponse;
@@ -51,6 +53,7 @@ async function exchangeKakaoCode(code: string, redirectUri: string): Promise<str
 async function fetchKakaoUser(kakaoAccessToken: string): Promise<KakaoUserResponse> {
   const res = await fetch("https://kapi.kakao.com/v2/user/me", {
     headers: { Authorization: `Bearer ${kakaoAccessToken}` },
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`kakao user fetch failed: ${await res.text()}`);
   return (await res.json()) as KakaoUserResponse;
@@ -172,6 +175,7 @@ export async function deleteAccount(userId: string): Promise<void> {
     // goes ahead below.
     await fetch("https://kapi.kakao.com/v1/user/unlink", {
       method: "POST",
+      signal: AbortSignal.timeout(5_000),
       headers: {
         Authorization: `KakaoAK ${adminKey}`,
         "Content-Type": "application/x-www-form-urlencoded;charset=utf-8",

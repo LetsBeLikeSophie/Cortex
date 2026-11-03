@@ -1173,6 +1173,20 @@ export async function findUserIdByEmail(email: string): Promise<string | null> {
 export async function deleteUserAccount(userId: string): Promise<void> {
   const client = getClient();
 
+  // Detaching first (safe to repeat): if it fails, nothing is gone yet, so
+  // a retry never finds an account with no memos left.
+  // Purchases stay 5 years for refunds and tax, no longer saying whose they were
+  // (decision C2). The token stays: it can be restored on a new account.
+  const { data: purchases, error: purchasesError } = await client.from("purchases").select("id, raw").eq("user_id", userId);
+  if (purchasesError) throw new Error(`failed to read purchases: ${purchasesError.message}`);
+  for (const row of purchases ?? []) {
+    const { error } = await client.from("purchases").update({ user_id: null, raw: recordOnlyRaw(row.raw) }).eq("id", row.id);
+    if (error) throw new Error(`failed to detach purchase: ${error.message}`);
+  }
+  // Per-call cost log: keep the rows (aggregate cost), drop who made them.
+  const { error: callsError } = await client.from("ai_calls").update({ user_id: null }).eq("user_id", userId);
+  if (callsError) console.error(`failed to detach ai_calls: ${callsError.message}`);
+
   const names = await listUserFiles(userId);
   for (let i = 0; i < names.length; i += 1000) {
     const paths = names.slice(i, i + 1000).map((name) => `${userId}/${name}`);
@@ -1189,17 +1203,6 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   if (usageError) throw new Error(`failed to delete usage log: ${usageError.message}`);
   const { error: reportsError } = await client.from("ai_reports").delete().eq("user_id", userId);
   if (reportsError) throw new Error(`failed to delete AI reports: ${reportsError.message}`);
-  // Purchases stay 5 years for refunds and tax, no longer saying whose they were
-  // (decision C2). The token stays: it can be restored on a new account.
-  const { data: purchases, error: purchasesError } = await client.from("purchases").select("id, raw").eq("user_id", userId);
-  if (purchasesError) throw new Error(`failed to read purchases: ${purchasesError.message}`);
-  for (const row of purchases ?? []) {
-    const { error } = await client.from("purchases").update({ user_id: null, raw: recordOnlyRaw(row.raw) }).eq("id", row.id);
-    if (error) throw new Error(`failed to detach purchase: ${error.message}`);
-  }
-  // Per-call cost log: keep the rows (aggregate cost), drop who made them.
-  const { error: callsError } = await client.from("ai_calls").update({ user_id: null }).eq("user_id", userId);
-  if (callsError) console.error(`failed to detach ai_calls: ${callsError.message}`);
 
   const { error: mappingError } = await client.from("kakao_users").delete().eq("user_id", userId);
   if (mappingError) throw new Error(`failed to delete kakao_users mapping: ${mappingError.message}`);

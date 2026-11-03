@@ -187,10 +187,6 @@ export function remaining(ent: Entitlement, kind: UsageKind): number {
   return Math.max(0, ent[kind].limit - ent[kind].used);
 }
 
-export async function recordUsage(userId: string, kind: UsageKind): Promise<void> {
-  await reserveUsage(userId, kind);
-}
-
 // Counts the use up front -- the moment a save is accepted for AI
 // classification, not when the classification eventually finishes -- so a
 // 30-photo batch shows as 30 used right away. Returns the row id so a job

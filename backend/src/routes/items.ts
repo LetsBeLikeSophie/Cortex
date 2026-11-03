@@ -7,7 +7,7 @@ import { isPlayBillingConfigured } from "../lib/googlePlay.js";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
-import { AiConsentRequiredError, getEntitlement, recordUsage, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang } from "../lib/plans.js";
+import { AiConsentRequiredError, getEntitlement, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang } from "../lib/plans.js";
 import { normalizeLang, DEFAULT_LANG } from "../lib/anthropic.js";
 import { dailyAiBudget } from "../lib/aiLog.js";
 import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, suggestTagMerges, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
@@ -55,6 +55,9 @@ import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 const exporting = new Set<string>();
 // People whose 'AI로 정리' run is queueing right now.
 const sorting = new Set<string>();
+// One sentence search per person at a time, so parallel requests can't all
+// pass the "uses left" check before any is counted.
+const asking = new Set<string>();
 
 const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
@@ -304,12 +307,25 @@ export async function itemsRoutes(app: FastifyInstance) {
         return reply.code(402).send({ error: "quota", kind: "search", limit: ent.search.limit, tier: ent.tier, resetsAt: ent.resetsAt });
       }
       await dailyAiBudget.assertOpen();
+      if (asking.has(userId)) return reply.code(409).send({ error: "search_running" });
+      asking.add(userId);
       const utcOffset = utcOffsetOf(req);
-      const interpretation = await interpretSearch(parsed.data.query, localToday(utcOffset), userId);
-      const result = await searchItemsSmart(userId, interpretation, undefined, utcOffset);
-      // Counted only once the results are ready: a search that fails after
-      // reading the sentence keeps the month's use (decision C2, 2026-11-03).
-      await recordUsage(userId, "search").catch((err) => req.log.error(err));
+      let interpretation: Awaited<ReturnType<typeof interpretSearch>>;
+      let result: Awaited<ReturnType<typeof searchItemsSmart>>;
+      try {
+        // Counted before the AI call, handed back if the results don't come
+        // out: a failed search keeps the month's use (decision C2, 2026-11-03).
+        const reservation = await reserveUsage(userId, "search");
+        try {
+          interpretation = await interpretSearch(parsed.data.query, localToday(utcOffset), userId);
+          result = await searchItemsSmart(userId, interpretation, undefined, utcOffset);
+        } catch (err) {
+          await refundUsage(reservation).catch(() => {});
+          throw err;
+        }
+      } finally {
+        asking.delete(userId);
+      }
       // Locked memos stay out of AI search.
       return reply.send({ interpretation, ...result, items: result.items.filter((it) => !it.locked) });
     }

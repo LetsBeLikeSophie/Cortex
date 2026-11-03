@@ -10,3 +10,7 @@
 
 - Collecting something new about people (a new field, log or event) comes with a note, in the same change, of what the privacy policy and the Play data safety form need to say. It ships only after both are updated.
 - A script that deletes data deletes only the targets named on its command line; with no target, or without `--confirm`, it only lists what it would delete.
+
+## Server rules (Sophie, 2026-11-03)
+
+- A change that makes the server read more rows filters in the database, not in server memory; if it's a feature anyone can call freely without spending a use, it comes with a rate limit.

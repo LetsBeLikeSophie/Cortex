@@ -21,6 +21,7 @@ import {
   SearchInterpretation,
   SmartSearchResponse,
   friendlyError,
+  isTimeout,
   ApiError,
 } from '../api/client';
 import { captureTypeLabel, composeMaterials, sourceLabel, toSearchResult, toSmartSearchResult } from '../api/format';
@@ -64,6 +65,7 @@ const S = strings({
     quotaUsed: (limit: number) => `이번 달 AI 검색 ${limit}회를 다 썼어요. 단어로 찾은 결과예요.`,
     seePro: 'Pro 보기',
     aiFailed: 'AI 검색이 실패해서 단어로 찾은 결과예요.',
+    aiSlow: 'AI 검색이 늦어 단어로 찾은 결과예요.',
     quotaOut: '이번 달 AI 검색을 다 썼어요',
     looksLikeSentence: '문장처럼 보여요 → ',
     needConsent: 'AI 분석에 동의하면 문장으로 찾을 수 있어요',
@@ -100,6 +102,7 @@ const S = strings({
     quotaUsed: (limit: number) => `You've used all ${limit} AI searches this month. Showing keyword results.`,
     seePro: 'See Pro',
     aiFailed: 'AI search failed. Showing keyword results.',
+    aiSlow: 'AI search took too long. Showing keyword results.',
     quotaOut: "You've used this month's AI searches",
     looksLikeSentence: 'Looks like a sentence → ',
     needConsent: 'Allow AI analysis to search by sentence',
@@ -136,6 +139,7 @@ const S = strings({
     quotaUsed: (limit: number) => `今月のAI検索${limit}回を使い切りました。単語での検索結果です。`,
     seePro: 'Proを見る',
     aiFailed: 'AI検索に失敗したため、単語での検索結果です。',
+    aiSlow: 'AI検索が遅れたため、単語での検索結果です。',
     quotaOut: '今月のAI検索を使い切りました',
     looksLikeSentence: '文章のようです → ',
     needConsent: 'AI分析に同意すると文章で検索できます',
@@ -172,6 +176,7 @@ const S = strings({
     quotaUsed: (limit: number) => `本月 ${limit} 次 AI 搜索已用完。以下是按关键词搜索的结果。`,
     seePro: '查看 Pro',
     aiFailed: 'AI 搜索失败，以下是按关键词搜索的结果。',
+    aiSlow: 'AI 搜索太慢，以下是按关键词搜索的结果。',
     quotaOut: '本月 AI 搜索已用完',
     looksLikeSentence: '像是一句话 → ',
     needConsent: '同意 AI 分析后即可用句子搜索',
@@ -208,6 +213,7 @@ const S = strings({
     quotaUsed: (limit: number) => `本月 ${limit} 次 AI 搜尋已用完。以下是依關鍵字搜尋的結果。`,
     seePro: '查看 Pro',
     aiFailed: 'AI 搜尋失敗，以下是依關鍵字搜尋的結果。',
+    aiSlow: 'AI 搜尋太慢，以下是依關鍵字搜尋的結果。',
     quotaOut: '本月 AI 搜尋已用完',
     looksLikeSentence: '看起來像一句話 → ',
     needConsent: '同意 AI 分析後即可用句子搜尋',
@@ -379,7 +385,7 @@ export default function SearchScreen() {
   const [quotaHit, setQuotaHit] = useState<QuotaError | null>(null);
   // The AI search for `failedQuery` failed (not a quota stop). Shown above
   // the word-search results that took its place, until the text changes.
-  const [aiError, setAiError] = useState<{ query: string; message: string } | null>(null);
+  const [aiError, setAiError] = useState<{ query: string; message: string; timedOut?: boolean } | null>(null);
   const [quotaQuery, setQuotaQuery] = useState<string | null>(null);
   // Every saved tag, for the tag filter's autocomplete -- refreshed on focus
   // so tags added elsewhere show up without a restart.
@@ -472,6 +478,8 @@ export default function SearchScreen() {
   // No AI consent: sentence search would only be refused -- the consent
   // sheet comes instead (rule 2026-10-26: AI buttons say "동의하면 돼요").
   const noAiConsent = !!plan && plan.aiConsent !== 'agreed';
+  const boxText = React.useRef(trimmed);
+  boxText.current = trimmed;
   const ask = (spoken?: string) => {
     const text = (spoken ?? query).trim();
     if (!text || asking) return;
@@ -487,11 +495,14 @@ export default function SearchScreen() {
     setAiError(null);
     askSearch(text)
       .then((res) => {
+        refreshPlan();
+        // The box changed while the AI worked: its answer is for old text.
+        if (boxText.current !== text) return;
         setInterpretation(res.interpretation);
         applySmart(res, res.interpretation);
-        refreshPlan();
       })
       .catch((err) => {
+        if (boxText.current !== text) return;
         // Falls back to word search for the same text -- and says so,
         // instead of the word results silently standing in for the AI's.
         setAiQuery(null);
@@ -503,25 +514,36 @@ export default function SearchScreen() {
         } else if (err instanceof ApiError && err.status === 403 && (err.body as { error?: string } | null)?.error === 'ai_consent') {
           // Not a failure: the consent sheet is already opening.
         } else {
-          setAiError({ query: text, message: friendlyError(err) });
+          // Timed out: the use is already spent and the server may still
+          // finish, so no retry that would spend another.
+          setAiError({ query: text, message: friendlyError(err), timedOut: isTimeout(err) });
         }
       })
       .finally(() => {
         setAsking(false);
-        setLoading(false);
+        if (boxText.current === text) setLoading(false);
       });
   };
 
+  // Chips removed quickly one after another: only the last edit's answer lands.
+  // Its own counter -- searchSeq is bumped whenever aiQuery changes.
+  const reSearchSeq = React.useRef(0);
   const reSearch = (q: SearchInterpretation) => {
+    const seq = ++reSearchSeq.current;
     setInterpretation(q);
     setLoading(true);
     smartSearch(q)
-      .then((res) => applySmart(res, q))
+      .then((res) => {
+        if (seq === reSearchSeq.current) applySmart(res, q);
+      })
       .catch((err) => {
+        if (seq !== reSearchSeq.current) return;
         setHits([]);
         setError(friendlyError(err));
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (seq === reSearchSeq.current) setLoading(false);
+      });
   };
 
   const retry = () => {
@@ -701,10 +723,16 @@ export default function SearchScreen() {
         )}
         {aiError && aiError.query === trimmed && (
           <View style={styles.notice}>
-            <Text style={[styles.noticeText, { color: theme.danger }]}>{S.aiFailed}</Text>
-            <Pressable onPress={() => ask()} hitSlop={6}>
-              <Text style={[styles.noticeLink, { color: theme.ink }]}>{COMMON.retry}</Text>
-            </Pressable>
+            {aiError.timedOut ? (
+              <Text style={[styles.noticeText, { color: theme.sub }]}>{S.aiSlow}</Text>
+            ) : (
+              <>
+                <Text style={[styles.noticeText, { color: theme.danger }]}>{S.aiFailed}</Text>
+                <Pressable onPress={() => ask()} hitSlop={6}>
+                  <Text style={[styles.noticeLink, { color: theme.ink }]}>{COMMON.retry}</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         )}
 

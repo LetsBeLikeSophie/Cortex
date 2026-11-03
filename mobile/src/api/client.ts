@@ -391,13 +391,15 @@ export interface SmartSearchResponse {
   relaxed_count: number | null;
 }
 
-// Sentence search -- one Claude call server-side, so it's rate limited
-// there (no monthly quota).
+// Sentence search -- one Claude call server-side, counted against the
+// month's sentence searches. As long as composeMemo: the use is counted
+// even if the app stops waiting.
 export function askSearch(query: string) {
-  return request<SmartSearchResponse & { interpretation: SearchInterpretation }>('/items/search/ask', {
-    method: 'POST',
-    body: JSON.stringify({ query }),
-  });
+  return request<SmartSearchResponse & { interpretation: SearchInterpretation }>(
+    '/items/search/ask',
+    { method: 'POST', body: JSON.stringify({ query }) },
+    120_000
+  );
 }
 
 // Re-runs an edited interpretation -- no Claude call.

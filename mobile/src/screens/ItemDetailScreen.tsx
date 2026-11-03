@@ -1053,6 +1053,7 @@ export default function ItemDetailScreen() {
                 <TextInput
                   value={newTag}
                   onChangeText={setNewTag}
+                  maxLength={30}
                   autoFocus
                   onFocus={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
                   onSubmitEditing={submitNewTag}

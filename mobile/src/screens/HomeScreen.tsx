@@ -1166,6 +1166,7 @@ export default function HomeScreen() {
                   <TextInput
                     value={bulkTagDraft}
                     onChangeText={setBulkTagDraft}
+                    maxLength={30}
                     autoFocus
                     editable={!bulkApplying}
                     placeholder={bulkEditing === 'add' ? S.tagToAdd : S.tagToRemove}

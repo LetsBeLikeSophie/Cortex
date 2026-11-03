@@ -1131,7 +1131,9 @@ export default function HomeScreen() {
                         setSelectMode(false);
                         setSelectedIds(new Set());
                         const picked = composeMaterials(listSource.filter((it) => ids.includes(it.id)));
-                        navigation.navigate('Compose', { tag: activeTag, count: picked.usable.length, lockedOut: picked.locked, composedOut: picked.composed, itemIds: ids, suggested: suggestFormat(picked.usable) });
+                        // The server takes 50 at most: the newest 50 in list order, and the sheet says so.
+                        const usable = picked.usable.slice(0, 50);
+                        navigation.navigate('Compose', { tag: activeTag, count: usable.length, lockedOut: picked.locked, composedOut: picked.composed, itemIds: usable.map((it) => it.id), pickedCount: ids.length, overFifty: picked.usable.length > 50, suggested: suggestFormat(usable) });
                       }}
                     >
                       <Text style={[styles.bulkBarLink, { color: theme.accent }]}>{S.composeSelected}</Text>

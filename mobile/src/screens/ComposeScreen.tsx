@@ -222,7 +222,7 @@ const S = strings({
 export default function ComposeScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { tag, count, lockedOut, composedOut, itemIds, tagChoices, retryOf, freeRemake, remakeBefore } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
+  const { tag, count, lockedOut, composedOut, itemIds, overFifty: pickedOverFifty, pickedCount, tagChoices, retryOf, freeRemake, remakeBefore } = useRoute<RouteProp<RootStackParamList, 'Compose'>>().params;
   const [pickedTag, setPickedTag] = useState(tagChoices?.[0] ?? tag);
   const [tagCount, setTagCount] = useState<number | null>(count ?? null);
   const [lockedCount, setLockedCount] = useState(lockedOut ?? 0);
@@ -262,7 +262,7 @@ export default function ComposeScreen() {
   // A whole tag: count it the way the server will use it -- its newest 50,
   // minus locked and earlier composed memos. One past 50 is asked for only
   // to know whether older ones are left out (decision C3: say so).
-  const [overFifty, setOverFifty] = useState(false);
+  const [overFifty, setOverFifty] = useState(!!pickedOverFifty);
   // Earlier 모아서 만들기 results under this tag, left out like locked ones.
   const [tagComposed, setTagComposed] = useState(0);
   useEffect(() => {
@@ -384,7 +384,7 @@ export default function ComposeScreen() {
       <SheetTitle
         theme={theme}
         icon={<SparkleIcon color={theme.accent} size={18} />}
-        title={retryOf ? S.remakeTitle : itemIds ? S.titlePicked(itemIds.length) : S.titleTag(pickedTag)}
+        title={retryOf ? S.remakeTitle : itemIds ? S.titlePicked(pickedCount ?? itemIds.length) : S.titleTag(pickedTag)}
         sub={description}
       />
       <ScrollView

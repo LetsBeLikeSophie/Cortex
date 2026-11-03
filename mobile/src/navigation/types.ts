@@ -40,6 +40,10 @@ export type RootStackParamList = {
     composedOut?: number;
     suggested?: import('../api/client').ComposeFormat;
     itemIds?: string[];
+    // More than 50 were picked; only the newest 50 are in itemIds.
+    // pickedCount = how many were picked, for the title.
+    overFifty?: boolean;
+    pickedCount?: number;
     tagChoices?: string[];
     // Remake this composed memo in place; freeRemake = the first remake is free.
     retryOf?: string;

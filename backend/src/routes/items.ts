@@ -306,8 +306,10 @@ export async function itemsRoutes(app: FastifyInstance) {
       await dailyAiBudget.assertOpen();
       const utcOffset = utcOffsetOf(req);
       const interpretation = await interpretSearch(parsed.data.query, localToday(utcOffset), userId);
-      await recordUsage(userId, "search").catch((err) => req.log.error(err));
       const result = await searchItemsSmart(userId, interpretation, undefined, utcOffset);
+      // Counted only once the results are ready: a search that fails after
+      // reading the sentence keeps the month's use (decision C2, 2026-11-03).
+      await recordUsage(userId, "search").catch((err) => req.log.error(err));
       // Locked memos stay out of AI search.
       return reply.send({ interpretation, ...result, items: result.items.filter((it) => !it.locked) });
     }

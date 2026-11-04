@@ -21,6 +21,7 @@ import {
   SearchInterpretation,
   SmartSearchResponse,
   friendlyError,
+  isAlreadyRunning,
   isTimeout,
   ApiError,
 } from '../api/client';
@@ -514,9 +515,9 @@ export default function SearchScreen() {
         } else if (err instanceof ApiError && err.status === 403 && (err.body as { error?: string } | null)?.error === 'ai_consent') {
           // Not a failure: the consent sheet is already opening.
         } else {
-          // Timed out: the use is already spent and the server may still
-          // finish, so no retry that would spend another.
-          setAiError({ query: text, message: friendlyError(err), timedOut: isTimeout(err) });
+          // Timed out, or an earlier ask still running: the server may
+          // still finish, so no retry that would spend another use.
+          setAiError({ query: text, message: friendlyError(err), timedOut: isTimeout(err) || isAlreadyRunning(err) });
         }
       })
       .finally(() => {

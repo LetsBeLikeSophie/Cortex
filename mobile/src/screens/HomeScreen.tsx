@@ -17,7 +17,7 @@ import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { useAuth } from '../auth/AuthContext';
 import { IMPORT_OFFER_KEY, TRIAL_NOTICE_KEY } from '../auth/accountTraces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ApiError, ComposeFormat, Plan, friendlyError, isTimeout } from '../api/client';
+import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError, isAlreadyRunning, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { ProgressRow } from '../components/ProgressRow';
@@ -858,7 +858,7 @@ export default function HomeScreen() {
           : S.nothingToSort
       );
     } catch (err) {
-      if (isTimeout(err) || (err instanceof ApiError && err.status === 409)) {
+      if (isTimeout(err) || isAlreadyRunning(err)) {
         setSortHeld(true);
         showToast(S.sortCheckLater);
       } else {

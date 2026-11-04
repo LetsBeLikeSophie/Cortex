@@ -203,6 +203,11 @@ export function isTimeout(err: unknown): boolean {
   return !(err instanceof ApiError) && /abort/i.test(err instanceof Error ? err.message : String(err));
 }
 
+// The same job is still running on the server (409): nothing to retry yet.
+export function isAlreadyRunning(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 409;
+}
+
 export function asQuotaError(err: unknown): QuotaError | null {
   if (err instanceof ApiError && err.status === 402 && (err.body as QuotaError | null)?.error === 'quota') {
     return err.body as QuotaError;

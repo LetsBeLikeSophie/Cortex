@@ -50,3 +50,80 @@
 ## 7. 번역
 
 위 내용이 확정된 뒤, 일본어·중국어 간체·번체 약관과 방침을 AI로 번역해 올려요(한국어본 우선 문구 유지). `i18n/index.ts`의 `PRIVACY_URL`, `TERMS_URL`도 언어별로 연결해요.
+
+## 8. 약관 제6조 3항 (법무 리뷰 L-1, 결정 K1과 맞춤)
+
+현재(`legal/terms.html:93`): "카카오 계정으로 로그인한 회원이 카카오 서비스 자체에서 연결을 해제한 경우에도, 운영자는 이를 전달받아 위 항과 동일하게 계정과 콘텐츠를 삭제합니다."
+
+변경: "카카오 계정으로 로그인한 회원이 카카오 서비스 자체에서 연결을 해제한 경우, 운영자는 이를 전달받아 계정을 로그인할 수 없는 상태로 30일 동안 보관한 뒤 위 항과 동일하게 계정과 콘텐츠를 삭제합니다. 그 기간 안에 같은 카카오 계정으로 다시 로그인하면 계속 이용할 수 있습니다."
+
+영어(`terms-en.html` 같은 조항): "If a member who signed in with Kakao disconnects Cortex in Kakao's own settings, we are notified and keep the account, unable to sign in, for 30 days, then delete the account and its content as in the paragraph above. Signing in again with the same Kakao account within that time restores it."
+
+## 9. 방침 초안 ↔ 코드 대조 (법무 리뷰 L-1, 2026-11-04 `auto/2026-11-04` 기준)
+
+"서버에 올라감"은 운영 서버(`ed6b553` + `cd7d55c`)와 테스트 중인 앱 vc10105(`49dfb87`) 기준이에요.
+
+| 초안 항목 | 코드 위치 | 코드가 하는 일 | 초안 문구와 일치 | 서버에 올라감 |
+|---|---|---|---|---|
+| 결제 화면·구매 단계 이벤트 (6항 1·9항) | `backend/src/lib/supabase.ts` `AnalyticsEventType` (`quota_hit`, `paywall_view`, `purchase_*`, `subscription_*`), `detail`은 상품·화면 이름만 | 가명 ID + 종류 + `detail` 저장 | ✅ | **예** (`ed6b553`에 포함, 2026-10-31 SQL 실행됨). 공개 방침보다 먼저 모으고 있음 |
+| 탈퇴 후 결제 기록 (결정 C2) | `deleteUserAccount`가 `purchases.user_id`를 지움, `retention.ts` `pruneOldRecords` 5년 | 연결 끊고 5년 보관 | ✅ | 아니요 (`36ca01a`) |
+| Google로 보내는 임의 계정 ID (결정 P1) | 앱 `mobile/src/billing/AndroidPurchase.tsx` `obfuscatedAccountId`, 서버 `billingRules.ts` `buyerAccount` | 구매 요청에 계정 ID(이름·이메일 아님) | ✅ | **앱은 예** (vc10105에 포함, 테스트 구매 때 Google로 감). 서버 확인은 아니요 |
+| 오류 정보 (결정 E1) | 앱 `mobile/src/errors/report.ts` → `POST /me/error`, 서버 `appErrors.ts`·`logAppError`, `retention.ts` 90일 | 앱 버전·오류 이름·코드 위치, 계정 없음 | ✅ | 앱은 보냄(vc10105), 서버 경로가 없어 저장 안 됨 |
+| 카카오 연결 해제 30일 (결정 K1) | `routes/webhooks.ts` `markKakaoUnlinked` + 로그인 차단, `retention.ts` `purgeUnlinkedKakaoAccounts` | 30일 뒤 계정 전체 삭제, 다시 로그인하면 복구 | ✅ (약관은 8항으로 고침) | 아니요 (`224724e`, SQL 먼저) |
+| 게스트 12개월 삭제 | 없음 | — | ❌ 코드 없음, 초안대로 보류 | — |
+
+## 10. 방침 법정 기재 항목 (법무 리뷰 L-2)
+
+근거: 개인정보보호법 28조의8 2항, 30조, 시행령 31조, 시행령 41조 4항. 업체 연락처는 각 사 공개 방침에서 2026-11-04에 확인했어요(Oracle은 페이지가 열리지 않아 문의 양식 주소만 적음, 게시 전 확인).
+
+### 10-1. 6항 처리위탁 표에 추가
+
+| 수탁업체 | 위탁 업무 | 처리 위치 |
+|---|---|---|
+| Oracle Corporation | 서비스 서버(백엔드 API, 웹) 호스팅 | 일본(도쿄) |
+| Anthropic PBC | 저장한 콘텐츠의 AI 분석(동의한 경우만) | 미국 |
+| Google LLC | Google 로그인 인증, Google Play 결제 확인, 결제 상태 알림 | 미국 |
+
+6항 첫 문장 "Supabase와 Kakao 모두 국내에서 데이터를 처리합니다."는 "국외에서 처리하는 업체는 제7항에도 적었습니다."로 바꿔요. Kakao 줄은 그대로 두되 "로그인 정보 제공"으로 성격을 적을지는 전문가 확인 항목이에요.
+
+영어: Oracle Corporation — hosting of the service servers (backend API, web), Japan (Tokyo). Anthropic PBC — AI analysis of saved content, only with consent, United States. Google LLC — Google sign-in, Google Play purchase checks and payment status notices, United States.
+
+### 10-2. 7항 국외이전 표에 "이전받는 자 연락처" 줄 추가
+
+| 이전받는 자 | 연락처 |
+|---|---|
+| Anthropic PBC | privacy@anthropic.com (개인정보보호책임자 dpo@anthropic.com), 548 Market St, PMB 90375, San Francisco, CA 94104, USA |
+| Oracle Corporation | Oracle 개인정보 문의 양식 https://www.oracle.com/legal/data-privacy-inquiry-form/ [게시 전 링크 확인] |
+| Google LLC | https://support.google.com/policies?p=privpol_privts |
+
+Supabase(6항, 서울 리전)도 같은 형식으로 적어 두면 좋아요: privacy@supabase.com.
+
+### 10-3. 10항에 열람 기한 추가
+
+"열람 요청은 받은 날부터 10일 안에 처리하고, 그 안에 할 수 없으면 이유와 가능한 날짜를 알려 드립니다."
+
+영어: "We respond to a request to see your data within 10 days of receiving it; if we can't, we tell you why and when we can."
+
+### 10-4. 13항 보호책임자
+
+- 성명: [Sophie 확인]
+- 직책: 대표(개인 개발자) [Sophie 확인]
+- 이메일: cortex@itssophie.dev
+
+영어: Name: [to confirm], Role: owner (individual developer), Email: cortex@itssophie.dev
+
+### 10-5. 새 항목 "권익침해 구제 방법" (13항 뒤)
+
+"개인정보 침해에 대한 신고나 상담이 필요하면 아래 기관에 문의할 수 있습니다.
+- 개인정보분쟁조정위원회: (국번 없이) 1833-6972, www.kopico.go.kr
+- 개인정보침해신고센터: (국번 없이) 118, privacy.kisa.or.kr
+- 대검찰청: (국번 없이) 1301, www.spo.go.kr
+- 경찰청: (국번 없이) 182, ecrm.police.go.kr"
+
+영어: "If you need to report or get advice about a privacy violation, you can contact: Personal Information Dispute Mediation Committee (+82) 1833-6972, www.kopico.go.kr; Personal Information Infringement Report Center 118, privacy.kisa.or.kr; Supreme Prosecutors' Office 1301, www.spo.go.kr; Korean National Police Agency 182, ecrm.police.go.kr."
+
+## 11. 계정 삭제 안내 "남는 데이터" (법무 리뷰 L-4, `legal/delete-account.html`)
+
+추가: "AI 분석에 동의했다면, AI 업체(Anthropic)에 보낸 사본은 탈퇴와 관계없이 최대 30일 뒤 자동 삭제됩니다(이용 정책 위반 조사가 필요한 경우 더 오래 보관될 수 있음)."
+
+영어: "If you agreed to AI analysis, the copies sent to the AI provider (Anthropic) are deleted automatically within 30 days regardless of account deletion (longer if a usage policy investigation requires it)."

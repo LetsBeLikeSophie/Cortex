@@ -16,7 +16,7 @@ export type UsageKind = "classify" | "search" | "compose" | "tag_cleanup";
 // the app). Anything but 'agreed' means no AI call at all.
 export type AiConsent = "agreed" | "declined" | null;
 // The notice they answered -- the privacy policy version it matches.
-export const AI_CONSENT_VERSION = "2026-10-30";
+export const AI_CONSENT_VERSION = "2026-11-04";
 
 export interface Entitlement {
   tier: Tier;

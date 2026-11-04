@@ -317,7 +317,9 @@ export default function PaywallScreen() {
           <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
           {benefits.map((b) => (
             <View key={b} style={styles.benefit}>
-              <CheckIcon size={16} color={theme.accent} strokeWidth={2} />
+              <View style={styles.benefitIcon}>
+                <CheckIcon size={16} color={theme.accent} strokeWidth={2} />
+              </View>
               <Text style={[styles.benefitText, { color: theme.ink }]}>{b}</Text>
             </View>
           ))}
@@ -389,7 +391,9 @@ const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   card: { padding: 18, marginTop: 18, gap: 12 },
   planName: { fontSize: 20, fontFamily: BODY_KR_MEDIUM, marginBottom: 2 },
-  benefit: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Icon on the first line when the text wraps (rule 2026-10-26).
+  benefit: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  benefitIcon: { marginTop: 2 },
   benefitText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: BODY_KR },
   options: { gap: 8, marginTop: 14 },
   option: { paddingHorizontal: 16, paddingVertical: 12 },

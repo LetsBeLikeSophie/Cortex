@@ -137,7 +137,11 @@ function TrashRow({
       <View style={styles.titleRow}>
         {/* flex: 1 keeps the photo preview at the right edge on every row. */}
         <View style={[styles.titleLine, styles.titleText, styles.grow]}>
-          {item.locked && <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />}
+          {item.locked && (
+            <View style={styles.lockIcon}>
+              <LockIcon size={12} color={theme.sub} strokeWidth={1.4} />
+            </View>
+          )}
           <Text style={[styles.title, styles.titleText, { color: theme.ink }]} numberOfLines={2}>
             {item.composed_from?.length ? <Text style={{ color: theme.accent }}>✦ </Text> : null}
             {itemTitle(item)}
@@ -246,7 +250,9 @@ export default function TrashScreen() {
 
 const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  // Lock on the title's first line when it wraps (rule 2026-10-26).
+  titleLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 4 },
+  lockIcon: { marginTop: 4.5 },
   titleText: { flexShrink: 1 },
   grow: { flex: 1 },
   screen: { flex: 1 },

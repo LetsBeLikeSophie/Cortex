@@ -22,6 +22,7 @@ const S = strings({
     title: 'AI 분석 동의 (국외이전)',
     what: '저장한 사진·텍스트·링크와 메모를 AI로 분석해 제목·요약·태그를 생성합니다. 사진 속 계좌·주소·대화 등도 그대로 전송됩니다.',
     rows: [['받는 곳', 'Anthropic PBC (미국)'], ['보내는 내용', '저장한 사진·텍스트·링크·메모, 검색 문장'], ['보내는 때', '저장, AI 정리, AI 검색, 모아서 만들기 실행 시 (암호화 전송)'], ['보관 기간', '30일 이내 삭제(정책 위반 확인 시 더 오래 보관) · AI 학습에 사용되지 않음']] as [string, string][],
+    abroad: [] as [string, string][],
     decline: '동의하지 않으셔도 저장과 단어 검색은 이용하실 수 있습니다. 동의 여부는 프로필에서 언제든 변경할 수 있습니다.',
     policy: '개인정보처리방침 전문 보기',
     nowAgreed: '현재: 동의함',
@@ -40,6 +41,7 @@ const S = strings({
     title: 'Consent to AI analysis',
     what: 'Cortex sends your saved photos, text, links and notes to an AI service to generate titles, summaries and tags. Anything in a photo, such as account numbers, addresses or chats, is sent as is.',
     rows: [['Recipient', 'Anthropic PBC (USA)'], ['What is sent', 'Saved photos, text, links, notes and AI search queries'], ['When', 'On save, AI sorting, AI search and Combine (encrypted)'], ['Retention', 'Deleted within 30 days (kept longer if a policy violation is found) · not used to train AI']] as [string, string][],
+    abroad: [] as [string, string][],
     decline: 'If you decline, saving and keyword search still work. You can change this at any time in your profile.',
     policy: 'Read the full privacy policy',
     nowAgreed: 'Current: agreed',
@@ -58,6 +60,8 @@ const S = strings({
     title: 'AI分析への同意(国外移転)',
     what: '保存した写真・テキスト・リンク・メモをAIで分析し、タイトル・要約・タグを作成します。写真に写った口座番号・住所・会話なども、そのまま送信されます。',
     rows: [['提供先', 'Anthropic PBC(米国)'], ['送る内容', '保存した写真・テキスト・リンク・メモ、検索文'], ['送るとき', '保存、AI整理、AI検索、「まとめて作る」の実行時(暗号化通信)'], ['保存期間', '30日以内に削除(規約違反が確認された場合はより長く保存) · AIの学習には使用されません']] as [string, string][],
+    // APPI 28: before consent, the country's system and the recipient's safeguards.
+    abroad: [['米国の個人情報保護制度', 'https://www.ppc.go.jp/enforcement/infoprovision/laws/offshore_report_america/'], ['Anthropicの保護措置', 'https://privacy.claude.com/']] as [string, string][],
     decline: '同意しない場合も、保存と単語検索はご利用いただけます。同意はプロフィールからいつでも変更できます。',
     policy: 'プライバシーポリシー全文を見る',
     nowAgreed: '現在: 同意済み',
@@ -76,6 +80,7 @@ const S = strings({
     title: 'AI 分析授权（跨境传输）',
     what: '您保存的照片、文字、链接和笔记将发送给 AI 进行分析，用于生成标题、摘要和标签。照片中的账号、地址、聊天内容等也会原样发送。',
     rows: [['接收方', 'Anthropic PBC（美国）'], ['发送内容', '保存的照片、文字、链接、笔记及搜索语句'], ['发送时机', '保存、AI 整理、AI 搜索及汇总生成时（加密传输）'], ['保留期限', '30 天内删除（确认违反政策时保留更久）· 不用于训练 AI']] as [string, string][],
+    abroad: [] as [string, string][],
     decline: '若不同意，您仍可保存内容并按关键词搜索。可随时在个人资料中更改。',
     policy: '查看完整隐私政策',
     nowAgreed: '当前：已同意',
@@ -94,6 +99,7 @@ const S = strings({
     title: 'AI 分析授權（跨境傳輸）',
     what: '您儲存的照片、文字、連結和筆記將傳送給 AI 進行分析，用於產生標題、摘要和標籤。照片中的帳號、地址、聊天內容等也會原樣傳送。',
     rows: [['接收方', 'Anthropic PBC（美國）'], ['傳送內容', '儲存的照片、文字、連結、筆記及搜尋語句'], ['傳送時機', '儲存、AI 整理、AI 搜尋及彙整生成時（加密傳輸）'], ['保留期限', '30 天內刪除（確認違反政策時保留更久）· 不用於訓練 AI']] as [string, string][],
+    abroad: [] as [string, string][],
     decline: '若不同意，您仍可儲存內容並依關鍵字搜尋。可隨時在個人資料中變更。',
     policy: '查看完整隱私權政策',
     nowAgreed: '目前：已同意',
@@ -204,6 +210,15 @@ export default function AiConsentScreen() {
           {shareQueue.waitingConsent && shareQueue.pending > 0 && (
             <Text style={[styles.note, { color: theme.ink }]}>{S.sharedWaiting(shareQueue.pending)}</Text>
           )}
+          {S.abroad.length > 0 && (
+            <View style={styles.abroad}>
+              {S.abroad.map(([label, url]) => (
+                <Pressable key={url} onPress={() => Linking.openURL(url).catch(() => {})} hitSlop={6}>
+                  <Text style={[styles.abroadLink, { color: theme.ink }]}>{label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
           <Text style={[styles.note, { color: theme.sub }]}>{S.decline}</Text>
         </View>
         <Pressable onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} hitSlop={6} style={styles.pad}>
@@ -232,6 +247,8 @@ const styles = StyleSheet.create({
   label: { width: 76, fontSize: 13, lineHeight: 20, fontFamily: BODY_KR_MEDIUM },
   value: { flex: 1, fontSize: 13.5, lineHeight: 20, fontFamily: BODY_KR },
   note: { fontSize: 12.5, lineHeight: 19, marginTop: 4, fontFamily: BODY_KR },
+  abroad: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 2 },
+  abroadLink: { fontSize: 12.5, lineHeight: 19, fontFamily: BODY_KR, textDecorationLine: 'underline' },
   link: { fontSize: 13.5, marginTop: 14, fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },
   now: { fontSize: 12.5, marginTop: 10, paddingHorizontal: 4, fontFamily: BODY_KR },
   error: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: BODY_KR },

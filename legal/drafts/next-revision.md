@@ -127,3 +127,17 @@ Supabase(6항, 서울 리전)도 같은 형식으로 적어 두면 좋아요: pr
 추가: "AI 분석에 동의했다면, AI 업체(Anthropic)에 보낸 사본은 탈퇴와 관계없이 최대 30일 뒤 자동 삭제됩니다(이용 정책 위반 조사가 필요한 경우 더 오래 보관될 수 있음)."
 
 영어: "If you agreed to AI analysis, the copies sent to the AI provider (Anthropic) are deleted automatically within 30 days regardless of account deletion (longer if a usage policy investigation requires it)."
+
+## 12. 이용 연령 (결정 L6 = A, 2026-11-05)
+
+- 약관 제5조에 4항 추가: "서비스는 만 18세 이상만 이용할 수 있습니다. 만 18세 미만임이 확인되면 운영자는 이용계약을 해지하고 계정과 콘텐츠를 삭제할 수 있습니다."
+  - 영어: "You must be 18 or older to use the Service. If we learn that a user is under 18, we may end the agreement and delete the account and its content."
+- 방침 10항 "이 서비스는 만 14세 미만 아동을 대상으로 하지 않으며…" → "이 서비스는 만 18세 이상만 이용할 수 있으며, 만 18세 미만의 개인정보를 알고 수집하지 않습니다. 만 18세 미만의 정보가 수집된 것을 알게 되면 지체 없이 삭제합니다."
+  - 영어: "The Service is only for people 18 or older, and we do not knowingly collect personal data of anyone under 18. If we learn that we have, we delete it without delay."
+- Play Console › 앱 콘텐츠 › 타깃층: 18세 이상만 (Sophie가 바꿈)
+- 이용자에게 불리할 수 있는 변경이라 시행 30일 전 공지 대상인지 게시 전에 확인
+
+## 13. 일본 사용자 국외 제공 안내 (결정 L3 = A, 2026-11-05)
+
+- 앱: 일본어 AI 동의 화면에 "米国の個人情報保護制度とAnthropicの保護措置" 링크 줄 추가 (코드 반영)
+- 일본어 방침·약관: 7항 번역 계획에서 일본어를 먼저, 출시 전에 게시. 국외이전 항목에 이전 국가(미국)의 개인정보 제도 요약 링크(PPC 외국 제도 조사)와 Anthropic의 보호 조치(상용 약관상 학습 미사용, 30일 삭제, 암호화 전송)를 적음

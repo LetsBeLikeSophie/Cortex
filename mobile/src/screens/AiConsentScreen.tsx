@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -187,30 +187,33 @@ export default function AiConsentScreen() {
 
   // Closing without answering counts as no answer -- asked again next time.
   return (
-    <ModalSheet theme={theme} onClose={busy ? () => {} : () => navigation.goBack()} paddingBottom={24} paddingHorizontal={20}>
+    <ModalSheet theme={theme} onClose={busy ? () => {} : () => navigation.goBack()} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
       <SheetTitle theme={theme} title={S.title} />
-      <View style={styles.lines}>
-        <Text style={[styles.line, { color: theme.ink }]}>{S.what}</Text>
-        <View style={styles.rows}>
-          {S.rows.map(([label, value]) => (
-            <View key={label} style={styles.row}>
-              <Text style={[styles.label, { color: theme.sub }]}>{label}</Text>
-              <Text style={[styles.value, { color: theme.ink }]}>{value}</Text>
-            </View>
-          ))}
+      {/* Scrolls on a small phone with large text; the buttons stay below. */}
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.lines}>
+          <Text style={[styles.line, { color: theme.ink }]}>{S.what}</Text>
+          <View style={styles.rows}>
+            {S.rows.map(([label, value]) => (
+              <View key={label} style={styles.row}>
+                <Text style={[styles.label, { color: theme.sub }]}>{label}</Text>
+                <Text style={[styles.value, { color: theme.ink }]}>{value}</Text>
+              </View>
+            ))}
+          </View>
+          {shareQueue.waitingConsent && shareQueue.pending > 0 && (
+            <Text style={[styles.note, { color: theme.ink }]}>{S.sharedWaiting(shareQueue.pending)}</Text>
+          )}
+          <Text style={[styles.note, { color: theme.sub }]}>{S.decline}</Text>
         </View>
-        {shareQueue.waitingConsent && shareQueue.pending > 0 && (
-          <Text style={[styles.note, { color: theme.ink }]}>{S.sharedWaiting(shareQueue.pending)}</Text>
+        <Pressable onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} hitSlop={6} style={styles.pad}>
+          <Text style={[styles.link, { color: theme.ink }]}>{S.policy}</Text>
+        </Pressable>
+        {current !== undefined && current !== null && (
+          <Text style={[styles.now, { color: theme.sub }]}>{current === 'agreed' ? S.nowAgreed : S.nowDeclined}</Text>
         )}
-        <Text style={[styles.note, { color: theme.sub }]}>{S.decline}</Text>
-      </View>
-      <Pressable onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})} hitSlop={6} style={styles.pad}>
-        <Text style={[styles.link, { color: theme.ink }]}>{S.policy}</Text>
-      </Pressable>
-      {current !== undefined && current !== null && (
-        <Text style={[styles.now, { color: theme.sub }]}>{current === 'agreed' ? S.nowAgreed : S.nowDeclined}</Text>
-      )}
-      {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
+        {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
+      </ScrollView>
       <ButtonRow theme={theme} style={styles.buttons}>
         <GhostButton label={S.disagree} theme={theme} onPress={() => answer(false)} disabled={busy !== null} />
         <SolidButton label={S.agree} theme={theme} onPress={() => answer(true)} loading={busy === 'agree'} disabled={busy !== null} />
@@ -220,6 +223,7 @@ export default function AiConsentScreen() {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flexShrink: 1 },
   pad: { paddingHorizontal: 4 },
   lines: { gap: 8, marginTop: 14, paddingHorizontal: 4 },
   line: { fontSize: 14, lineHeight: 21, fontFamily: BODY_KR },

@@ -352,6 +352,64 @@ export function AndroidPurchase({
   );
 }
 
+// '구매 복원' on its own, for when buying is hidden -- a payment on hold
+// (S-1): a payment fixed in Play, or a newer purchase, must still be able to
+// turn Pro back on from here.
+export function RestorePurchase({ theme, offers, onPlan, onClose }: { theme: Theme; offers: Offers; onPlan: (plan: Plan) => void; onClose: () => void }) {
+  const [restoring, setRestoring] = useState(false);
+  const [error, setError] = useState('');
+  const { connected, finishTransaction, getAvailablePurchases, availablePurchases } = useIAP({});
+  const restore = async () => {
+    setError('');
+    setRestoring(true);
+    try {
+      await getAvailablePurchases();
+    } catch (err) {
+      setError(friendlyError(err));
+      setRestoring(false);
+    }
+  };
+  useEffect(() => {
+    if (!restoring) return;
+    const mine = availablePurchases.filter((p) => p.productId === offers.subscriptionId || p.productId === offers.lifetimeId);
+    if (mine.length === 0) {
+      setRestoring(false);
+      setError(S.nothingToRestore);
+      return;
+    }
+    Promise.all(
+      mine.map(async (purchase) => {
+        if (!purchase.purchaseToken) return null;
+        const plan = await verifyWithRetry(purchase.productId, purchase.purchaseToken);
+        await finishTransaction({ purchase, isConsumable: false }).catch(() => {});
+        onPlan(plan);
+        return plan;
+      })
+    )
+      .then((plans) => {
+        const latest = plans.filter(Boolean).pop();
+        if (latest && latest.tier === 'pro') {
+          showToast(S.restored);
+          onClose();
+        } else {
+          setError(S.nothingToRestore);
+        }
+      })
+      .catch((err) => setError(friendlyError(err)))
+      .finally(() => setRestoring(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availablePurchases]);
+  if (!connected) return null;
+  return (
+    <View>
+      {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
+      <Pressable onPress={restore} disabled={restoring} hitSlop={8} style={styles.restore}>
+        {restoring ? <ActivityIndicator size="small" color={theme.sub} /> : <Text style={[styles.restoreText, { color: theme.sub }]}>{S.restore}</Text>}
+      </Pressable>
+    </View>
+  );
+}
+
 // Monthly Pro -> yearly, from the next renewal (decision B2): Play's deferred
 // replacement, so nothing is charged now and the 7-day refund promise isn't
 // touched. Play's own sheet confirms; the new token goes to the server like

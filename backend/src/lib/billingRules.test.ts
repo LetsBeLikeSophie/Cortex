@@ -1,7 +1,7 @@
 // npm test -- pro_until after each way a purchase can change.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buyerAccount, FOREVER, nextProUntil, PurchaseRow, recordOnlyRaw, subscriptionStatus } from "./billingRules.js";
+import { buyerAccount, FOREVER, needsResync, nextProUntil, PurchaseRow, recordOnlyRaw, subscriptionStatus } from "./billingRules.js";
 
 const ACCOUNT = "3f2b8c1e-9a4d-4e7b-8f10-2c6d5e4a1b09";
 
@@ -84,3 +84,27 @@ const statusCases: [string, PurchaseRow[], ReturnType<typeof subscriptionStatus>
 for (const [name, rows, expected] of statusCases) {
   test(`status: ${name}`, () => assert.deepEqual(subscriptionStatus(rows, NOW), expected));
 }
+
+test("resync asks about a running subscription only once its recorded end has passed", () => {
+  const now = new Date("2026-11-06T12:00:00Z");
+  assert.equal(needsResync({ state: "active", expires_at: "2026-11-06T11:00:00Z", updated_at: "2026-11-01T00:00:00Z" }, now), true);
+  assert.equal(needsResync({ state: "active", expires_at: "2026-12-06T11:00:00Z", updated_at: "2026-11-01T00:00:00Z" }, now), false);
+  assert.equal(needsResync({ state: "grace", expires_at: "2026-11-05T00:00:00Z", updated_at: null }, now), true);
+  assert.equal(needsResync({ state: "canceled", expires_at: null, updated_at: null }, now), false);
+});
+
+test("a held payment is re-asked about, but at most every 6 hours", () => {
+  const now = new Date("2026-11-06T12:00:00Z");
+  // missed its recovery notice: checked again (S-1)
+  assert.equal(needsResync({ state: "on_hold", expires_at: "2026-10-01T00:00:00Z", updated_at: "2026-11-06T05:00:00Z" }, now), true);
+  // just checked: left alone, so a long hold isn't asked about on every plan fetch
+  assert.equal(needsResync({ state: "on_hold", expires_at: "2026-10-01T00:00:00Z", updated_at: "2026-11-06T09:00:00Z" }, now), false);
+  assert.equal(needsResync({ state: "on_hold", expires_at: null, updated_at: null }, now), true);
+});
+
+test("finished purchases are never re-asked about", () => {
+  const now = new Date("2026-11-06T12:00:00Z");
+  for (const state of ["expired", "refunded"]) {
+    assert.equal(needsResync({ state, expires_at: "2026-10-01T00:00:00Z", updated_at: null }, now), false);
+  }
+});

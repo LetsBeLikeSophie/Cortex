@@ -29,6 +29,8 @@ const AndroidPurchase: typeof import('../billing/AndroidPurchase').AndroidPurcha
   Platform.OS === 'android' ? require('../billing/AndroidPurchase').AndroidPurchase : null;
 const SwitchToYearly: typeof import('../billing/AndroidPurchase').SwitchToYearly | null =
   Platform.OS === 'android' ? require('../billing/AndroidPurchase').SwitchToYearly : null;
+const RestorePurchase: typeof import('../billing/AndroidPurchase').RestorePurchase | null =
+  Platform.OS === 'android' ? require('../billing/AndroidPurchase').RestorePurchase : null;
 
 const S = strings({
   ko: {
@@ -434,6 +436,8 @@ export default function PaywallScreen() {
           <ButtonRow theme={theme} style={styles.buttons}>
             <SolidButton label={COMMON.close} theme={theme} onPress={close} />
           </ButtonRow>
+          {/* A held payment hides buying, not restoring (S-1). */}
+          {paymentIssue && offers?.enabled && RestorePurchase && <RestorePurchase theme={theme} offers={offers} onPlan={setPlan} onClose={close} />}
         </>
       )}
     </ModalSheet>

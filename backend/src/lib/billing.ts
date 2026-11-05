@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { getClient, logAnalyticsEvent } from "./supabase.js";
 import { getEntitlement } from "./plans.js";
-import { buyerAccount, nextProUntil, recordOnlyRaw, type PurchaseRow, type PurchaseState } from "./billingRules.js";
+import { buyerAccount, needsResync, nextProUntil, recordOnlyRaw, type PurchaseRow, type PurchaseState } from "./billingRules.js";
 import {
   PlaySubscription,
   acknowledgeProduct,
@@ -209,15 +209,15 @@ async function logPurchaseChange(userId: string, before: PurchaseState | undefin
 export async function resyncLapsedPurchases(userId: string): Promise<void> {
   const { data, error } = await getClient()
     .from("purchases")
-    .select("purchase_token, state")
+    .select("purchase_token, state, expires_at, updated_at")
     .eq("user_id", userId)
     .eq("kind", "subscription")
-    // on_hold is left to its recovery notice: its end is already past, so it
-    // would be asked about on every plan fetch for up to 60 days.
-    .in("state", ["active", "grace", "canceled"])
-    .lt("expires_at", new Date().toISOString());
+    .in("state", ["active", "grace", "canceled", "on_hold"]);
   if (error) throw new Error(`lapsed purchases failed: ${error.message}`);
-  for (const row of (data ?? []) as { purchase_token: string; state: PurchaseState }[]) {
+  const now = new Date();
+  type Row = { purchase_token: string; state: PurchaseState; expires_at: string | null; updated_at: string | null };
+  // Which ones, and why on_hold is included only every 6 hours: needsResync.
+  for (const row of ((data ?? []) as Row[]).filter((r) => needsResync(r, now))) {
     try {
       await refreshGooglePurchase(row.purchase_token);
     } catch (err) {

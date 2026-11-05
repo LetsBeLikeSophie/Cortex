@@ -100,3 +100,16 @@ export function subscriptionStatus(rows: PurchaseRow[], nowIso: string): Subscri
   if (subs.some((r) => r.state === "on_hold")) return { status: "payment_issue", until: null };
   return null;
 }
+
+// Which of a person's subscription rows to ask Google about again when they
+// open the app (resyncLapsedPurchases): a running state past its recorded end
+// (a missed renewal notice), and a held payment (on_hold) not re-checked for
+// 6 hours -- missing its recovery notice must not leave Pro off, or a lapsed
+// hold block buying again, for good. The 6 hours keep a long hold from being
+// asked about on every plan fetch.
+export const ON_HOLD_RECHECK_MS = 6 * 60 * 60 * 1000;
+export function needsResync(row: { state: string; expires_at: string | null; updated_at: string | null }, now: Date): boolean {
+  const nowIso = now.toISOString();
+  if (row.state === "on_hold") return !row.updated_at || row.updated_at < new Date(now.getTime() - ON_HOLD_RECHECK_MS).toISOString();
+  return ["active", "grace", "canceled"].includes(row.state) && !!row.expires_at && row.expires_at < nowIso;
+}

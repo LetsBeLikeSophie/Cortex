@@ -11,6 +11,7 @@ import { ModalSheet } from '../components/ModalSheet';
 import { SheetTitle } from '../components/Typography';
 import { ButtonRow, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
+import { freeRunsOutDay } from '../billing/trialPace';
 import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from '../billing/types';
 import type { PlanOption, StorePrices } from '../billing/types';
 import type { RootStackParamList } from '../navigation/types';
@@ -62,6 +63,9 @@ const S = strings({
     lifetime: '평생',
     lifetimeNote: (n: number) => `선착순 · ${n}개 남음 · 서비스 운영 중 계속 이용`,
     trialSafe: '저장은 계속 돼요 · 자동 결제 없어요',
+    trialStats: (days: number, saved: number, searched: number) => `체험 ${days}일 · 저장 ${saved}개 · 문장 검색 ${searched}번`,
+    trialPace: (day: number) => `이 속도면 매달 ${day}일쯤 무료 정리를 다 써요`,
+    trialEnough: '무료로도 충분해요',
     trialUsed: (n: number) => `체험 중 AI가 ${n}건 정리했어요`,
     ranOut: '저장은 계속 돼요 · AI는 다음 달에 다시 채워져요',
     promise: '링크와 캡처 속 글자까지, 기억나는 말로 찾아 드려요',
@@ -105,6 +109,9 @@ const S = strings({
     lifetime: 'Lifetime',
     lifetimeNote: (n: number) => `Limited · ${n} left · pay once, for as long as Cortex runs`,
     trialSafe: 'Saving keeps working · no automatic charge',
+    trialStats: (days: number, saved: number, searched: number) => `${days}-day trial · ${saved} saved · ${searched} sentence searches`,
+    trialPace: (day: number) => `At this pace, free sorting runs out around day ${day} each month`,
+    trialEnough: 'Free is enough for you',
     trialUsed: (n: number) => `AI sorted ${n} during your trial`,
     ranOut: 'Saving still works · AI refills next month',
     promise: 'Find it by what you remember, even words inside links and screenshots',
@@ -148,6 +155,9 @@ const S = strings({
     lifetime: '買い切り',
     lifetimeNote: (n: number) => `先着順 · 残り${n}枠 · サービス提供中ずっと利用可`,
     trialSafe: '保存は続けられます · 自動課金はありません',
+    trialStats: (days: number, saved: number, searched: number) => `体験${days}日 · 保存${saved}件 · 文章検索${searched}回`,
+    trialPace: (day: number) => `このペースだと毎月${day}日ごろ無料の整理を使い切ります`,
+    trialEnough: '無料でも足ります',
     trialUsed: (n: number) => `体験中にAIが${n}件整理しました`,
     ranOut: '保存は続けられます · AIは来月また使えます',
     promise: 'リンクやキャプチャの中の文字まで、覚えている言葉で探せます',
@@ -191,6 +201,9 @@ const S = strings({
     lifetime: '终身',
     lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 服务运营期间可持续使用`,
     trialSafe: '保存功能不受影响 · 不会自动扣款',
+    trialStats: (days: number, saved: number, searched: number) => `试用 ${days} 天 · 保存 ${saved} 条 · 语句搜索 ${searched} 次`,
+    trialPace: (day: number) => `照这个速度，每月 ${day} 日左右免费整理就会用完`,
+    trialEnough: '免费版就够用',
     trialUsed: (n: number) => `试用期间 AI 整理了 ${n} 项`,
     ranOut: '保存照常 · AI 下个月恢复',
     promise: '链接和截图里的文字也算，用记得的话就能找到',
@@ -234,6 +247,9 @@ const S = strings({
     lifetime: '終身',
     lifetimeNote: (n: number) => `限量 · 剩 ${n} 份 · 服務營運期間可持續使用`,
     trialSafe: '儲存功能不受影響 · 不會自動扣款',
+    trialStats: (days: number, saved: number, searched: number) => `試用 ${days} 天 · 儲存 ${saved} 筆 · 語句搜尋 ${searched} 次`,
+    trialPace: (day: number) => `照這個速度，每月 ${day} 日左右免費整理就會用完`,
+    trialEnough: '免費版就夠用',
     trialUsed: (n: number) => `試用期間 AI 整理了 ${n} 項`,
     ranOut: '儲存照常 · AI 下個月恢復',
     promise: '連結和截圖裡的文字也算，用記得的話就能找到',
@@ -297,6 +313,10 @@ export default function PaywallScreen() {
   ];
 
   const sub = plan?.subscription;
+  // Trial just ended: what the trial was used for, and when free would run
+  // out at that pace, instead of a freshly reset 0/50 (decision 11-04 B2).
+  const trialStats = reason === 'trial_ended' && plan?.tier === 'free' && plan.trialStats && plan.trialStats.saved > 0 ? plan.trialStats : null;
+  const runsOutDay = trialStats && plan ? freeRunsOutDay(trialStats.saved, trialStats.days, plan.classify.limit) : null;
   const paymentIssue = sub?.status === 'payment_issue';
   const status =
     paymentIssue
@@ -309,12 +329,18 @@ export default function PaywallScreen() {
           : sub?.status === 'renewing'
             ? S.renews(dateLabel(sub.until))
             : S.pro(plan.proUntil ? dateLabel(plan.proUntil) : null)
-        : plan
-          ? S.free(plan.classify.used, plan.classify.limit, plan.search.used, plan.search.limit)
-          : '';
+        : trialStats
+          ? S.trialStats(trialStats.days, trialStats.saved, trialStats.searched)
+          : plan
+            ? S.free(plan.classify.used, plan.classify.limit, plan.search.used, plan.search.limit)
+            : '';
 
   const trialReason = reason === 'trial_ending' || reason === 'trial_ended';
-  const subline = trialReason
+  const subline = trialStats
+    ? runsOutDay
+      ? S.trialPace(runsOutDay)
+      : S.trialEnough
+    : trialReason
     ? (reason === 'trial_ending' && plan && plan.classify.used > 0 ? `${S.trialUsed(plan.classify.used)} · ` : '') + S.trialSafe
     : reason
       ? S.ranOut

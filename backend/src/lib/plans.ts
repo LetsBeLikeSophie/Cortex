@@ -28,6 +28,9 @@ export interface Entitlement {
   proUntil: string | null;
   // Renews on / ends on / payment didn't go through, for the Pro screen.
   subscription: SubscriptionStatus | null;
+  // What the 7-day trial was used for, for the trial-ended Pro screen; only
+  // in the 30 days after it ended (decision 11-04 B2).
+  trialStats: { days: number; saved: number; searched: number } | null;
   classify: { used: number; limit: number };
   // What Pro includes, so the paywall states the real monthly ceilings
   // instead of "unlimited".
@@ -98,6 +101,22 @@ async function countUsage(userId: string, kind: UsageKind, since: Date): Promise
   return count ?? 0;
 }
 
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function trialStats(userId: string, tier: Tier, trialEndsAt: string, nowMs: number): Promise<Entitlement["trialStats"]> {
+  const end = new Date(trialEndsAt).getTime();
+  if (tier !== "free" || end > nowMs || nowMs - end > 30 * DAY_MS) return null;
+  const start = new Date(end - config.trialDays * DAY_MS).toISOString();
+  const [saved, searched] = await Promise.all([
+    getClient().from("items").select("id", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", start).lt("created_at", trialEndsAt),
+    getClient().from("ai_usage").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("kind", "search").gte("created_at", start).lt("created_at", trialEndsAt),
+  ]);
+  if (saved.error) throw new Error(`trial saves failed: ${saved.error.message}`);
+  if (searched.error) throw new Error(`trial searches failed: ${searched.error.message}`);
+  return { days: config.trialDays, saved: saved.count ?? 0, searched: searched.count ?? 0 };
+}
+
 async function countUnclassified(userId: string): Promise<number> {
   const { count, error } = await getClient()
     .from("items")
@@ -136,7 +155,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
       if (at && at > since) since = at;
     }
   }
-  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount, backlogCount, purchases] = await Promise.all([
+  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount, backlogCount, purchases, trial] = await Promise.all([
     countUsage(userId, "classify", since),
     countUsage(userId, "search", since),
     countUsage(userId, "compose", since),
@@ -144,6 +163,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     countUnclassified(userId),
     countBacklog(userId),
     purchaseRows(userId),
+    trialStats(userId, tier, row.trial_ends_at, now),
   ]);
   return {
     tier,
@@ -152,6 +172,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     trialEndsAt: row.trial_ends_at,
     proUntil: row.pro_until,
     subscription: subscriptionStatus(purchases, new Date().toISOString()),
+    trialStats: trial,
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
     search: { used: searchUsed, limit: paid ? config.proSearchMonthly : config.freeSearchMonthly },
     compose: { used: composeUsed, limit: paid ? config.proComposeMonthly : config.freeComposeMonthly },

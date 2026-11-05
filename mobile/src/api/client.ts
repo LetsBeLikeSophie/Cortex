@@ -25,6 +25,8 @@ export interface Plan {
   proUntil: string | null;
   // Renews on / ends on / payment didn't go through (optional: older servers).
   subscription?: { status: 'lifetime' } | { status: 'renewing'; until: string; plan?: string | null } | { status: 'ending'; until: string } | { status: 'payment_issue'; until: string | null } | null;
+  // What the trial was used for, in the 30 days after it ended (optional: older servers).
+  trialStats?: { days: number; saved: number; searched: number } | null;
   classify: { used: number; limit: number };
   search: { used: number; limit: number };
   // "모아서 만들기" this month (optional: older servers didn't send it).

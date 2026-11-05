@@ -14,3 +14,7 @@
 ## Server rules (Sophie, 2026-11-03)
 
 - A change that makes the server read more rows filters in the database, not in server memory; if it's a feature anyone can call freely without spending a use, it comes with a rate limit.
+
+## Server rules (Sophie, 2026-11-05)
+
+- A new error answer from the server (like "already running") comes with, in the same change, what the app shows for it, so it never reaches people as a generic "something went wrong".

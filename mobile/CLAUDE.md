@@ -35,3 +35,8 @@ The theme = a Layout (line / thinBorder / layered / layeredVintage) × a Palette
 
 - Paging added to one list is checked on every other list showing the same data and on its auto-refresh, so none of them stops at the first page or jumps back to it.
 - Text moved to another box is also checked for closing without saving and for speaking into the new box: the text stays in both cases.
+
+## Product rules (Sophie, 2026-11-05)
+
+- A new error answer from the server gets its own line in the app in the same change, not the generic error.
+- Making a sheet's or popup's text longer comes with a check that, on a small phone with large text, its top isn't cut off (it scrolls when it overflows).

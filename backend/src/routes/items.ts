@@ -7,7 +7,7 @@ import { isPlayBillingConfigured } from "../lib/googlePlay.js";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
-import { AiConsentRequiredError, getEntitlement, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang } from "../lib/plans.js";
+import { AiConsentRequiredError, getEntitlement, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang, withPlanDetails } from "../lib/plans.js";
 import { normalizeLang, DEFAULT_LANG } from "../lib/anthropic.js";
 import { dailyAiBudget } from "../lib/aiLog.js";
 import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, suggestTagMerges, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
@@ -337,7 +337,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     // The app sends its device language here; AI output follows it.
     if (isPlayBillingConfigured()) await resyncLapsedPurchases(userId).catch((err) => req.log.error(err));
     await syncLang(userId, normalizeLang(req.headers["x-cortex-lang"])).catch((err) => req.log.warn(err));
-    return reply.send(await getEntitlement(userId));
+    return reply.send(await withPlanDetails(userId));
   });
 
   app.post("/me/event", async (req, reply) => {

@@ -27,10 +27,12 @@ export interface Entitlement {
   trialEndsAt: string;
   proUntil: string | null;
   // Renews on / ends on / payment didn't go through, for the Pro screen.
-  subscription: SubscriptionStatus | null;
+  // Only on /me/plan and a purchase check (withPlanDetails) -- not on every
+  // save's entitlement lookup.
+  subscription?: SubscriptionStatus | null;
   // What the 7-day trial was used for, for the trial-ended Pro screen; only
   // in the 30 days after it ended (decision 11-04 B2).
-  trialStats: { days: number; saved: number; searched: number } | null;
+  trialStats?: { days: number; saved: number; searched: number } | null;
   classify: { used: number; limit: number };
   // What Pro includes, so the paywall states the real monthly ceilings
   // instead of "unlimited".
@@ -155,15 +157,13 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
       if (at && at > since) since = at;
     }
   }
-  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount, backlogCount, purchases, trial] = await Promise.all([
+  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount, backlogCount] = await Promise.all([
     countUsage(userId, "classify", since),
     countUsage(userId, "search", since),
     countUsage(userId, "compose", since),
     countUsage(userId, "tag_cleanup", since),
     countUnclassified(userId),
     countBacklog(userId),
-    purchaseRows(userId),
-    trialStats(userId, tier, row.trial_ends_at, now),
   ]);
   return {
     tier,
@@ -171,8 +171,6 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     lang: row.lang ?? DEFAULT_LANG,
     trialEndsAt: row.trial_ends_at,
     proUntil: row.pro_until,
-    subscription: subscriptionStatus(purchases, new Date().toISOString()),
-    trialStats: trial,
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
     search: { used: searchUsed, limit: paid ? config.proSearchMonthly : config.freeSearchMonthly },
     compose: { used: composeUsed, limit: paid ? config.proComposeMonthly : config.freeComposeMonthly },
@@ -249,4 +247,17 @@ export async function getAiGate(userId: string): Promise<{ aiConsent: AiConsent;
 export async function refundUsage(id: number): Promise<void> {
   const { error } = await getClient().from("ai_usage").delete().eq("id", id);
   if (error) throw new Error(`refundUsage failed: ${error.message}`);
+}
+
+// The entitlement plus what only the Pro screen shows: the subscription's
+// state and the trial's usage. Kept out of getEntitlement (S-2), which every
+// save calls -- these extra lookups there slowed saves, and when one failed
+// the save went unsorted. Here each is optional: a failure leaves it null.
+export async function withPlanDetails(userId: string): Promise<Entitlement> {
+  const ent = await getEntitlement(userId);
+  const [purchases, trial] = await Promise.all([
+    purchaseRows(userId).catch(() => null),
+    trialStats(userId, ent.tier, ent.trialEndsAt, Date.now()).catch(() => null),
+  ]);
+  return { ...ent, subscription: purchases ? subscriptionStatus(purchases, new Date().toISOString()) : null, trialStats: trial };
 }

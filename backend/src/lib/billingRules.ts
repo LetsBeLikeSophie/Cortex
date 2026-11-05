@@ -32,7 +32,9 @@ export function recordOnlyRaw(raw: unknown): Record<string, unknown> | null {
   return kept;
 }
 
-export type PurchaseState = "active" | "pending" | "canceled" | "expired" | "refunded";
+// grace: a renewal payment failed, Pro continues while Play retries.
+// on_hold: retries ran out, Pro is off until the payment is fixed (decision B1).
+export type PurchaseState = "active" | "grace" | "on_hold" | "pending" | "canceled" | "expired" | "refunded";
 
 export interface PurchaseRow {
   kind: string;
@@ -53,7 +55,7 @@ export function nextProUntil(rows: PurchaseRow[], before: string | null, nowIso:
         ? row.state === "active"
           ? FOREVER
           : null
-        : (row.state === "active" || row.state === "canceled") && row.expires_at
+        : (row.state === "active" || row.state === "grace" || row.state === "canceled") && row.expires_at
           ? row.expires_at
           : null;
     if (candidate && (!until || candidate > until)) until = candidate;
@@ -62,4 +64,32 @@ export function nextProUntil(rows: PurchaseRow[], before: string | null, nowIso:
   if (!before) return until;
   const ended = before < nowIso ? before : nowIso;
   return until && until > ended ? until : ended;
+}
+
+// The one line the Pro screen shows about a person's purchase: renews on a
+// date, ends on a date, or a payment that didn't go through (decision B1).
+// A running purchase wins over a stuck one, so resubscribing after a hold
+// shows the new subscription.
+export type SubscriptionStatus =
+  | { status: "lifetime" }
+  | { status: "renewing" | "ending"; until: string }
+  | { status: "payment_issue"; until: string | null };
+
+export function subscriptionStatus(rows: PurchaseRow[], nowIso: string): SubscriptionStatus | null {
+  if (rows.some((r) => r.kind === "lifetime" && r.state === "active")) return { status: "lifetime" };
+  const subs = rows.filter((r) => r.kind !== "lifetime");
+  const latest = (state: PurchaseState) =>
+    subs
+      .filter((r) => r.state === state)
+      .map((r) => r.expires_at)
+      .sort()
+      .pop();
+  const active = latest("active");
+  if (active && active > nowIso) return { status: "renewing", until: active };
+  const grace = latest("grace");
+  if (grace !== undefined) return { status: "payment_issue", until: grace && grace > nowIso ? grace : null };
+  const ending = latest("canceled");
+  if (ending && ending > nowIso) return { status: "ending", until: ending };
+  if (subs.some((r) => r.state === "on_hold")) return { status: "payment_issue", until: null };
+  return null;
 }

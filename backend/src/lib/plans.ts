@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import { DEFAULT_LANG } from "./anthropic.js";
 import { countBacklog, getClient, logAnalyticsEvent } from "./supabase.js";
+import { subscriptionStatus, type PurchaseRow, type SubscriptionStatus } from "./billingRules.js";
 
 // Free vs Pro, and the monthly AI quotas behind them. Saving is never
 // limited -- only the Claude-backed work is: auto-classification (over
@@ -25,6 +26,8 @@ export interface Entitlement {
   lang: string;
   trialEndsAt: string;
   proUntil: string | null;
+  // Renews on / ends on / payment didn't go through, for the Pro screen.
+  subscription: SubscriptionStatus | null;
   classify: { used: number; limit: number };
   // What Pro includes, so the paywall states the real monthly ceilings
   // instead of "unlimited".
@@ -106,6 +109,12 @@ async function countUnclassified(userId: string): Promise<number> {
   return count ?? 0;
 }
 
+async function purchaseRows(userId: string): Promise<PurchaseRow[]> {
+  const { data, error } = await getClient().from("purchases").select("kind, state, expires_at").eq("user_id", userId);
+  if (error) throw new Error(`purchase rows failed: ${error.message}`);
+  return (data ?? []) as PurchaseRow[];
+}
+
 export async function getEntitlement(userId: string): Promise<Entitlement> {
   const row = await getPlanRow(userId);
   const now = Date.now();
@@ -127,13 +136,14 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
       if (at && at > since) since = at;
     }
   }
-  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount, backlogCount] = await Promise.all([
+  const [classifyUsed, searchUsed, composeUsed, tagCleanupUsed, unclassifiedCount, backlogCount, purchases] = await Promise.all([
     countUsage(userId, "classify", since),
     countUsage(userId, "search", since),
     countUsage(userId, "compose", since),
     countUsage(userId, "tag_cleanup", since),
     countUnclassified(userId),
     countBacklog(userId),
+    purchaseRows(userId),
   ]);
   return {
     tier,
@@ -141,6 +151,7 @@ export async function getEntitlement(userId: string): Promise<Entitlement> {
     lang: row.lang ?? DEFAULT_LANG,
     trialEndsAt: row.trial_ends_at,
     proUntil: row.pro_until,
+    subscription: subscriptionStatus(purchases, new Date().toISOString()),
     classify: { used: classifyUsed, limit: paid ? config.proClassifyMonthly : config.freeClassifyMonthly },
     search: { used: searchUsed, limit: paid ? config.proSearchMonthly : config.freeSearchMonthly },
     compose: { used: composeUsed, limit: paid ? config.proComposeMonthly : config.freeComposeMonthly },

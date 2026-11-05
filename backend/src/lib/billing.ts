@@ -28,8 +28,11 @@ function subscriptionState(s: PlaySubscription): { state: PurchaseState; expires
       .pop() ?? null;
   switch (s.subscriptionState) {
     case "SUBSCRIPTION_STATE_ACTIVE":
-    case "SUBSCRIPTION_STATE_IN_GRACE_PERIOD":
       return { state: "active", expiresAt };
+    case "SUBSCRIPTION_STATE_IN_GRACE_PERIOD":
+      return { state: "grace", expiresAt };
+    case "SUBSCRIPTION_STATE_ON_HOLD":
+      return { state: "on_hold", expiresAt };
     case "SUBSCRIPTION_STATE_CANCELED":
       // Auto-renew off; access continues until expiresAt.
       return { state: "canceled", expiresAt };
@@ -192,7 +195,8 @@ async function subscriptionEnded(token: string): Promise<boolean> {
 // What the funnel counts: a state change, not every re-check of the same one.
 async function logPurchaseChange(userId: string, before: PurchaseState | undefined, after: PurchaseState, detail: string): Promise<void> {
   if (before === after) return;
-  if (after === "active" && before !== "canceled") await logAnalyticsEvent({ eventType: "purchase_done", userId, detail });
+  // Back from a held payment or an undone cancel is the same purchase, not a new one.
+  if (after === "active" && before !== "canceled" && before !== "grace" && before !== "on_hold") await logAnalyticsEvent({ eventType: "purchase_done", userId, detail });
   else if (after === "canceled") await logAnalyticsEvent({ eventType: "subscription_canceled", userId, detail });
   else if (after === "expired") await logAnalyticsEvent({ eventType: "subscription_expired", userId, detail });
 }
@@ -208,7 +212,9 @@ export async function resyncLapsedPurchases(userId: string): Promise<void> {
     .select("purchase_token, state")
     .eq("user_id", userId)
     .eq("kind", "subscription")
-    .in("state", ["active", "canceled"])
+    // on_hold is left to its recovery notice: its end is already past, so it
+    // would be asked about on every plan fetch for up to 60 days.
+    .in("state", ["active", "grace", "canceled"])
     .lt("expires_at", new Date().toISOString());
   if (error) throw new Error(`lapsed purchases failed: ${error.message}`);
   for (const row of (data ?? []) as { purchase_token: string; state: PurchaseState }[]) {

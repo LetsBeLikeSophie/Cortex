@@ -1,7 +1,7 @@
 // npm test -- pro_until after each way a purchase can change.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buyerAccount, FOREVER, nextProUntil, PurchaseRow, recordOnlyRaw } from "./billingRules.js";
+import { buyerAccount, FOREVER, nextProUntil, PurchaseRow, recordOnlyRaw, subscriptionStatus } from "./billingRules.js";
 
 const ACCOUNT = "3f2b8c1e-9a4d-4e7b-8f10-2c6d5e4a1b09";
 
@@ -57,8 +57,28 @@ const cases: [string, PurchaseRow[], string | null, string | null][] = [
   ["renewal missed, then lapsed: the later end counts", [sub("canceled", PAST)], EARLIER, PAST],
   ["refund long after it ended doesn't move the end", [sub("refunded")], PAST, PAST],
   ["one sub expired, another still running", [sub("expired", PAST), sub("active")], PAST, FUTURE],
+  ["payment failed, Pro runs through the grace period", [sub("grace")], PAST, FUTURE],
+  ["on hold ends Pro", [sub("on_hold", PAST)], FUTURE, NOW],
+  ["recovered from hold", [sub("active")], PAST, FUTURE],
 ];
 
 for (const [name, rows, before, expected] of cases) {
   test(name, () => assert.equal(nextProUntil(rows, before, NOW), expected));
+}
+
+// The Pro screen's line (decision B1).
+const statusCases: [string, PurchaseRow[], ReturnType<typeof subscriptionStatus>][] = [
+  ["renewing shows the next payment date", [sub("active")], { status: "renewing", until: FUTURE }],
+  ["canceled shows when it ends", [sub("canceled")], { status: "ending", until: FUTURE }],
+  ["grace says the payment failed, Pro still running", [sub("grace")], { status: "payment_issue", until: FUTURE }],
+  ["on hold says the payment failed, no end date", [sub("on_hold", PAST)], { status: "payment_issue", until: null }],
+  ["resubscribed after a hold shows the new one", [sub("on_hold", PAST), sub("active")], { status: "renewing", until: FUTURE }],
+  ["expired says nothing", [sub("expired", PAST)], null],
+  ["refunded says nothing", [sub("refunded")], null],
+  ["lifetime", [sub("canceled"), lifetime("active")], { status: "lifetime" }],
+  ["after account deletion the rows have no owner, so nothing", [], null],
+];
+
+for (const [name, rows, expected] of statusCases) {
+  test(`status: ${name}`, () => assert.deepEqual(subscriptionStatus(rows, NOW), expected));
 }

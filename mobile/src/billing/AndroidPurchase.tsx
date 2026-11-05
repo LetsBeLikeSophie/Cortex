@@ -30,6 +30,8 @@ const S = strings({
     noSub: '구독 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     nothingToRestore: '이 구글 계정으로 산 Pro가 없어요.',
     restored: 'Pro를 복원했어요',
+    toYearly: '다음 결제일부터 연간으로 바꾸기',
+    toYearlyDone: '다음 결제일부터 연간으로 바뀌어요',
     start: 'Pro 시작하기',
     connecting: '스토어 연결 중...',
     restore: '구매 복원',
@@ -47,6 +49,8 @@ const S = strings({
     noSub: "Couldn't load the subscription. Please try again shortly.",
     nothingToRestore: 'No Pro purchase found for this Google account.',
     restored: 'Pro restored',
+    toYearly: 'Switch to yearly from the next renewal',
+    toYearlyDone: 'Switches to yearly at the next renewal',
     start: 'Start Pro',
     connecting: 'Connecting to store...',
     restore: 'Restore purchase',
@@ -64,6 +68,8 @@ const S = strings({
     noSub: 'サブスクリプション情報を読み込めませんでした。しばらくしてからもう一度お試しください。',
     nothingToRestore: 'このGoogleアカウントで購入したProはありません。',
     restored: 'Proを復元しました',
+    toYearly: '次回の更新から年額に切り替え',
+    toYearlyDone: '次回の更新から年額に切り替わります',
     start: 'Proを始める',
     connecting: 'ストアに接続中...',
     restore: '購入を復元',
@@ -81,6 +87,8 @@ const S = strings({
     noSub: '无法加载订阅信息，请稍后再试。',
     nothingToRestore: '这个 Google 账号没有购买过 Pro。',
     restored: '已恢复 Pro',
+    toYearly: '从下次续费起改为年付',
+    toYearlyDone: '下次续费起将改为年付',
     start: '开通 Pro',
     connecting: '正在连接商店...',
     restore: '恢复购买',
@@ -98,6 +106,8 @@ const S = strings({
     noSub: '無法載入訂閱資訊，請稍後再試。',
     nothingToRestore: '這個 Google 帳號沒有購買過 Pro。',
     restored: '已還原 Pro',
+    toYearly: '從下次續費起改為年繳',
+    toYearlyDone: '下次續費起將改為年繳',
     start: '開通 Pro',
     connecting: '正在連線商店...',
     restore: '還原購買',
@@ -338,6 +348,80 @@ export function AndroidPurchase({
           </>
         )}
       </Text>
+    </View>
+  );
+}
+
+// Monthly Pro -> yearly, from the next renewal (decision B2): Play's deferred
+// replacement, so nothing is charged now and the 7-day refund promise isn't
+// touched. Play's own sheet confirms; the new token goes to the server like
+// any purchase.
+export function SwitchToYearly({ theme, offers, onPlan }: { theme: Theme; offers: Offers; onPlan: (plan: Plan) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const accountId = useAuth().session?.user.id;
+  const { connected, subscriptions, fetchProducts, requestPurchase, finishTransaction, getAvailablePurchases, availablePurchases } = useIAP({
+    onPurchaseSuccess: (purchase) => {
+      const token = purchase.purchaseToken;
+      if (!token) return;
+      verifyWithRetry(purchase.productId, token)
+        .then(async (plan) => {
+          await finishTransaction({ purchase, isConsumable: false }).catch(() => {});
+          onPlan(plan);
+          showToast(S.toYearlyDone);
+        })
+        .catch((err) => setError(friendlyError(err)))
+        .finally(() => setBusy(false));
+    },
+    onPurchaseError: (err) => {
+      setBusy(false);
+      if (!isUserCancelledError(err)) setError(err.message || S.purchaseFailed);
+    },
+  });
+
+  useEffect(() => {
+    if (!connected) return;
+    fetchProducts({ skus: [offers.subscriptionId], type: 'subs' }).catch(() => {});
+    getAvailablePurchases().catch(() => {});
+  }, [connected, offers.subscriptionId, fetchProducts, getAvailablePurchases]);
+
+  const sub = subscriptions.find((s) => s.id === offers.subscriptionId);
+  const yearly = sub && 'subscriptionOffers' in sub ? (sub.subscriptionOffers ?? []).find((o) => o.basePlanIdAndroid === BASE_PLAN.yearly && !o.id) : undefined;
+  const current = availablePurchases.find((p) => p.productId === offers.subscriptionId);
+
+  const switchPlan = async () => {
+    setError('');
+    if (!yearly?.offerTokenAndroid || !current?.purchaseToken) {
+      setError(S.noSub);
+      return;
+    }
+    setBusy(true);
+    try {
+      await requestPurchase({
+        type: 'subs',
+        request: {
+          google: {
+            skus: [offers.subscriptionId],
+            obfuscatedAccountId: accountId,
+            purchaseToken: current.purchaseToken,
+            subscriptionOffers: [{ sku: offers.subscriptionId, offerToken: yearly.offerTokenAndroid }],
+            subscriptionProductReplacementParams: { oldProductId: offers.subscriptionId, replacementMode: 'deferred' },
+          },
+        },
+      });
+    } catch (err) {
+      setBusy(false);
+      if (!isUserCancelledError(err)) setError(err instanceof Error ? err.message : friendlyError(err));
+    }
+  };
+
+  if (!connected || !yearly || !current) return null;
+  return (
+    <View>
+      <Pressable onPress={switchPlan} disabled={busy} hitSlop={6} style={styles.restore}>
+        {busy ? <ActivityIndicator size="small" color={theme.sub} /> : <Text style={[styles.restoreText, { color: theme.ink }]}>{S.toYearly}</Text>}
+      </Pressable>
+      {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
     </View>
   );
 }

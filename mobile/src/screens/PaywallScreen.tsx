@@ -26,6 +26,8 @@ import { COMMON } from '../i18n/common';
 // never loads it (same pattern as native/mediaLibrary).
 const AndroidPurchase: typeof import('../billing/AndroidPurchase').AndroidPurchase | null =
   Platform.OS === 'android' ? require('../billing/AndroidPurchase').AndroidPurchase : null;
+const SwitchToYearly: typeof import('../billing/AndroidPurchase').SwitchToYearly | null =
+  Platform.OS === 'android' ? require('../billing/AndroidPurchase').SwitchToYearly : null;
 
 const S = strings({
   ko: {
@@ -386,6 +388,9 @@ export default function PaywallScreen() {
         <AndroidPurchase theme={theme} offers={offers} selected={selected} onPrices={setPrices} onPlan={setPlan} onClose={close} />
       ) : (
         <>
+          {sub?.status === 'renewing' && sub.plan === 'monthly' && offers?.enabled && SwitchToYearly && (
+            <SwitchToYearly theme={theme} offers={offers} onPlan={setPlan} />
+          )}
           {isPro || paymentIssue ? (
             // Where a subscription is changed, cancelled or its payment fixed: Play, not here.
             !isLifetimePro(plan?.proUntil) && (

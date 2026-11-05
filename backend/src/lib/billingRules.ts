@@ -40,6 +40,8 @@ export interface PurchaseRow {
   kind: string;
   state: PurchaseState;
   expires_at: string | null;
+  // Play's base plan ("monthly", "yearly") for a subscription, when known.
+  base_plan?: string | null;
 }
 
 // A lifetime pass means "forever", a subscription its current expiry (a
@@ -72,7 +74,8 @@ export function nextProUntil(rows: PurchaseRow[], before: string | null, nowIso:
 // shows the new subscription.
 export type SubscriptionStatus =
   | { status: "lifetime" }
-  | { status: "renewing" | "ending"; until: string }
+  | { status: "renewing"; until: string; plan: string | null }
+  | { status: "ending"; until: string }
   | { status: "payment_issue"; until: string | null };
 
 export function subscriptionStatus(rows: PurchaseRow[], nowIso: string): SubscriptionStatus | null {
@@ -85,7 +88,11 @@ export function subscriptionStatus(rows: PurchaseRow[], nowIso: string): Subscri
       .sort()
       .pop();
   const active = latest("active");
-  if (active && active > nowIso) return { status: "renewing", until: active };
+  // Yearly once any running row is yearly: a switch from monthly waits for the
+  // next renewal with both tokens active (decision B2), and asks only once.
+  const running = subs.filter((r) => r.state === "active" && r.expires_at && r.expires_at > nowIso);
+  const plan = running.some((r) => r.base_plan === "yearly") ? "yearly" : (running[0]?.base_plan ?? null);
+  if (active && active > nowIso) return { status: "renewing", until: active, plan };
   const grace = latest("grace");
   if (grace !== undefined) return { status: "payment_issue", until: grace && grace > nowIso ? grace : null };
   const ending = latest("canceled");

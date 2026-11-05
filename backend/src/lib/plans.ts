@@ -110,7 +110,7 @@ async function countUnclassified(userId: string): Promise<number> {
 }
 
 async function purchaseRows(userId: string): Promise<PurchaseRow[]> {
-  const { data, error } = await getClient().from("purchases").select("kind, state, expires_at").eq("user_id", userId);
+  const { data, error } = await getClient().from("purchases").select("kind, state, expires_at, base_plan:raw->lineItems->0->offerDetails->>basePlanId").eq("user_id", userId);
   if (error) throw new Error(`purchase rows failed: ${error.message}`);
   return (data ?? []) as PurchaseRow[];
 }

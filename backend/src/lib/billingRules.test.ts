@@ -68,11 +68,13 @@ for (const [name, rows, before, expected] of cases) {
 
 // The Pro screen's line (decision B1).
 const statusCases: [string, PurchaseRow[], ReturnType<typeof subscriptionStatus>][] = [
-  ["renewing shows the next payment date", [sub("active")], { status: "renewing", until: FUTURE }],
+  ["renewing shows the next payment date", [sub("active")], { status: "renewing", until: FUTURE, plan: null }],
+  ["monthly renewing says monthly", [{ ...sub("active"), base_plan: "monthly" }], { status: "renewing", until: FUTURE, plan: "monthly" }],
+  ["switched to yearly from the next renewal: yearly, so the offer goes away", [{ ...sub("active"), base_plan: "monthly" }, { ...sub("active", "2027-12-01T00:00:00.000Z"), base_plan: "yearly" }], { status: "renewing", until: "2027-12-01T00:00:00.000Z", plan: "yearly" }],
   ["canceled shows when it ends", [sub("canceled")], { status: "ending", until: FUTURE }],
   ["grace says the payment failed, Pro still running", [sub("grace")], { status: "payment_issue", until: FUTURE }],
   ["on hold says the payment failed, no end date", [sub("on_hold", PAST)], { status: "payment_issue", until: null }],
-  ["resubscribed after a hold shows the new one", [sub("on_hold", PAST), sub("active")], { status: "renewing", until: FUTURE }],
+  ["resubscribed after a hold shows the new one", [sub("on_hold", PAST), sub("active")], { status: "renewing", until: FUTURE, plan: null }],
   ["expired says nothing", [sub("expired", PAST)], null],
   ["refunded says nothing", [sub("refunded")], null],
   ["lifetime", [sub("canceled"), lifetime("active")], { status: "lifetime" }],

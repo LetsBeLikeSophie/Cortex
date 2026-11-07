@@ -141,3 +141,13 @@ Supabase(6항, 서울 리전)도 같은 형식으로 적어 두면 좋아요: pr
 
 - 앱: 일본어 AI 동의 화면에 "米国の個人情報保護制度とAnthropicの保護措置" 링크 줄 추가 (코드 반영)
 - 일본어 방침·약관: 7항 번역 계획에서 일본어를 먼저, 출시 전에 게시. 국외이전 항목에 이전 국가(미국)의 개인정보 제도 요약 링크(PPC 외국 제도 조사)와 Anthropic의 보호 조치(상용 약관상 학습 미사용, 30일 삭제, 암호화 전송)를 적음
+
+## 14. 불법 콘텐츠 금지와 조치 (Sophie, 2026-11-07)
+
+Cortex는 저장된 사진을 미리 검사하지 않아요(비공개 보관이라 열람하지 않음). 대신 금지와 신고·삭제 절차를 약관에 적어 두는 것이 방어장치예요.
+
+- 약관 제8조에 5항 추가: "이용자는 불법촬영물, 아동·청소년성착취물, 그 밖에 법령에서 제작·소지·유통을 금지한 정보를 저장해서는 안 됩니다. 운영자는 신고나 수사기관 등의 적법한 요청으로 이를 알게 되면 해당 콘텐츠를 삭제하거나 접근을 막고, 이용계약을 해지할 수 있으며, 법령에 따라 관계 기관에 협조합니다."
+  - 영어: "You must not store non-consensual intimate images, child sexual abuse material, or any other content that the law prohibits making, possessing or distributing. If we learn of such content through a report or a lawful request from authorities, we may delete it or block access to it, end the agreement, and cooperate with the relevant authorities as the law requires."
+- 5항(권리 침해 신고) 메일 신고 문장을 "권리 침해 또는 불법 콘텐츠"로 넓힘.
+- 기록: 이런 신고·조치는 `docs/legal-drafts/requests-log.md`에 같은 형식으로 남김(요청 종류 "불법 콘텐츠").
+- 사진 자동 검사는 넣지 않음: 비용, 그리고 비공개 사진을 들여다보는 부담이 더 큼. 공유 기능이 생기면 다시 판단.

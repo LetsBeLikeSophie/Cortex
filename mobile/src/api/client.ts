@@ -592,6 +592,11 @@ export function setItemLocked(itemId: string, locked: boolean) {
   return request<{ ok: true; locked: boolean }>(`/items/${encodeURIComponent(itemId)}/lock`, { method: 'POST', body: JSON.stringify({ locked }) });
 }
 
+// The in-app policy-change notice (PolicyNotice); null when there is none.
+export function fetchPolicyNotice() {
+  return request<{ notice: { id: string; until: string } | null }>('/notice');
+}
+
 // Tag lock: the locked tags, and how many the plan allows (null: no limit).
 export function fetchLockedTags() {
   return request<{ tags: string[]; limit: number | null }>('/tags/locked');

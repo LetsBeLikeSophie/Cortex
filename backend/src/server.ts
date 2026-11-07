@@ -68,6 +68,13 @@ await app.register(rateLimit, {
   },
 });
 
+// The in-app notice the terms and privacy policy promise (7 days before a
+// change takes effect). Served from here so a new notice needs no app
+// build: change id/until with each revision; until = the later effective
+// day. null: no notice.
+const POLICY_NOTICE: { id: string; until: string } | null = { id: "terms-privacy-2026-11-15", until: "2026-11-15T00:00:00+09:00" };
+app.get("/notice", async () => ({ notice: POLICY_NOTICE }));
+
 app.get("/health", async () => ({
   ok: true,
   anthropicConfigured: config.hasAnthropicKey,

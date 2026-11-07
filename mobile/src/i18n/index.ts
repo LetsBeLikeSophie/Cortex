@@ -58,7 +58,7 @@ function apply(pref: LangPref) {
   LANG_PREF = pref;
   LANG = pref === 'device' ? langFromLocale(DEVICE) : pref;
   DEVICE_LOCALE = pref === 'device' ? DEVICE : pref;
-  PRIVACY_URL = LEGAL_BASE + (LANG === 'ko' ? 'privacy.html' : 'privacy-en.html');
+  PRIVACY_URL = LEGAL_BASE + (LANG === 'ko' ? 'privacy.html' : LANG === 'ja' ? 'privacy-ja.html' : 'privacy-en.html');
   TERMS_URL = LEGAL_BASE + (LANG === 'ko' ? 'terms.html' : 'terms-en.html');
 }
 apply('device');

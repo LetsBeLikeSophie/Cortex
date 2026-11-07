@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortex プライバシーポリシー</title>
+<style>
+:root {
+  --bg: #fbfaf7; --ink: #14140f; --sub: #6a675e; --line: #e4e0d6;
+  --soft: #eeebe2; --accent: #8d5c41;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+    --soft: #1e1c17; --accent: #d99a6c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+  --soft: #1e1c17; --accent: #d99a6c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: 'IBM Plex Sans JP', 'IBM Plex Sans KR', sans-serif; font-size: 15px; line-height: 1.75;
+  padding-inline: 20px; padding-block: 40px 80px;
+}
+.wrap { max-width: 720px; margin: 0 auto; }
+.wordmark { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.28em; color: var(--accent); }
+h1 { font-family: 'Instrument Serif', 'Noto Serif KR', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.01em; margin: 10px 0 4px; text-wrap: balance; }
+.meta { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+.crosslink { margin-bottom: 32px; }
+.crosslink a { color: var(--accent); text-decoration: none; font-size: 13.5px; border-bottom: 1px solid currentColor; }
+article h3 { font-size: 15.5px; font-weight: 600; margin: 34px 0 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+article h3:first-of-type { border-top: none; padding-top: 0; margin-top: 20px; }
+article p { margin: 0 0 12px; }
+article ol, article ul { margin: 0 0 14px; padding-left: 22px; }
+article li { margin-bottom: 8px; }
+article table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 13.5px; }
+article th, article td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+article th { background: var(--soft); font-weight: 600; width: 26%; }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
+a { color: var(--accent); }
+@media (max-width: 480px) { h1 { font-size: 25px; } }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+  <div class="wordmark">CORTEX</div>
+  <h1>プライバシーポリシー</h1>
+  <div class="meta">公表日 2026年11月8日 · 施行日 2026年11月15日</div>
+  <div class="crosslink"><a href="terms-en.html">利用規約（英語）→</a> &nbsp; <a href="privacy.html">한국어</a> &nbsp; <a href="privacy-en.html">English</a></div>
+
+  <article>
+    <p>本書はCortexの韓国語版プライバシーポリシーの日本語訳です。内容に違いがある場合は韓国語版が優先します。</p>
+
+    <h3>1. 取得する情報と取得方法</h3>
+    <table>
+      <tr><th>区分</th><td>取得する情報</td></tr>
+      <tr><th>カカオログイン</th><td>ニックネーム、プロフィール画像のURL、カカオの利用者識別子（アカウントとの対応付け用）。カカオログインではメールアドレスを受け取りません。</td></tr>
+      <tr><th>Googleログイン</th><td>氏名、メールアドレス、プロフィール画像のURL、Googleアカウントの識別子。メールアドレスはアカウントの識別、お問い合わせへの回答、アカウント・決済に関する必要なお知らせにのみ使い、広告・マーケティングには使いません。</td></tr>
+      <tr><th>ゲスト利用</th><td>端末に保存する一時的な認証トークンのほかに取得する個人情報はありません。</td></tr>
+      <tr><th>利用者が保存するコンテンツ</th><td>テキスト、リンク（URL）、スクリーンショット・写真、保存時または後から書く「自分のメモ」（音声入力したものを含む）、利用者が付けたタグ。利用者が自分で保存を選んだものに限ります。</td></tr>
+      <tr><th>検索</th><td>「AI検索」（✦）を使ったときに入力した、または話した検索文。検索条件の解釈にのみ使い、保存しません。通常の単語検索は外部に送信しません。</td></tr>
+      <tr><th>音声入力（マイク）</th><td>マイクボタンを押したときにのみマイク・音声認識の権限を求めます。音声は端末のOSの音声認識サービス（Androidの場合はGoogle）が文字に変換し、運営者は録音そのものを受け取らず、変換された文字だけを受け取ります。</td></tr>
+      <tr><th>カメラ</th><td>カメラボタンを押したときにのみカメラの権限を求め、撮影して保存を選んだ写真だけを保存します。</td></tr>
+      <tr><th>通知</th><td>アプリを初めて開いてから1週間後に一度だけ通知の権限を求めます。通知（毎月1日の未分類のお知らせ、週1回の振り返り）は端末の中だけで予約され、通知のためにサーバーへ送る情報はありません。それぞれ「マイアカウント」でオフにできます。</td></tr>
+      <tr><th>写真の選択</th><td>写真はOSの写真選択画面か、他のアプリの「共有」からのみ受け取ります。写真ライブラリ全体へのアクセス権限は求めず、選んだ写真だけを送信・保存します。画像を端末のアルバムに保存するときは書き込み専用の権限を求め、他の写真は読み取りません。</td></tr>
+      <tr><th>他のアプリから共有されたコンテンツ</th><td>他のアプリの「共有」でCortexに送った写真・リンク・文章のうち、保存を選んだものだけを保存します。写真整理アプリMehhから送られた場合、結果画面で［Mehhに戻る］を押したときに、保存した枚数だけを端末内でMehhに伝えます。</td></tr>
+      <tr><th>AI分析の同意記録</th><td>AI分析（外国への提供）に同意したかどうか、回答日時、回答した案内文のバージョン。</td></tr>
+      <tr><th>有料プラン（Pro）</th><td>Google Playの購入情報：商品の種類、購入トークン、注文番号、支払い状態・有効期限など、購入確認時にGoogleが返す情報。購入がどのアカウントのものか分かるよう、購入リクエストに氏名やメールアドレスを含まない任意のアカウントIDを付けて送ります。カード番号などの支払い手段はGoogleが扱い、運営者は受け取りません。</td></tr>
+      <tr><th>AI結果の報告</th><td>AIが作った結果を報告すると、そのメモのAI生成タイトル・メモ・タグと報告日時を保存します。AI結果の改善と不適切な結果の確認にのみ使います。</td></tr>
+      <tr><th>メモロック</th><td>メモロックの暗証番号は<b>この端末の中だけ</b>に暗号化して保存し、サーバーには送りません。指紋・顔の確認は端末のOSが行い、運営者は生体情報を受け取りません。サーバーにはメモごとのロックの有無とロックしたタグの名前だけを保存し、ロック中のメモ（ロックしたタグのメモを含む）はAI検索・「まとめて作る」・「AIで整理し直す」に使いません。</td></tr>
+      <tr><th>AI機能の利用記録</th><td>使ったAI機能の種類、日時、処理量。月の利用上限とコスト管理に使います。保存した内容そのものは含みません。</td></tr>
+      <tr><th>アプリのエラー情報</th><td>アプリでエラーが起きると、アプリのバージョン、エラーの種類、コードの位置を運営者のサーバーに送ります。アカウント情報や保存した内容は含まず、エラーの修正にのみ使います。</td></tr>
+      <tr><th>アクセスログ</th><td>サーバーへのアクセス時に自動で記録されるIPアドレス、リクエストの日時・パス、端末・ブラウザの情報（User-Agent）。セキュリティと障害対応にのみ使います。</td></tr>
+      <tr><th>利用中に生成される情報</th><td>仮名化した利用統計（アカウントを特定できないハッシュ値＋イベントの種類・カテゴリ・Pro画面の表示と購入の段階（商品の種類）・日時）。保存したコンテンツの実際の内容（タイトル・本文・タグ）は統計に含みません。</td></tr>
+    </table>
+    <p style="font-size:13.5px;color:var(--sub)">スクリーンショットや写真には、会話・顔・連絡先など<b>他の人の情報</b>が含まれることがあります。他の人の権利を侵害しない範囲で保存してください（利用規約第8条）。</p>
+
+    <h3>2. 利用目的</h3>
+    <ul>
+      <li>利用者の識別、ログイン状態の維持、不正利用の防止</li>
+      <li>保存したコンテンツの保管、自動分類（タイトル・カテゴリ・タグの生成）、検索、「まとめて作る」機能の提供</li>
+      <li>有料プラン（Pro）の購入確認、利用期間の管理、返金・紛争への対応</li>
+      <li>月の利用上限の管理、不正利用の防止、サービスのセキュリティと障害対応</li>
+      <li>仮名化した統計によるサービスの改善</li>
+      <li>お問い合わせへの回答とお知らせ</li>
+    </ul>
+
+    <h3>3. 保存期間</h3>
+    <ol>
+      <li>退会（アカウント削除）すると、アカウント情報（ニックネーム・氏名、メールアドレス、プロフィール画像のURL、カカオ・Googleの識別子）と保存したコンテンツすべて（画像ファイルを含む）を<b>遅滞なく削除</b>します。</li>
+      <li>仮名化した利用統計は個人を特定できない形で、退会後も統計目的に限り保存することがあります（韓国「個人情報保護法」第28条の2）。</li>
+      <li>AI分析の同意記録、AI結果の報告、AI機能の利用記録は退会時に削除します。ただしAIのコスト記録（日時・処理量）は、アカウント識別子を消して誰のものか分からない状態でコスト統計としてのみ保存します。</li>
+      <li>有料決済の記録は韓国「電子商取引等における消費者保護に関する法律」により<b>5年間</b>保存した後に削除します。退会すると決済記録とアカウントの結び付きを消し、返金・税務対応のため注文番号・商品・期間・国だけをこの期間保存します。</li>
+      <li>カカオの設定でCortexとの連携を解除すると、アカウントはログインできない状態で<b>30日間</b>保存した後、アカウント情報と保存したコンテンツすべてを削除します。その間に同じカカオアカウントで再びログインすれば、そのまま利用できます。</li>
+      <li>アプリのエラー情報は<b>90日</b>で自動的に削除します。</li>
+      <li>アクセスログは<b>14日</b>で自動的に削除します。</li>
+      <li>その他、法令で保存が義務付けられている場合は、その法令が定める期間保存した後に削除します。</li>
+    </ol>
+
+    <h3>4. 削除の方法</h3>
+    <p>電子的な記録は復元できない方法で完全に削除し、画像ファイルは保存先（Supabase Storage）から直ちに削除します。</p>
+
+    <h3>5. 第三者への提供</h3>
+    <p>法令に基づく場合や捜査機関から適法な手続きによる要請があった場合を除き、個人情報を第三者に提供しません。個人情報を販売したり広告に使ったりすることはありません。</p>
+
+    <h3>6. 業務委託先と処理場所</h3>
+    <table>
+      <tr><th>委託先</th><td>委託する業務 / 処理場所</td></tr>
+      <tr><td>Supabase, Inc.</td><td>データベース、ファイル（画像）の保存、認証。大韓民国（ソウル）。個人情報に関する問い合わせ先：privacy@supabase.com</td></tr>
+      <tr><td>Kakao Corp.</td><td>カカオアカウントによるログイン認証。大韓民国。</td></tr>
+      <tr><td>Oracle Corporation</td><td>サービスのサーバー（バックエンドAPI、ウェブ）のホスティング。日本（東京）。問い合わせ先：<a href="https://www.oracle.com/legal/privacy/">www.oracle.com/legal/privacy</a></td></tr>
+      <tr><td>Google LLC</td><td>Googleログインの認証、Google Playの購入確認と支払い状態の通知。米国。問い合わせ先：<a href="https://support.google.com/policies?p=privpol_privts">support.google.com/policies?p=privpol_privts</a></td></tr>
+    </table>
+
+    <h3>7. 外国にある第三者への提供（AI分析）</h3>
+    <table>
+      <tr><th>提供先</th><td>Anthropic PBC（548 Market St, PMB 90375, San Francisco, CA 94104, USA ／ privacy@anthropic.com、データ保護責任者 dpo@anthropic.com）</td></tr>
+      <tr><th>提供先の国</th><td>アメリカ合衆国</td></tr>
+      <tr><th>提供する情報</th><td>保存したテキスト（テキストメモの本文を含む）、スクリーンショット・写真、リンクのアドレスとそのページのタイトル・説明、自分のメモ（音声入力したものを含む）、すでに使っているタグの一覧（タグを揃えるため、最大150個）、AI検索の検索文、音声で話したタグの文、「まとめて作る」に書いた依頼文、「タグを整理」を使ったときのタグ名とタグごとのメモ数（メモの内容は送りません）。各機能に必要な範囲に限ります。</td></tr>
+      <tr><th>提供の時期と方法</th><td>アプリで<b>AI分析に同意した後にのみ</b>、保存・「AIで整理し直す」・AI検索・「まとめて作る」・「タグを整理」のたびに、暗号化された通信（HTTPS）で送ります。</td></tr>
+      <tr><th>提供先の利用目的</th><td>タイトル・AIメモ・カテゴリ・タグの自動生成、検索文の検索条件への解釈、「まとめて作る」で選んだメモ（最大50件）から一つのメモを作成（Claude API）。AIには、写真の顔で人物を特定したり、センシティブな特性を推測したりしないよう指示しています。</td></tr>
+      <tr><th>保存期間</th><td>Anthropicの商用規約により<b>AIモデルの学習には使われず</b>、Anthropicのサーバーで<b>最大30日</b>保存された後に自動削除されます（利用ポリシー違反の調査や法令上の義務がある場合は、より長く保存されることがあります）。</td></tr>
+      <tr><th>米国の個人情報保護制度</th><td>米国には連邦レベルの包括的な個人情報保護法はなく、分野ごとの連邦法と州法（カリフォルニア州消費者プライバシー法など）があります。詳しくは個人情報保護委員会の調査結果をご覧ください：<a href="https://www.ppc.go.jp/enforcement/infoprovision/laws/offshore_report_america/">米国の個人情報の保護に関する制度</a></td></tr>
+      <tr><th>提供先が講じる措置</th><td>商用規約に基づくモデル学習への不使用、30日以内の自動削除、暗号化された通信、アクセス管理などの安全管理措置。詳しくは<a href="https://privacy.claude.com/">Anthropicのプライバシーセンター</a>をご覧ください。</td></tr>
+    </table>
+    <p style="font-size:13px;color:var(--sub)">AI分析のための提供には、アプリで<b>別途同意をいただきます</b>。同意しない場合や後で撤回した場合も、保存や単語検索などの基本機能はそのまま使え、AI機能だけがオフになります。同意は「マイアカウント › AI分析への同意」でいつでも変更できます。Oracle（サーバー）とGoogle（購入確認）での処理はサービスの提供と決済に必要なため、拒否するとサービスまたは有料プランを利用できません。</p>
+
+    <h3>8. 韓国国外の利用者の方へ</h3>
+    <ol>
+      <li>Cortexは大韓民国で運営されています。どの国から利用しても、個人情報は第6項・第7項に書いた場所（韓国・日本・米国）で処理されます。</li>
+      <li>Cortexは現在、<b>欧州経済領域（EEA）、英国、スイス、中国本土、香港、マカオ、ロシア、ベラルーシ</b>では提供していません。</li>
+    </ol>
+
+    <h3>9. 利用者の権利</h3>
+    <ol>
+      <li>アプリの「マイアカウント」から、いつでも自分のアカウントと保存したコンテンツすべての確認・削除（退会）ができます。</li>
+      <li>その他、開示・訂正・利用停止などのご請求は下記の連絡先までご連絡ください。遅滞なく対応します。開示のご請求には受け取った日から10日以内に対応し、それができない場合は理由と対応できる日をお知らせします。</li>
+      <li>Cortexは14歳未満の子どもを対象としておらず、子どもの情報を意図して取得することはありません。</li>
+    </ol>
+
+    <h3>10. 安全管理措置</h3>
+    <ul>
+      <li>すべてのリクエストはアクセストークンで認証し、サーバーが毎回その有効性を確認します。</li>
+      <li>データベースにはアカウントごと（行単位）のアクセス制御を適用し、自分のデータだけを読み書きできるようにしています。</li>
+      <li>画像は非公開の保存先に置き、表示するときだけ短時間で失効するリンクを発行します。</li>
+      <li>統計は元に戻せない一方向ハッシュでのみ保存します。</li>
+      <li>アプリ・サーバー・委託先の間の通信はすべて暗号化（HTTPS）しています。</li>
+      <li>AI事業者や購入確認用の秘密鍵はサーバーにのみ置き、アプリには入れません。</li>
+    </ul>
+
+    <h3>11. ローカルストレージ</h3>
+    <p>ウェブ版はログイン状態を保つためにブラウザのlocalStorageに認証トークンを保存し、アプリはテーマ・ホームのタブ・検索方法などの表示設定を端末の中だけに保存します。広告用のCookieや広告識別子は使いません。</p>
+
+    <h3>12. お問い合わせ（個人情報保護責任者）</h3>
+    <table>
+      <tr><th>氏名</th><td>최솔잎（Solip Choi）</td></tr>
+      <tr><th>役職</th><td>代表</td></tr>
+      <tr><th>メール</th><td>cortex@itssophie.dev</td></tr>
+    </table>
+
+    <h3>13. 変更</h3>
+    <p>本ポリシーを変更するときは、施行の7日以上前にサービス内でお知らせします。</p>
+    <p style="margin-top:28px; color:var(--sub); font-size:13px;">公表日 2026年11月8日 / 施行日 2026年11月15日。日本語版の初版です（韓国語版 2026年11月7日公表・11月14日施行の内容）。</p>
+  </article>
+
+  <footer>Cortex · お問い合わせ：cortex@itssophie.dev</footer>
+</div>
+</body>
+</html>

@@ -53,6 +53,9 @@ import {
 import { canLockAnotherTag, FREE_LOCKED_TAGS } from "../lib/tagLock.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
+// The privacy policy revision of 2026-11-07 takes effect 2026-11-14 (KST).
+const APP_ERRORS_FROM = Date.parse("2026-11-14T00:00:00+09:00");
+
 // Edits from the detail screen. Empty string clears the field (stored null).
 // raw_text only for text items -- a screenshot's raw_text is the hidden
 // search text Claude read off the image, not something shown to edit.
@@ -359,6 +362,8 @@ export async function itemsRoutes(app: FastifyInstance) {
     const parsed = AppErrorSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
     await resolveUserId(req);
+    // Kept only from the day the privacy policy that lists it takes effect.
+    if (Date.now() < APP_ERRORS_FROM) return reply.code(204).send();
     const stack = onlyStackFrames(parsed.data.stack);
     if (stack) await logAppError({ appVersion: parsed.data.appVersion, name: safeErrorName(parsed.data.name), stack }).catch((err) => req.log.error(err));
     return reply.code(204).send();

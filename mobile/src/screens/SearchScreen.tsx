@@ -31,6 +31,7 @@ import { AsyncStateView } from '../components/AsyncStateView';
 import { Heading } from '../components/Typography';
 import { ChipQueryRow, SearchChip } from '../components/Chips';
 import { HashIcon, SearchIcon, SparkleIcon } from '../components/Icons';
+import { hiddenByTagLock, useTagLock } from '../lock/tagLock';
 import { FieldRow, fieldTextStyle } from '../components/FieldRow';
 import { VoiceInputButton } from '../components/VoiceInputButton';
 import { LayeredBack, VintageWallpaper } from '../components/Decor';
@@ -573,12 +574,15 @@ export default function SearchScreen() {
   // AI results come back for the sentence alone -- the tag chips (set before
   // ✦ or changed after) narrow them here, without asking the AI again.
   const aiTagFiltered = aiMode && tags.includeChips.length + tags.excludeChips.length > 0;
-  const shown = aiTagFiltered
+  // A locked tag's memos stay out of search until the tags are opened.
+  useTagLock();
+  const shown = (aiTagFiltered
     ? hits.filter((h) => {
         const has = new Set([...h.raw.tags, ...h.raw.user_tags]);
         return tags.includeChips.every((c) => has.has(c.text)) && !tags.excludeChips.some((c) => has.has(c.text));
       })
-    : hits;
+    : hits
+  ).filter((h) => !hiddenByTagLock(h.raw));
   // The search matches tag text loosely ('이사' also finds '이사님') and stops
   // at 30, so only exact-tag hits decide whether to offer 모아서 만들기; the
   // sheet then counts the tag itself (fetchItemsWithTag).

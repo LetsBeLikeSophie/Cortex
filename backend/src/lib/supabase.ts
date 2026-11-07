@@ -7,6 +7,7 @@ import type { SearchInterpretation } from "./anthropic.js";
 import { scanPages } from "./scanPages.js";
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG } from "./sourceCatalog.js";
 import { newestOfBoth, tagArrayLiteral } from "./tagQuery.js";
+import { tagLockChange, type LockState } from "./tagLock.js";
 
 const SCREENSHOTS_BUCKET = "item-screenshots";
 
@@ -60,6 +61,8 @@ export interface ItemRecord {
   composed_from?: string[] | null;
   // Opens only with the device PIN; left out of AI search and compose.
   locked?: boolean;
+  // Locked because it carries a locked tag (lib/tagLock.ts).
+  locked_by_tag?: boolean;
   shared_at: string;
   created_at: string;
   deleted_at: string | null;
@@ -456,21 +459,132 @@ export async function trashItem(userId: string, itemId: string): Promise<void> {
   if (!count) throw new Error("item not found");
 }
 
+// By hand: a memo locked here stays locked when its tag opens.
 export async function setItemLocked(userId: string, itemId: string, locked: boolean): Promise<void> {
   const { error, count } = await getClient()
     .from("items")
-    .update({ locked }, { count: "exact" })
+    .update({ locked, locked_by_tag: false }, { count: "exact" })
     .eq("id", itemId)
     .eq("user_id", userId);
   if (error) throw new Error(`setItemLocked failed: ${error.message}`);
   if (!count) throw new Error("item not found");
 }
 
-// Turning the memo lock off (the PIN is gone) opens every locked memo.
+// Turning the memo lock off (the PIN is gone) opens every locked memo, and
+// every locked tag with it.
 export async function unlockAllItems(userId: string): Promise<number> {
-  const { error, count } = await getClient().from("items").update({ locked: false }, { count: "exact" }).eq("user_id", userId).eq("locked", true);
+  const { error, count } = await getClient().from("items").update({ locked: false, locked_by_tag: false }, { count: "exact" }).eq("user_id", userId).eq("locked", true);
   if (error) throw new Error(`unlockAllItems failed: ${error.message}`);
+  const { error: tagsError } = await getClient().from("locked_tags").delete().eq("user_id", userId);
+  if (tagsError) throw new Error(`unlockAllItems tags failed: ${tagsError.message}`);
   return count ?? 0;
+}
+
+// --- tag lock (lib/tagLock.ts) ---------------------------------------------
+
+export async function listLockedTags(userId: string): Promise<string[]> {
+  const { data, error } = await getClient().from("locked_tags").select("tag").eq("user_id", userId).order("created_at", { ascending: true });
+  if (error) throw new Error(`listLockedTags failed: ${error.message}`);
+  return (data ?? []).map((r) => r.tag as string);
+}
+
+// Every memo with `tag` (AI or own) that isn't locked yet gets locked by
+// the tag. Filtered and written in the database, no matter how many.
+async function lockMemosWithTag(userId: string, tag: string): Promise<void> {
+  for (const column of ["tags", "user_tags"] as const) {
+    const { error } = await getClient()
+      .from("items")
+      .update({ locked: true, locked_by_tag: true })
+      .eq("user_id", userId)
+      .eq("locked", false)
+      .contains(column, tagArrayLiteral(tag));
+    if (error) throw new Error(`lockMemosWithTag failed: ${error.message}`);
+  }
+}
+
+export async function lockTag(userId: string, tag: string): Promise<void> {
+  const { error } = await getClient().from("locked_tags").upsert({ user_id: userId, tag }, { onConflict: "user_id,tag", ignoreDuplicates: true });
+  if (error) throw new Error(`lockTag failed: ${error.message}`);
+  await lockMemosWithTag(userId, tag);
+}
+
+// Opens the memos the tag locked, unless another locked tag still holds
+// them. Pages by id to the end (rows leave the filter as they open).
+export async function unlockTag(userId: string, tag: string): Promise<void> {
+  const { error } = await getClient().from("locked_tags").delete().eq("user_id", userId).eq("tag", tag);
+  if (error) throw new Error(`unlockTag failed: ${error.message}`);
+  const still = await listLockedTags(userId);
+  for (const column of ["tags", "user_tags"] as const) {
+    let after = "";
+    for (;;) {
+      let q = getClient()
+        .from("items")
+        .select("id, tags, user_tags, locked, locked_by_tag")
+        .eq("user_id", userId)
+        .eq("locked_by_tag", true)
+        .contains(column, tagArrayLiteral(tag));
+      if (after) q = q.gt("id", after);
+      const { data, error: readError } = await q.order("id", { ascending: true }).limit(500);
+      if (readError) throw new Error(`unlockTag read failed: ${readError.message}`);
+      const rows = (data ?? []) as (LockState & { id: string })[];
+      for (const row of rows) {
+        const change = tagLockChange(row, still);
+        if (!change) continue;
+        const { error: upError } = await getClient().from("items").update(change).eq("id", row.id).eq("user_id", userId);
+        if (upError) throw new Error(`unlockTag update failed: ${upError.message}`);
+      }
+      if (rows.length < 500) break;
+      after = rows[rows.length - 1].id;
+    }
+  }
+}
+
+// After one memo's tags changed: lock or open it to match the locked tags.
+// Returns the memo's lock as it is now (null: no change).
+export async function syncTagLock(userId: string, itemId: string): Promise<{ locked: boolean; locked_by_tag: boolean } | null> {
+  const lockedTags = await listLockedTags(userId);
+  const { data, error } = await getClient().from("items").select("tags, user_tags, locked, locked_by_tag").eq("id", itemId).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(`syncTagLock read failed: ${error.message}`);
+  if (!data) return null;
+  const change = tagLockChange(data as LockState, lockedTags);
+  if (!change) return null;
+  const { error: upError } = await getClient().from("items").update(change).eq("id", itemId).eq("user_id", userId);
+  if (upError) throw new Error(`syncTagLock update failed: ${upError.message}`);
+  return change;
+}
+
+// Tag cleanup renamed tags: a merged-away locked tag passes its lock on, and
+// memos merged into a locked tag get locked.
+async function carryTagLocks(userId: string, rename: Map<string, string>): Promise<void> {
+  const locked = new Set(await listLockedTags(userId));
+  const keeps = new Set<string>();
+  for (const [from, to] of rename) if (locked.has(from) || locked.has(to)) keeps.add(to);
+  if (keeps.size === 0) return;
+  for (const keep of keeps) await lockTag(userId, keep);
+  const gone = [...rename.keys()].filter((t) => locked.has(t));
+  if (gone.length === 0) return;
+  const { error } = await getClient().from("locked_tags").delete().eq("user_id", userId).in("tag", gone);
+  if (error) throw new Error(`carryTagLocks failed: ${error.message}`);
+}
+
+// Guest claim: the guest's locked tags join the account's, and every memo
+// now on the account follows the account's locked tags.
+async function moveLockedTags(client: SupabaseClient, guestId: string, targetId: string): Promise<{ error: { message: string } | null }> {
+  const { data, error } = await client.from("locked_tags").select("tag").eq("user_id", guestId);
+  if (error) return { error };
+  const rows = (data ?? []).map((r) => ({ user_id: targetId, tag: r.tag as string }));
+  if (rows.length) {
+    const { error: upError } = await client.from("locked_tags").upsert(rows, { onConflict: "user_id,tag", ignoreDuplicates: true });
+    if (upError) return { error: upError };
+  }
+  const { error: delError } = await client.from("locked_tags").delete().eq("user_id", guestId);
+  if (delError) return { error: delError };
+  try {
+    for (const tag of await listLockedTags(targetId)) await lockMemosWithTag(targetId, tag);
+  } catch (err) {
+    return { error: { message: err instanceof Error ? err.message : String(err) } };
+  }
+  return { error: null };
 }
 
 // A person flags what the AI wrote for one of their items (Play's
@@ -760,6 +874,7 @@ export async function mergeTags(userId: string, groups: { keep: string; merge: s
     if (upErr) throw new Error(`mergeTags update failed: ${upErr.message}`);
     changed++;
   }
+  await carryTagLocks(userId, rename);
   return changed;
 }
 
@@ -1203,6 +1318,8 @@ export async function deleteUserAccount(userId: string): Promise<void> {
   if (usageError) throw new Error(`failed to delete usage log: ${usageError.message}`);
   const { error: reportsError } = await client.from("ai_reports").delete().eq("user_id", userId);
   if (reportsError) throw new Error(`failed to delete AI reports: ${reportsError.message}`);
+  const { error: lockedTagsError } = await client.from("locked_tags").delete().eq("user_id", userId);
+  if (lockedTagsError) throw new Error(`failed to delete locked tags: ${lockedTagsError.message}`);
 
   const { error: mappingError } = await client.from("kakao_users").delete().eq("user_id", userId);
   if (mappingError) throw new Error(`failed to delete kakao_users mapping: ${mappingError.message}`);
@@ -1260,6 +1377,8 @@ export async function claimGuestAccount(targetId: string, guestId: string): Prom
     // This month's AI use follows the person (no fresh quota by switching).
     ["ai_usage", await client.from("ai_usage").update({ user_id: targetId }).eq("user_id", guestId)],
     ["ai_calls", await client.from("ai_calls").update({ user_id: targetId }).eq("user_id", guestId)],
+    // A tag both had locked is one row on the account already; upsert skips it.
+    ["locked_tags", await moveLockedTags(client, guestId, targetId)],
   ] as const;
   for (const [table, { error }] of moves) {
     if (error) throw new Error(`claim: move ${table} failed: ${error.message}`);

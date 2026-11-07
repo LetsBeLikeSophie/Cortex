@@ -39,6 +39,7 @@ import { showToast } from '../native/toast';
 import { strings } from '../i18n';
 import { COMMON, USES, categoryLabel } from '../i18n/common';
 import { LOCK_SUPPORTED, askPin, hasPin } from '../lock/memoLock';
+import { tagsOpen } from '../lock/tagLock';
 
 type DeleteState = 'idle' | 'confirming' | 'deleting';
 // snippet (the AI memo) isn't typed into -- it's only ever replaced by the
@@ -470,7 +471,8 @@ export default function ItemDetailScreen() {
   const [deleteState, setDeleteState] = useState<DeleteState>('idle');
   // Memo lock: a locked memo opens behind the device PIN / fingerprint.
   const [locked, setLocked] = useState(!!item.locked);
-  const [opened, setOpened] = useState(!item.locked);
+  // Reached from an opened locked tag: no second PIN.
+  const [opened, setOpened] = useState(!item.locked || (!!item.locked_by_tag && tagsOpen()));
   const [lockError, setLockError] = useState('');
   const openLocked = async () => {
     if (await askPin('check', { prompt: S.bioPrompt, cancel: COMMON.cancel })) setOpened(true);

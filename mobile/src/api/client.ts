@@ -60,6 +60,8 @@ export interface ApiItem {
   composed_from?: string[] | null;
   // Opens only with the device PIN; left out of AI search and compose.
   locked?: boolean;
+  // Locked because it carries a locked tag (hidden until tags are opened).
+  locked_by_tag?: boolean;
   user_note: string | null; // optional "why I saved this", set at save time
   classification_status: ClassificationStatus;
   shared_at: string;
@@ -590,7 +592,21 @@ export function setItemLocked(itemId: string, locked: boolean) {
   return request<{ ok: true; locked: boolean }>(`/items/${encodeURIComponent(itemId)}/lock`, { method: 'POST', body: JSON.stringify({ locked }) });
 }
 
-// Turning the memo lock off opens every locked memo.
+// Tag lock: the locked tags, and how many the plan allows (null: no limit).
+export function fetchLockedTags() {
+  return request<{ tags: string[]; limit: number | null }>('/tags/locked');
+}
+
+export function setTagLocked(tag: string, locked: boolean) {
+  return request<{ ok: true; tags: string[] }>('/tags/lock', { method: 'POST', body: JSON.stringify({ tag, locked }) });
+}
+
+// Free already has its one locked tag (403 tag_lock_limit): the app opens Pro.
+export function isTagLockLimit(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 403 && (err.body as { error?: string } | null)?.error === 'tag_lock_limit';
+}
+
+// Turning the memo lock off opens every locked memo (and every locked tag).
 export function unlockAllItems() {
   return request<{ ok: true; changed: number }>('/items/unlock-all', { method: 'POST' });
 }

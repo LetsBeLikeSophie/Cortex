@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import type { QueryChip } from '../hooks/useChipQuery';
 import { strings } from '../i18n';
+import { LockIcon } from './Icons';
 
 const S = strings({
   ko: { tabSettings: '태그 설정', unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건`, removeTag: (t: string) => `${t} 태그 빼기` },
@@ -15,7 +16,8 @@ const S = strings({
 // Home tag tabs, per concept: line = underline tabs; border = outlined
 // pills; layer = filled paper pills (active one inked); vintage = underline
 // tabs in the typewriter face.
-export function TabChip({ label, active, theme, onPress }: { label: string; active: boolean; theme: Theme; onPress: () => void }) {
+// `locked`: a locked tag (tag lock) -- the same lock mark as a locked memo.
+export function TabChip({ label, active, theme, onPress, locked = false }: { label: string; active: boolean; theme: Theme; onPress: () => void; locked?: boolean }) {
   const concept = conceptOf(theme);
   const pill = concept === 'border' || concept === 'layer';
   const shell = pill
@@ -25,7 +27,8 @@ export function TabChip({ label, active, theme, onPress }: { label: string; acti
     : [styles.underlineTab, bottomEdge(2, active ? theme.ink : 'transparent'), { backgroundColor: 'transparent' }];
   const color = concept === 'layer' ? (active ? theme.bg : theme.sub) : active ? theme.ink : theme.sub;
   return (
-    <Pressable onPress={onPress} style={shell}>
+    <Pressable onPress={onPress} style={[shell, locked && styles.lockedTab]}>
+      {locked && <LockIcon size={11} color={color} strokeWidth={1.4} />}
       <Text
         style={{
           fontSize: concept === 'vintage' ? 12.5 : pill ? 12.5 : 13,
@@ -240,6 +243,7 @@ export function TagAddChip({ label, theme, onPress }: { label: string; theme: Th
 }
 
 const styles = StyleSheet.create({
+  lockedTab: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pillTab: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 999 },
   underlineTab: { paddingBottom: 10 },
   tag: { borderRadius: 999, paddingHorizontal: 14 },

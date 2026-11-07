@@ -9,6 +9,7 @@ import { getAiGate, getEntitlement, refundUsage, remaining, reserveUsage, reserv
 import {
   ClassificationStatus,
   completeClassification,
+  syncTagLock,
   downloadScreenshot,
   listBacklogItems,
   countBacklog,
@@ -221,6 +222,8 @@ async function classifyAndComplete(item: ItemRecord, imageBase64?: string, useEd
     classification = { ...(await classifyText({ source: item.source, rawText: item.raw_text ?? "", hint, knownTags, userId: item.user_id, lang })), keyText: undefined, hasText: undefined };
   }
   await completeClassification(item.id, item.user_id, classification, thumbnailUrl);
+  // An AI tag that is locked locks the memo too.
+  await syncTagLock(item.user_id, item.id).catch((e) => console.error("syncTagLock failed:", e));
   return classification.category;
 }
 

@@ -11,6 +11,7 @@ import { signInWithKakao, signOut } from '../auth/kakaoLogin';
 import { GoogleSignInCancelled, signInWithGoogle } from '../auth/googleLogin';
 import { forgetAccountOnPhone } from '../auth/accountTraces';
 import { deleteAccount, fetchPlan, Plan, friendlyError, unlockAllItems } from '../api/client';
+import { setLockedTags } from '../lock/tagLock';
 import { LOCK_SUPPORTED, askPin, biometricAvailable, biometricOn, clearPin, hasPin, setBiometricOn } from '../lock/memoLock';
 import { ProfileIcon } from '../components/Icons';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -354,6 +355,7 @@ export default function ProfileScreen() {
         return;
       }
       await clearPin();
+      setLockedTags([]);
       setLockOpen(false);
     }
     refreshLock();

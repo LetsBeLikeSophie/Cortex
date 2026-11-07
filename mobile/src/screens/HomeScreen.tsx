@@ -17,7 +17,7 @@ import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { useAuth } from '../auth/AuthContext';
 import { IMPORT_OFFER_KEY, TRIAL_NOTICE_KEY } from '../auth/accountTraces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError, isAlreadyRunning, isTimeout } from '../api/client';
+import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, setTagLocked, isTagLockLimit, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError, isAlreadyRunning, isTimeout } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { ProgressRow } from '../components/ProgressRow';
@@ -29,7 +29,9 @@ import { TabChip, TabAddChip, PileTabChip } from '../components/Chips';
 import { Bubble, isLowOnUses } from '../components/Bubble';
 import { GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { ConfirmPopup } from '../components/ConfirmPopup';
-import { SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
+import { LockIcon, SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
+import { askPin, hasPin } from '../lock/memoLock';
+import { closeTags, openTags, refreshLockedTags, setLockedTags, useTagLock } from '../lock/tagLock';
 import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
@@ -73,6 +75,11 @@ const S = strings({
     selected: (n: number) => `${n}개 선택됨`,
     toTrash: '휴지통으로',
     select: '선택',
+    lockTag: '잠그기',
+    unlockTag: '잠금 풀기',
+    tagLocked: '잠긴 태그예요',
+    openTag: '열기',
+    bioPromptTag: '잠긴 태그 열기',
     composing: (tag: string) => `'${tag}' 모아서 만드는 중`,
     sorting: (n: number) => `AI가 메모 ${n}개 정리 중`,
     sortingSlow: '오래 걸려요 · 앱을 닫아도 계속돼요',
@@ -122,6 +129,11 @@ const S = strings({
     selected: (n: number) => `${n} selected`,
     toTrash: 'Move to trash',
     select: 'Select',
+    lockTag: 'Lock',
+    unlockTag: 'Unlock',
+    tagLocked: 'This tag is locked',
+    openTag: 'Open',
+    bioPromptTag: 'Open locked tag',
     composing: (tag: string) => `Combining '${tag}'`,
     sorting: (n: number) => `AI is sorting ${n} memo${n === 1 ? '' : 's'}`,
     sortingSlow: 'Taking a while · keeps going if you close the app',
@@ -171,6 +183,11 @@ const S = strings({
     selected: (n: number) => `${n}件選択中`,
     toTrash: 'ゴミ箱へ',
     select: '選択',
+    lockTag: 'ロック',
+    unlockTag: 'ロック解除',
+    tagLocked: 'ロックされたタグです',
+    openTag: '開く',
+    bioPromptTag: 'ロックされたタグを開く',
     composing: (tag: string) => `「${tag}」をまとめています`,
     sorting: (n: number) => `AIがメモ${n}件を整理中`,
     sortingSlow: '時間がかかっています · アプリを閉じても続きます',
@@ -220,6 +237,11 @@ const S = strings({
     selected: (n: number) => `已选 ${n} 项`,
     toTrash: '移到回收站',
     select: '选择',
+    lockTag: '锁定',
+    unlockTag: '解除锁定',
+    tagLocked: '这个标签已锁定',
+    openTag: '打开',
+    bioPromptTag: '打开已锁定的标签',
     composing: (tag: string) => `正在汇总“${tag}”`,
     sorting: (n: number) => `AI 正在整理 ${n} 条笔记`,
     sortingSlow: '需要一点时间 · 关闭应用也会继续',
@@ -269,6 +291,11 @@ const S = strings({
     selected: (n: number) => `已選 ${n} 項`,
     toTrash: '移到垃圾桶',
     select: '選擇',
+    lockTag: '鎖定',
+    unlockTag: '解除鎖定',
+    tagLocked: '這個標籤已鎖定',
+    openTag: '開啟',
+    bioPromptTag: '開啟已鎖定的標籤',
     composing: (tag: string) => `正在彙整「${tag}」`,
     sorting: (n: number) => `AI 正在整理 ${n} 則筆記`,
     sortingSlow: '需要一點時間 · 關閉 App 也會繼續',
@@ -325,6 +352,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [customTabs, setCustomTabs] = useState<TagTab[]>([]);
   const [activeTag, setActiveTag] = useState<TagTab | null>(null);
+  const tagLock = useTagLock();
   const [rawItems, setRawItems] = useState<ApiItem[]>([]);
   // The active tag tab's own items, fetched from the whole archive (the
   // recent list above only covers the newest 50). Null while loading or
@@ -469,6 +497,7 @@ export default function HomeScreen() {
   useFocusEffect(
     React.useCallback(() => {
       load();
+      refreshLockedTags();
       loadHomeTabs().then((tabs) => {
         setCustomTabs(tabs);
         // A tab the user just removed in the picker can't stay selected.
@@ -823,10 +852,35 @@ export default function HomeScreen() {
       .catch(() => {})
       .finally(() => setLoadingMore(false));
   };
-  const filtered =
+  const shownAll =
     activeTag === UNCLASSIFIED
       ? waitingItems ?? rawItems.filter((it) => it.classification_status === 'unclassified')
       : tagList ?? rawItems;
+  // Tag lock: a locked tag's memos stay out of every list until the PIN
+  // opens them; the locked tab itself shows only the lock until then.
+  const tabClosed = !!activeTag && activeTag !== UNCLASSIFIED && tagLock.tags.has(activeTag) && !tagLock.open;
+  const filtered = tabClosed ? [] : tagLock.open ? shownAll : shownAll.filter((it) => !it.locked_by_tag);
+  const openLockedTags = async () => {
+    if (await askPin('check', { prompt: S.bioPromptTag, cancel: COMMON.cancel })) openTags();
+  };
+  const toggleTagLock = async (tag: string) => {
+    const next = !tagLock.tags.has(tag);
+    if (next && !(await hasPin()) && !(await askPin('set'))) return;
+    try {
+      const res = await setTagLocked(tag, next);
+      setLockedTags(res.tags);
+      if (next) {
+        closeTags();
+        forgetWeekly().catch(() => {});
+      }
+      load();
+      loadTag(tag);
+    } catch (err) {
+      // Free already has its one locked tag: Pro has no limit.
+      if (isTagLockLimit(err)) navigation.navigate('Paywall', { reason: 'tag_lock' });
+      else setError(friendlyError(err));
+    }
+  };
   const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;
   const backlogCount = plan?.backlogCount ?? unclassifiedCount;
   const classifyLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : 0;
@@ -1024,7 +1078,7 @@ export default function HomeScreen() {
           <PileTabChip count={unclassifiedCount} active={activeTag === UNCLASSIFIED} theme={theme} onPress={() => changeTag(UNCLASSIFIED)} />
         )}
         {customTabs.map((tag) => (
-          <TabChip key={tag} label={tag} active={activeTag === tag} theme={theme} onPress={() => changeTag(tag)} />
+          <TabChip key={tag} label={tag} active={activeTag === tag} locked={tagLock.tags.has(tag)} theme={theme} onPress={() => changeTag(tag)} />
         ))}
         <TabAddChip theme={theme} onPress={() => navigation.navigate('TabPicker')} />
       </ScrollView>
@@ -1201,14 +1255,26 @@ export default function HomeScreen() {
               ) : (
                 <View />
               )}
-              <Pressable onPress={() => setSelectMode(true)} hitSlop={6}>
-                <Text style={[styles.bulkBarLink, { color: theme.sub }]}>{S.select}</Text>
-              </Pressable>
+              <View style={styles.bulkBarActions}>
+                <Pressable onPress={() => toggleTagLock(activeTag)} hitSlop={6}>
+                  <Text style={[styles.bulkBarLink, { color: theme.sub }]}>{tagLock.tags.has(activeTag) ? S.unlockTag : S.lockTag}</Text>
+                </Pressable>
+                <Pressable onPress={() => setSelectMode(true)} hitSlop={6}>
+                  <Text style={[styles.bulkBarLink, { color: theme.sub }]}>{S.select}</Text>
+                </Pressable>
+              </View>
             </View>
           )}
         </View>
       )}
 
+      {tabClosed ? (
+        <View style={styles.lockedTag}>
+          <LockIcon size={22} color={theme.sub} strokeWidth={1.3} />
+          <Text style={[styles.lockedTagText, { color: theme.sub }]}>{S.tagLocked}</Text>
+          <SolidButton label={S.openTag} theme={theme} size="sm" flex={0} onPress={openLockedTags} />
+        </View>
+      ) : (
       <AsyncStateView
         theme={theme}
         loading={loading && items.length === 0}
@@ -1245,6 +1311,7 @@ export default function HomeScreen() {
           style={styles.list}
         />
       </AsyncStateView>
+      )}
     </SafeAreaView>
   );
 }
@@ -1294,6 +1361,8 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', paddingVertical: 2 },
   list: { flex: 1 },
   composeLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  lockedTag: { alignItems: 'center', gap: 12, paddingTop: 72, paddingHorizontal: 26 },
+  lockedTagText: { fontFamily: BODY_KR, fontSize: 14 },
   bulkBar: { paddingTop: 12 },
   bulkBarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', rowGap: 8 },
   bulkBarText: { fontSize: 12.5, fontFamily: BODY_KR },

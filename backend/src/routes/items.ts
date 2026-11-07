@@ -45,7 +45,12 @@ import {
   listTagCounts,
   mergeTags,
   tagGroupCounts,
+  listLockedTags,
+  lockTag,
+  unlockTag,
+  syncTagLock,
 } from "../lib/supabase.js";
+import { canLockAnotherTag, FREE_LOCKED_TAGS } from "../lib/tagLock.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
 // Edits from the detail screen. Empty string clears the field (stored null).
@@ -463,7 +468,8 @@ export async function itemsRoutes(app: FastifyInstance) {
       category: parsed.data.category,
       tags: parsed.data.tags,
     });
-    return reply.send(updated);
+    const lock = parsed.data.tags !== undefined ? await syncTagLock(userId, id) : null;
+    return reply.send(lock ? { ...updated, ...lock } : updated);
   });
 
   // "AI로 다시 정리": re-run classification on one item with the person's
@@ -605,6 +611,33 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
   });
 
+  // Tag lock: which tags are locked, and how many the plan allows (null: no
+  // limit). The PIN stays on the device, like the memo lock.
+  app.get("/tags/locked", async (req, reply) => {
+    const userId = await resolveUserId(req);
+    const [tags, ent] = await Promise.all([listLockedTags(userId), getEntitlement(userId)]);
+    return reply.send({ tags, limit: ent.tier === "free" ? FREE_LOCKED_TAGS : null });
+  });
+
+  // Locking a second tag on free answers 403 tag_lock_limit; the app offers
+  // Pro for it (TagLockButton).
+  app.post("/tags/lock", async (req, reply) => {
+    const parsed = z.object({ tag: z.string().trim().min(1).max(100), locked: z.boolean() }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
+    const userId = await resolveUserId(req);
+    const { tag, locked } = parsed.data;
+    if (locked) {
+      const [current, ent] = await Promise.all([listLockedTags(userId), getEntitlement(userId)]);
+      if (!current.includes(tag) && !canLockAnotherTag(ent.tier, current.length)) {
+        return reply.code(403).send({ error: "tag_lock_limit", limit: FREE_LOCKED_TAGS });
+      }
+      await lockTag(userId, tag);
+    } else {
+      await unlockTag(userId, tag);
+    }
+    return reply.send({ ok: true, tags: await listLockedTags(userId) });
+  });
+
   app.post("/items/unlock-all", async (req, reply) => {
     const userId = await resolveUserId(req);
     return reply.send({ ok: true, changed: await unlockAllItems(userId) });
@@ -723,7 +756,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     try {
       const item = await addUserTag(userId, id, parsed.data.tag);
-      return reply.send(item);
+      // Into or out of a locked tag: the memo locks or opens with it.
+      const lock = await syncTagLock(userId, id);
+      return reply.send(lock ? { ...item, ...lock } : item);
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });
     }
@@ -734,7 +769,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     const { id, tag } = req.params as { id: string; tag: string };
     try {
       const item = await removeUserTag(userId, id, tag);
-      return reply.send(item);
+      // Into or out of a locked tag: the memo locks or opens with it.
+      const lock = await syncTagLock(userId, id);
+      return reply.send(lock ? { ...item, ...lock } : item);
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });
     }
@@ -748,7 +785,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     const { id, tag } = req.params as { id: string; tag: string };
     try {
       const item = await removeAiTag(userId, id, tag);
-      return reply.send(item);
+      // Into or out of a locked tag: the memo locks or opens with it.
+      const lock = await syncTagLock(userId, id);
+      return reply.send(lock ? { ...item, ...lock } : item);
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });
     }

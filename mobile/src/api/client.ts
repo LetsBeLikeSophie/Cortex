@@ -102,6 +102,9 @@ const REQUEST_TIMEOUT_MS = 20000;
 // needs to cover compress+upload.
 const SCREENSHOT_TIMEOUT_MS = 15000;
 
+// Locking or opening a tag writes every memo that has it.
+const TAG_LOCK_TIMEOUT_MS = 60000;
+
 // Carries the HTTP status and parsed JSON body alongside the same message
 // callers already show, so a screen can tell e.g. a 402 quota response
 // apart from a real failure.
@@ -603,7 +606,9 @@ export function fetchLockedTags() {
 }
 
 export function setTagLocked(tag: string, locked: boolean) {
-  return request<{ ok: true; tags: string[] }>('/tags/lock', { method: 'POST', body: JSON.stringify({ tag, locked }) });
+  // A tag with many memos takes a while on the server: wait longer than a
+  // normal request before saying "check back later".
+  return request<{ ok: true; tags: string[] }>('/tags/lock', { method: 'POST', body: JSON.stringify({ tag, locked }) }, TAG_LOCK_TIMEOUT_MS);
 }
 
 // Free already has its one locked tag (403 tag_lock_limit): the app opens Pro.

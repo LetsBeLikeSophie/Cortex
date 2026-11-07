@@ -1,7 +1,12 @@
 // npm test -- a home tag tab's query.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { newestOfBoth, tagArrayLiteral } from "./tagQuery.js";
+import { newestOfBoth, tagArrayLiteral, tagsArrayLiteral } from "./tagQuery.js";
+
+test("several tags stay separate array elements", () => {
+  assert.equal(tagsArrayLiteral(["맛집", "a,b"]), '{"맛집","a,b"}');
+  assert.equal(tagsArrayLiteral(['a"}b']), '{"a\\"}b"}');
+});
 
 test("a tag stays one array element whatever it holds", () => {
   assert.equal(tagArrayLiteral("맛집"), '{"맛집"}');

@@ -31,7 +31,7 @@ import { GhostButton, IconButton, SolidButton } from '../components/Buttons';
 import { ConfirmPopup } from '../components/ConfirmPopup';
 import { LockIcon, SparkleIcon, StatsIcon, ProfileIcon, TrashIcon } from '../components/Icons';
 import { askPin, hasPin } from '../lock/memoLock';
-import { closeTags, openTags, refreshLockedTags, setLockedTags, useTagLock } from '../lock/tagLock';
+import { closeTags, hiddenByTagLock, openTags, refreshLockedTags, setLockedTags, useTagLock } from '../lock/tagLock';
 import { showToast } from '../native/toast';
 import type { RootStackParamList } from '../navigation/types';
 import { strings } from '../i18n';
@@ -51,6 +51,7 @@ const S = strings({
     quotaUsedUp: '이번 달 AI 정리를 다 썼어요',
     nothingToSort: '정리할 수 있는 항목이 없어요',
     sortCheckLater: '정리 중이에요 · 잠시 뒤 확인해 주세요',
+    lockCheckLater: '바꾸는 중이에요 · 잠시 뒤 확인해 주세요',
     trash: '휴지통',
     sharedSaving: (n: number) => `사진 ${n}장 저장 중`,
     sharedCopyFailed: '사진을 받지 못했어요',
@@ -105,6 +106,7 @@ const S = strings({
     quotaUsedUp: "This month's AI sorting is used up",
     nothingToSort: 'Nothing to sort',
     sortCheckLater: 'Sorting · check back in a bit',
+    lockCheckLater: 'Updating · check back in a bit',
     trash: 'Trash',
     sharedSaving: (n: number) => `Saving ${n} photo${n === 1 ? '' : 's'}`,
     sharedCopyFailed: "Couldn't receive the photos",
@@ -159,6 +161,7 @@ const S = strings({
     quotaUsedUp: '今月のAI整理を使い切りました',
     nothingToSort: '整理できる項目がありません',
     sortCheckLater: '整理中です · しばらくしてから確認してください',
+    lockCheckLater: '変更中です · しばらくしてから確認してください',
     trash: 'ゴミ箱',
     sharedSaving: (n: number) => `写真${n}枚を保存中`,
     sharedCopyFailed: '写真を受け取れませんでした',
@@ -213,6 +216,7 @@ const S = strings({
     quotaUsedUp: '本月 AI 整理次数已用完',
     nothingToSort: '没有可整理的项目',
     sortCheckLater: '正在整理 · 请稍后查看',
+    lockCheckLater: '正在更改 · 请稍后查看',
     trash: '回收站',
     sharedSaving: (n: number) => `正在保存 ${n} 张照片`,
     sharedCopyFailed: '没能接收照片',
@@ -267,6 +271,7 @@ const S = strings({
     quotaUsedUp: '本月 AI 整理次數已用完',
     nothingToSort: '沒有可整理的項目',
     sortCheckLater: '正在整理 · 請稍後查看',
+    lockCheckLater: '正在更改 · 請稍後查看',
     trash: '垃圾桶',
     sharedSaving: (n: number) => `正在儲存 ${n} 張照片`,
     sharedCopyFailed: '沒能接收照片',
@@ -859,7 +864,7 @@ export default function HomeScreen() {
   // Tag lock: a locked tag's memos stay out of every list until the PIN
   // opens them; the locked tab itself shows only the lock until then.
   const tabClosed = !!activeTag && activeTag !== UNCLASSIFIED && tagLock.tags.has(activeTag) && !tagLock.open;
-  const filtered = tabClosed ? [] : tagLock.open ? shownAll : shownAll.filter((it) => !it.locked_by_tag);
+  const filtered = tabClosed ? [] : shownAll.filter((it) => !hiddenByTagLock(it));
   const openLockedTags = async () => {
     if (await askPin('check', { prompt: S.bioPromptTag, cancel: COMMON.cancel })) openTags();
   };
@@ -878,7 +883,11 @@ export default function HomeScreen() {
     } catch (err) {
       // Free already has its one locked tag: Pro has no limit.
       if (isTagLockLimit(err)) navigation.navigate('Paywall', { reason: 'tag_lock' });
-      else setError(friendlyError(err));
+      // The server may still be finishing a big tag: look again shortly.
+      else if (isTimeout(err)) {
+        setError(S.lockCheckLater);
+        refreshLockedTags().then(() => load());
+      } else setError(friendlyError(err));
     }
   };
   const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;

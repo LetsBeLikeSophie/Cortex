@@ -6,7 +6,7 @@ import { Category } from "./categories.js";
 import type { SearchInterpretation } from "./anthropic.js";
 import { scanPages } from "./scanPages.js";
 import { SOURCE_CATALOG, CAPTURE_TYPE_CATALOG } from "./sourceCatalog.js";
-import { newestOfBoth, tagArrayLiteral } from "./tagQuery.js";
+import { newestOfBoth, tagArrayLiteral, tagsArrayLiteral } from "./tagQuery.js";
 import { tagLockChange, type LockState } from "./tagLock.js";
 
 const SCREENSHOTS_BUCKET = "item-screenshots";
@@ -509,34 +509,24 @@ export async function lockTag(userId: string, tag: string): Promise<void> {
 }
 
 // Opens the memos the tag locked, unless another locked tag still holds
-// them. Pages by id to the end (rows leave the filter as they open).
+// them. The memos open first, in one database update per column, and the
+// tag's row goes last: a failure halfway leaves the tag still locked (and
+// shown with its open button), so trying again finishes the job.
 export async function unlockTag(userId: string, tag: string): Promise<void> {
+  const still = (await listLockedTags(userId)).filter((t) => t !== tag);
+  for (const column of ["tags", "user_tags"] as const) {
+    let q = getClient()
+      .from("items")
+      .update({ locked: false, locked_by_tag: false })
+      .eq("user_id", userId)
+      .eq("locked_by_tag", true)
+      .contains(column, tagArrayLiteral(tag));
+    if (still.length) q = q.not("tags", "ov", tagsArrayLiteral(still)).not("user_tags", "ov", tagsArrayLiteral(still));
+    const { error } = await q;
+    if (error) throw new Error(`unlockTag update failed: ${error.message}`);
+  }
   const { error } = await getClient().from("locked_tags").delete().eq("user_id", userId).eq("tag", tag);
   if (error) throw new Error(`unlockTag failed: ${error.message}`);
-  const still = await listLockedTags(userId);
-  for (const column of ["tags", "user_tags"] as const) {
-    let after = "";
-    for (;;) {
-      let q = getClient()
-        .from("items")
-        .select("id, tags, user_tags, locked, locked_by_tag")
-        .eq("user_id", userId)
-        .eq("locked_by_tag", true)
-        .contains(column, tagArrayLiteral(tag));
-      if (after) q = q.gt("id", after);
-      const { data, error: readError } = await q.order("id", { ascending: true }).limit(500);
-      if (readError) throw new Error(`unlockTag read failed: ${readError.message}`);
-      const rows = (data ?? []) as (LockState & { id: string })[];
-      for (const row of rows) {
-        const change = tagLockChange(row, still);
-        if (!change) continue;
-        const { error: upError } = await getClient().from("items").update(change).eq("id", row.id).eq("user_id", userId);
-        if (upError) throw new Error(`unlockTag update failed: ${upError.message}`);
-      }
-      if (rows.length < 500) break;
-      after = rows[rows.length - 1].id;
-    }
-  }
 }
 
 // After one memo's tags changed: lock or open it to match the locked tags.

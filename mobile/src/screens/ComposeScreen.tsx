@@ -4,7 +4,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { ApiError, asQuotaError, composeMemo, fetchItemsWithTag, fetchPlan, friendlyError, Plan } from '../api/client';
+import { ApiError, asQuotaError, composeMemo, fetchItemsWithTag, fetchPlan, friendlyError, isAlreadyRunning, isTimeout, Plan } from '../api/client';
 import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { SheetTitle } from '../components/Typography';
@@ -328,7 +328,7 @@ export default function ComposeScreen() {
       if (!mounted.current) {
         // The sheet promised to keep going after closing -- so a failure
         // after that is said too. A timeout may still finish on the server.
-        const timedOut = err instanceof Error && /abort/i.test(err.message);
+        const timedOut = isTimeout(err) || isAlreadyRunning(err);
         showToast(asQuotaError(err) ? S.quotaToast : timedOut ? S.slowToast(pickedTag) : S.failedToast(pickedTag));
         return;
       }
@@ -342,8 +342,8 @@ export default function ComposeScreen() {
       } else if (code === 'ai_consent') {
         // Not a failure: the consent sheet is opening.
         refreshPlan();
-      } else if (err instanceof Error && /abort/i.test(err.message)) {
-        // Timed out here, but the server likely still finishes (and counts
+      } else if (isTimeout(err) || isAlreadyRunning(err)) {
+        // Timed out here (or a run is already going), but the server likely still finishes (and counts
         // it): pressing 만들기 again would make a second memo. Same as after
         // closing -- a toast to check the tab later, and the sheet goes.
         showToast(S.slowToast(pickedTag));

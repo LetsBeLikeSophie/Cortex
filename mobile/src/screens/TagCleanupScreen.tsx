@@ -11,7 +11,7 @@ import { SheetTitle } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
 import { allEdges, OUTLINE, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
-import { ApiError, applyTagCleanup, asQuotaError, fetchPlan, fetchTags, friendlyError, Plan, suggestTagCleanup, TagMergeGroup } from '../api/client';
+import { ApiError, applyTagCleanup, asQuotaError, fetchPlan, fetchTags, friendlyError, isAlreadyRunning, isTimeout, Plan, suggestTagCleanup, TagMergeGroup } from '../api/client';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import { strings } from '../i18n';
 import { COMMON } from '../i18n/common';
@@ -25,6 +25,7 @@ const S = strings({
     merged: (n: number) => `합치면 메모 ${n}개`,
     agreeAndStart: '동의하고 정리하기',
     finding: '비슷한 태그를 찾고 있어요',
+    stillFinding: '찾는 중이에요 · 잠시 뒤 확인해 주세요',
     none: '합칠 만한 태그가 없어요. 이미 깔끔해요.',
     pick: '합칠 묶음을 골라 주세요',
     pickRest: '남긴 묶음은 이번 달 안에 다시 고를 수 있어요',
@@ -42,6 +43,7 @@ const S = strings({
     merged: (n: number) => `${n} memo${n === 1 ? '' : 's'} once merged`,
     agreeAndStart: 'Allow AI and tidy up',
     finding: 'Looking for similar tags',
+    stillFinding: 'Still looking · check back in a bit',
     none: 'Nothing to merge. Your tags are already tidy.',
     pick: 'Pick the groups to merge',
     pickRest: 'Groups you leave stay here this month',
@@ -59,6 +61,7 @@ const S = strings({
     merged: (n: number) => `統合するとメモ${n}件`,
     agreeAndStart: '同意して整理する',
     finding: '似たタグを探しています',
+    stillFinding: '探しています · しばらくしてから確認してください',
     none: '統合できるタグはありません。すでに整っています。',
     pick: '統合するグループを選んでください',
     pickRest: '残したグループは今月中にまた選べます',
@@ -76,6 +79,7 @@ const S = strings({
     merged: (n: number) => `合并后 ${n} 条笔记`,
     agreeAndStart: '同意并整理',
     finding: '正在查找相似标签',
+    stillFinding: '正在查找 · 请稍后查看',
     none: '没有可合并的标签，已经很整齐了。',
     pick: '选择要合并的组',
     pickRest: '留下的组本月内还能再选',
@@ -93,6 +97,7 @@ const S = strings({
     merged: (n: number) => `合併後 ${n} 則筆記`,
     agreeAndStart: '同意並整理',
     finding: '正在尋找相似標籤',
+    stillFinding: '正在查找 · 請稍後查看',
     none: '沒有可合併的標籤，已經很整齊了。',
     pick: '選擇要合併的組',
     pickRest: '留下的組本月內還能再選',
@@ -193,8 +198,10 @@ export default function TagCleanupScreen() {
         navigation.replace('Paywall', { reason: 'tag_cleanup' });
         return;
       }
+      // Already running (another tap) or slow: the server still finishes.
+      if (isAlreadyRunning(err) || isTimeout(err)) setError(S.stillFinding);
       // Not a failure: the consent sheet is opening.
-      if (!(err instanceof ApiError && (err.body as { error?: string } | null)?.error === 'ai_consent')) setError(friendlyError(err));
+      else if (!(err instanceof ApiError && (err.body as { error?: string } | null)?.error === 'ai_consent')) setError(friendlyError(err));
       setStep('intro');
     }
   };

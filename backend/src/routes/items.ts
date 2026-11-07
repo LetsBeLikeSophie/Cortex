@@ -51,6 +51,7 @@ import {
   syncTagLock,
 } from "../lib/supabase.js";
 import { canLockAnotherTag, FREE_LOCKED_TAGS } from "../lib/tagLock.js";
+import { withUserLock } from "../lib/userLock.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 
 // The privacy policy revision of 2026-11-07 takes effect 2026-11-14 (KST).
@@ -66,6 +67,9 @@ const sorting = new Set<string>();
 // One sentence search per person at a time, so parallel requests can't all
 // pass the "uses left" check before any is counted.
 const asking = new Set<string>();
+// 모아서 만들기 and 태그 정리하기 (suggest): one run per person at a time.
+const composing = new Set<string>();
+const cleaning = new Set<string>();
 
 const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
@@ -506,77 +510,84 @@ export async function itemsRoutes(app: FastifyInstance) {
     const userId = await resolveUserId(req);
     await requireAiConsent(userId);
     const { tag, format, itemIds, retryOf, instruction } = parsed.data;
+    const run = await withUserLock(composing, userId, async () => {
 
-    // A remake works on an existing composed memo: same materials, same
-    // memo (updated in place), free the first time.
-    const previous = retryOf ? await getItemForUser(userId, retryOf) : null;
-    if (retryOf && (!previous || !previous.composed_from || previous.deleted_at)) return reply.code(404).send({ error: "not found" });
-    const free = !!previous && !remadeFree.has(previous.id);
-    if (!free) {
-      const ent = await getEntitlement(userId);
-      if (remaining(ent, "compose") === 0) {
-        await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "compose" });
-        return reply.code(402).send({ error: "quota", kind: "compose", limit: ent.compose.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+      // A remake works on an existing composed memo: same materials, same
+      // memo (updated in place), free the first time.
+      const previous = retryOf ? await getItemForUser(userId, retryOf) : null;
+      if (retryOf && (!previous || !previous.composed_from || previous.deleted_at)) return reply.code(404).send({ error: "not found" });
+      const free = !!previous && !remadeFree.has(previous.id);
+      if (!free) {
+        const ent = await getEntitlement(userId);
+        if (remaining(ent, "compose") === 0) {
+          await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "compose" });
+          return reply.code(402).send({ error: "quota", kind: "compose", limit: ent.compose.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+        }
       }
-    }
-    // Earlier composed memos aren't materials -- they'd fold a summary back
-    // into the next summary (decision Q7).
-    const picked = previous ? previous.composed_from! : itemIds;
-    const items = (picked ? await listItemsByIds(userId, picked) : await listItemsWithTag(userId, tag)).filter((it) => !it.composed_from && !it.locked);
-    if (items.length < 2) return reply.code(400).send({ error: "too_few", count: items.length });
+      // Earlier composed memos aren't materials -- they'd fold a summary back
+      // into the next summary (decision Q7).
+      const picked = previous ? previous.composed_from! : itemIds;
+      const items = (picked ? await listItemsByIds(userId, picked) : await listItemsWithTag(userId, tag)).filter((it) => !it.composed_from && !it.locked);
+      if (items.length < 2) return reply.code(400).send({ error: "too_few", count: items.length });
 
-    await dailyAiBudget.assertOpen();
-    const reservation = free ? null : await reserveUsage(userId, "compose");
-    let composed: { title: string; body: string };
-    try {
-      composed = await composeFromItems(
-        tag,
-        format,
-        items.map((it) => ({
-          title: it.title,
-          memo: it.snippet,
-          myMemo: it.user_note,
-          keyText: it.capture_type === "screenshot" ? it.raw_text : null,
-          body: it.capture_type === "text" ? it.raw_text : null,
-          category: it.category,
-          tags: [...it.tags, ...it.user_tags],
-          url: it.raw_url,
-        })),
+      await dailyAiBudget.assertOpen();
+      const reservation = free ? null : await reserveUsage(userId, "compose");
+      // The free remake is taken before the AI call (a second tap can't get
+      // it too) and handed back if the call fails.
+      if (free) remadeFree.add(previous.id);
+      let composed: { title: string; body: string };
+      try {
+        composed = await composeFromItems(
+          tag,
+          format,
+          items.map((it) => ({
+            title: it.title,
+            memo: it.snippet,
+            myMemo: it.user_note,
+            keyText: it.capture_type === "screenshot" ? it.raw_text : null,
+            body: it.capture_type === "text" ? it.raw_text : null,
+            category: it.category,
+            tags: [...it.tags, ...it.user_tags],
+            url: it.raw_url,
+          })),
+          userId,
+          instruction || undefined,
+          normalizeLang(req.headers["x-cortex-lang"]) ?? (await getEntitlement(userId)).lang ?? DEFAULT_LANG
+        );
+      } catch (err) {
+        if (reservation !== null) await refundUsage(reservation).catch(() => {});
+        if (free) remadeFree.delete(previous.id);
+        throw err;
+      }
+      // Saved right away -- the use is counted, so the result must exist even
+      // if the person closed the app while it ran. The order of composed_from
+      // is the order [#N] references count in.
+      const sourceIds = items.map((it) => it.id);
+      if (previous) {
+        const { error } = await getClient().from("items").update({ title: composed.title, raw_text: composed.body, composed_from: sourceIds }).eq("id", previous.id).eq("user_id", userId);
+        if (error) throw new Error(`compose remake failed: ${error.message}`);
+        const item = await getItemForUser(userId, previous.id);
+        return reply.send({ item, sourceCount: items.length, freeRemake: false });
+      }
+      // Filed under the category most of its sources have.
+      const counts = new Map<string, number>();
+      for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1);
+      const category = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0] as (typeof items)[number]["category"];
+      const item = await insertItem({
         userId,
-        instruction || undefined,
-        normalizeLang(req.headers["x-cortex-lang"]) ?? (await getEntitlement(userId)).lang ?? DEFAULT_LANG
-      );
-    } catch (err) {
-      if (reservation !== null) await refundUsage(reservation).catch(() => {});
-      throw err;
-    }
-    // Saved right away -- the use is counted, so the result must exist even
-    // if the person closed the app while it ran. The order of composed_from
-    // is the order [#N] references count in.
-    const sourceIds = items.map((it) => it.id);
-    if (previous) {
-      remadeFree.add(previous.id);
-      const { error } = await getClient().from("items").update({ title: composed.title, raw_text: composed.body, composed_from: sourceIds }).eq("id", previous.id).eq("user_id", userId);
-      if (error) throw new Error(`compose remake failed: ${error.message}`);
-      const item = await getItemForUser(userId, previous.id);
-      return reply.send({ item, sourceCount: items.length, freeRemake: false });
-    }
-    // Filed under the category most of its sources have.
-    const counts = new Map<string, number>();
-    for (const it of items) counts.set(it.category, (counts.get(it.category) ?? 0) + 1);
-    const category = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0] as (typeof items)[number]["category"];
-    const item = await insertItem({
-      userId,
-      source: "memo",
-      captureType: "text",
-      rawText: composed.body,
-      title: composed.title,
-      category,
-      tags: [tag],
-      classificationStatus: "done",
-      composedFrom: sourceIds,
+        source: "memo",
+        captureType: "text",
+        rawText: composed.body,
+        title: composed.title,
+        category,
+        tags: [tag],
+        classificationStatus: "done",
+        composedFrom: sourceIds,
+      });
+      return reply.send({ item, sourceCount: items.length, freeRemake: true });
     });
-    return reply.send({ item, sourceCount: items.length, freeRemake: true });
+    if (run.busy) return reply.code(409).send({ error: "compose_running" });
+    return run.value;
   });
 
   // A composed memo's sources (still in the archive), for "원본 N개".
@@ -653,34 +664,38 @@ export async function itemsRoutes(app: FastifyInstance) {
   app.post("/tags/cleanup/suggest", { config: { rateLimit: {} } }, async (req, reply) => {
     const userId = await resolveUserId(req);
     await requireAiConsent(userId);
-    const ent = await getEntitlement(userId);
-    if (remaining(ent, "tag_cleanup") === 0) {
-      await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "tag_cleanup" });
-      return reply.code(402).send({ error: "quota", kind: "tag_cleanup", limit: ent.tag_cleanup.limit, tier: ent.tier, resetsAt: ent.resetsAt });
-    }
-    const tags = await listTagCounts(userId);
-    if (tags.length < 2) return reply.send({ groups: [], left: remaining(ent, "tag_cleanup") });
-    await dailyAiBudget.assertOpen();
-    const reservation = await reserveUsage(userId, "tag_cleanup");
-    try {
-      const groups = await suggestTagMerges(tags.slice(0, 400), userId, normalizeLang(req.headers["x-cortex-lang"]) ?? ent.lang ?? DEFAULT_LANG);
-      // Nothing to tidy -> the use is handed back.
-      if (groups.length === 0) await refundUsage(reservation).catch(() => {});
-      const counts = new Map(tags.map((t) => [t.name, t.count]));
-      const sizes = groups.length ? await tagGroupCounts(userId, groups) : [];
-      return reply.send({
-        groups: groups.map((g, i) => ({
-          ...g,
-          counts: Object.fromEntries([g.keep, ...g.merge].map((n) => [n, counts.get(n) ?? 0])),
-          after: sizes[i].after,
-          changes: sizes[i].changes,
-        })),
-        left: remaining(ent, "tag_cleanup") - (groups.length === 0 ? 0 : 1),
-      });
-    } catch (err) {
-      await refundUsage(reservation).catch(() => {});
-      throw err;
-    }
+    const run = await withUserLock(cleaning, userId, async () => {
+      const ent = await getEntitlement(userId);
+      if (remaining(ent, "tag_cleanup") === 0) {
+        await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "tag_cleanup" });
+        return reply.code(402).send({ error: "quota", kind: "tag_cleanup", limit: ent.tag_cleanup.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+      }
+      const tags = await listTagCounts(userId);
+      if (tags.length < 2) return reply.send({ groups: [], left: remaining(ent, "tag_cleanup") });
+      await dailyAiBudget.assertOpen();
+      const reservation = await reserveUsage(userId, "tag_cleanup");
+      try {
+        const groups = await suggestTagMerges(tags.slice(0, 400), userId, normalizeLang(req.headers["x-cortex-lang"]) ?? ent.lang ?? DEFAULT_LANG);
+        // Nothing to tidy -> the use is handed back.
+        if (groups.length === 0) await refundUsage(reservation).catch(() => {});
+        const counts = new Map(tags.map((t) => [t.name, t.count]));
+        const sizes = groups.length ? await tagGroupCounts(userId, groups) : [];
+        return reply.send({
+          groups: groups.map((g, i) => ({
+            ...g,
+            counts: Object.fromEntries([g.keep, ...g.merge].map((n) => [n, counts.get(n) ?? 0])),
+            after: sizes[i].after,
+            changes: sizes[i].changes,
+          })),
+          left: remaining(ent, "tag_cleanup") - (groups.length === 0 ? 0 : 1),
+        });
+      } catch (err) {
+        await refundUsage(reservation).catch(() => {});
+        throw err;
+      }
+    });
+    if (run.busy) return reply.code(409).send({ error: "cleanup_running" });
+    return run.value;
   });
 
   // 태그 정리하기, step 2: merge the groups the person ticked (free).

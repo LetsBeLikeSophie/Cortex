@@ -8,7 +8,7 @@ import { AiPurpose, logAiCall } from "./aiLog.js";
 
 // Keys come from the environment only -- never hardcode a key.
 // One client per feature, each with its own API key when set
-// (ANTHROPIC_API_KEY_CLASSIFY / _SEARCH / _VOICE), so the Anthropic console
+// (ANTHROPIC_API_KEY_CLASSIFY / _SEARCH), so the Anthropic console
 // can split usage and cost by feature. Unset -> falls back to the shared
 // ANTHROPIC_API_KEY, which keeps everything working before the keys exist.
 // A stuck connection holds one of the few queue slots (SDK default: 10 minutes,
@@ -16,7 +16,6 @@ import { AiPurpose, logAiCall } from "./aiLog.js";
 const clientFor = (envName: string) => new Anthropic({ apiKey: process.env[envName] || process.env.ANTHROPIC_API_KEY, timeout: 60_000, maxRetries: 1 });
 const classifyClient = clientFor("ANTHROPIC_API_KEY_CLASSIFY");
 const searchClient = clientFor("ANTHROPIC_API_KEY_SEARCH");
-const voiceClient = clientFor("ANTHROPIC_API_KEY_VOICE");
 
 // The Claude API itself is unusable for reasons retrying won't fix: the
 // account's prepaid credit ran out, or the key is rejected. Distinct from a
@@ -428,38 +427,6 @@ function requireParsed(response: { parsed_output: Classification | null }): Clas
     tags: clipTags(c.tags, 8, 30),
     keyText: clip(c.keyText ?? "", 400),
   };
-}
-
-const TagFromTextSchema = z.object({
-  tag: z.string().describe("A single short freeform keyword tag, in the same language as the transcript"),
-});
-
-const TAG_SYSTEM_PROMPT = `You turn one spoken sentence into a single short keyword
-tag for a personal archive app. The input is a speech-to-text transcript, so it may
-run on, include filler words, or be a full sentence explaining what something is --
-extract just the core keyword/phrase someone would want as a tag (a place, subject,
-product, person, or category), stripped of filler ("이건", "그거 있잖아", "~인 것 같아")
-and verb endings. Keep it short (2-10 characters is typical). If the transcript is
-already basically just a bare word or phrase, return it close to as-is.`;
-
-// Used for voice-to-tag: the raw transcript almost never reads as a clean tag
-// on its own (it's spoken, not typed), so this is a second, much smaller
-// classification call purely to clean that up -- same model tier as
-// classifyText/classifyImage since it's just as bounded a task.
-export async function tagFromText(spokenText: string, userId?: string): Promise<string> {
-  const response = await voiceClient.messages.parse({
-    model: MODEL,
-    // Room for Haiku 5.5's (short, at "low") thinking before the tag itself.
-    max_tokens: 1024,
-    system: TAG_SYSTEM_PROMPT,
-    messages: [{ role: "user", content: spokenText }],
-    output_config: { effort: "low", format: zodOutputFormat(TagFromTextSchema) },
-  });
-  logAiCall("voice_tag", MODEL, response.usage, userId);
-  if (!response.parsed_output) {
-    throw new Error("Claude response did not parse against the tag schema");
-  }
-  return clip(response.parsed_output.tag.trim(), 30);
 }
 
 // Natural-language search: turns a half-remembered sentence ("지난달

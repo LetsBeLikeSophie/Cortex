@@ -75,7 +75,7 @@ export const config = {
   // can check readiness before making a call.
   hasAnthropicKey: !!(
     optional("ANTHROPIC_API_KEY") ||
-    (optional("ANTHROPIC_API_KEY_CLASSIFY") && optional("ANTHROPIC_API_KEY_SEARCH") && optional("ANTHROPIC_API_KEY_VOICE"))
+    (optional("ANTHROPIC_API_KEY_CLASSIFY") && optional("ANTHROPIC_API_KEY_SEARCH"))
   ),
 
   // YouTube Data API v3 key (Google Cloud console, free quota). Optional:

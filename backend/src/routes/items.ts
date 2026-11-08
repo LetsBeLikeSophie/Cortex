@@ -9,7 +9,7 @@ import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
 import { AiConsentRequiredError, type Entitlement, type UsageKind, getEntitlement, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang, withPlanDetails } from "../lib/plans.js";
 import { dailyAiBudget } from "../lib/aiLog.js";
-import { clipInterpretation, composeFromItems, DEFAULT_LANG, interpretSearch, isAiUnavailable, normalizeLang, suggestTagMerges, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
+import { clipInterpretation, composeFromItems, DEFAULT_LANG, interpretSearch, isAiUnavailable, normalizeLang, suggestTagMerges, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -169,10 +169,6 @@ const AddTagSchema = z.object({
   tag: z.string().min(1).max(30),
 });
 
-const TagFromVoiceSchema = z.object({
-  text: z.string().min(1).max(500),
-});
-
 export async function itemsRoutes(app: FastifyInstance) {
   app.addHook("onRequest", async (_req, reply) => {
     if (!config.hasAnthropicKey) {
@@ -309,36 +305,35 @@ export async function itemsRoutes(app: FastifyInstance) {
       }
       const userId = await resolveUserId(req);
       await requireAiConsent(userId);
-      // Metered monthly (tag/keyword search stays free). 402 carries what
-      // the app needs to say why and when it comes back.
-      // Fails open like saving does (see processIncomingItem).
-      const ent = await getEntitlement(userId).catch((err) => {
-        req.log.error(err);
-        return null;
-      });
-      if (ent && remaining(ent, "search") === 0) {
-        return quotaHit(reply, userId, ent, "search");
-      }
-      await dailyAiBudget.assertOpen();
-      if (asking.has(userId)) return reply.code(409).send({ error: "search_running" });
-      asking.add(userId);
-      const utcOffset = utcOffsetOf(req);
-      let interpretation: Awaited<ReturnType<typeof interpretSearch>>;
-      let result: Awaited<ReturnType<typeof searchItemsSmart>>;
-      try {
+      // One sentence search per person at a time, taken before the "uses
+      // left" check so parallel requests can't all pass it.
+      const run = await withUserLock(asking, userId, async () => {
+        // Metered monthly (tag/keyword search stays free). 402 carries what
+        // the app needs to say why and when it comes back.
+        // Fails open like saving does (see processIncomingItem).
+        const ent = await getEntitlement(userId).catch((err) => {
+          req.log.error(err);
+          return null;
+        });
+        if (ent && remaining(ent, "search") === 0) return { quota: ent } as const;
+        await dailyAiBudget.assertOpen();
+        const utcOffset = utcOffsetOf(req);
         // Counted before the AI call, handed back if the results don't come
         // out: a failed search keeps the month's use (decision C2, 2026-11-03).
         const reservation = await reserveUsage(userId, "search");
         try {
-          interpretation = await interpretSearch(parsed.data.query, localToday(utcOffset), userId);
-          result = await searchItemsSmart(userId, interpretation, undefined, utcOffset);
+          const interpretation = await interpretSearch(parsed.data.query, localToday(utcOffset), userId);
+          const result = await searchItemsSmart(userId, interpretation, undefined, utcOffset);
+          return { interpretation, result } as const;
         } catch (err) {
           await refundUsage(reservation).catch(() => {});
           throw err;
         }
-      } finally {
-        asking.delete(userId);
-      }
+      });
+      if (run.busy) return reply.code(409).send({ error: "search_running" });
+      if (run.value.quota) return quotaHit(reply, userId, run.value.quota, "search");
+      const { interpretation, result } = run.value;
+      if (!interpretation || !result) throw new Error("sentence search returned nothing");
       // Locked memos stay out of AI search.
       return reply.send({ interpretation, ...result, items: result.items.filter((it) => !it.locked) });
     }
@@ -741,26 +736,6 @@ export async function itemsRoutes(app: FastifyInstance) {
 
   // Adds one user tag. The AI-assigned `tags` column has no route that can
   // touch it at all -- this only ever reads/writes user_tags.
-  // Turns one spoken sentence (already transcribed client-side) into a
-  // single clean tag via a small Claude call -- not tied to a specific
-  // item, since the cleanup itself doesn't need one; the client adds the
-  // returned tag onto whichever item it's actually editing via the
-  // existing POST /items/:id/tags above. Calls Claude, so it's rate
-  // limited the same way POST /items is.
-  app.post("/items/tags/from-voice", { config: { rateLimit: {} } }, async (req, reply) => {
-    const parsed = TagFromVoiceSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: "invalid body", details: parsed.error.flatten() });
-    }
-    // Auth-gated like every other route here; the user id only feeds the
-    // per-call usage log, the result itself isn't scoped to a user.
-    const userId = await resolveUserId(req);
-    await requireAiConsent(userId);
-    await dailyAiBudget.assertOpen();
-    const tag = await tagFromText(parsed.data.text, userId);
-    return reply.send({ tag });
-  });
-
   app.post("/items/:id/tags", async (req, reply) => {
     const parsed = AddTagSchema.safeParse(req.body);
     if (!parsed.success) {

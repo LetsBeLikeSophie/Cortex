@@ -41,8 +41,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const S = strings({
   ko: {
-    tagAdded: (n: number, tag: string) => `${n}개에 '${tag}'를 붙였어요`,
-    tagRemoved: (n: number, tag: string) => `${n}개에서 '${tag}'를 뺐어요`,
+    tagAdded: (n: number, tag: string) => `${n}개에 '${tag}' 태그를 붙였어요`,
+    tagRemoved: (n: number, tag: string) => `${n}개에서 '${tag}' 태그를 뺐어요`,
     tagAbsent: (n: number) => `${n}개는 원래 없었어요`,
     failed: (n: number) => `실패 ${n}개`,
     movedToTrash: (n: number) => `${n}개를 휴지통으로 옮겼어요`,

@@ -6,9 +6,9 @@ import { strings } from '../i18n';
 import { LockIcon } from './Icons';
 
 const S = strings({
-  ko: { tabSettings: '태그 설정', unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건`, removeTag: (t: string) => `${t} 태그 빼기` },
+  ko: { tabSettings: '탭 설정', unsorted: '미분류', unsortedCount: (n: number) => `미분류 ${n}건`, removeTag: (t: string) => `${t} 태그 빼기` },
   en: { tabSettings: 'Tabs', unsorted: 'Unsorted', unsortedCount: (n: number) => `Unsorted, ${n}`, removeTag: (t: string) => `Remove tag ${t}` },
-  ja: { tabSettings: 'タグ設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n}件`, removeTag: (t: string) => `${t}タグを外す` },
+  ja: { tabSettings: 'タブ設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n}件`, removeTag: (t: string) => `${t}タグを外す` },
   'zh-Hans': { tabSettings: '标签设置', unsorted: '未分类', unsortedCount: (n: number) => `未分类 ${n} 条`, removeTag: (t: string) => `移除标签 ${t}` },
   'zh-Hant': { tabSettings: '標籤設定', unsorted: '未分類', unsortedCount: (n: number) => `未分類 ${n} 則`, removeTag: (t: string) => `移除標籤 ${t}` },
 });

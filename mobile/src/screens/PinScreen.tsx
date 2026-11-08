@@ -47,7 +47,7 @@ const S = strings({
     waitSec: (n: number) => `${n}秒後にもう一度入力してください`,
     waitMin: (n: number) => `${n}分後にもう一度入力してください`,
     mismatch: '2回の入力が一致しません。最初から入力してください。',
-    forgot: '暗証番号を忘れた',
+    forgot: '暗証番号を忘れた場合',
     owner: '端末の画面ロックで本人確認',
     noScreenLock: '端末に画面ロックがないため再設定できません。',
     delete: '削除',

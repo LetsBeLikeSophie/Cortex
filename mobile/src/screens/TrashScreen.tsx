@@ -31,7 +31,7 @@ const S = strings({
     permanentDelete: '영구 삭제',
     restore: '복원',
     title: '휴지통',
-    empty: '휴지통이 비어있어요.',
+    empty: '휴지통이 비어 있어요.',
   },
   en: {
     restored: 'Restored',

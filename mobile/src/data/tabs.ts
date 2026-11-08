@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { supabase } from '../auth/supabase';
+import { LANG, Lang } from '../i18n';
 
 // The fixed top-level classification every saved item gets (must match
 // backend/src/lib/categories.ts's CATEGORIES / the item_category enum in
@@ -24,7 +25,9 @@ export type TagTab = string;
 // the whole phone; the first account to read it takes it.
 const LEGACY_KEY = 'cortex:homeTabs';
 const keyFor = (userId: string) => `cortex:homeTabs:${userId}`;
-const DEFAULT_TABS: TagTab[] = ['가이드'];
+// The guide memo's tag in the language it was made in (backend SAMPLES).
+const GUIDE_TAG: Record<Lang, string> = { ko: '가이드', en: 'guide', ja: 'ガイド', 'zh-Hans': '指南', 'zh-Hant': '指南' };
+const defaultTabs = (): TagTab[] => [GUIDE_TAG[LANG]];
 
 async function currentKey(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
@@ -33,22 +36,22 @@ async function currentKey(): Promise<string | null> {
 
 function parseTabs(raw: string): TagTab[] {
   const parsed = JSON.parse(raw);
-  return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : DEFAULT_TABS;
+  return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : defaultTabs();
 }
 
 export async function loadHomeTabs(): Promise<TagTab[]> {
   try {
     const key = await currentKey();
-    if (!key) return DEFAULT_TABS;
+    if (!key) return defaultTabs();
     const raw = await AsyncStorage.getItem(key);
     if (raw) return parseTabs(raw);
     const legacy = await AsyncStorage.getItem(LEGACY_KEY);
-    if (!legacy) return DEFAULT_TABS;
+    if (!legacy) return defaultTabs();
     await AsyncStorage.setItem(key, legacy);
     await AsyncStorage.removeItem(LEGACY_KEY);
     return parseTabs(legacy);
   } catch {
-    return DEFAULT_TABS;
+    return defaultTabs();
   }
 }
 

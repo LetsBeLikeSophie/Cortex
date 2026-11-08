@@ -28,7 +28,7 @@ const S = strings({
     hint: '두 손가락으로 확대 · 탭하면 닫혀요',
   },
   en: {
-    savePhotoPerm: 'Photo saving',
+    savePhotoPerm: 'Photos',
     saved: 'Saved to album',
     saveFailed: "Couldn't save. Try again in a bit",
     saveToAlbum: 'Save to album',

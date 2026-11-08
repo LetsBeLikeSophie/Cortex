@@ -10,7 +10,7 @@ import { reportError } from '../errors/report';
 const S = strings({
   ko: { title: '문제가 생겼어요', reopen: '다시 열기' },
   en: { title: 'Something went wrong', reopen: 'Reopen' },
-  ja: { title: '問題が発生しました', reopen: '開き直す' },
+  ja: { title: '問題が発生しました', reopen: 'もう一度開く' },
   'zh-Hans': { title: '出了点问题', reopen: '重新打开' },
   'zh-Hant': { title: '出了點問題', reopen: '重新開啟' },
 });

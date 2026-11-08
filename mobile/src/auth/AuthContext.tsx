@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const S = strings({
   ko: { claimLater: '게스트 메모를 아직 못 옮겼어요 · 앱을 다시 열면 이어서 옮겨요' },
   en: { claimLater: "Guest memos aren't moved yet · they'll move when you reopen the app" },
-  ja: { claimLater: 'ゲストのメモはまだ移せていません · アプリを開き直すと続きを移します' },
+  ja: { claimLater: 'ゲストのメモはまだ移せていません · アプリを再起動すると続きを移します' },
   'zh-Hans': { claimLater: '访客笔记还没转移 · 重新打开应用会继续' },
   'zh-Hant': { claimLater: '訪客筆記還沒轉移 · 重新開啟 App 會繼續' },
 });

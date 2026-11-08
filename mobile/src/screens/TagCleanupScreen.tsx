@@ -97,7 +97,7 @@ const S = strings({
     merged: (n: number) => `合併後 ${n} 則筆記`,
     agreeAndStart: '同意並整理',
     finding: '正在尋找相似標籤',
-    stillFinding: '正在查找 · 請稍後查看',
+    stillFinding: '正在尋找 · 請稍後查看',
     none: '沒有可合併的標籤，已經很整齊了。',
     pick: '選擇要合併的組',
     pickRest: '留下的組本月內還能再選',

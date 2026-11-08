@@ -23,7 +23,6 @@ const S = strings({
     owner: '휴대폰 잠금으로 본인 확인',
     noScreenLock: '휴대폰에 화면 잠금이 없어 재설정할 수 없어요.',
     delete: '지우기',
-    close: '닫기',
   },
   en: {
     check: 'Memo lock PIN',
@@ -37,7 +36,6 @@ const S = strings({
     owner: "Confirm with your phone's screen lock",
     noScreenLock: "This phone has no screen lock, so the PIN can't be reset.",
     delete: 'Delete',
-    close: 'Close',
   },
   ja: {
     check: 'メモロックの暗証番号',
@@ -51,7 +49,6 @@ const S = strings({
     owner: '端末の画面ロックで本人確認',
     noScreenLock: '端末に画面ロックがないため再設定できません。',
     delete: '削除',
-    close: '閉じる',
   },
   'zh-Hans': {
     check: '笔记锁定密码',
@@ -65,7 +62,6 @@ const S = strings({
     owner: '用手机锁屏验证身份',
     noScreenLock: '手机未设置锁屏，无法重设密码。',
     delete: '删除',
-    close: '关闭',
   },
   'zh-Hant': {
     check: '筆記鎖定密碼',
@@ -79,7 +75,6 @@ const S = strings({
     owner: '用手機螢幕鎖定驗證身分',
     noScreenLock: '手機未設定螢幕鎖定，無法重設密碼。',
     delete: '刪除',
-    close: '關閉',
   },
 });
 

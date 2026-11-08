@@ -1530,7 +1530,3 @@ export async function logAnalyticsEvent(event: AnalyticsEvent): Promise<void> {
     console.error("logAnalyticsEvent failed:", err);
   }
 }
-
-export function isSupabaseConfigured(): boolean {
-  return config.hasSupabase;
-}

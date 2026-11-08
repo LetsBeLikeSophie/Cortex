@@ -654,17 +654,6 @@ export function permanentlyDeleteItem(itemId: string) {
   return request<{ ok: true }>(`/items/${encodeURIComponent(itemId)}/permanent`, { method: 'DELETE' });
 }
 
-// Cleans up one spoken sentence (already transcribed on-device) into a
-// single short tag via a small Claude call server-side -- a raw transcript
-// almost never reads as a clean tag on its own. Returns just the cleaned
-// tag string; call addTag with it separately to actually attach it.
-export function tagFromVoice(text: string) {
-  return request<{ tag: string }>('/items/tags/from-voice', {
-    method: 'POST',
-    body: JSON.stringify({ text }),
-  });
-}
-
 // Both only ever touch user_tags -- adding a *new* tag always goes through
 // here, never the AI-assigned column, so "Cortex guessed this" and "I
 // added this" stay distinguishable.

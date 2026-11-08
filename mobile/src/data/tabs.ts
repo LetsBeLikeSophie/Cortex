@@ -3,13 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../auth/supabase';
 import { LANG, Lang } from '../i18n';
 
-// The fixed top-level classification every saved item gets (must match
-// backend/src/lib/categories.ts's CATEGORIES / the item_category enum in
-// db/schema.sql). Used for things keyed off that single classification --
-// e.g. the stats screen's category breakdown -- separate from the home tab
-// strip below, which pins arbitrary tags instead.
-export const ALL_CATEGORIES = ['가볼 곳', '살 것', '배울 것', '볼 것', '기억할 것', '기타'] as const;
-
 // Home tab strip: 즐겨찾기 (fixed, pinned items) plus any tag the user picks
 // (freeform, one per saved item's auto-assigned or user-added tags) via a
 // search-as-you-type list in TabPickerScreen -- tried auto-generating these

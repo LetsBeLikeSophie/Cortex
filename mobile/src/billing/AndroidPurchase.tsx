@@ -120,6 +120,16 @@ const S = strings({
 // (Monetize > Subscriptions > cortex_pro).
 const BASE_PLAN: Record<'monthly' | 'yearly', string> = { monthly: 'monthly', yearly: 'yearly' };
 
+// The plain base plan of one period (not a promo offer on top of it). expo-iap
+// gives a base plan's own offer the base plan id as its id (11-08 log:
+// {basePlanIdAndroid: 'yearly', id: 'yearly'}), so "no id" alone missed it and
+// the switch-to-yearly button never showed.
+type SubOffer = { basePlanIdAndroid?: string | null; id?: string | null; offerTokenAndroid?: string | null; displayPrice: string; price?: number | null };
+function baseOffer(sub: unknown, plan: 'monthly' | 'yearly'): SubOffer | undefined {
+  const offers = ((sub as { subscriptionOffers?: SubOffer[] | null } | undefined)?.subscriptionOffers ?? []).filter((o) => o.basePlanIdAndroid === BASE_PLAN[plan]);
+  return offers.find((o) => !o.id || o.id === o.basePlanIdAndroid) ?? offers[0];
+}
+
 // The purchase is already paid for when this runs, so a dropped connection or
 // a restarting server gets more tries. A refusal (400, 409) stays one.
 const VERIFY_RETRY_MS = [2000, 5000];
@@ -253,8 +263,7 @@ export function AndroidPurchase({
   }, [connected, offers.subscriptionId, offers.lifetimeId, fetchProducts]);
 
   const sub = subscriptions.find((s) => s.id === offers.subscriptionId);
-  const offerFor = (plan: 'monthly' | 'yearly') =>
-    sub && 'subscriptionOffers' in sub ? (sub.subscriptionOffers ?? []).find((o) => o.basePlanIdAndroid === BASE_PLAN[plan] && !o.id) ?? (sub.subscriptionOffers ?? []).find((o) => o.basePlanIdAndroid === BASE_PLAN[plan]) : undefined;
+  const offerFor = (plan: 'monthly' | 'yearly') => baseOffer(sub, plan);
   const lifetime = products.find((p) => p.id === offers.lifetimeId);
 
   useEffect(() => {
@@ -444,7 +453,7 @@ export function SwitchToYearly({ theme, offers, onPlan }: { theme: Theme; offers
   }, [connected, offers.subscriptionId, fetchProducts, getAvailablePurchases]);
 
   const sub = subscriptions.find((s) => s.id === offers.subscriptionId);
-  const yearly = sub && 'subscriptionOffers' in sub ? (sub.subscriptionOffers ?? []).find((o) => o.basePlanIdAndroid === BASE_PLAN.yearly && !o.id) : undefined;
+  const yearly = baseOffer(sub, 'yearly');
   const current = availablePurchases.find((p) => p.productId === offers.subscriptionId);
 
   const switchPlan = async () => {

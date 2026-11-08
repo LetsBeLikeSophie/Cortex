@@ -478,6 +478,10 @@ Fields:
   NOT keywords either. Words that only mean "something I saved" (기억, 저장한 거,
   메모, 거, 것) are not keywords either -- "가장 오래된 기억" has no keyword.
   Empty list is fine if nothing but filters was said.
+  Write each term in the language of the search sentence -- the person sees
+  the terms as chips, so an English sentence gets English terms ("Seongsu",
+  "cafe"), a Japanese one Japanese. Spellings in other languages (성수, 카페)
+  go in synonyms, so items saved in another language are still found.
 - exclude: only things explicitly ruled out ("카페 말고" -> 카페). Usually empty.
 - source: where it was saved FROM -- instagram (인스타), kakaotalk (카톡), safari
   (사파리/인터넷/웹/브라우저), youtube (유튜브), memo (직접 쓴 메모). null unless stated.

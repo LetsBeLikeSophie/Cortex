@@ -77,7 +77,7 @@ export function nextProUntil(rows: PurchaseRow[], before: string | null, nowIso:
 export type SubscriptionStatus =
   | { status: "lifetime" }
   | { status: "renewing"; until: string; plan: string | null }
-  | { status: "ending"; until: string }
+  | { status: "ending"; until: string; plan: string | null }
   | { status: "payment_issue"; until: string | null };
 
 export function subscriptionStatus(rows: PurchaseRow[], nowIso: string): SubscriptionStatus | null {
@@ -98,7 +98,11 @@ export function subscriptionStatus(rows: PurchaseRow[], nowIso: string): Subscri
   const grace = latest("grace");
   if (grace !== undefined) return { status: "payment_issue", until: grace && grace > nowIso ? grace : null };
   const ending = latest("canceled");
-  if (ending && ending > nowIso) return { status: "ending", until: ending };
+  if (ending && ending > nowIso) {
+    // Which plan is ending, so the Pro screen can show it as the current one.
+    const endingPlan = subs.find((r) => r.state === "canceled" && r.expires_at === ending)?.base_plan ?? null;
+    return { status: "ending", until: ending, plan: endingPlan };
+  }
   if (subs.some((r) => r.state === "on_hold")) return { status: "payment_issue", until: null };
   return null;
 }

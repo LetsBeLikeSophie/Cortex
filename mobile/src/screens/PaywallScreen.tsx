@@ -98,7 +98,9 @@ export default function PaywallScreen() {
           ? S.lifetimePro
           : sub?.status === 'renewing'
             ? S.renews(dateLabel(sub.until))
-            : S.pro(plan.proUntil ? dateLabel(plan.proUntil) : null)
+            : sub?.status === 'ending'
+              ? S.ending(dateLabel(sub.until))
+              : S.pro(plan.proUntil ? dateLabel(plan.proUntil) : null)
         : trialStats
           ? S.trialStats(trialStats.days, trialStats.saved, trialStats.searched)
           : plan
@@ -123,6 +125,20 @@ export default function PaywallScreen() {
     ...(lifetimeLeft > 0 ? [{ key: 'lifetime' as const, label: S.lifetime, note: S.lifetimeNote(lifetimeLeft) }] : []),
   ];
   const isPro = plan?.tier === 'pro';
+  // On Pro the plans stay on screen, read-only, with the one in use marked
+  // (Sophie 11-08: the screen used to drop to the benefits alone).
+  const subPlan = sub && (sub.status === 'renewing' || sub.status === 'ending') ? sub.plan : null;
+  const currentPlan: PlanOption | null = !isPro
+    ? null
+    : isLifetimePro(plan?.proUntil)
+      ? 'lifetime'
+      : subPlan === 'monthly' || subPlan === 'yearly'
+        ? subPlan
+        : null;
+  const shownOptions = isPro ? options.filter((o) => o.key !== 'lifetime' || currentPlan === 'lifetime') : options;
+  if (currentPlan === 'lifetime' && !shownOptions.some((o) => o.key === 'lifetime')) {
+    shownOptions.push({ key: 'lifetime', label: S.lifetime, note: '' });
+  }
   // A held payment is fixed in Play, not by buying again.
   const canBuy = Platform.OS === 'android' && !!offers?.enabled && !isPro && !paymentIssue;
 
@@ -146,25 +162,31 @@ export default function PaywallScreen() {
         </View>
 
         {/* The plans. Prices come from Google Play once the store answers
-            (what the person will actually be charged). Hidden for someone
-            already on Pro -- boxes they could tap but never buy. */}
-        {!isPro && (
+            (what the person will actually be charged). Shown only once the
+            plan is known, so a Pro member never sees them flash as buyable;
+            on Pro they're read-only with the current one marked. */}
+        {plan !== null && (!isPro || currentPlan !== null) && (
           <View style={styles.options}>
-            {options.map((o) => {
-              const active = selected === o.key;
+            {shownOptions.map((o) => {
+              const active = isPro ? currentPlan === o.key : selected === o.key;
               return (
                 <Pressable
                   key={o.key}
-                  onPress={() => setSelected(o.key)}
+                  onPress={isPro ? undefined : () => setSelected(o.key)}
+                  disabled={isPro}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
+                  accessibilityState={{ selected: active, disabled: isPro }}
                   style={[styles.option, { backgroundColor: theme.surface }, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
                 >
                   <View style={styles.optionHead}>
-                    <Text style={[styles.optionLabel, { color: theme.ink }]}>{o.label}</Text>
-                    <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? (S.fallback as Record<PlanOption, string>)[o.key]}</Text>
+                    <Text style={[styles.optionLabel, { color: theme.ink }]}>
+                      {o.label}
+                      {isPro && active ? <Text style={[styles.optionNote, { color: theme.sub }]}>{`  ${S.currentPlan}`}</Text> : null}
+                    </Text>
+                    {/* On Pro the store isn't asked for prices; a fallback in won would be wrong abroad. */}
+                    {!isPro && <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? (S.fallback as Record<PlanOption, string>)[o.key]}</Text>}
                   </View>
-                  <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>
+                  {o.note !== '' && !isPro && <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>}
                 </Pressable>
               );
             })}

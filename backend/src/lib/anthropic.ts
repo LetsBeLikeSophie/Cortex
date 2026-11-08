@@ -720,8 +720,17 @@ export async function composeFromItems(
 // Mehh (a photo-cleanup app) sends screenshot thumbnails its on-device check
 // found unclear; one call looks at up to 10 and says, per photo, whether it
 // can go (docs/mehh-screenshot-ai.md). Nothing is stored: the images live in
-// this call's memory only. Mehh's own key when set, so its cost shows apart.
-const mehhClient = clientFor("ANTHROPIC_API_KEY_MEHH");
+// this call's memory only. Mehh's own key when set, so its cost shows apart;
+// otherwise the classify key (the server has no shared ANTHROPIC_API_KEY).
+// Cost is still told apart in ai_calls (purpose = mehh_screenshot).
+const mehhClient = new Anthropic({
+  apiKey:
+    process.env.ANTHROPIC_API_KEY_MEHH ||
+    process.env.ANTHROPIC_API_KEY_CLASSIFY ||
+    process.env.ANTHROPIC_API_KEY,
+  timeout: 60_000,
+  maxRetries: 1,
+});
 const MEHH_MODEL = process.env.MEHH_MODEL ?? MODEL;
 
 const MehhAnswerSchema = z.object({

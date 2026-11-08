@@ -115,7 +115,7 @@ Mehh Pro가 폰에서 애매하다고 본 **캡처** 썸네일(얼굴 없는 것
 
 1. Play Console(Mehh 앱) → 사용자 및 권한 → Cortex 서비스 계정에 "재무 데이터 보기/주문 관리" 권한.
 2. `backend/db/migrations/2026-11-08-mehh-ai.sql`을 SQL 에디터에서 실행.
-3. (선택) `ANTHROPIC_API_KEY_MEHH` 새 키 — 콘솔에서 비용이 따로 보임. 없으면 공용 키.
+3. (선택) `ANTHROPIC_API_KEY_MEHH` 새 키 — 콘솔에서 비용이 따로 보임. 없으면 분류 키(`ANTHROPIC_API_KEY_CLASSIFY`), 비용은 `ai_calls`에서 따로 보임.
 4. 두 앱 개인정보처리방침·Mehh 데이터 보안 고친 뒤 `.env`에 `MEHH_AI_ENABLED=1`, 배포.
 5. Mehh 쪽: 보내기·동의 창·위 오류 문구·상한 표시.
 

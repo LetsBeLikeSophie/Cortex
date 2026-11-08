@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { resyncLapsedPurchases } from "../lib/billing.js";
 import { onlyStackFrames, safeErrorName } from "../lib/appErrors.js";
@@ -7,10 +7,9 @@ import { isPlayBillingConfigured } from "../lib/googlePlay.js";
 import { config } from "../config.js";
 import { CATEGORIES } from "../lib/categories.js";
 import { IncomingItemSchema, classifyBacklog, processIncomingItem, reorganizeItem } from "../lib/pipeline.js";
-import { AiConsentRequiredError, getEntitlement, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang, withPlanDetails } from "../lib/plans.js";
-import { normalizeLang, DEFAULT_LANG } from "../lib/anthropic.js";
+import { AiConsentRequiredError, type Entitlement, type UsageKind, getEntitlement, refundUsage, remaining, requireAiConsent, reserveUsage, setAiConsent, syncLang, withPlanDetails } from "../lib/plans.js";
 import { dailyAiBudget } from "../lib/aiLog.js";
-import { clipInterpretation, composeFromItems, interpretSearch, isAiUnavailable, suggestTagMerges, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
+import { clipInterpretation, composeFromItems, DEFAULT_LANG, interpretSearch, isAiUnavailable, normalizeLang, suggestTagMerges, tagFromText, SearchInterpretationSchema } from "../lib/anthropic.js";
 import {
   addUserTag,
   countItemsSince,
@@ -70,6 +69,13 @@ const asking = new Set<string>();
 // 모아서 만들기 and 태그 정리하기 (suggest): one run per person at a time.
 const composing = new Set<string>();
 const cleaning = new Set<string>();
+
+// This month's uses ran out: counted for the funnel, answered with 402 (the
+// app opens Pro from it).
+async function quotaHit(reply: FastifyReply, userId: string, ent: Entitlement, kind: UsageKind) {
+  await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: kind });
+  return reply.code(402).send({ error: "quota", kind, limit: ent[kind].limit, tier: ent.tier, resetsAt: ent.resetsAt });
+}
 
 const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
@@ -260,13 +266,9 @@ export async function itemsRoutes(app: FastifyInstance) {
   // a text file. No AI, no quota; only the columns the file shows.
   app.get("/items/export", async (req, reply) => {
     const userId = await resolveUserId(req);
-    if (exporting.has(userId)) return reply.code(429).send({ error: "export already running" });
-    exporting.add(userId);
-    try {
-      return reply.send({ items: await listAllItems(userId) });
-    } finally {
-      exporting.delete(userId);
-    }
+    const run = await withUserLock(exporting, userId, () => listAllItems(userId));
+    if (run.busy) return reply.code(429).send({ error: "export already running" });
+    return reply.send({ items: run.value });
   });
 
   // '다시 보기' reminder: a few older memos' titles (never locked ones),
@@ -315,8 +317,7 @@ export async function itemsRoutes(app: FastifyInstance) {
         return null;
       });
       if (ent && remaining(ent, "search") === 0) {
-        await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "search" });
-        return reply.code(402).send({ error: "quota", kind: "search", limit: ent.search.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+        return quotaHit(reply, userId, ent, "search");
       }
       await dailyAiBudget.assertOpen();
       if (asking.has(userId)) return reply.code(409).send({ error: "search_running" });
@@ -390,13 +391,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     await requireAiConsent(userId);
     // A second tap while the first run is still queueing would pick the
     // same rows; one run per person.
-    if (sorting.has(userId)) return reply.code(409).send({ error: "sort_running" });
-    sorting.add(userId);
-    try {
-      return reply.send(await classifyBacklog(userId));
-    } finally {
-      sorting.delete(userId);
-    }
+    const run = await withUserLock(sorting, userId, () => classifyBacklog(userId));
+    if (run.busy) return reply.code(409).send({ error: "sort_running" });
+    return reply.send(run.value);
   });
 
   // Re-runs an (edited) interpretation without calling Claude again -- what
@@ -495,8 +492,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     const started = await reorganizeItem(userId, item);
     if (!started) {
       const ent = await getEntitlement(userId);
-      await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "classify" });
-      return reply.code(402).send({ error: "quota", kind: "classify", limit: ent.classify.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+      return quotaHit(reply, userId, ent, "classify");
     }
     return reply.code(202).send({ ok: true });
   });
@@ -520,8 +516,7 @@ export async function itemsRoutes(app: FastifyInstance) {
       if (!free) {
         const ent = await getEntitlement(userId);
         if (remaining(ent, "compose") === 0) {
-          await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "compose" });
-          return reply.code(402).send({ error: "quota", kind: "compose", limit: ent.compose.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+          return quotaHit(reply, userId, ent, "compose");
         }
       }
       // Earlier composed memos aren't materials -- they'd fold a summary back
@@ -667,8 +662,7 @@ export async function itemsRoutes(app: FastifyInstance) {
     const run = await withUserLock(cleaning, userId, async () => {
       const ent = await getEntitlement(userId);
       if (remaining(ent, "tag_cleanup") === 0) {
-        await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: "tag_cleanup" });
-        return reply.code(402).send({ error: "quota", kind: "tag_cleanup", limit: ent.tag_cleanup.limit, tier: ent.tier, resetsAt: ent.resetsAt });
+        return quotaHit(reply, userId, ent, "tag_cleanup");
       }
       const tags = await listTagCounts(userId);
       if (tags.length < 2) return reply.send({ groups: [], left: remaining(ent, "tag_cleanup") });

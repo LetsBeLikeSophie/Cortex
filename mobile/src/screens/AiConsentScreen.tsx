@@ -35,6 +35,7 @@ const S = strings({
     keepYes: '저장',
     keepNo: '저장 안 함',
     kept: (n: number) => `사진 ${n}장을 미분류함에 저장해요`,
+    agreedToast: '동의했어요 · 이제 AI 기능을 쓸 수 있어요',
     sharedDropped: (n: number) => `사진 ${n}장은 저장하지 않았어요 · Mehh에 그대로 있어요`,
   },
   en: {
@@ -54,6 +55,7 @@ const S = strings({
     keepYes: 'Keep',
     keepNo: "Don't keep",
     kept: (n: number) => `Keeping ${n} photo${n === 1 ? '' : 's'} in Unsorted`,
+    agreedToast: 'Agreed · AI features are on now',
     sharedDropped: (n: number) => `${n} photo${n === 1 ? '' : 's'} not saved · still in Mehh`,
   },
   ja: {
@@ -74,6 +76,7 @@ const S = strings({
     keepYes: '保存',
     keepNo: '保存しない',
     kept: (n: number) => `写真${n}枚を未分類に保存します`,
+    agreedToast: '同意しました · AI機能を使えます',
     sharedDropped: (n: number) => `写真${n}枚は保存しませんでした · Mehhに残っています`,
   },
   'zh-Hans': {
@@ -93,6 +96,7 @@ const S = strings({
     keepYes: '保存',
     keepNo: '不保存',
     kept: (n: number) => `正在把 ${n} 张照片存入未分类`,
+    agreedToast: '已同意 · 现在可以使用 AI 功能',
     sharedDropped: (n: number) => `${n} 张照片未保存 · 仍在 Mehh 中`,
   },
   'zh-Hant': {
@@ -112,6 +116,7 @@ const S = strings({
     keepYes: '儲存',
     keepNo: '不儲存',
     kept: (n: number) => `正在把 ${n} 張照片存入未分類`,
+    agreedToast: '已同意 · 現在可以使用 AI 功能',
     sharedDropped: (n: number) => `${n} 張照片未儲存 · 仍在 Mehh 中`,
   },
 });
@@ -142,6 +147,9 @@ export default function AiConsentScreen() {
       // "received" and they save; declined -> the copies are deleted and
       // Mehh keeps its originals.
       if (agree) {
+        // Opened from an AI button: the answer is saved, the button isn't
+        // pressed for them (it may spend a use) -- say it's ready now.
+        if (current !== 'agreed') showToast(S.agreedToast);
         drainShareQueue();
         navigation.goBack();
         return;

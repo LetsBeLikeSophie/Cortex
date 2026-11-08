@@ -15,7 +15,9 @@ export function buyerAccount(purchase: { obfuscatedExternalAccountId?: string; e
 // What stays of Google's answer once the account is gone: enough to answer a
 // refund or tax question, nothing that says who it was. A list of what to keep,
 // so a field Google adds later doesn't stay by accident.
-const KEPT_FIELDS = ["orderId", "latestOrderId", "purchaseTimeMillis", "startTime", "regionCode", "purchaseState", "subscriptionState"];
+// purchaseType / testPurchase mark a license tester's purchase (no money),
+// which never takes one of the first-100 lifetime passes.
+const KEPT_FIELDS = ["orderId", "latestOrderId", "purchaseTimeMillis", "startTime", "regionCode", "purchaseState", "subscriptionState", "purchaseType", "testPurchase"];
 
 export function recordOnlyRaw(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== "object") return null;

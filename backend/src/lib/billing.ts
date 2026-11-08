@@ -252,13 +252,15 @@ export async function recomputeProUntil(userId: string): Promise<void> {
 }
 
 // Lifetime passes are for the first `lifetimeCap` buyers; the app hides the
-// option once none are left.
+// option once none are left. A license tester's purchase (Play's
+// purchaseType 0, no money changes hands) doesn't take a pass.
 export async function lifetimeRemaining(): Promise<number> {
   const { count, error } = await getClient()
     .from("purchases")
     .select("id", { count: "exact", head: true })
     .eq("kind", "lifetime")
-    .in("state", ["active", "pending"]);
+    .in("state", ["active", "pending"])
+    .or("raw->>purchaseType.is.null,raw->>purchaseType.neq.0");
   if (error) throw new Error(`lifetimeRemaining failed: ${error.message}`);
   return Math.max(0, config.lifetimeCap - (count ?? 0));
 }

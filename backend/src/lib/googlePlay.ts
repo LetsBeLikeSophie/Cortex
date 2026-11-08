@@ -119,6 +119,8 @@ export function acknowledgeSubscription(subscriptionId: string, token: string): 
 export interface PlayProductPurchase {
   purchaseState: number; // 0 purchased, 1 canceled, 2 pending
   acknowledgementState: number; // 0 not yet, 1 acknowledged
+  // 0: a license tester's test purchase (absent for a real one).
+  purchaseType?: number;
   orderId?: string;
   obfuscatedExternalAccountId?: string;
 }

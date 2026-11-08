@@ -35,6 +35,11 @@ test("after deletion only what a refund or tax question needs stays", () => {
   assert.equal(recordOnlyRaw(null), null);
 });
 
+test("a test purchase stays marked as one after deletion (it never takes a lifetime pass)", () => {
+  assert.deepEqual(recordOnlyRaw({ orderId: "GPA.3", purchaseType: 0, obfuscatedExternalAccountId: ACCOUNT }), { orderId: "GPA.3", purchaseType: 0 });
+  assert.deepEqual(recordOnlyRaw({ orderId: "GPA.4", testPurchase: {} }), { orderId: "GPA.4", testPurchase: {} });
+});
+
 const NOW = "2026-11-15T00:00:00.000Z";
 const PAST = "2026-11-01T00:00:00.000Z";
 const EARLIER = "2026-10-01T00:00:00.000Z";

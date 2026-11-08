@@ -20,7 +20,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import TrashScreen from '../screens/TrashScreen';
 import ItemDetailScreen from '../screens/ItemDetailScreen';
 import AiConsentScreen from '../screens/AiConsentScreen';
-import { fetchPlan, onAiConsentRequired, Plan } from '../api/client';
+import { fetchPlan, onAiConsentRequired, Plan, usesLeft } from '../api/client';
 import PaywallScreen from '../screens/PaywallScreen';
 import ComposeScreen from '../screens/ComposeScreen';
 import PinScreen from '../screens/PinScreen';
@@ -119,7 +119,7 @@ function TabBar({ state, navigation, onHeight }: BottomTabBarProps & { onHeight:
 function AddBubble({ plan, bottom, onPress }: { plan: Plan; bottom: number; onPress: (to: 'AiConsent' | 'Paywall') => void }) {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
-  const left = Math.max(0, plan.classify.limit - plan.classify.used);
+  const left = usesLeft(plan, 'classify') ?? 0;
   const agreed = plan.aiConsent === 'agreed';
   if (agreed && !isLowOnUses(left)) return null;
   const gutter = 12;

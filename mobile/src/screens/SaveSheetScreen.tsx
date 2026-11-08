@@ -22,7 +22,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { MONO, OUTLINE, allEdges, conceptOf, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { Card, frameStyle, isBoxed } from '../components/Card';
 import { copyFor } from '../data/content';
-import { newRequestId, saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError } from '../api/client';
+import { newRequestId, saveTextItem, saveLinkItem, saveScreenshotItem, addTag, fetchPlan, ApiItem, ItemSource, Plan, friendlyError, usesLeft } from '../api/client';
 import { itemTitle, sourceLabel, captureTypeLabel } from '../api/format';
 import { CheckIcon } from '../components/Icons';
 import { TagChip, TagAddChip } from '../components/Chips';
@@ -639,7 +639,7 @@ ${sharedNote ?? ''}`;
   // What this save will do with AI: where it goes when AI can't take it,
   // otherwise the uses left -- for several photos always, for a single save
   // only once they're running low.
-  const aiLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : null;
+  const aiLeft = usesLeft(plan, 'classify');
   const saveCount = selectedScreenshots.length > 0 ? selectedScreenshots.length : 1;
   const noConsent = !!plan && plan.aiConsent !== undefined && plan.aiConsent !== 'agreed';
   // AI sorts each photo separately, so a photo save counts in 장.

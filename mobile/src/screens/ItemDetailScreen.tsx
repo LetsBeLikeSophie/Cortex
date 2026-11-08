@@ -19,7 +19,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
 import { MONO, emToTracking, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
 import { forgetWeekly } from '../native/reminders';
-import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError } from '../api/client';
+import { addTag, asQuotaError, deleteItem, reportAiOutput, setItemLocked, fetchComposeSources, fetchItem, fetchPlan, getScreenshotUrl, reorganizeItem, removeAiTag as removeAiTagApi, removeTag as removeTagApi, updateItem, friendlyError, usesLeft } from '../api/client';
 import { relativeTime, sourceLabel, captureTypeLabel, itemTitle, composeMaterials } from '../api/format';
 import { TagChip, TagAddChip } from '../components/Chips';
 import { FieldRow } from '../components/FieldRow';
@@ -579,7 +579,7 @@ export default function ItemDetailScreen() {
     fetchPlan()
       .then((p) => {
         if (cancelled) return;
-        setClassifyLeft(Math.max(0, p.classify.limit - p.classify.used));
+        setClassifyLeft(usesLeft(p, 'classify') ?? 0);
         setAiAgreed(p.aiConsent === 'agreed');
       })
       .catch(() => {});

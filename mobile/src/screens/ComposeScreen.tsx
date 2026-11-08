@@ -4,7 +4,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
-import { ApiError, asQuotaError, composeMemo, fetchItemsWithTag, fetchPlan, friendlyError, isAlreadyRunning, isTimeout, Plan } from '../api/client';
+import { ApiError, asQuotaError, composeMemo, fetchItemsWithTag, fetchPlan, friendlyError, isAlreadyRunning, isTimeout, Plan, usesLeft } from '../api/client';
 import { showToast } from '../native/toast';
 import { ModalSheet } from '../components/ModalSheet';
 import { SheetTitle } from '../components/Typography';
@@ -259,7 +259,7 @@ export default function ComposeScreen() {
   }, [pickedTag, itemIds, count, tag, retryOf]);
 
   const close = () => navigation.goBack();
-  const left = plan?.compose ? Math.max(0, plan.compose.limit - plan.compose.used) : null;
+  const left = usesLeft(plan, 'compose');
   const remakeFree = !!retryOf && !!freeRemake;
   const materials = itemIds && count === undefined ? itemIds.length : tagCount;
   // Fewer than 2 usable memos: the server would refuse, so don't offer it.

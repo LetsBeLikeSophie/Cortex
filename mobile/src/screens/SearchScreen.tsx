@@ -23,8 +23,7 @@ import {
   friendlyError,
   isAlreadyRunning,
   isTimeout,
-  ApiError,
-} from '../api/client';
+  ApiError, usesLeft} from '../api/client';
 import { captureTypeLabel, composeMaterials, sourceLabel, toSearchResult, toSmartSearchResult } from '../api/format';
 import { ResultRow } from '../components/ListItems';
 import { AsyncStateView } from '../components/AsyncStateView';
@@ -402,7 +401,7 @@ export default function SearchScreen() {
       refreshPlan();
     }, [refreshPlan]),
   );
-  const aiLeft = plan ? Math.max(0, plan.search.limit - plan.search.used) : null;
+  const aiLeft = usesLeft(plan, 'search');
 
   const trimmed = query.trim();
   const aiMode = aiQuery !== null && aiQuery === trimmed;

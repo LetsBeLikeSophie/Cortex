@@ -14,7 +14,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeContext';
 import { TagTab, loadHomeTabs, saveHomeTabs } from '../data/tabs';
-import { fetchPlan, fetchTags, Plan } from '../api/client';
+import { fetchPlan, fetchTags, Plan, usesLeft } from '../api/client';
 import { Bubble, isLowOnUses } from '../components/Bubble';
 import { USES } from '../i18n/common';
 import { CheckIcon, SearchIcon } from '../components/Icons';
@@ -84,7 +84,7 @@ export default function TabPickerScreen() {
         .catch(() => {});
     }, []),
   );
-  const cleanupLeft = plan?.tag_cleanup ? Math.max(0, plan.tag_cleanup.limit - plan.tag_cleanup.used) : null;
+  const cleanupLeft = usesLeft(plan, 'tag_cleanup');
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [selected, setSelected] = useState<TagTab[]>([]);
   const [allTags, setAllTags] = useState<TagTab[]>([]);

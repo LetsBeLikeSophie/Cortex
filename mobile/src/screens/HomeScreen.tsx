@@ -17,7 +17,7 @@ import { forgetWeekly, refillCount, syncReminders } from '../native/reminders';
 import { useAuth } from '../auth/AuthContext';
 import { IMPORT_OFFER_KEY, TRIAL_NOTICE_KEY } from '../auth/accountTraces';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, setTagLocked, isTagLockLimit, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError, isAlreadyRunning, isTimeout } from '../api/client';
+import { fetchItem, fetchItemsWithTag, fetchTabUpTo, fetchUnclassifiedItems, fetchRecentItems, fetchRecentUpTo, fetchPlan, classifyBacklog, setTagLocked, isTagLockLimit, addTag, removeAiTag, removeTag, deleteItem, ApiItem, ComposeFormat, Plan, friendlyError, isAlreadyRunning, isTimeout, usesLeft } from '../api/client';
 import { composeMaterials, toRecentItem, relativeTime } from '../api/format';
 import { RecentRow } from '../components/ListItems';
 import { ProgressRow } from '../components/ProgressRow';
@@ -892,7 +892,7 @@ export default function HomeScreen() {
   };
   const unclassifiedCount = plan?.unclassifiedCount ?? rawItems.filter((it) => it.classification_status === 'unclassified').length;
   const backlogCount = plan?.backlogCount ?? unclassifiedCount;
-  const classifyLeft = plan ? Math.max(0, plan.classify.limit - plan.classify.used) : 0;
+  const classifyLeft = usesLeft(plan, 'classify') ?? 0;
   // Never agreed (or declined): the 미분류 strip asks for consent instead of
   // offering a sort the server would refuse (and Pro would not fix).
   const noAiConsent = !!plan && plan.aiConsent !== 'agreed';

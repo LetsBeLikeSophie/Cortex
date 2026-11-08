@@ -217,6 +217,14 @@ export function isAlreadyRunning(err: unknown): boolean {
   return err instanceof ApiError && err.status === 409;
 }
 
+// This month's uses left of one metered feature, as the server counts it
+// (remaining() in backend/src/lib/plans.ts). null: no plan yet, or a server
+// too old to report that feature.
+export function usesLeft(plan: Plan | null | undefined, kind: 'classify' | 'search' | 'compose' | 'tag_cleanup'): number | null {
+  const u = plan?.[kind];
+  return u ? Math.max(0, u.limit - u.used) : null;
+}
+
 export function asQuotaError(err: unknown): QuotaError | null {
   if (err instanceof ApiError && err.status === 402 && (err.body as QuotaError | null)?.error === 'quota') {
     return err.body as QuotaError;

@@ -11,7 +11,7 @@ import { SheetTitle } from '../components/Typography';
 import { ButtonRow, GhostButton, SolidButton } from '../components/Buttons';
 import { CheckIcon } from '../components/Icons';
 import { allEdges, OUTLINE, BODY_KR, BODY_KR_MEDIUM } from '../theme/themes';
-import { ApiError, applyTagCleanup, asQuotaError, fetchPlan, fetchTags, friendlyError, isAlreadyRunning, isTimeout, Plan, suggestTagCleanup, TagMergeGroup } from '../api/client';
+import { ApiError, applyTagCleanup, asQuotaError, fetchPlan, fetchTags, friendlyError, isAlreadyRunning, isTimeout, Plan, suggestTagCleanup, TagMergeGroup, usesLeft as usesLeftOf } from '../api/client';
 import { loadHomeTabs, saveHomeTabs } from '../data/tabs';
 import { strings } from '../i18n';
 import { COMMON } from '../i18n/common';
@@ -169,7 +169,7 @@ export default function TagCleanupScreen() {
     refresh();
     return navigation.addListener('focus', refresh);
   }, [navigation]);
-  const usesLeft = plan?.tag_cleanup ? Math.max(0, plan.tag_cleanup.limit - plan.tag_cleanup.used) : null;
+  const usesLeft = usesLeftOf(plan, 'tag_cleanup');
   const noAiConsent = !!plan && plan.aiConsent !== 'agreed';
 
   const find = async () => {

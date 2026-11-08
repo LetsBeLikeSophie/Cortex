@@ -1,5 +1,5 @@
-import { TextStyle, ViewStyle } from 'react-native';
-import { MONO, OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge, BODY_KR } from '../theme/themes';
+import { ViewStyle } from 'react-native';
+import { OUTLINE, Theme, allEdges, bottomEdge, conceptOf, layerEdge } from '../theme/themes';
 
 // Per-concept styling for text fields and the small secondary buttons that
 // sit inside sheets (앨범에서 선택 / 카메라로 촬영, inline confirm/cancel...),

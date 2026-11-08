@@ -114,7 +114,6 @@ export function Heatmap({
 }
 
 const styles = StyleSheet.create({
-
   barRow: { flexDirection: 'row', alignItems: 'flex-end', height: 140, gap: 10 },
   barCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
   barValue: { fontSize: 10.5, fontFamily: MONO, marginBottom: 4 },

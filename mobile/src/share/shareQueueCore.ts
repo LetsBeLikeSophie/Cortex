@@ -41,6 +41,11 @@ export interface Job {
 export interface Receipt {
   jobIds: string[];
   mehhIds?: string[];
+  // When the share arrived. Telling Mehh opens it, so a receipt is only
+  // told while the share is fresh (RECEIPT_FRESH_MS); an older one -- or one
+  // from a build that didn't stamp it -- is dropped untold, and Mehh simply
+  // keeps its originals.
+  at?: number;
 }
 
 export interface QueueState {
@@ -97,6 +102,10 @@ export const MAX_ATTEMPTS = 10;
 // Mehh may have deleted its original and no screen brings a stopped photo back,
 // so one stopped by a server error starts over once the server has had a day.
 export const REVIVE_AFTER_MS = 24 * 60 * 60 * 1000;
+// Telling Mehh "received" switches the phone over to Mehh. Right after a
+// share that's the way back; later (the person is doing something else in
+// Cortex, or another account signed in) it's a jump nobody asked for.
+export const RECEIPT_FRESH_MS = 30 * 60 * 1000;
 
 // 400 (unreadable) and 413 (too large) won't change on a retry.
 const statusOf = (err: unknown) => (err as { status?: number } | null)?.status;
@@ -132,6 +141,29 @@ export function createShareQueue(deps: QueueDeps) {
     }
   }
 
+  // A receipt belongs to whoever owns its jobs (ownerless old jobs: anyone).
+  const ownedBy = (s: QueueState, me: string | null) => {
+    const owner = new Map(s.jobs.map((j) => [j.id, j.ownerId]));
+    return (r: Receipt) => r.jobIds.every((id) => {
+      const o = owner.get(id);
+      return !o || o === me;
+    });
+  };
+
+  // Takes the signed-in account's receipts out of the state; the fresh ones
+  // are told to Mehh, stale ones dropped untold.
+  async function tellMyReceipts(me: string | null) {
+    let told: Receipt[] = [];
+    await update((s) => {
+      const mine = ownedBy(s, me);
+      told = s.receipts.filter(mine);
+      return { ...s, receipts: s.receipts.filter((r) => !mine(r)) };
+    });
+    for (const r of told) {
+      if (r.at !== undefined && deps.now() - r.at <= RECEIPT_FRESH_MS) deps.tellMehh(r.jobIds.length, r.mehhIds);
+    }
+  }
+
   async function currentConsent(): Promise<Consent> {
     try {
       return await deps.consent();
@@ -162,7 +194,7 @@ export function createShareQueue(deps: QueueDeps) {
       if (mehhIds) ids.push(mehhIds[i]);
     });
     if (jobs.length === 0) return 0;
-    const receipt: Receipt = { jobIds: jobs.map((j) => j.id), ...(mehhIds?.length === uris.length ? { mehhIds: ids } : null) };
+    const receipt: Receipt = { jobIds: jobs.map((j) => j.id), ...(mehhIds?.length === uris.length ? { mehhIds: ids } : null), at: deps.now() };
     const state = await update((s) => ({ ...s, jobs: [...s.jobs, ...jobs], receipts: [...s.receipts, receipt] }));
     report({ pending: state.jobs.length });
     deps.schedule?.();
@@ -219,12 +251,7 @@ export function createShareQueue(deps: QueueDeps) {
 
     if (agreed) {
       // Receipts first: Mehh may go ahead once its photos are safely copied.
-      let receipts: Receipt[] = [];
-      await update((s) => {
-        receipts = s.receipts;
-        return { ...s, receipts: [] };
-      });
-      for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
+      await tellMyReceipts(me);
     }
 
     const tried = new Set<string>();
@@ -248,21 +275,22 @@ export function createShareQueue(deps: QueueDeps) {
   // earlier consent whose upload failed before it was withdrawn.
   async function waitingCount(): Promise<number> {
     const s = await deps.load();
-    return live(s.jobs).filter((j) => !j.noAi).length;
+    const me = await currentOwner();
+    return live(s.jobs).filter((j) => !j.noAi && (!j.ownerId || j.ownerId === me)).length;
   }
 
   // The person declined AI but wants these kept: every waiting photo uploads
   // marked noAi -- the server files them in 미분류함 without calling the AI
   // -- and Mehh is told about the ones it hadn't heard of yet.
   async function saveWithoutAi(): Promise<number> {
-    let receipts: Receipt[] = [];
+    const me = await currentOwner();
+    const mineJob = (j: Job) => !j.ownerId || j.ownerId === me;
     let kept = 0;
     await update((s) => {
-      receipts = s.receipts;
-      kept = live(s.jobs).filter((j) => !j.noAi).length;
-      return { ...s, jobs: s.jobs.map((j) => (j.noAi ? j : { ...j, noAi: true })), receipts: [] };
+      kept = live(s.jobs).filter((j) => !j.noAi && mineJob(j)).length;
+      return { ...s, jobs: s.jobs.map((j) => (j.noAi || !mineJob(j) ? j : { ...j, noAi: true })) };
     });
-    for (const r of receipts) deps.tellMehh(r.jobIds.length, r.mehhIds);
+    await tellMyReceipts(me);
     if (kept > 0) deps.schedule?.();
     // A run already going may have started before these were marked.
     if (running) await running;
@@ -320,11 +348,13 @@ export function createShareQueue(deps: QueueDeps) {
   // here, and Mehh is never told -- it keeps its originals. (Photos Mehh was
   // already told about stay, waiting, since their originals may be gone.)
   async function discardUnreceived(): Promise<number> {
+    const me = await currentOwner();
     let dropped: Job[] = [];
     const state = await update((s) => {
-      const ids = new Set(s.receipts.flatMap((r) => r.jobIds));
+      const mine = ownedBy(s, me);
+      const ids = new Set(s.receipts.filter(mine).flatMap((r) => r.jobIds));
       dropped = s.jobs.filter((j) => ids.has(j.id));
-      return { ...s, jobs: s.jobs.filter((j) => !ids.has(j.id)), receipts: [] };
+      return { ...s, jobs: s.jobs.filter((j) => !ids.has(j.id)), receipts: s.receipts.filter((r) => !mine(r)) };
     });
     for (const j of dropped) {
       try {
@@ -348,7 +378,7 @@ export function createShareQueue(deps: QueueDeps) {
       const receipts = s.receipts
         .map((r) => {
           const keep = r.jobIds.map((id, i) => (gone.has(id) ? -1 : i)).filter((i) => i >= 0);
-          return { jobIds: keep.map((i) => r.jobIds[i]), ...(r.mehhIds ? { mehhIds: keep.map((i) => r.mehhIds![i]) } : null) };
+          return { ...r, jobIds: keep.map((i) => r.jobIds[i]), ...(r.mehhIds ? { mehhIds: keep.map((i) => r.mehhIds![i]) } : null) };
         })
         .filter((r) => r.jobIds.length > 0);
       return { ...s, jobs: s.jobs.filter((j) => !gone.has(j.id)), receipts };

@@ -1,7 +1,7 @@
 // npm test -- the share queue's consent rules, with fake storage/files/API.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Consent, createShareQueue, MAX_ATTEMPTS, QueueState, REVIVE_AFTER_MS } from './shareQueueCore';
+import { Consent, createShareQueue, MAX_ATTEMPTS, QueueState, RECEIPT_FRESH_MS, REVIVE_AFTER_MS } from './shareQueueCore';
 
 function setup(consent: Consent | 'error' = null, opts: { failCopy?: string[]; failUpload?: number; failStatus?: number; owner?: string } = {}) {
   let state: QueueState = { jobs: [], receipts: [] };
@@ -371,6 +371,38 @@ test('deleting an account drops its waiting photos (and ownerless old ones), not
   await t.queue.enqueue(['b'], ['102']);
   assert.equal(await t.queue.discardOwnedBy('u1'), 1);
   assert.deepEqual(t.state().jobs.map((j) => j.ownerId), ['u2']);
-  assert.deepEqual(t.state().receipts, [{ jobIds: ['j2'], mehhIds: ['102'] }]);
+  assert.deepEqual(t.state().receipts, [{ jobIds: ['j2'], mehhIds: ['102'], at: 0 }]);
   assert.equal(t.files.size, 1);
+});
+
+test('another account signed in: its Mehh photos are not asked about, kept, or told to Mehh', async () => {
+  const t = setup(null, { owner: 'old' });
+  await t.queue.enqueue(['a', 'b'], ['101', '102']);
+  t.setOwner('new');
+  t.setConsent('declined');
+  assert.equal(await t.queue.waitingCount(), 0);
+  assert.equal(await t.queue.saveWithoutAi(), 0);
+  assert.equal(await t.queue.discardUnreceived(), 0);
+  assert.equal(t.log.length, 0);
+  assert.equal(t.state().jobs.length, 2);
+  assert.equal(t.state().receipts.length, 1);
+});
+
+test('a Mehh share answered much later: photos still save, but Mehh is not opened', async () => {
+  const t = setup('declined', { owner: 'u1' });
+  await t.queue.enqueue(['a'], ['101']);
+  t.setNow(RECEIPT_FRESH_MS + 1);
+  assert.equal(await t.queue.saveWithoutAi(), 1);
+  assert.equal(t.log.filter((l) => l.startsWith('mehh')).length, 0);
+  assert.equal(t.log.filter((l) => l.startsWith('upload')).length, 1);
+  assert.equal(t.state().receipts.length, 0);
+});
+
+test('a receipt from an older build (no time on it) is dropped untold', async () => {
+  const t = setup('agreed', { owner: 'u1' });
+  await t.queue.enqueue(['a'], ['101']);
+  delete t.state().receipts[0].at;
+  await t.queue.drain();
+  assert.equal(t.log.filter((l) => l.startsWith('mehh')).length, 0);
+  assert.equal(t.log.filter((l) => l.startsWith('upload')).length, 1);
 });

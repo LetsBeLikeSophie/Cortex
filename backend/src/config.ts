@@ -71,7 +71,7 @@ export const config = {
   mehhAiEnabled: optional("MEHH_AI_ENABLED") === "1",
   mehhPackageName: optional("MEHH_PACKAGE_NAME") ?? "dev.itssophie.mehh",
   mehhLifetimeId: optional("MEHH_LIFETIME_ID") ?? "mehh_pro_lifetime",
-  mehhAiMonthly: Number(optional("MEHH_AI_MONTHLY") ?? 300),
+  mehhAiMonthly: Number(optional("MEHH_AI_MONTHLY") ?? 100),
   // Bursts per purchase per 15 minutes (each request is up to 10 photos).
   mehhRateLimitMax: Number(optional("MEHH_RATE_LIMIT_MAX") ?? 30),
 

@@ -8,7 +8,7 @@ import { getClient } from "./supabase.js";
 // estimated cost -- so usage can be broken down by feature and by account
 // (the Anthropic console only splits by API key). Fire-and-forget: a failed
 // log write never fails the call it describes.
-export type AiPurpose = "classify_text" | "classify_link" | "classify_image" | "search" | "voice_tag" | "compose" | "tag_cleanup";
+export type AiPurpose = "classify_text" | "classify_link" | "classify_image" | "search" | "voice_tag" | "compose" | "tag_cleanup" | "mehh_screenshot";
 
 export interface Usage {
   input_tokens: number;

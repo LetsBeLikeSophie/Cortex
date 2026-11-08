@@ -64,6 +64,17 @@ export const config = {
   // Lifetime pass is sold to the first N buyers only.
   lifetimeCap: Number(optional("LIFETIME_CAP") ?? 100),
 
+  // Mehh's screenshot AI (routes/mehh.ts, docs/mehh-screenshot-ai.md):
+  // Mehh Pro (a lifetime pass bought in Mehh, checked with Google Play) may
+  // send up to this many screenshot thumbnails a month. Its own bucket,
+  // apart from any Cortex quota -- Mehh has no Cortex account.
+  mehhAiEnabled: optional("MEHH_AI_ENABLED") === "1",
+  mehhPackageName: optional("MEHH_PACKAGE_NAME") ?? "dev.itssophie.mehh",
+  mehhLifetimeId: optional("MEHH_LIFETIME_ID") ?? "mehh_pro_lifetime",
+  mehhAiMonthly: Number(optional("MEHH_AI_MONTHLY") ?? 300),
+  // Bursts per purchase per 15 minutes (each request is up to 10 photos).
+  mehhRateLimitMax: Number(optional("MEHH_RATE_LIMIT_MAX") ?? 30),
+
   // Detailed per-call AI log retention (src/lib/retention.ts); older rows
   // are summed into ai_calls_monthly, then deleted.
   aiCallsRetentionDays: Number(optional("AI_CALLS_RETENTION_DAYS") ?? 90),

@@ -52,7 +52,7 @@ export interface Entitlement {
 const KST_MS = 9 * 60 * 60 * 1000;
 
 // Calendar month in Korea time, as UTC instants.
-function monthWindow(now = new Date()): { start: Date; next: Date } {
+export function monthWindow(now = new Date()): { start: Date; next: Date } {
   const k = new Date(now.getTime() + KST_MS);
   const start = new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), 1) - KST_MS);
   const next = new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth() + 1, 1) - KST_MS);

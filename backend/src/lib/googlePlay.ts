@@ -57,16 +57,22 @@ async function accessToken(): Promise<string> {
   return body.access_token;
 }
 
-const BASE = () => `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${config.playPackageName}/purchases`;
+// One service account serves both apps (Cortex, and Mehh's screenshot AI):
+// Play Console grants it to each app separately.
+const BASE = (pkg = config.playPackageName) => `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${pkg}/purchases`;
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE()}${path}`, {
+// Play's answers are a few hundred bytes; anything past this isn't one.
+const MAX_ANSWER_BYTES = 64 * 1024;
+
+async function call<T>(path: string, init?: RequestInit, pkg?: string): Promise<T> {
+  const res = await fetch(`${BASE(pkg)}${path}`, {
     ...init,
     signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
-  if (!res.ok) throw new PlayApiError(res.status, await res.text());
+  if (!res.ok) throw new PlayApiError(res.status, (await res.text()).slice(0, MAX_ANSWER_BYTES));
   const text = await res.text();
+  if (text.length > MAX_ANSWER_BYTES) throw new Error("Play API answer too large");
   return (text ? JSON.parse(text) : {}) as T;
 }
 
@@ -127,6 +133,16 @@ export interface PlayProductPurchase {
 
 export function getProductPurchase(productId: string, token: string): Promise<PlayProductPurchase> {
   return call<PlayProductPurchase>(`/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(token)}`);
+}
+
+// Mehh's lifetime pass, read with Mehh's package name. Mehh acknowledges its
+// own purchases on the phone; the server only reads.
+export function getMehhPurchase(token: string): Promise<PlayProductPurchase> {
+  return call<PlayProductPurchase>(
+    `/products/${encodeURIComponent(config.mehhLifetimeId)}/tokens/${encodeURIComponent(token)}`,
+    undefined,
+    config.mehhPackageName
+  );
 }
 
 export function acknowledgeProduct(productId: string, token: string): Promise<unknown> {

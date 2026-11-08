@@ -5,6 +5,7 @@ import { CATEGORIES } from "./categories.js";
 import { AiBudgetExceeded } from "./aiBudget.js";
 import { noteAiRefused } from "./aiHealth.js";
 import { AiPurpose, logAiCall } from "./aiLog.js";
+import { MEHH_REASONS, MEHH_VERDICTS } from "./mehhRules.js";
 
 // Keys come from the environment only -- never hardcode a key.
 // One client per feature, each with its own API key when set
@@ -713,4 +714,64 @@ export async function composeFromItems(
     .slice(0, 8000)
     .replace(/\[#(\d+)\]/g, (m, n) => (Number(n) >= 1 && Number(n) <= items.length ? `[#${Number(n)}]` : ""));
   return { title: clip(out.title.trim(), 120), body };
+}
+
+// ---- Mehh screenshot AI ----------------------------------------------------
+// Mehh (a photo-cleanup app) sends screenshot thumbnails its on-device check
+// found unclear; one call looks at up to 10 and says, per photo, whether it
+// can go (docs/mehh-screenshot-ai.md). Nothing is stored: the images live in
+// this call's memory only. Mehh's own key when set, so its cost shows apart.
+const mehhClient = clientFor("ANTHROPIC_API_KEY_MEHH");
+const MEHH_MODEL = process.env.MEHH_MODEL ?? MODEL;
+
+const MehhAnswerSchema = z.object({
+  photos: z.array(
+    z.object({
+      index: z.number().int().describe("The photo's number as given (0-based)"),
+      verdict: z.enum(MEHH_VERDICTS),
+      reason: z.enum(MEHH_REASONS),
+    })
+  ),
+});
+
+const MEHH_SYSTEM = `You help "Mehh", a phone photo-cleanup app, decide what to do with screenshots.
+Each image is a small thumbnail of a screenshot the person took. Today's date is given.
+For every photo, answer one verdict and one reason:
+- useless: worth nothing any more -- a one-time code already used (used_code), a delivery
+  or order status (delivery_done), a timetable, weather, route or loading screen
+  (temporary_info), a screen whose content lives in an app anyway (duplicate_info).
+- receipt: a payment receipt or order confirmation (reason receipt). The person may want it
+  for a refund or expenses, so it is never "useless".
+- expired_coupon: a coupon, gift card, voucher or ticket whose printed date is before today
+  (coupon_expired). Only when the date is actually readable.
+- keep: anything still useful -- a coupon or ticket still in date (coupon_valid), a booking or
+  boarding pass for a coming date (ticket_upcoming), an ID-like page, contract, certificate or
+  account details (document), a recipe, how-to, list or note (note), or anything else of value (other).
+- unsure: you can't tell (too small, unreadable, ambiguous).
+When unsure between useless and anything else, choose the other one: a wrong "useless" can lose
+something the person wanted.
+If a person's face or body is visible, answer keep with reason person, and nothing about them.
+Never read out or repeat any text from the images; only the labels are answered.`;
+
+export async function analyzeMehhScreenshots(
+  images: Buffer[],
+  today: string
+): Promise<{ index: number; verdict: string; reason: string }[]> {
+  const content: Anthropic.Messages.ContentBlockParam[] = [];
+  images.forEach((img, i) => {
+    content.push({ type: "text", text: `Photo ${i}:` });
+    content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: img.toString("base64") } });
+  });
+  content.push({ type: "text", text: `Today: ${today}. Answer for all ${images.length} photos.` });
+  const response = await mehhClient.messages.parse({
+    model: MEHH_MODEL,
+    max_tokens: 2048,
+    system: MEHH_SYSTEM,
+    messages: [{ role: "user", content }],
+    output_config: { effort: "low", format: zodOutputFormat(MehhAnswerSchema) },
+  });
+  // No account: Mehh has none, and the purchase isn't a Cortex user.
+  logAiCall("mehh_screenshot", MEHH_MODEL, response.usage);
+  if (!response.parsed_output) throw new Error("Claude response did not parse against the Mehh schema");
+  return response.parsed_output.photos;
 }

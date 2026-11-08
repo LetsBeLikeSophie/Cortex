@@ -46,3 +46,28 @@ export async function compressScreenshot(bytes: Buffer): Promise<Buffer> {
     throw new ImageRejectedError(400, "unreadable image");
   }
 }
+
+// Mehh's screenshot thumbnails (routes/mehh.ts). Mehh already sends a small
+// JPEG; this re-encodes it anyway so whatever metadata came along (EXIF,
+// location, the phone model) is gone before Claude sees it -- sharp writes
+// none unless asked -- and so an oversized one is cut down to what's billed.
+// 768 on the long edge keeps receipt and coupon text readable at ~360 image
+// tokens a photo.
+export const MEHH_THUMB_MAX_EDGE = 768;
+export const MEHH_THUMB_MAX_BYTES = 300 * 1024;
+const MEHH_THUMB_MAX_PIXELS = 4_000_000;
+
+export async function prepareMehhThumbnail(bytes: Buffer): Promise<Buffer> {
+  if (bytes.length > MEHH_THUMB_MAX_BYTES) throw new ImageRejectedError(413, "image too large");
+  try {
+    return await sharp(bytes, { limitInputPixels: MEHH_THUMB_MAX_PIXELS })
+      .rotate()
+      .resize({ width: MEHH_THUMB_MAX_EDGE, height: MEHH_THUMB_MAX_EDGE, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 75 })
+      .toBuffer();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/pixel limit/i.test(message)) throw new ImageRejectedError(413, "image too large");
+    throw new ImageRejectedError(400, "unreadable image");
+  }
+}

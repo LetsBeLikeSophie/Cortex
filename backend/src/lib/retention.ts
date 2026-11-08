@@ -86,6 +86,12 @@ async function pruneAiUsage(): Promise<void> {
   const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString();
   const { error } = await getClient().from("ai_usage").delete().lt("created_at", lastMonthStart);
   if (error) throw new Error(`ai_usage prune failed: ${error.message}`);
+  // Mehh's counts likewise only matter for this month's cap. Its table exists
+  // only once Mehh's AI is switched on.
+  if (config.mehhAiEnabled) {
+    const { error: mehhError } = await getClient().from("mehh_ai_usage").delete().lt("created_at", lastMonthStart);
+    if (mehhError) throw new Error(`mehh_ai_usage prune failed: ${mehhError.message}`);
+  }
 }
 
 async function pruneOldRecords(): Promise<void> {

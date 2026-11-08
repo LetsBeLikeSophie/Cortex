@@ -7,6 +7,8 @@ import { itemsRoutes } from "./routes/items.js";
 import { authRoutes } from "./routes/auth.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { billingRoutes } from "./routes/billing.js";
+import { mehhRoutes } from "./routes/mehh.js";
+import { mehhDeps } from "./lib/mehhDeps.js";
 import { resumePendingClassifications } from "./lib/pipeline.js";
 import { startRetentionJob } from "./lib/retention.js";
 import { aiRefusing } from "./lib/aiHealth.js";
@@ -94,6 +96,9 @@ await app.register(itemsRoutes);
 await app.register(authRoutes);
 await app.register(webhookRoutes);
 await app.register(billingRoutes);
+// Mehh's screenshot AI stays off until its table exists and both apps'
+// privacy policies say so (docs/mehh-screenshot-ai.md): MEHH_AI_ENABLED=1.
+if (config.mehhAiEnabled) await app.register(mehhRoutes(mehhDeps));
 
 app.listen({ port: config.port, host: "0.0.0.0" })
   .then(() => {

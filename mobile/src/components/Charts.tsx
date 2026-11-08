@@ -1,77 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, G } from 'react-native-svg';
 import { Theme, MONO, BODY_KR } from '../theme/themes';
 import { strings } from '../i18n';
 
-// Every chart here is monochrome-on-purpose: each theme defines exactly one
-// accent color, so "categorical" color (donut segments, bar shades) comes
-// from varying that single accent's opacity rather than introducing an
-// unrelated rainbow palette that would fight the app's one-accent identity.
-const SHADE_ALPHA = ['ff', 'b8', '8a', '63', '44', '2a'];
-
-function shadeOf(color: string, index: number): string {
-  return color + (SHADE_ALPHA[index] ?? SHADE_ALPHA[SHADE_ALPHA.length - 1]);
-}
-
-export function DonutChart({
-  segments,
-  theme,
-  size = 148,
-  strokeWidth = 20,
-}: {
-  segments: { label: string; value: number }[];
-  theme: Theme;
-  size?: number;
-  strokeWidth?: number;
-}) {
-  const total = segments.reduce((sum, s) => sum + s.value, 0);
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  let cumulative = 0;
-
-  return (
-    <View style={styles.donutRow}>
-      <Svg width={size} height={size}>
-        <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-          <Circle cx={size / 2} cy={size / 2} r={radius} stroke={theme.line} strokeWidth={strokeWidth} fill="none" />
-          {total > 0 &&
-            segments.map((s, i) => {
-              if (s.value === 0) return null;
-              const fraction = s.value / total;
-              const dash = fraction * circumference;
-              const offset = -cumulative * circumference;
-              cumulative += fraction;
-              return (
-                <Circle
-                  key={s.label}
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius}
-                  stroke={shadeOf(theme.accent, i)}
-                  strokeWidth={strokeWidth}
-                  strokeDasharray={`${dash} ${circumference - dash}`}
-                  strokeDashoffset={offset}
-                  fill="none"
-                  strokeLinecap="butt"
-                />
-              );
-            })}
-        </G>
-      </Svg>
-      <View style={styles.legend}>
-        {segments.map((s, i) => (
-          <View key={s.label} style={styles.legendRow}>
-            <View style={[styles.legendDot, { backgroundColor: shadeOf(theme.accent, i) }]} />
-            <Text style={[styles.legendLabel, { color: theme.ink }]}>{s.label}</Text>
-            <Text style={[styles.legendValue, { color: theme.sub }]}>{s.value}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
+// Every chart here is monochrome-on-purpose: each theme has exactly one
+// accent color, and the charts use only that.
 export function BarChart({
   data,
   theme,
@@ -181,12 +114,6 @@ export function Heatmap({
 }
 
 const styles = StyleSheet.create({
-  donutRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  legend: { flex: 1, gap: 9 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendDot: { width: 9, height: 9, borderRadius: 4.5 },
-  legendLabel: { flex: 1, fontSize: 13, fontFamily: BODY_KR },
-  legendValue: { fontSize: 12.5, fontFamily: MONO },
 
   barRow: { flexDirection: 'row', alignItems: 'flex-end', height: 140, gap: 10 },
   barCol: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },

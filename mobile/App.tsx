@@ -12,7 +12,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif/400Regular';
 import { SchibstedGrotesk_600SemiBold } from '@expo-google-fonts/schibsted-grotesk/600SemiBold';
-import { SchibstedGrotesk_700Bold } from '@expo-google-fonts/schibsted-grotesk/700Bold';
 import { IBMPlexSansKR_400Regular } from '@expo-google-fonts/ibm-plex-sans-kr/400Regular';
 import { IBMPlexSansKR_500Medium } from '@expo-google-fonts/ibm-plex-sans-kr/500Medium';
 import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono/400Regular';
@@ -68,7 +67,6 @@ export default function App() {
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
     SchibstedGrotesk_600SemiBold,
-    SchibstedGrotesk_700Bold,
     ...(CJK_SYSTEM_FONT ? null : { IBMPlexSansKR_400Regular, IBMPlexSansKR_500Medium }),
     IBMPlexMono_400Regular,
   });

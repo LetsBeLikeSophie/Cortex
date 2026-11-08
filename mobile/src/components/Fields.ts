@@ -22,24 +22,3 @@ export function fieldStyle(theme: Theme): ViewStyle {
       return { ...bottomEdge(OUTLINE, theme.line), borderRadius: 0, paddingHorizontal: 0, backgroundColor: 'transparent' };
   }
 }
-
-// Small secondary button inside a sheet.
-export function pickStyle(theme: Theme): ViewStyle {
-  switch (conceptOf(theme)) {
-    case 'line':
-      // Matches the line theme's buttons: thin ink-outlined pill.
-      return { ...allEdges(OUTLINE, theme.ink), borderRadius: theme.pickRadius, backgroundColor: 'transparent' };
-    case 'border':
-      return { ...allEdges(OUTLINE, theme.line), borderRadius: theme.pickRadius, backgroundColor: 'transparent' };
-    case 'layer':
-      return { ...layerEdge(theme), borderRadius: theme.pickRadius, backgroundColor: theme.bg };
-    case 'vintage':
-      return { ...allEdges(OUTLINE, theme.ink), borderRadius: theme.pickRadius, backgroundColor: theme.bg };
-  }
-}
-
-export function pickTextStyle(theme: Theme): TextStyle {
-  return conceptOf(theme) === 'vintage'
-    ? { color: theme.ink, fontFamily: MONO, fontSize: 12.5, letterSpacing: 0.4 }
-    : { color: theme.ink, fontFamily: BODY_KR, fontSize: 13.5 };
-}

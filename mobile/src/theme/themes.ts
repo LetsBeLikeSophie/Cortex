@@ -97,7 +97,6 @@ export type Theme = Omit<Layout, 'label' | 'note' | 'signature'> & Omit<Palette,
 
 export const SERIF = 'InstrumentSerif_400Regular';
 export const GROTESK_SEMIBOLD = 'SchibstedGrotesk_600SemiBold';
-export const GROTESK_BOLD = 'SchibstedGrotesk_700Bold';
 export const MONO = 'IBMPlexMono_400Regular';
 // IBM Plex Sans KR has no kana and few Chinese characters, so in Japanese
 // and Chinese a word came out in two fonts at once. There the body text uses

@@ -52,9 +52,9 @@ import {
 import { canLockAnotherTag, FREE_LOCKED_TAGS } from "../lib/tagLock.js";
 import { withUserLock } from "../lib/userLock.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
-
-// The privacy policy revision of 2026-11-07 takes effect 2026-11-14 (KST).
-const APP_ERRORS_FROM = Date.parse("2026-11-14T00:00:00+09:00");
+import { meRoutes } from "./me.js";
+import { tagRoutes } from "./tags.js";
+import { quotaHit } from "./quota.js";
 
 // Edits from the detail screen. Empty string clears the field (stored null).
 // raw_text only for text items -- a screenshot's raw_text is the hidden
@@ -66,16 +66,8 @@ const sorting = new Set<string>();
 // One sentence search per person at a time, so parallel requests can't all
 // pass the "uses left" check before any is counted.
 const asking = new Set<string>();
-// 모아서 만들기 and 태그 정리하기 (suggest): one run per person at a time.
+// 모아서 만들기: one run per person at a time.
 const composing = new Set<string>();
-const cleaning = new Set<string>();
-
-// This month's uses ran out: counted for the funnel, answered with 402 (the
-// app opens Pro from it).
-async function quotaHit(reply: FastifyReply, userId: string, ent: Entitlement, kind: UsageKind) {
-  await logAnalyticsEvent({ eventType: "quota_hit", userId, detail: kind });
-  return reply.code(402).send({ error: "quota", kind, limit: ent[kind].limit, tier: ent.tier, resetsAt: ent.resetsAt });
-}
 
 const UpdateItemSchema = z.object({
   title: z.string().max(200).optional(),
@@ -151,19 +143,6 @@ function utcOffsetOf(req: FastifyRequest): number {
 function localToday(utcOffsetMinutes: number): string {
   return new Date(Date.now() + utcOffsetMinutes * 60 * 1000).toISOString().slice(0, 10);
 }
-
-// What the app reports on the way to Pro; anything else is refused, so this
-// can't turn into a place to send free text.
-const AppErrorSchema = z.object({
-  appVersion: z.string().max(32),
-  name: z.string().max(200),
-  stack: z.string().max(16_000),
-});
-
-const AppEventSchema = z.object({
-  type: z.enum(["paywall_view", "purchase_started"]),
-  detail: z.enum(["default", "classify", "search", "compose", "tag_cleanup", "trial_ending", "trial_ended", "monthly", "yearly", "lifetime"]),
-});
 
 const AddTagSchema = z.object({
   tag: z.string().min(1).max(30),
@@ -338,46 +317,6 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.send({ interpretation, ...result, items: result.items.filter((it) => !it.locked) });
     }
   );
-
-  // Plan + this month's AI usage, for the app's quota/미분류함 UI.
-  app.get("/me/plan", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    // The app sends its device language here; AI output follows it.
-    if (isPlayBillingConfigured()) await resyncLapsedPurchases(userId).catch((err) => req.log.error(err));
-    await syncLang(userId, normalizeLang(req.headers["x-cortex-lang"])).catch((err) => req.log.warn(err));
-    return reply.send(await withPlanDetails(userId));
-  });
-
-  app.post("/me/event", async (req, reply) => {
-    const parsed = AppEventSchema.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
-    const userId = await resolveUserId(req);
-    await logAnalyticsEvent({ eventType: parsed.data.type, userId, detail: parsed.data.detail });
-    return reply.code(204).send();
-  });
-
-  // Where the app broke (decision E1). Signed in so it can't be spammed from
-  // outside, but no account is stored.
-  app.post("/me/error", { config: { rateLimit: {} } }, async (req, reply) => {
-    const parsed = AppErrorSchema.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
-    await resolveUserId(req);
-    // Kept only from the day the privacy policy that lists it takes effect.
-    if (Date.now() < APP_ERRORS_FROM) return reply.code(204).send();
-    const stack = onlyStackFrames(parsed.data.stack);
-    if (stack) await logAppError({ appVersion: parsed.data.appVersion, name: safeErrorName(parsed.data.name), stack }).catch((err) => req.log.error(err));
-    return reply.code(204).send();
-  });
-
-  // The answer to "send saved content to the AI abroad?" -- recorded with
-  // time and notice version; changeable any time from the profile.
-  app.post("/me/ai-consent", async (req, reply) => {
-    const parsed = z.object({ agree: z.boolean() }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
-    const userId = await resolveUserId(req);
-    await setAiConsent(userId, parsed.data.agree);
-    return reply.send(await getEntitlement(userId));
-  });
 
   // "AI로 정리": classify as much of the 미분류함 backlog as the quota
   // allows. Calls Claude, so rate limited like POST /items.
@@ -617,85 +556,9 @@ export async function itemsRoutes(app: FastifyInstance) {
     }
   });
 
-  // Tag lock: which tags are locked, and how many the plan allows (null: no
-  // limit). The PIN stays on the device, like the memo lock.
-  app.get("/tags/locked", async (req, reply) => {
-    const userId = await resolveUserId(req);
-    const [tags, ent] = await Promise.all([listLockedTags(userId), getEntitlement(userId)]);
-    return reply.send({ tags, limit: ent.tier === "free" ? FREE_LOCKED_TAGS : null });
-  });
-
-  // Locking a second tag on free answers 403 tag_lock_limit; the app offers
-  // Pro for it (TagLockButton).
-  app.post("/tags/lock", async (req, reply) => {
-    const parsed = z.object({ tag: z.string().trim().min(1).max(100), locked: z.boolean() }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
-    const userId = await resolveUserId(req);
-    const { tag, locked } = parsed.data;
-    if (locked) {
-      const [current, ent] = await Promise.all([listLockedTags(userId), getEntitlement(userId)]);
-      if (!current.includes(tag) && !canLockAnotherTag(ent.tier, current.length)) {
-        return reply.code(403).send({ error: "tag_lock_limit", limit: FREE_LOCKED_TAGS });
-      }
-      await lockTag(userId, tag);
-    } else {
-      await unlockTag(userId, tag);
-    }
-    return reply.send({ ok: true, tags: await listLockedTags(userId) });
-  });
-
   app.post("/items/unlock-all", async (req, reply) => {
     const userId = await resolveUserId(req);
     return reply.send({ ok: true, changed: await unlockAllItems(userId) });
-  });
-
-  // 태그 정리하기, step 1: the AI proposes groups from tag names only.
-  // Metered; nothing changes until step 2.
-  app.post("/tags/cleanup/suggest", { config: { rateLimit: {} } }, async (req, reply) => {
-    const userId = await resolveUserId(req);
-    await requireAiConsent(userId);
-    const run = await withUserLock(cleaning, userId, async () => {
-      const ent = await getEntitlement(userId);
-      if (remaining(ent, "tag_cleanup") === 0) {
-        return quotaHit(reply, userId, ent, "tag_cleanup");
-      }
-      const tags = await listTagCounts(userId);
-      if (tags.length < 2) return reply.send({ groups: [], left: remaining(ent, "tag_cleanup") });
-      await dailyAiBudget.assertOpen();
-      const reservation = await reserveUsage(userId, "tag_cleanup");
-      try {
-        const groups = await suggestTagMerges(tags.slice(0, 400), userId, normalizeLang(req.headers["x-cortex-lang"]) ?? ent.lang ?? DEFAULT_LANG);
-        // Nothing to tidy -> the use is handed back.
-        if (groups.length === 0) await refundUsage(reservation).catch(() => {});
-        const counts = new Map(tags.map((t) => [t.name, t.count]));
-        const sizes = groups.length ? await tagGroupCounts(userId, groups) : [];
-        return reply.send({
-          groups: groups.map((g, i) => ({
-            ...g,
-            counts: Object.fromEntries([g.keep, ...g.merge].map((n) => [n, counts.get(n) ?? 0])),
-            after: sizes[i].after,
-            changes: sizes[i].changes,
-          })),
-          left: remaining(ent, "tag_cleanup") - (groups.length === 0 ? 0 : 1),
-        });
-      } catch (err) {
-        await refundUsage(reservation).catch(() => {});
-        throw err;
-      }
-    });
-    if (run.busy) return reply.code(409).send({ error: "cleanup_running" });
-    return run.value;
-  });
-
-  // 태그 정리하기, step 2: merge the groups the person ticked (free).
-  app.post("/tags/cleanup/apply", async (req, reply) => {
-    const parsed = z
-      .object({ groups: z.array(z.object({ keep: z.string().trim().min(1).max(30), merge: z.array(z.string().trim().min(1).max(60)).min(1).max(50) })).min(1).max(20) })
-      .safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: "invalid body" });
-    const userId = await resolveUserId(req);
-    const changed = await mergeTags(userId, parsed.data.groups);
-    return reply.send({ ok: true, changed });
   });
 
   // "AI 결과 신고": flags the AI-written title/memo/tags of one item.
@@ -781,4 +644,9 @@ export async function itemsRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : "update failed" });
     }
   });
+
+  // /me/* and /tags/* live in their own files; registered here so they
+  // share this plugin's error handler.
+  await meRoutes(app);
+  await tagRoutes(app);
 }

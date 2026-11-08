@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   finishTransaction as finishPurchase,
@@ -30,8 +30,10 @@ const S = strings({
     noSub: '구독 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
     nothingToRestore: '이 Google 계정으로 산 Pro가 없어요.',
     restored: 'Pro를 복원했어요',
-    toYearly: '다음 결제일부터 연간으로 바꾸기',
-    toYearlyDone: '다음 결제일부터 연간으로 바뀌어요',
+    changeTo: (plan: string) => `다음 결제일부터 ${plan}으로 바꾸기`,
+    changeDone: (plan: string) => `다음 결제일부터 ${plan}으로 바뀌어요`,
+    toLifetime: '평생 이용권으로 바꾸기',
+    lifetimeAfterSub: '평생 이용권이 시작됐어요 · 구독은 Play 스토어에서 해지해 주세요',
     start: 'Pro 시작하기',
     connecting: '스토어 연결 중...',
     restore: '구매 복원',
@@ -49,8 +51,10 @@ const S = strings({
     noSub: "Couldn't load the subscription. Please try again shortly.",
     nothingToRestore: 'No Pro purchase found for this Google account.',
     restored: 'Pro restored',
-    toYearly: 'Switch to yearly at renewal',
-    toYearlyDone: 'Switches to yearly at the next renewal',
+    changeTo: (plan: string) => `Switch to ${plan.toLowerCase()} at renewal`,
+    changeDone: (plan: string) => `Switches to ${plan.toLowerCase()} at the next renewal`,
+    toLifetime: 'Switch to lifetime',
+    lifetimeAfterSub: 'Lifetime is on · cancel your subscription in the Play Store',
     start: 'Start Pro',
     connecting: 'Connecting to store...',
     restore: 'Restore purchase',
@@ -68,8 +72,10 @@ const S = strings({
     noSub: 'サブスクリプション情報を読み込めませんでした。しばらくしてからもう一度お試しください。',
     nothingToRestore: 'このGoogleアカウントで購入したProはありません。',
     restored: 'Proを復元しました',
-    toYearly: '次回の更新から年額に切り替え',
-    toYearlyDone: '次回の更新から年額に切り替わります',
+    changeTo: (plan: string) => `次回の更新から${plan}に切り替え`,
+    changeDone: (plan: string) => `次回の更新から${plan}に切り替わります`,
+    toLifetime: '買い切りに切り替え',
+    lifetimeAfterSub: '買い切りが始まりました · サブスクはPlayストアで解約してください',
     start: 'Proを始める',
     connecting: 'ストアに接続中...',
     restore: '購入を復元',
@@ -87,8 +93,10 @@ const S = strings({
     noSub: '无法加载订阅信息，请稍后再试。',
     nothingToRestore: '这个 Google 账号没有购买过 Pro。',
     restored: '已恢复 Pro',
-    toYearly: '从下次续费起改为年付',
-    toYearlyDone: '下次续费起将改为年付',
+    changeTo: (plan: string) => `从下次续费起改为${plan}`,
+    changeDone: (plan: string) => `下次续费起将改为${plan}`,
+    toLifetime: '改为终身',
+    lifetimeAfterSub: '终身版已开通 · 请在 Play 商店取消订阅',
     start: '开通 Pro',
     connecting: '正在连接商店...',
     restore: '恢复购买',
@@ -106,8 +114,10 @@ const S = strings({
     noSub: '無法載入訂閱資訊，請稍後再試。',
     nothingToRestore: '這個 Google 帳號沒有購買過 Pro。',
     restored: '已還原 Pro',
-    toYearly: '從下次續費起改為年繳',
-    toYearlyDone: '下次續費起將改為年繳',
+    changeTo: (plan: string) => `從下次續費起改為${plan}`,
+    changeDone: (plan: string) => `下次續費起將改為${plan}`,
+    toLifetime: '改為終身',
+    lifetimeAfterSub: '終身版已開通 · 請在 Play 商店取消訂閱',
     start: '開通 Pro',
     connecting: '正在連線商店...',
     restore: '還原購買',
@@ -199,6 +209,8 @@ export function AndroidPurchase({
   theme,
   offers,
   selected,
+  current = null,
+  planLabels,
   onPrices,
   onPlan,
   onClose,
@@ -206,12 +218,18 @@ export function AndroidPurchase({
   theme: Theme;
   offers: Offers;
   selected: PlanOption;
+  // On Pro already: the plan in use (null: not on Pro, or unknown). Picking
+  // another one changes it instead of buying a second subscription.
+  current?: PlanOption | null;
+  planLabels: Record<PlanOption, string>;
   onPrices: (prices: StorePrices) => void;
   onPlan: (plan: Plan) => void;
   onClose: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // The plan change under way, so its success says what changed.
+  const changing = useRef<PlanOption | null>(null);
   // Whose purchase this is, for Play to hand back: the server can then turn Pro
   // on from Google's notice even if this app never opens again.
   const accountId = useAuth().session?.user.id;
@@ -244,8 +262,16 @@ export function AndroidPurchase({
   const { connected, subscriptions, products, fetchProducts, requestPurchase, finishTransaction, getAvailablePurchases, availablePurchases } =
     useIAP({
       onPurchaseSuccess: (purchase) => {
+        const change = changing.current;
+        changing.current = null;
         confirmWithServer(purchase)
-          .then((plan) => announcePro(plan, S.started))
+          .then((plan) =>
+            change === 'lifetime'
+              ? showToast(S.lifetimeAfterSub)
+              : change
+                ? showToast(S.changeDone(planLabels[change]))
+                : announcePro(plan, S.started)
+          )
           .then(() => onClose())
           .catch((err) => setError(friendlyError(err)))
           .finally(() => setBusy(false));
@@ -260,6 +286,9 @@ export function AndroidPurchase({
     if (!connected) return;
     fetchProducts({ skus: [offers.subscriptionId], type: 'subs' }).catch(() => {});
     fetchProducts({ skus: [offers.lifetimeId], type: 'in-app' }).catch(() => {});
+    // On Pro: the subscription in use, whose token a plan change replaces.
+    if (current) getAvailablePurchases().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, offers.subscriptionId, offers.lifetimeId, fetchProducts]);
 
   const sub = subscriptions.find((s) => s.id === offers.subscriptionId);
@@ -277,6 +306,44 @@ export function AndroidPurchase({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sub, lifetime]);
+
+  // Monthly <-> yearly from the next renewal (decision B2): Play's deferred
+  // replacement, so nothing is charged now, the paid period runs out first,
+  // and Play bills the new plan at renewal. Lifetime is a separate one-time
+  // purchase; the subscription is then cancelled in Play.
+  const ownedSub = availablePurchases.find((p) => p.productId === offers.subscriptionId);
+  const changePlan = async () => {
+    if (selected === 'lifetime') {
+      changing.current = 'lifetime';
+      return buy();
+    }
+    const offer = offerFor(selected);
+    if (!offer?.offerTokenAndroid || !ownedSub?.purchaseToken) {
+      setError(S.noSub);
+      return;
+    }
+    setError('');
+    setBusy(true);
+    changing.current = selected;
+    try {
+      await requestPurchase({
+        type: 'subs',
+        request: {
+          google: {
+            skus: [offers.subscriptionId],
+            obfuscatedAccountId: accountId,
+            purchaseToken: ownedSub.purchaseToken,
+            subscriptionOffers: [{ sku: offers.subscriptionId, offerToken: offer.offerTokenAndroid }],
+            subscriptionProductReplacementParams: { oldProductId: offers.subscriptionId, replacementMode: 'deferred' },
+          },
+        },
+      });
+    } catch (err) {
+      changing.current = null;
+      setBusy(false);
+      if (!isUserCancelledError(err)) setError(err instanceof Error ? err.message : friendlyError(err));
+    }
+  };
 
   const buy = async () => {
     setError('');
@@ -333,9 +400,25 @@ export function AndroidPurchase({
   return (
     <View>
       {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
-      <ButtonRow theme={theme} style={styles.buttons}>
-        <SolidButton label={connected ? S.start : S.connecting} theme={theme} onPress={buy} loading={busy} disabled={!connected} />
-      </ButtonRow>
+      {current ? (
+        // On Pro: a button only once another plan is picked.
+        selected !== current && (
+          <ButtonRow theme={theme} style={styles.buttons}>
+            <SolidButton
+              label={!connected ? S.connecting : selected === 'lifetime' ? S.toLifetime : S.changeTo(planLabels[selected])}
+              theme={theme}
+              onPress={changePlan}
+              loading={busy}
+              disabled={!connected}
+            />
+          </ButtonRow>
+        )
+      ) : (
+        <ButtonRow theme={theme} style={styles.buttons}>
+          <SolidButton label={connected ? S.start : S.connecting} theme={theme} onPress={buy} loading={busy} disabled={!connected} />
+        </ButtonRow>
+      )}
+      {!current && (
       <Pressable onPress={restore} disabled={restoring} hitSlop={8} style={styles.restore}>
         {restoring ? (
           <ActivityIndicator size="small" color={theme.sub} />
@@ -343,6 +426,7 @@ export function AndroidPurchase({
           <Text style={[styles.restoreText, { color: theme.sub }]}>{S.restore}</Text>
         )}
       </Pressable>
+      )}
       <Text style={[styles.fine, { color: theme.sub }]}>
         {S.fine}{' '}
         <Text style={styles.fineLink} onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}>
@@ -415,80 +499,6 @@ export function RestorePurchase({ theme, offers, onPlan, onClose }: { theme: The
       <Pressable onPress={restore} disabled={restoring} hitSlop={8} style={styles.restore}>
         {restoring ? <ActivityIndicator size="small" color={theme.sub} /> : <Text style={[styles.restoreText, { color: theme.sub }]}>{S.restore}</Text>}
       </Pressable>
-    </View>
-  );
-}
-
-// Monthly Pro -> yearly, from the next renewal (decision B2): Play's deferred
-// replacement, so nothing is charged now and the 7-day refund promise isn't
-// touched. Play's own sheet confirms; the new token goes to the server like
-// any purchase.
-export function SwitchToYearly({ theme, offers, onPlan }: { theme: Theme; offers: Offers; onPlan: (plan: Plan) => void }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const accountId = useAuth().session?.user.id;
-  const { connected, subscriptions, fetchProducts, requestPurchase, finishTransaction, getAvailablePurchases, availablePurchases } = useIAP({
-    onPurchaseSuccess: (purchase) => {
-      const token = purchase.purchaseToken;
-      if (!token) return;
-      verifyWithRetry(purchase.productId, token)
-        .then(async (plan) => {
-          await finishTransaction({ purchase, isConsumable: false }).catch(() => {});
-          onPlan(plan);
-          showToast(S.toYearlyDone);
-        })
-        .catch((err) => setError(friendlyError(err)))
-        .finally(() => setBusy(false));
-    },
-    onPurchaseError: (err) => {
-      setBusy(false);
-      if (!isUserCancelledError(err)) setError(err.message || S.purchaseFailed);
-    },
-  });
-
-  useEffect(() => {
-    if (!connected) return;
-    fetchProducts({ skus: [offers.subscriptionId], type: 'subs' }).catch(() => {});
-    getAvailablePurchases().catch(() => {});
-  }, [connected, offers.subscriptionId, fetchProducts, getAvailablePurchases]);
-
-  const sub = subscriptions.find((s) => s.id === offers.subscriptionId);
-  const yearly = baseOffer(sub, 'yearly');
-  const current = availablePurchases.find((p) => p.productId === offers.subscriptionId);
-
-  const switchPlan = async () => {
-    setError('');
-    if (!yearly?.offerTokenAndroid || !current?.purchaseToken) {
-      setError(S.noSub);
-      return;
-    }
-    setBusy(true);
-    try {
-      await requestPurchase({
-        type: 'subs',
-        request: {
-          google: {
-            skus: [offers.subscriptionId],
-            obfuscatedAccountId: accountId,
-            purchaseToken: current.purchaseToken,
-            subscriptionOffers: [{ sku: offers.subscriptionId, offerToken: yearly.offerTokenAndroid }],
-            subscriptionProductReplacementParams: { oldProductId: offers.subscriptionId, replacementMode: 'deferred' },
-          },
-        },
-      });
-    } catch (err) {
-      setBusy(false);
-      if (!isUserCancelledError(err)) setError(err instanceof Error ? err.message : friendlyError(err));
-    }
-  };
-
-  if (!connected || !yearly || !current) return null;
-  return (
-    <View>
-      <Pressable onPress={switchPlan} disabled={busy} hitSlop={6} style={styles.restore}>
-        {busy ? <ActivityIndicator size="small" color={theme.sub} /> : <Text style={[styles.restoreText, { color: theme.ink }]}>{S.toYearly}</Text>}
-      </Pressable>
-      {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
     </View>
   );
 }

@@ -27,8 +27,6 @@ import { S } from './PaywallScreen.strings';
 // never loads it (same pattern as native/mediaLibrary).
 const AndroidPurchase: typeof import('../billing/AndroidPurchase').AndroidPurchase | null =
   Platform.OS === 'android' ? require('../billing/AndroidPurchase').AndroidPurchase : null;
-const SwitchToYearly: typeof import('../billing/AndroidPurchase').SwitchToYearly | null =
-  Platform.OS === 'android' ? require('../billing/AndroidPurchase').SwitchToYearly : null;
 const RestorePurchase: typeof import('../billing/AndroidPurchase').RestorePurchase | null =
   Platform.OS === 'android' ? require('../billing/AndroidPurchase').RestorePurchase : null;
 
@@ -125,6 +123,8 @@ export default function PaywallScreen() {
     ...(lifetimeLeft > 0 ? [{ key: 'lifetime' as const, label: S.lifetime, note: S.lifetimeNote(lifetimeLeft) }] : []),
   ];
   const isPro = plan?.tier === 'pro';
+  // Read at render: the strings follow the language picked in the app.
+  const PLAN_LABELS: Record<PlanOption, string> = { monthly: S.monthly, yearly: S.yearly, lifetime: S.lifetime };
   // On Pro the plans stay on screen, read-only, with the one in use marked
   // (Sophie 11-08: the screen used to drop to the benefits alone).
   const subPlan = sub && (sub.status === 'renewing' || sub.status === 'ending') ? sub.plan : null;
@@ -135,12 +135,17 @@ export default function PaywallScreen() {
       : subPlan === 'monthly' || subPlan === 'yearly'
         ? subPlan
         : null;
-  const shownOptions = isPro ? options.filter((o) => o.key !== 'lifetime' || currentPlan === 'lifetime') : options;
-  if (currentPlan === 'lifetime' && !shownOptions.some((o) => o.key === 'lifetime')) {
-    shownOptions.push({ key: 'lifetime', label: S.lifetime, note: '' });
-  }
   // A held payment is fixed in Play, not by buying again.
   const canBuy = Platform.OS === 'android' && !!offers?.enabled && !isPro && !paymentIssue;
+  // On a monthly or yearly plan: the same plans, the one in use selected, and
+  // picking another changes it (Sophie 11-08). Lifetime has nothing to change.
+  const canChange = Platform.OS === 'android' && !!offers?.enabled && !paymentIssue && (currentPlan === 'monthly' || currentPlan === 'yearly');
+  const pickable = !isPro || canChange;
+  const shownOptions = currentPlan === 'lifetime' ? [{ key: 'lifetime' as const, label: S.lifetime, note: '' }] : options;
+  // Start on the plan in use once it's known.
+  useEffect(() => {
+    if (currentPlan) setSelected(currentPlan);
+  }, [currentPlan]);
 
   return (
     <ModalSheet theme={theme} onClose={close} bordered={false} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
@@ -168,25 +173,25 @@ export default function PaywallScreen() {
         {plan !== null && (!isPro || currentPlan !== null) && (
           <View style={styles.options}>
             {shownOptions.map((o) => {
-              const active = isPro ? currentPlan === o.key : selected === o.key;
+              const active = pickable ? selected === o.key : currentPlan === o.key;
               return (
                 <Pressable
                   key={o.key}
-                  onPress={isPro ? undefined : () => setSelected(o.key)}
-                  disabled={isPro}
+                  onPress={pickable ? () => setSelected(o.key) : undefined}
+                  disabled={!pickable}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: active, disabled: isPro }}
+                  accessibilityState={{ selected: active, disabled: !pickable }}
                   style={[styles.option, { backgroundColor: theme.surface }, frameStyle(theme), active && allEdges(2, theme.ink), { borderRadius: theme.cardRadius }]}
                 >
                   <View style={styles.optionHead}>
                     <Text style={[styles.optionLabel, { color: theme.ink }]}>
                       {o.label}
-                      {isPro && active ? <Text style={[styles.optionNote, { color: theme.sub }]}>{`  ${S.currentPlan}`}</Text> : null}
+                      {o.key === currentPlan ? <Text style={[styles.optionNote, { color: theme.sub }]}>{`  ${S.currentPlan}`}</Text> : null}
                     </Text>
-                    {/* On Pro the store isn't asked for prices; a fallback in won would be wrong abroad. */}
-                    {!isPro && <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? (S.fallback as Record<PlanOption, string>)[o.key]}</Text>}
+                    {/* Lifetime Pro doesn't ask the store for prices; a fallback in won would be wrong abroad. */}
+                    {pickable && <Text style={[styles.optionPrice, { color: theme.ink }]}>{prices[o.key] ?? (S.fallback as Record<PlanOption, string>)[o.key]}</Text>}
                   </View>
-                  {o.note !== '' && !isPro && <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>}
+                  {o.note !== '' && pickable && <Text style={[styles.optionNote, { color: theme.sub }]}>{o.note}</Text>}
                 </Pressable>
               );
             })}
@@ -203,11 +208,11 @@ export default function PaywallScreen() {
           <SolidButton label={S.start} theme={theme} onPress={() => {}} loading />
         </ButtonRow>
       ) : canBuy && offers && AndroidPurchase ? (
-        <AndroidPurchase theme={theme} offers={offers} selected={selected} onPrices={setPrices} onPlan={setPlan} onClose={close} />
+        <AndroidPurchase theme={theme} offers={offers} selected={selected} planLabels={PLAN_LABELS} onPrices={setPrices} onPlan={setPlan} onClose={close} />
       ) : (
         <>
-          {sub?.status === 'renewing' && sub.plan === 'monthly' && offers?.enabled && SwitchToYearly && (
-            <SwitchToYearly theme={theme} offers={offers} onPlan={setPlan} />
+          {canChange && offers && AndroidPurchase && (
+            <AndroidPurchase theme={theme} offers={offers} selected={selected} current={currentPlan} planLabels={PLAN_LABELS} onPrices={setPrices} onPlan={setPlan} onClose={close} />
           )}
           {isPro || paymentIssue ? (
             // Where a subscription is changed, cancelled or its payment fixed: Play, not here.

@@ -307,9 +307,12 @@ export function AndroidPurchase({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sub, lifetime]);
 
-  // Monthly <-> yearly from the next renewal (decision B2): Play's deferred
-  // replacement, so nothing is charged now, the paid period runs out first,
-  // and Play bills the new plan at renewal. Lifetime is a separate one-time
+  // Monthly <-> yearly with nothing charged now (decision B2): Play bills the
+  // new plan from the next renewal date. Same product, other base plan, so Play
+  // only takes 'without-proration' or 'charge-full-price' here -- 'deferred'
+  // fails with "Invalid arguments provided to the API" (Sophie 11-11), and
+  // expo-iap's legacy path is fixed to charge-full-price. The plan switches
+  // now, the price at the next renewal. Lifetime is a separate one-time
   // purchase; the subscription is then cancelled in Play.
   const ownedSub = availablePurchases.find((p) => p.productId === offers.subscriptionId);
   const changePlan = async () => {
@@ -334,7 +337,7 @@ export function AndroidPurchase({
             obfuscatedAccountId: accountId,
             purchaseToken: ownedSub.purchaseToken,
             subscriptionOffers: [{ sku: offers.subscriptionId, offerToken: offer.offerTokenAndroid }],
-            subscriptionProductReplacementParams: { oldProductId: offers.subscriptionId, replacementMode: 'deferred' },
+            subscriptionProductReplacementParams: { oldProductId: offers.subscriptionId, replacementMode: 'without-proration' },
           },
         },
       });

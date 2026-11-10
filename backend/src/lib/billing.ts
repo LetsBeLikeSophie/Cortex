@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { getClient, logAnalyticsEvent } from "./supabase.js";
 import { getEntitlement } from "./plans.js";
-import { buyerAccount, needsResync, nextProUntil, recordOnlyRaw, type PurchaseRow, type PurchaseState } from "./billingRules.js";
+import { buyerAccount, needsResync, nextProUntil, recordOnlyRaw, voidedToRecheck, type PurchaseRow, type PurchaseState } from "./billingRules.js";
 import {
   PlaySubscription,
   acknowledgeProduct,
@@ -9,6 +9,7 @@ import {
   getProductPurchase,
   getSubscription,
   isPurchaseGone,
+  listVoidedPurchases,
 } from "./googlePlay.js";
 
 // Purchases -> user_plans.pro_until. Every store purchase is a row in
@@ -239,6 +240,41 @@ async function markExpired(userId: string, token: string, before: PurchaseState)
   if (error) throw new Error(`purchase update failed: ${error.message}`);
   await logPurchaseChange(userId, before, "expired", "subscription");
   await recomputeProUntil(userId);
+}
+
+// Backstop for a refund notice (RTDN) that never reached us: once a day, ask
+// Google for everything voided in the last 30 days (the most it keeps) and
+// handle each one we still hold as not refunded the way the notice would have.
+// Pages to the end; a page cap guards against a token that never ends. One
+// purchase failing doesn't stop the others.
+const VOIDED_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+const VOIDED_MAX_PAGES = 50;
+const LOOKUP_CHUNK = 50;
+
+export async function syncVoidedPurchases(now = Date.now()): Promise<number> {
+  const tokens: string[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < VOIDED_MAX_PAGES; page++) {
+    const res = await listVoidedPurchases(now - VOIDED_WINDOW_MS, pageToken);
+    for (const v of res.voidedPurchases ?? []) if (v.purchaseToken) tokens.push(v.purchaseToken);
+    pageToken = res.tokenPagination?.nextPageToken;
+    if (!pageToken) break;
+  }
+  let handled = 0;
+  for (let i = 0; i < tokens.length; i += LOOKUP_CHUNK) {
+    const chunk = tokens.slice(i, i + LOOKUP_CHUNK);
+    const { data, error } = await getClient().from("purchases").select("purchase_token, state").in("purchase_token", chunk).neq("state", "refunded");
+    if (error) throw new Error(`voided lookup failed: ${error.message}`);
+    for (const token of voidedToRecheck(chunk, (data ?? []) as { purchase_token: string; state: string }[])) {
+      try {
+        await refreshGooglePurchase(token, true);
+        handled++;
+      } catch (err) {
+        console.error("voided purchase re-check failed:", err);
+      }
+    }
+  }
+  return handled;
 }
 
 export async function recomputeProUntil(userId: string): Promise<void> {

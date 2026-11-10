@@ -151,3 +151,24 @@ export function acknowledgeProduct(productId: string, token: string): Promise<un
     body: "{}",
   });
 }
+
+// https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.voidedpurchases
+// Refunded, charged-back or revoked purchases from the last 30 days at most.
+export interface PlayVoidedPurchase {
+  purchaseToken: string;
+  orderId?: string;
+  voidedTimeMillis?: string;
+}
+
+interface VoidedPage {
+  voidedPurchases?: PlayVoidedPurchase[];
+  tokenPagination?: { nextPageToken?: string };
+}
+
+// 100 a page keeps one answer well under MAX_ANSWER_BYTES. type=1: one-time
+// products and subscriptions both.
+export function listVoidedPurchases(startTimeMs: number, pageToken?: string): Promise<VoidedPage> {
+  const q = new URLSearchParams({ startTime: String(startTimeMs), type: "1", maxResults: "100" });
+  if (pageToken) q.set("token", pageToken);
+  return call<VoidedPage>(`/voidedpurchases?${q}`);
+}

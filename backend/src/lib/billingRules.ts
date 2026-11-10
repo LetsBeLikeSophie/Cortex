@@ -119,3 +119,13 @@ export function needsResync(row: { state: string; expires_at: string | null; upd
   if (row.state === "on_hold") return !row.updated_at || row.updated_at < new Date(now.getTime() - ON_HOLD_RECHECK_MS).toISOString();
   return ["active", "grace", "canceled"].includes(row.state) && !!row.expires_at && row.expires_at < nowIso;
 }
+
+// The daily voided-purchase check (a refund notice that never arrived): of the
+// tokens Google lists as voided, the ones we hold a row for that isn't marked
+// refunded yet. A row whose account was deleted (user_id null) is included too,
+// so its record still ends up refunded. Unknown tokens are skipped: nothing of
+// ours to change.
+export function voidedToRecheck(voidedTokens: string[], rows: { purchase_token: string; state: string }[]): string[] {
+  const open = new Set(rows.filter((r) => r.state !== "refunded").map((r) => r.purchase_token));
+  return [...new Set(voidedTokens)].filter((t) => open.has(t));
+}

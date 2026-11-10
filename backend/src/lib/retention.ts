@@ -1,5 +1,7 @@
 import { config } from "../config.js";
 import { purgeEach } from "./purgeEach.js";
+import { syncVoidedPurchases } from "./billing.js";
+import { isPlayBillingConfigured } from "./googlePlay.js";
 import { deleteUserAccount, getClient, listExpiredKakaoUnlinks, logAnalyticsEvent } from "./supabase.js";
 
 // Keeps the two usage logs from growing forever. Runs at startup and then
@@ -13,6 +15,7 @@ import { deleteUserAccount, getClient, listExpiredKakaoUnlinks, logAnalyticsEven
 // - purchases of deleted accounts: kept 5 years for refunds and tax.
 // - app_errors: 90 days.
 // - accounts unlinked from Kakao's side: deleted 30 days after (decision K1).
+// - not retention, but daily too: refunds whose notice never arrived.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const BATCH = 1000;
@@ -138,6 +141,14 @@ export async function runRetention(log: { info: (msg: string) => void; error: (e
     if (purged > 0) log.info(`retention: deleted ${purged} account(s) unlinked from Kakao 30+ days ago`);
   } catch (err) {
     log.error(err, "retention: kakao unlink step failed");
+  }
+  if (isPlayBillingConfigured()) {
+    try {
+      const handled = await syncVoidedPurchases();
+      if (handled > 0) log.info(`billing: handled ${handled} voided purchase(s) the notice missed`);
+    } catch (err) {
+      log.error(err, "billing: voided purchases step failed");
+    }
   }
 }
 

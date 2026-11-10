@@ -1,7 +1,7 @@
 // npm test -- pro_until after each way a purchase can change.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buyerAccount, FOREVER, needsResync, nextProUntil, PurchaseRow, recordOnlyRaw, subscriptionStatus } from "./billingRules.js";
+import { buyerAccount, FOREVER, needsResync, nextProUntil, PurchaseRow, recordOnlyRaw, subscriptionStatus, voidedToRecheck } from "./billingRules.js";
 
 const ACCOUNT = "3f2b8c1e-9a4d-4e7b-8f10-2c6d5e4a1b09";
 
@@ -113,4 +113,25 @@ test("finished purchases are never re-asked about", () => {
   for (const state of ["expired", "refunded"]) {
     assert.equal(needsResync({ state, expires_at: "2026-10-01T00:00:00Z", updated_at: null }, now), false);
   }
+});
+
+test("voided check: a refunded lifetime pass we still hold as active is re-checked", () => {
+  assert.deepEqual(voidedToRecheck(["life"], [{ purchase_token: "life", state: "active" }]), ["life"]);
+});
+
+test("voided check: one already marked refunded, or a token we never saw, is left alone", () => {
+  assert.deepEqual(voidedToRecheck(["done", "unknown"], [{ purchase_token: "done", state: "refunded" }]), []);
+});
+
+test("voided check: an expired subscription and a resubscribe's old token are still re-checked once", () => {
+  const rows = [
+    { purchase_token: "old", state: "expired" },
+    { purchase_token: "new", state: "active" },
+  ];
+  assert.deepEqual(voidedToRecheck(["old", "old"], rows), ["old"]);
+});
+
+test("voided check: a deleted account's row (kept for records) is re-checked so it ends refunded", () => {
+  // The lookup returns rows regardless of owner; refreshGooglePurchase handles the orphan.
+  assert.deepEqual(voidedToRecheck(["orphan"], [{ purchase_token: "orphan", state: "active" }]), ["orphan"]);
 });

@@ -203,7 +203,8 @@ export default function PaywallScreen() {
 
       {/* Android, offers still loading: hold the buy button's place so it
           doesn't pop in late under a placeholder line. */}
-      {Platform.OS === 'android' && !isPro && offers === null ? (
+      {/* Plan not known yet either: a Pro member mustn't see 'Pro 시작하기' flash first (Sophie 11-10). */}
+      {Platform.OS === 'android' && (plan === null || (!isPro && offers === null)) ? (
         <ButtonRow theme={theme} style={styles.buttons}>
           <SolidButton label={S.start} theme={theme} onPress={() => {}} loading />
         </ButtonRow>

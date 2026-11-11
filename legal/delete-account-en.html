@@ -42,15 +42,17 @@ article th { background: var(--soft); font-weight: 600; width: 26%; }
 footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
 a { color: var(--accent); }
 @media (max-width: 480px) { h1 { font-size: 25px; } }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang select { font: inherit; font-size: 13px; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="wrap">
-  <div class="wordmark">CORTEX</div>
+  <div class="topbar"><div class="wordmark">CORTEX</div><label class="lang"><select aria-label="Language" onchange="location.href=this.value"><option value="delete-account.html">한국어</option><option value="delete-account-en.html" selected>English</option></select></label></div>
   <h1>Delete your Cortex account</h1>
-  <div class="crosslink"><a href="delete-account.html">한국어</a> &nbsp; <a href="privacy-en.html">Privacy Policy</a></div>
+  <div class="crosslink"><a href="privacy-en.html">Privacy Policy</a></div>
   <article>
     <p>Cortex (developer: Sophie Apps) lets you delete your account and all of its data at any time.</p>
     <h3>In the app (fastest)</h3>
@@ -74,6 +76,7 @@ a { color: var(--accent); }
       <li>AI cost records with your account identifier removed (no longer linked to you)</li>
       <li>Pseudonymized usage statistics that cannot identify you</li>
       <li>Server access logs (IP address, time): deleted automatically after 14 days</li>
+      <li>If you agreed to AI analysis, the copies sent to the AI provider (Anthropic): deleted automatically within 30 days regardless of account deletion (longer if a usage policy investigation requires it)</li>
     </ul>
     <h3>Deleting only some data</h3>
     <p>You can delete any single item in the app (it goes to the trash; empty it or delete items permanently from the trash), without deleting your account.</p>

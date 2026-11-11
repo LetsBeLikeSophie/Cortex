@@ -74,7 +74,8 @@ await app.register(rateLimit, {
 // change takes effect). Served from here so a new notice needs no app
 // build: change id/until with each revision; until = the later effective
 // day. null: no notice.
-const POLICY_NOTICE: { id: string; until: string } | null = { id: "terms-privacy-2026-11-15", until: "2026-11-15T00:00:00+09:00" };
+// 18+ (decision L6), announced 11-12, effective 12-13; covers the 11-15 revision too.
+const POLICY_NOTICE: { id: string; until: string } | null = { id: "terms-privacy-2026-12-13", until: "2026-12-13T00:00:00+09:00" };
 app.get("/notice", async () => ({ notice: POLICY_NOTICE }));
 
 app.get("/health", async () => ({

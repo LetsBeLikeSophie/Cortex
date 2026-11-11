@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortex 利用規約</title>
+<style>
+:root {
+  --bg: #fbfaf7; --ink: #14140f; --sub: #6a675e; --line: #e4e0d6;
+  --soft: #eeebe2; --accent: #8d5c41;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+    --soft: #1e1c17; --accent: #d99a6c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+  --soft: #1e1c17; --accent: #d99a6c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: 'IBM Plex Sans KR', 'Noto Sans JP', sans-serif; font-size: 15px; line-height: 1.75;
+  padding-inline: 20px; padding-block: 40px 80px;
+}
+.wrap { max-width: 720px; margin: 0 auto; }
+.wordmark { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.28em; color: var(--accent); }
+h1 { font-family: 'Instrument Serif', 'Noto Serif KR', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.01em; margin: 10px 0 4px; text-wrap: balance; }
+.meta { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+.crosslink { margin-bottom: 32px; }
+.crosslink a { color: var(--accent); text-decoration: none; font-size: 13.5px; border-bottom: 1px solid currentColor; }
+article h3 { font-size: 15.5px; font-weight: 600; margin: 34px 0 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+article h3:first-of-type { border-top: none; padding-top: 0; margin-top: 20px; }
+article p { margin: 0 0 12px; }
+article ol, article ul { margin: 0 0 14px; padding-left: 22px; }
+article li { margin-bottom: 8px; }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
+a { color: var(--accent); }
+@media (max-width: 480px) { h1 { font-size: 25px; } }
+.notice { background: var(--soft); border-radius: 8px; padding: 14px 16px; margin: 0 0 28px; font-size: 14px; }
+.notice b { font-weight: 600; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang select { font: inherit; font-size: 13px; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><div class="wordmark">CORTEX</div><label class="lang"><select aria-label="Language" onchange="location.href=this.value"><option value="terms.html">한국어</option><option value="terms-en.html">English</option><option value="terms-ja.html" selected>日本語</option><option value="terms-zh-hans.html">简体中文</option><option value="terms-zh-hant.html">繁體中文</option></select></label></div>
+  <h1>利用規約</h1>
+  <div class="meta">公表日 2026年11月8日 · 施行日 2026年11月15日</div>
+  <div class="crosslink"><a href="privacy-ja.html">プライバシーポリシーを見る →</a></div>
+  <div class="notice" id="age-notice"><b>改定のお知らせ</b>（公表 2026年11月12日 · 施行 2026年12月13日）<br>第5条に第4項を新設します：「本サービスは18歳以上の方のみご利用いただけます。18歳未満であることが判明した場合、運営者は利用契約を解除し、アカウントとコンテンツを削除することがあります。」同意されない場合は施行日までに退会できます。施行日以降もご利用を続けた場合は、改定に同意したものとみなします。</div>
+
+  <article>
+    <h3>第1条（目的）</h3>
+    <p>本規約は、Sophie Apps（소피 앱스、代表 최솔잎）（以下「運営者」）が提供する個人アーカイブサービス「Cortex」（以下「本サービス」）の利用に関し、運営者と利用者の権利、義務および責任事項を定めることを目的とします。</p>
+
+    <h3>第2条（定義）</h3>
+    <ol>
+      <li><b>「本サービス」</b>とは、利用者が他のアプリから共有した、または自分で入力したテキスト、リンク、写真（スクリーンショットを含む）を保存し、AIでタイトル・要約・タグを付けて整理し、検索し、複数の記録を一つのメモにまとめられるようにするCortexアプリおよび関連ウェブサイトをいいます。</li>
+      <li><b>「利用者」</b>とは、本規約に従って本サービスを利用する会員およびゲストをいいます。</li>
+      <li><b>「会員」</b>とは、カカオアカウントまたはGoogleアカウントでログインして本サービスを利用する者をいいます。</li>
+      <li><b>「ゲスト」</b>とは、ログインせずに、端末に発行された一時アカウントで本サービスを利用する者をいいます。ゲストアカウントには復旧できる認証手段がないため、アカウントを連携しないままログアウトしたりアプリを削除したりすると、再びアクセスすることはできません。</li>
+      <li><b>「コンテンツ」</b>とは、利用者が本サービスに保存したテキスト、リンク、画像、メモ、およびそれらからAIが生成したタイトル・要約・タグ・まとめメモをいいます。</li>
+      <li><b>「有料サービス」</b>とは、第7条に基づき対価を支払って利用するCortex Proをいいます。</li>
+    </ol>
+
+    <h3>第3条（規約の掲示および改定）</h3>
+    <ol>
+      <li>運営者は、本規約の内容を利用者が知ることができるよう、本サービスの画面またはそのリンク先の画面に掲示します。</li>
+      <li>運営者は、関係法令に違反しない範囲で本規約を改定することができ、改定する場合は適用日と改定理由を明示して、適用日の7日前から本サービス内でお知らせします。ただし、利用者に不利な変更の場合は30日前にお知らせします。</li>
+      <li>利用者は、改定後の規約に同意しない場合、利用を中止して退会することができます。お知らせの後、適用日までに特段の意思表示がない場合は、改定後の規約に同意したものとみなします。</li>
+    </ol>
+
+    <h3>第4条（サービスの提供および変更）</h3>
+    <ol>
+      <li>本サービスは、年中無休・1日24時間の提供を原則とします。ただし、サーバーの点検、外部サービス（カカオ、Google、AI事業者、クラウドインフラなど）の障害など、運営上・技術上の必要により一時的に中断することがあります。</li>
+      <li>本サービスは基本機能を無料で提供し、AI整理・AI検索（文章検索）・「まとめて作る」など一部の機能には月の利用回数が定められています。回数と内容は本サービスの画面でご案内します。</li>
+      <li>運営者は、本サービスの内容や無料で利用できる範囲を変更することができ、変更する場合は第3条に従って事前にお知らせします。</li>
+      <li>本サービスは現在、欧州経済領域（EEA）、英国、スイス、中国本土、香港、マカオ、ロシア、ベラルーシでは提供していません。そのほか、本サービスで利用するAI事業者（Anthropic）がサポートしていない国・地域でも提供していません。</li>
+    </ol>
+
+    <h3>第5条（会員登録およびゲスト利用）</h3>
+    <ol>
+      <li>会員登録は、利用者がカカオアカウントまたはGoogleアカウントによるログイン手続きを完了することにより成立します。</li>
+      <li>ゲストは、特別な手続きなしにすぐに本サービスを利用できます。ゲストは「マイアカウント」画面で会員アカウントを連携し、保存した記録を移すことができます。連携していないゲストアカウントのデータの維持については、利用者が責任を負います。</li>
+      <li>運営者は、次のいずれかに該当する場合、登録を拒否し、または利用契約を解除することができます：他人の名義を使用した場合、関係法令に違反した場合、本サービスの運営を故意に妨害した場合。</li>
+    </ol>
+
+    <h3>第6条（退会）</h3>
+    <ol>
+      <li>利用者は、アプリ内の「マイアカウント」画面からいつでも自分で退会（アカウントおよびデータの削除）することができ、待機期間なしに直ちに処理されます。ゲストも同じ画面でゲストのデータを削除できます。アプリを使えない場合は、<a href="delete-account-en.html">アカウント削除のご案内（英語）</a>に従ってメールで依頼することができます。</li>
+      <li>退会すると、保存したコンテンツ（画像ファイルを含む）とアカウント情報は遅滞なく削除されます。ただし、決済記録など法令により保存が必要な情報と、統計目的の仮名化情報は、<a href="privacy-ja.html">プライバシーポリシー</a>に従って別途保存されることがあります。</li>
+      <li>カカオアカウントでログインした会員がカカオのサービス側で連携を解除した場合、運営者はその通知を受けて、アカウントをログインできない状態で30日間保存した後、前項と同じようにアカウントとコンテンツを削除します。その期間内に同じカカオアカウントで再びログインすれば、引き続き利用できます。</li>
+      <li>退会しても、Google Playの定期購入は自動では解約されません。定期購入は、第7条第4項に従ってGoogle Playで解約する必要があります。</li>
+    </ol>
+
+    <h3>第7条（有料サービス）</h3>
+    <ol>
+      <li>運営者は、無料で利用できる範囲より多くのAI機能を使える有料サービス「Cortex Pro」を、月額の定期購入、年額の定期購入、または買い切りの利用権（生涯利用権）として提供します。商品ごとの価格、支払いの周期および提供内容は、購入前にアプリの購入画面に表示します。ProのAI機能にも公正な利用のための月の利用上限があり、購入画面でご案内します。</li>
+      <li>決済はGoogle Playの決済システムで行われ、支払い方法や領収書など決済に関する事項は、Google Playの利用規約にもあわせて従います。</li>
+      <li>定期購入は、利用者が解約しない限り、各支払い周期の終了時に同じ条件で自動更新され、請求されます。運営者が価格を引き上げる場合は事前にお知らせし、Google Playが定める手続きに従って利用者の同意を得ます。</li>
+      <li>定期購入は、Google Playアプリの「お支払いと定期購入 &gt; 定期購入」またはCortexの購入画面の「定期購入の管理・解約」から、いつでも解約できます。解約すると次の更新日以降は請求されず、支払い済みの期間が終わるまでProを引き続き利用できます。</li>
+      <li>利用者は、決済日から7日以内であって、有料サービスにより増える機能を使っていない場合、申込みを撤回することができます。返金は、Google Playの返金手続き、または運営者へのメール（cortex@itssophie.dev）で申し込むことができ、運営者は関係法令に従って対応します。すでに使用した部分がある場合や7日を過ぎた場合は、関係法令およびGoogle Playの返金ポリシーが認める範囲で返金が制限されることがあります。</li>
+      <li>ログインした会員には、7日間Pro機能を無料で試せる期間を提供することがあります。この無料体験では支払い方法を登録せず、期間が終わると自動的に無料の利用に戻り、請求は発生しません。</li>
+      <li>買い切りの利用権は、人の生涯ではなく、Cortexのサービスが運営されている期間中、追加の支払いなしでPro機能を利用できる商品です。運営者が本サービスを終了する場合は60日前にお知らせし、その期間中に保存した記録を書き出せるようにします。購入金額から「利用した月数 × お知らせ時点の月額料金」を差し引いた残りがあれば返金します。本サービスを終了する場合は、月額・年額の定期購入についても残りの期間分を返金します。</li>
+      <li>未成年者が法定代理人の同意なしに決済した場合、未成年者本人または法定代理人は、関係法令に従ってその決済を取り消すことができます。</li>
+    </ol>
+
+    <h3>第8条（コンテンツに関する権利と責任）</h3>
+    <ol>
+      <li>利用者が本サービスに保存したコンテンツの著作権などの権利は、原著作者または利用者本人に帰属し、運営者はこれを本サービスの提供（保存、整理、検索、まとめメモの作成）の目的の範囲内でのみ利用します。</li>
+      <li>運営者は、利用者がAI分析に同意した場合に限り、コンテンツを整理するために外部のAI事業者（Anthropic、米国）にコンテンツの内容を送信します。これは第9条および<a href="privacy-ja.html">プライバシーポリシー</a>の「外国にある第三者への提供」の項目に従います。</li>
+      <li>利用者は、他人の著作権、肖像権、個人情報などを侵害するコンテンツを保存してはならず、これにより生じる責任は利用者本人が負います。</li>
+      <li>運営者は、コンテンツを無断で閲覧・公開せず、法令に基づく要請がある場合や、本サービスの運営（障害対応、利用者が報告したAI結果の確認など）にやむを得ない場合を除き、アクセスしません。</li>
+      <li>利用者は、違法に撮影された画像・映像、児童・青少年の性的搾取物、その他法令で作成・所持・流通が禁止されている情報を保存してはなりません。運営者は、通報や捜査機関などからの適法な要請によりこれを知った場合、該当するコンテンツを削除し、またはアクセスを遮断し、利用契約を解除することができ、法令に従って関係機関に協力します。</li>
+      <li>保存されたコンテンツが自分の権利を侵害している、または違法なコンテンツであると考える方は、メール（cortex@itssophie.dev）で通報することができます。運営者は関係法令に従って確認し、必要な措置を講じます。</li>
+    </ol>
+
+    <h3>第9条（個人情報の保護）</h3>
+    <p>運営者は、関係法令の定めるところにより利用者の個人情報の保護に努め、個人情報の取得・利用・保存・削除に関する詳細は、別途掲示する<a href="privacy-ja.html">プライバシーポリシー</a>に従います。</p>
+
+    <h3>第10条（AIが作成した結果）</h3>
+    <ol>
+      <li>本サービスのタイトル・要約・タグ・検索結果・まとめメモはAIが自動で作成したものであり、不正確であったり、利用者の意図と異なったりすることがあります。重要な情報は元の内容をご確認ください。</li>
+      <li>AIが作成した結果が不適切または誤っている場合、利用者はメモ画面の「AI結果を報告」から運営者に知らせることができ、運営者はこれを確認して本サービスの改善に反映します。</li>
+    </ol>
+
+    <h3>第11条（免責）</h3>
+    <ol>
+      <li>運営者は、天災地変、外部サービス（カカオ、Google、AI事業者、クラウドインフラ事業者など）の障害など、不可抗力により本サービスを提供できない場合、責任を免れます。</li>
+      <li>運営者は、利用者が保存したコンテンツの内容、正確性、信頼性について保証せず、運営者の故意または重大な過失がない限り、AIが作成した結果の誤りについて責任を負いません。</li>
+      <li>アカウントを連携していないゲストアカウントの性質上生じるデータの消失（ログアウト、端末の変更、アプリの削除などによるもの）について、運営者は責任を負いません。</li>
+      <li>運営者は、無料で提供されるサービスに関して、関係法令に特別な定めがない限り責任を負いません。</li>
+    </ol>
+
+    <h3>第12条（準拠法および管轄）</h3>
+    <p>本規約に関する紛争については大韓民国の法律を準拠法とし、関係法令に基づく管轄裁判所に提訴します。本規約は韓国語版の日本語訳であり、この日本語訳と韓国語の原文の内容が異なる場合は、韓国語版が優先します。</p>
+
+    <h3>販売者情報</h3>
+    <p>屋号：Sophie Apps（소피 앱스） · 代表者：Choi Solip（최솔잎） · 事業者登録番号：539-32-01828 · 通信販売業申告番号：제2026-서울동작-1304호（ソウル特別市 銅雀区庁）<br>所在地：大韓民国 ソウル特別市 銅雀区 新大方1ナギル 65-1 · 電話：+82-10-3017-0322 · メール：cortex@itssophie.dev<br><a href="tokushoho.html">特定商取引法に基づく表記</a></p>
+
+    <p style="margin-top:28px; color:var(--sub); font-size:13px;">附則 — 本規約は2026年11月15日から適用します。<br>主な変更：カカオの連携解除時の30日間の保存（第6条）、買い切りの利用権の期間とサービス終了時の返金（第7条）、違法コンテンツの禁止と通報（第8条）、AI事業者が対応していない地域の除外（第4条）。</p>
+  </article>
+
+  <footer>Cortex · お問い合わせ：cortex@itssophie.dev</footer>
+</div>
+</body>
+</html>

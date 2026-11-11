@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortex 使用条款</title>
+<style>
+:root {
+  --bg: #fbfaf7; --ink: #14140f; --sub: #6a675e; --line: #e4e0d6;
+  --soft: #eeebe2; --accent: #8d5c41;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+    --soft: #1e1c17; --accent: #d99a6c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+  --soft: #1e1c17; --accent: #d99a6c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: 'IBM Plex Sans KR', 'Noto Sans SC', sans-serif; font-size: 15px; line-height: 1.75;
+  padding-inline: 20px; padding-block: 40px 80px;
+}
+.wrap { max-width: 720px; margin: 0 auto; }
+.wordmark { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.28em; color: var(--accent); }
+h1 { font-family: 'Instrument Serif', 'Noto Serif KR', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.01em; margin: 10px 0 4px; text-wrap: balance; }
+.meta { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+.crosslink { margin-bottom: 32px; }
+.crosslink a { color: var(--accent); text-decoration: none; font-size: 13.5px; border-bottom: 1px solid currentColor; }
+article h3 { font-size: 15.5px; font-weight: 600; margin: 34px 0 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+article h3:first-of-type { border-top: none; padding-top: 0; margin-top: 20px; }
+article p { margin: 0 0 12px; }
+article ol, article ul { margin: 0 0 14px; padding-left: 22px; }
+article li { margin-bottom: 8px; }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
+a { color: var(--accent); }
+@media (max-width: 480px) { h1 { font-size: 25px; } }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang select { font: inherit; font-size: 13px; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.notice { background: var(--soft); border-radius: 8px; padding: 14px 16px; margin: 0 0 28px; font-size: 14px; }
+.notice b { font-weight: 600; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><div class="wordmark">CORTEX</div><label class="lang"><select aria-label="Language" onchange="location.href=this.value"><option value="terms.html">한국어</option><option value="terms-en.html">English</option><option value="terms-ja.html">日本語</option><option value="terms-zh-hans.html" selected>简体中文</option><option value="terms-zh-hant.html">繁體中文</option></select></label></div>
+  <h1>使用条款</h1>
+  <div class="meta">公布日期 2026年11月8日 · 生效日期 2026年11月15日</div>
+  <div class="crosslink"><a href="privacy-zh-hans.html">查看隐私政策 →</a></div>
+  <div class="notice" id="age-notice"><b>修订预告</b>（公布 2026年11月12日 · 生效 2026年12月13日）<br>第5条新增第4款：“本服务仅限18岁及以上人士使用。如确认用户未满18岁，运营者可以解除使用协议并删除其账号和内容。”如不同意，可在生效日前注销账号；生效日后继续使用即视为同意本次修订。</div>
+
+  <article>
+    <p>本文件为 Cortex 韩文版使用条款的简体中文译本。如两者内容不一致，以韩文版为准。</p>
+
+    <h3>第1条（目的）</h3>
+    <p>本条款旨在规定 Sophie Apps（소피 앱스，代表人：최솔잎 Choi Solip）（以下简称“运营方”）所提供的个人存档服务“Cortex”（以下简称“本服务”）的使用相关事项，以及运营方与用户之间的权利、义务和责任。</p>
+
+    <h3>第2条（定义）</h3>
+    <ol>
+      <li><b>“本服务”</b>是指 Cortex 应用及相关网站。用户可通过本服务保存从其他应用分享或自行输入的文字、链接、照片（包括截图），由 AI 添加标题、摘要和标签进行整理，进行搜索，并将多条记录汇总成一条笔记。</li>
+      <li><b>“用户”</b>是指依据本条款使用本服务的会员和访客。</li>
+      <li><b>“会员”</b>是指使用 Kakao 账号或 Google 账号登录并使用本服务的人。</li>
+      <li><b>“访客”</b>是指无需另行登录、以发放给设备的临时账号使用本服务的人。访客账号没有可用于恢复的验证方式，因此如未关联账号就退出登录或删除应用，将无法再次访问。</li>
+      <li><b>“内容”</b>是指用户保存在本服务中的文字、链接、图片、笔记，以及 AI 据此生成的标题、摘要、标签和汇总笔记。</li>
+      <li><b>“付费服务”</b>是指依据第7条支付费用后使用的 Cortex Pro。</li>
+    </ol>
+
+    <h3>第3条（条款的公布与修改）</h3>
+    <ol>
+      <li>运营方将本条款公布在服务页面或其链接页面上，以便用户知悉。</li>
+      <li>运营方可在不违反相关法律法规的范围内修改本条款。修改时将注明生效日期和修改理由，并自生效日期前7天起在服务内公告。但对用户不利的变更，将于30天前公告。</li>
+      <li>用户不同意修改后的条款时，可停止使用并注销账号。如在公告后至生效日期前未作出其他意思表示，视为同意修改后的条款。</li>
+    </ol>
+
+    <h3>第4条（服务的提供与变更）</h3>
+    <ol>
+      <li>本服务原则上全年无休、每天24小时提供。但因服务器维护、外部服务（Kakao、Google、AI 处理服务商、云基础设施等）故障等运营或技术上的需要，可能暂时中断。</li>
+      <li>本服务免费提供基本功能，AI 整理、AI 搜索（句子搜索）、汇总生成等部分功能设有每月使用次数。次数和内容在服务页面中说明。</li>
+      <li>运营方可变更服务内容或免费使用范围，变更时依据第3条事先公告。</li>
+      <li>本服务目前不在欧洲经济区（EEA）、英国、瑞士、中国大陆、香港、澳门、俄罗斯、白俄罗斯提供。此外，本服务所使用的 AI 处理服务商（Anthropic）不支持的国家和地区，本服务也不提供。</li>
+    </ol>
+
+    <h3>第5条（会员注册与访客使用）</h3>
+    <ol>
+      <li>用户完成通过 Kakao 账号或 Google 账号登录的程序后，会员注册即告成立。</li>
+      <li>访客无需另行办理手续即可立即使用本服务。访客可在“我的账号”页面关联会员账号，转移已保存的记录；未关联的访客账号，其数据的保管责任由用户自行承担。</li>
+      <li>有下列情形之一的，运营方可拒绝注册或解除使用合同：冒用他人名义的；违反相关法律法规的；故意妨碍服务运营的。</li>
+    </ol>
+
+    <h3>第6条（会员注销）</h3>
+    <ol>
+      <li>用户可随时在应用内“我的账号”页面自行注销（删除账号及数据），无需等待，立即处理。访客也可在同一页面删除访客数据。无法使用应用时，可按照<a href="delete-account-en.html">账号删除说明</a>通过电子邮件申请。</li>
+      <li>注销时，已保存的内容（包括图片文件）和账号信息将立即删除。但付款记录等依法须保存的信息，以及用于统计目的的假名化信息，可能依据<a href="privacy-zh-hans.html">隐私政策</a>另行保存。</li>
+      <li>使用 Kakao 账号登录的会员在 Kakao 服务中自行解除关联时，运营方收到通知后，会将账号以无法登录的状态保存30天，之后按上一款同样删除账号和内容。在此期间内使用同一 Kakao 账号重新登录的，可继续使用。</li>
+      <li>注销账号不会自动取消 Google Play 订阅。订阅须依据第7条第4款在 Google Play 中取消。</li>
+    </ol>
+
+    <h3>第7条（付费服务）</h3>
+    <ol>
+      <li>运营方以月度订阅、年度订阅或终身版的形式提供付费服务“Cortex Pro”，可使用超出免费范围的更多 AI 功能。各商品的价格、付款周期和提供内容，在付款前显示于应用的付款页面。Pro 的 AI 功能也设有为公平使用而定的每月使用上限，并在付款页面中说明。</li>
+      <li>付款通过 Google Play 结算系统进行，付款方式、收据等付款相关事项同时适用 Google Play 服务条款。</li>
+      <li>除非用户取消，订阅将在每个付款周期结束时按相同条件自动续订并扣款。运营方提高价格时将事先通知，并按照 Google Play 规定的程序征得用户同意。</li>
+      <li>订阅可随时在 Google Play 应用的“付款和订阅 &gt; 订阅”或 Cortex 付款页面的“管理 · 取消订阅”中取消。取消后，自下一个续订日起不再扣款，在已付款期间结束前仍可继续使用 Pro。</li>
+      <li>用户自付款之日起7天内未使用因付费服务而增加的功能的，可撤回购买。退款可通过 Google Play 退款程序申请，或通过电子邮件（cortex@itssophie.dev）向运营方申请，运营方将依据相关法律法规处理。已使用部分功能或已超过7天的，退款可能在相关法律法规及 Google Play 退款政策允许的范围内受到限制。</li>
+      <li>运营方可向已登录的会员提供7天免费试用 Pro 功能的期间。试用无需登记付款方式，期满后自动恢复为免费使用，不会扣款。</li>
+      <li>终身版并非指人的一生，而是指在 Cortex 服务运营期间无需额外付款即可使用 Pro 功能的商品。运营方终止服务时，将于60天前公告，并在此期间允许用户导出已保存的记录。从购买金额中减去“已使用月数 × 公告时的月度订阅价格”后，如有剩余金额，将予以退还。服务终止时，月度和年度订阅也将按剩余期间退款。</li>
+      <li>未成年人未经法定代理人同意付款的，未成年人本人或其法定代理人可依据相关法律法规取消该付款。</li>
+    </ol>
+
+    <h3>第8条（内容的权利与责任）</h3>
+    <ol>
+      <li>用户保存在本服务中的内容，其著作权等权利归原作者或用户本人所有，运营方仅在提供本服务（保存、整理、搜索、生成汇总笔记）的目的范围内使用。</li>
+      <li>仅在用户同意 AI 分析的情况下，运营方才会为整理内容而将内容发送给外部 AI 处理服务商（Anthropic，美国），此事项依据第9条及<a href="privacy-zh-hans.html">隐私政策</a>中的“跨境传输”一项处理。</li>
+      <li>用户不得保存侵犯他人著作权、肖像权、个人信息等的内容，由此产生的责任由用户本人承担。</li>
+      <li>运营方不会擅自查看或公开内容。除依法提出的要求，或服务运营（故障处理、核实用户反馈的 AI 结果等）中不可避免的情形外，运营方不会访问内容。</li>
+      <li>用户不得保存非法拍摄的影像、儿童及青少年性剥削材料，以及其他法律法规禁止制作、持有或传播的信息。运营方通过举报或侦查机关等的合法要求获知此类内容时，可删除该内容或阻止访问，并可解除使用合同，同时依法配合相关机关。</li>
+      <li>认为已保存的内容侵犯自身权利或属于非法内容的，可通过电子邮件（cortex@itssophie.dev）举报。运营方将依据相关法律法规进行核实并采取必要措施。</li>
+    </ol>
+
+    <h3>第9条（个人信息保护）</h3>
+    <p>运营方依据相关法律法规的规定，努力保护用户的个人信息。有关个人信息的收集、使用、保存和销毁的详细事项，依据另行公布的<a href="privacy-zh-hans.html">隐私政策</a>。</p>
+
+    <h3>第10条（AI 生成的结果）</h3>
+    <ol>
+      <li>本服务中的标题、摘要、标签、搜索结果和汇总笔记均由 AI 自动生成，可能不准确或与用户的意图不同。重要信息请核对原始内容。</li>
+      <li>AI 生成的结果不恰当或有误时，用户可通过笔记页面的“反馈 AI 结果”告知运营方，运营方将进行核实并用于改进服务。</li>
+    </ol>
+
+    <h3>第11条（免责条款）</h3>
+    <ol>
+      <li>因自然灾害、外部服务（Kakao、Google、AI 处理服务商、云基础设施提供商等）故障等不可抗力原因无法提供服务的，运营方免除责任。</li>
+      <li>运营方不保证用户所保存内容的内容、准确性和可靠性。除运营方存在故意或重大过失外，对 AI 生成结果中的错误不承担责任。</li>
+      <li>对于因未关联账号的访客账号的特性而导致的数据丢失（因退出登录、更换设备、删除应用等），运营方不承担责任。</li>
+      <li>对于免费提供的服务，除相关法律法规另有特别规定外，运营方不承担责任。</li>
+    </ol>
+
+    <h3>第12条（准据法及管辖）</h3>
+    <p>与本条款相关的争议以大韩民国法律为准据法，并向依据相关法律法规具有管辖权的法院提起诉讼。本条款的译本与韩文版内容不一致时，以韩文版为准。</p>
+
+    <h3>卖家信息</h3>
+    <p>商号：Sophie Apps（소피 앱스）· 代表人：최솔잎（Choi Solip）· 营业登记号：539-32-01828 · 通信销售业申报号：제2026-서울동작-1304호（首尔特别市铜雀区厅）<br>地址：韩国首尔特别市铜雀区新大方1na街 65-1（서울특별시 동작구 신대방1나길 65-1）· 电话：+82-10-3017-0322 · 电子邮件：cortex@itssophie.dev</p>
+
+    <p style="margin-top:28px; color:var(--sub); font-size:13px;">附则 — 本条款自2026年11月15日起适用。<br>主要变更：解除 Kakao 关联时保存30天（第6条）、终身版的期限及服务终止时的退款（第7条）、禁止及举报非法内容（第8条）、排除 AI 处理服务商不支持的地区（第4条）。</p>
+  </article>
+
+  <footer>Cortex · 联系方式: cortex@itssophie.dev</footer>
+</div>
+</body>
+</html>

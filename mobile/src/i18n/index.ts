@@ -51,6 +51,7 @@ export const TOKUSHOHO_URL = LEGAL_BASE + 'tokushoho.html';
 export let LANG: Lang = langFromLocale(DEVICE);
 export let DEVICE_LOCALE = DEVICE;
 export let LANG_PREF: LangPref = 'device';
+const LEGAL_SUFFIX: Record<Lang, string> = { ko: '', en: '-en', ja: '-ja', 'zh-Hans': '-zh-hans', 'zh-Hant': '-zh-hant' };
 export let PRIVACY_URL = '';
 export let TERMS_URL = '';
 
@@ -58,8 +59,10 @@ function apply(pref: LangPref) {
   LANG_PREF = pref;
   LANG = pref === 'device' ? langFromLocale(DEVICE) : pref;
   DEVICE_LOCALE = pref === 'device' ? DEVICE : pref;
-  PRIVACY_URL = LEGAL_BASE + (LANG === 'ko' ? 'privacy.html' : LANG === 'ja' ? 'privacy-ja.html' : 'privacy-en.html');
-  TERMS_URL = LEGAL_BASE + (LANG === 'ko' ? 'terms.html' : 'terms-en.html');
+  // Every app language has its own terms and privacy page (2026-11-12).
+  const suffix = LEGAL_SUFFIX[LANG];
+  PRIVACY_URL = LEGAL_BASE + `privacy${suffix}.html`;
+  TERMS_URL = LEGAL_BASE + `terms${suffix}.html`;
 }
 apply('device');
 

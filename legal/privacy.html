@@ -42,16 +42,21 @@ article th { background: var(--soft); font-weight: 600; width: 26%; }
 footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
 a { color: var(--accent); }
 @media (max-width: 480px) { h1 { font-size: 25px; } }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang select { font: inherit; font-size: 13px; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.notice { background: var(--soft); border-radius: 8px; padding: 14px 16px; margin: 0 0 28px; font-size: 14px; }
+.notice b { font-weight: 600; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="wrap">
-  <div class="wordmark">CORTEX</div>
+  <div class="topbar"><div class="wordmark">CORTEX</div><label class="lang"><select aria-label="Language" onchange="location.href=this.value"><option value="privacy.html" selected>한국어</option><option value="privacy-en.html">English</option><option value="privacy-ja.html">日本語</option><option value="privacy-zh-hans.html">简体中文</option><option value="privacy-zh-hant.html">繁體中文</option></select></label></div>
   <h1>개인정보처리방침</h1>
   <div class="meta">공고일 2026년 11월 7일 · 시행일 2026년 11월 14일</div>
-  <div class="crosslink"><a href="terms.html">이용약관 보기 →</a> &nbsp; <a href="privacy-en.html">English</a> &nbsp; <a href="privacy-ja.html">日本語</a> &nbsp; <a href="privacy-20261024.html">이전 버전(2026.10.24)</a> &nbsp; <a href="privacy-20261023.html">이전 버전(2026.10.23)</a> &nbsp; <a href="privacy-20260930.html">이전 버전(2026.9.30)</a></div>
+  <div class="crosslink"><a href="terms.html">이용약관 보기 →</a> &nbsp; <a href="privacy-20261024.html">이전 버전(2026.10.24)</a> &nbsp; <a href="privacy-20261023.html">이전 버전(2026.10.23)</a> &nbsp; <a href="privacy-20260930.html">이전 버전(2026.9.30)</a></div>
+  <div class="notice" id="age-notice"><b>개정 예정 안내</b> (공고 2026년 11월 12일 · 시행 2026년 12월 13일)<br>10항의 아동 관련 문장이 다음으로 바뀝니다: “이 서비스는 만 18세 이상만 이용할 수 있으며, 만 18세 미만의 개인정보를 알고 수집하지 않습니다. 만 18세 미만의 정보가 수집된 것을 알게 되면 지체 없이 삭제합니다.”</div>
 
   <article>
     <p>Cortex(코르텍스)는 이용자의 개인정보를 아래와 같이 처리합니다.</p>

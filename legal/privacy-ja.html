@@ -42,16 +42,21 @@ article th { background: var(--soft); font-weight: 600; width: 26%; }
 footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
 a { color: var(--accent); }
 @media (max-width: 480px) { h1 { font-size: 25px; } }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang select { font: inherit; font-size: 13px; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.notice { background: var(--soft); border-radius: 8px; padding: 14px 16px; margin: 0 0 28px; font-size: 14px; }
+.notice b { font-weight: 600; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+JP:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="wrap">
-  <div class="wordmark">CORTEX</div>
+  <div class="topbar"><div class="wordmark">CORTEX</div><label class="lang"><select aria-label="Language" onchange="location.href=this.value"><option value="privacy.html">한국어</option><option value="privacy-en.html">English</option><option value="privacy-ja.html" selected>日本語</option><option value="privacy-zh-hans.html">简体中文</option><option value="privacy-zh-hant.html">繁體中文</option></select></label></div>
   <h1>プライバシーポリシー</h1>
   <div class="meta">公表日 2026年11月8日 · 施行日 2026年11月15日</div>
-  <div class="crosslink"><a href="terms-en.html">利用規約（英語）→</a> &nbsp; <a href="privacy.html">한국어</a> &nbsp; <a href="privacy-en.html">English</a></div>
+  <div class="crosslink"><a href="terms-ja.html">利用規約を見る →</a></div>
+  <div class="notice" id="age-notice"><b>改定のお知らせ</b>（公表 2026年11月12日 · 施行 2026年12月13日）<br>児童に関する文を次のとおり改めます：「本サービスは18歳以上の方のみご利用いただけます。18歳未満の方の個人情報を故意に収集することはありません。収集したことが判明した場合は、遅滞なく削除します。」</div>
 
   <article>
     <p>本書はCortexの韓国語版プライバシーポリシーの日本語訳です。内容に違いがある場合は韓国語版が優先します。</p>

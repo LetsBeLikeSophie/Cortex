@@ -39,16 +39,21 @@ article li { margin-bottom: 8px; }
 footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
 a { color: var(--accent); }
 @media (max-width: 480px) { h1 { font-size: 25px; } }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang select { font: inherit; font-size: 13px; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.notice { background: var(--soft); border-radius: 8px; padding: 14px 16px; margin: 0 0 28px; font-size: 14px; }
+.notice b { font-weight: 600; }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="wrap">
-  <div class="wordmark">CORTEX</div>
+  <div class="topbar"><div class="wordmark">CORTEX</div><label class="lang"><select aria-label="Language" onchange="location.href=this.value"><option value="terms.html">한국어</option><option value="terms-en.html" selected>English</option><option value="terms-ja.html">日本語</option><option value="terms-zh-hans.html">简体中文</option><option value="terms-zh-hant.html">繁體中文</option></select></label></div>
   <h1>Terms of Service</h1>
   <div class="meta">Published November 8, 2026 · Effective November 15, 2026</div>
-  <div class="crosslink"><a href="privacy-en.html">Privacy Policy →</a> &nbsp; <a href="terms.html">한국어</a> &nbsp; <a href="terms-en-20261024.html">Previous version (Oct 24, 2026)</a> &nbsp; <a href="terms-en-20261023.html">Previous version (Oct 23, 2026)</a></div>
+  <div class="crosslink"><a href="privacy-en.html">Privacy Policy →</a> &nbsp;  <a href="terms-en-20261024.html">Previous version (Oct 24, 2026)</a> &nbsp; <a href="terms-en-20261023.html">Previous version (Oct 23, 2026)</a></div>
+  <div class="notice" id="age-notice"><b>Upcoming change</b> (announced November 12, 2026 · effective December 13, 2026)<br>Article 5 gets a new paragraph 4: “You must be 18 or older to use the Service. If we learn that a user is under 18, we may end the agreement and delete the account and its content.” If you don't agree, you can delete your account before that date; using the Service after it means you accept the change.</div>
 
   <article>
     <p>This is an English translation of the Korean Terms of Service of Cortex. If the two differ, the Korean version prevails.</p>

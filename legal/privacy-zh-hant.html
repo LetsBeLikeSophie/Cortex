@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cortex 隱私權政策</title>
+<style>
+:root {
+  --bg: #fbfaf7; --ink: #14140f; --sub: #6a675e; --line: #e4e0d6;
+  --soft: #eeebe2; --accent: #8d5c41;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+    --soft: #1e1c17; --accent: #d99a6c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14140f; --ink: #f2efe9; --sub: #a6a29a; --line: #2c2a24;
+  --soft: #1e1c17; --accent: #d99a6c;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: 'IBM Plex Sans KR', 'Noto Sans TC', sans-serif; font-size: 15px; line-height: 1.75;
+  padding-inline: 20px; padding-block: 40px 80px;
+}
+.wrap { max-width: 720px; margin: 0 auto; }
+.wordmark { font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.28em; color: var(--accent); }
+h1 { font-family: 'Instrument Serif', 'Noto Serif KR', serif; font-weight: 400; font-size: 32px; letter-spacing: -0.01em; margin: 10px 0 4px; text-wrap: balance; }
+.meta { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+.crosslink { margin-bottom: 32px; }
+.crosslink a { color: var(--accent); text-decoration: none; font-size: 13.5px; border-bottom: 1px solid currentColor; }
+article h3 { font-size: 15.5px; font-weight: 600; margin: 34px 0 10px; padding-top: 20px; border-top: 1px solid var(--line); }
+article h3:first-of-type { border-top: none; padding-top: 0; margin-top: 20px; }
+article p { margin: 0 0 12px; }
+article ol, article ul { margin: 0 0 14px; padding-left: 22px; }
+article li { margin-bottom: 8px; }
+article table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 13.5px; }
+article th, article td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+article th { background: var(--soft); font-weight: 600; width: 26%; }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12.5px; }
+a { color: var(--accent); }
+@media (max-width: 480px) { h1 { font-size: 25px; } }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lang select { font: inherit; font-size: 13px; color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.notice { background: var(--soft); border-radius: 8px; padding: 14px 16px; margin: 0 0 28px; font-size: 14px; }
+.notice b { font-weight: 600; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Noto+Serif+KR:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar"><div class="wordmark">CORTEX</div><label class="lang"><select aria-label="Language" onchange="location.href=this.value"><option value="privacy.html">한국어</option><option value="privacy-en.html">English</option><option value="privacy-ja.html">日本語</option><option value="privacy-zh-hans.html">简体中文</option><option value="privacy-zh-hant.html" selected>繁體中文</option></select></label></div>
+  <h1>隱私權政策</h1>
+  <div class="meta">公告日期 2026年11月7日 · 生效日期 2026年11月14日</div>
+  <div class="crosslink"><a href="terms-zh-hant.html">查看使用條款 →</a></div>
+  <div class="notice" id="age-notice"><b>修訂預告</b>（公告 2026年11月12日 · 生效 2026年12月13日）<br>關於兒童的句子將改為：「本服務僅限18歲以上人士使用，我們不會故意蒐集未滿18歲人士的個人資料。如發現已蒐集，將立即刪除。」</div>
+
+  <article>
+    <p>Cortex（코르텍스）依下列方式處理使用者的個人資料。</p>
+    <p style="font-size:13.5px;color:var(--sub)">本政策以大韓民國法律為準據法；本中文譯本與韓文原文內容不一致時，以韓文版為準。</p>
+
+    <h3>1. 蒐集的個人資料項目及蒐集方式</h3>
+    <table>
+      <tr><th>類別</th><td>蒐集項目</td></tr>
+      <tr><th>Kakao 登入時</th><td>暱稱、大頭貼 URL、Kakao 唯一識別碼（用於對應內部帳號）。Kakao 登入不會取得電子郵件。</td></tr>
+      <tr><th>Google 登入時</th><td>姓名、電子郵件地址、大頭貼 URL、Google 帳號唯一識別碼。電子郵件僅用於識別帳號、回覆詢問，以及帳號與付款相關的必要通知，不用於廣告或行銷。</td></tr>
+      <tr><th>以訪客身分使用時</th><td>不另行蒐集個人資料（僅在裝置內保存臨時驗證權杖）</td></tr>
+      <tr><th>使用者自行儲存的內容</th><td>文字、連結（URL）、截圖與照片圖片、使用者於儲存時或之後留下的「我的筆記」（包含以語音輸入聽寫的內容）、使用者自行加上的標籤 — 僅限使用者主動選擇儲存的內容。</td></tr>
+      <tr><th>搜尋</th><td>使用「AI 搜尋」（✦）時，使用者輸入或說出的搜尋句子。僅用於解讀為搜尋條件，不另行保存。一般搜尋（關鍵字搜尋）不會傳送至外部。</td></tr>
+      <tr><th>語音輸入（麥克風）</th><td>僅在使用者按下麥克風按鈕時，才請求麥克風與語音辨識權限。語音由裝置作業系統的語音辨識服務（Android 為 Google）轉換為文字，營運者不會接收或儲存錄音本身，只接收轉換後的文字。</td></tr>
+      <tr><th>相機</th><td>僅在使用者按下相機按鈕時才請求相機權限，且只儲存使用者拍攝後選擇儲存的照片。</td></tr>
+      <tr><th>儲存照片（存到相簿）</th><td>將已儲存的圖片下載到裝置相簿時，請求儲存照片的權限（僅寫入）。此權限不會用來讀取裝置中的其他照片。</td></tr>
+      <tr><th>通知</th><td>首次開啟 App 一週後，請求一次通知權限。通知（每月1日的未分類提醒、每週一次的回顧）只在裝置內排程，不會為了通知而傳送任何資料至伺服器。可在「我的帳號」中分別關閉。</td></tr>
+      <tr><th>選擇照片</th><td>照片僅透過裝置作業系統的照片選擇畫面，或其他 App 的「分享」取得。不請求存取整個裝置相簿的權限，只將使用者選取的照片傳送至伺服器並儲存。</td></tr>
+      <tr><th>從其他 App 分享而來的內容</th><td>透過其他 App 的「分享」傳送到 Cortex 的照片、連結、文字。只儲存使用者按下儲存的內容。若是從照片整理 App Mehh 傳來，當使用者在結果畫面按下 [返回 Mehh] 時，僅在裝置內告知 Mehh 已儲存的張數。</td></tr>
+      <tr><th>AI 分析同意紀錄</th><td>是否同意 AI 分析（跨境傳輸）、回覆時間、所回覆說明文字的版本</td></tr>
+      <tr><th>付費購買（Pro）</th><td>Google Play 購買資訊：方案類型、購買權杖、訂單編號、付款狀態與到期日等 Google 在確認購買時回傳的資訊。為了得知購買屬於哪個帳號，付款請求會一併附上不含姓名或電子郵件的隨機帳號 ID。信用卡號等付款方式資訊由 Google 處理，營運者不會取得。</td></tr>
+      <tr><th>回報 AI 結果</th><td>使用者回報 AI 產生的結果時，會儲存所回報筆記的 AI 產生標題、筆記、標籤及回報時間。僅用於改善 AI 結果品質及確認不當結果。</td></tr>
+      <tr><th>筆記鎖定</th><td>筆記鎖定密碼<b>只在這台裝置內</b>加密儲存，不會傳送至伺服器。指紋與臉部驗證由裝置作業系統處理，營運者不會取得生物特徵資料。伺服器只儲存各筆記是否鎖定及已鎖定的標籤名稱；已鎖定的筆記（包含已鎖定標籤中的筆記）不會用於 AI 搜尋、「彙整生成」及「用 AI 重新整理」。</td></tr>
+      <tr><th>AI 功能使用紀錄</th><td>AI 功能的種類、使用時間、使用量（處理的分量）— 用於計算每月使用上限及成本管理。不包含已儲存內容本身。</td></tr>
+      <tr><th>App 錯誤資訊</th><td>App 發生錯誤時，會將 App 版本、錯誤類型、程式碼位置傳送至營運者的伺服器。不包含帳號資料及已儲存的內容，僅用於修正錯誤。</td></tr>
+      <tr><th>存取紀錄</th><td>連線至伺服器時自動留下的 IP 位址、請求時間與位址、裝置與瀏覽器資訊（User-Agent）— 僅用於安全及故障處理。</td></tr>
+      <tr><th>使用服務時自動產生</th><td>假名化的使用統計（無法識別帳號的雜湊值 + 事件類型 · 類別 · 付款畫面瀏覽與購買步驟（方案類型）· 發生時間）。已儲存內容的實際內容（標題、內文、標籤）不包含在統計中。</td></tr>
+    </table>
+    <p>個人資料於 Kakao 登入時由 Kakao 驗證伺服器提供，其餘則由使用者在使用本服務的過程中直接輸入或產生。</p>
+    <p style="font-size:13.5px;color:var(--sub)">截圖與照片中可能同時包含對話內容、臉孔、聯絡方式等<b>他人的資料</b>。請在不侵害他人權利的範圍內儲存（使用條款第8條）。</p>
+
+    <h3>2. 個人資料的蒐集及利用目的</h3>
+    <ul>
+      <li>識別會員及維持登入狀態、防止不當使用</li>
+      <li>保存使用者儲存的內容、自動分類（產生標題、類別、標籤）、搜尋，以及提供「彙整生成」功能</li>
+      <li>付費服務（Pro）的付款確認、使用期間管理、退款及爭議處理</li>
+      <li>管理每月使用上限、防止不當使用、服務安全及故障處理</li>
+      <li>服務改善及統計分析（僅以假名化形式使用）</li>
+      <li>回覆詢問及傳達公告事項</li>
+    </ul>
+
+    <h3>3. 個人資料的保存及利用期間</h3>
+    <ol>
+      <li>會員刪除帳號時，下列項目將<b>立即刪除</b>：帳號資料（暱稱與姓名、電子郵件、大頭貼 URL、Kakao 與 Google 識別碼）、所有已儲存的內容（包含文字、連結、截圖圖片檔案）。</li>
+      <li>假名化的使用統計以無法辨識特定個人的形式，於刪除帳號後仍可能為服務統計及改善目的而保存。此係依據韓國《個人資訊保護法》（개인정보 보호법）第28條之2（假名資訊之處理等），且不會超出統計製作目的之範圍使用。</li>
+      <li>AI 分析同意紀錄、回報 AI 結果紀錄、AI 功能使用紀錄，於刪除帳號時一併刪除。但 AI 成本紀錄（使用時間、使用量）會刪除帳號識別碼，使其無法得知屬於何人後，僅作為成本統計保存。</li>
+      <li>付費購買紀錄依韓國《電子商務等消費者保護法》（전자상거래 등에서의 소비자보호에 관한 법률）保存<b>5年</b>後銷毀（關於價款支付及商品等供應之紀錄）。刪除帳號後，會刪除付款紀錄與帳號之間的關聯，僅在此期間保存訂單編號、方案、期間、國家，以處理退款及稅務事宜。</li>
+      <li>在 Kakao 設定中解除 Cortex 的連結時，帳號將以無法登入的狀態保留<b>30日</b>，之後刪除帳號資料及所有已儲存的內容。在此期間以同一 Kakao 帳號再次登入者，可照常使用。</li>
+      <li>App 錯誤資訊在<b>90日</b>後自動刪除。</li>
+      <li>存取紀錄在<b>14日</b>後自動刪除。</li>
+      <li>其他相關法令訂有保存義務者，於相關法令規定的期間內保存後銷毀。</li>
+    </ol>
+
+    <h3>4. 個人資料的銷毀程序及方法</h3>
+    <ol>
+      <li>以電子檔案形式儲存的個人資料，以無法復原的方式永久刪除。</li>
+      <li>截圖等圖片檔案從儲存空間（Supabase Storage）立即刪除。</li>
+      <li>假名化的統計資料已經雜湊處理，無法還原為原始識別碼，無須另行銷毀程序，僅為統計目的而保存。</li>
+    </ol>
+
+    <h3>5. 個人資料提供給第三方</h3>
+    <p>營運者原則上不會將使用者的個人資料提供給外部。但有法令依據，或偵查機關依合法程序提出要求時，得例外提供。</p>
+
+    <h3>6. 個人資料處理之委託</h3>
+    <p>為營運本服務，營運者將個人資料處理業務委託下列業者。於境外處理的業者亦列於第7項。</p>
+    <table>
+      <tr><th>受託業者</th><td>委託業務內容 / 處理地點</td></tr>
+      <tr><td>Supabase, Inc.</td><td>資料庫、檔案（截圖）儲存、登入驗證處理。伺服器位於韓國境內區域（首爾，ap-northeast-2）。</td></tr>
+      <tr><td>Kakao Corp.</td><td>透過 Kakao 帳號進行登入驗證（提供暱稱、大頭貼）。於韓國境內處理。</td></tr>
+      <tr><td>Oracle Corporation</td><td>服務伺服器（後端 API、網站）代管。日本（東京）。</td></tr>
+      <tr><td>Anthropic PBC</td><td>已儲存內容的 AI 分析（僅限已同意者）。美國。</td></tr>
+      <tr><td>Google LLC</td><td>Google 登入驗證、Google Play 付款確認、付款狀態通知。美國。</td></tr>
+    </table>
+    <p style="font-size:13px;color:var(--sub)">Supabase 個人資料詢問：privacy@supabase.com</p>
+
+    <h3>7. 個人資料的跨境傳輸</h3>
+    <p>為營運本服務，營運者依下列方式將個人資料傳輸至境外處理。</p>
+    <table>
+      <tr><th>接收者</th><td>Anthropic PBC</td></tr>
+      <tr><th>傳輸項目</th><td>使用者儲存的文字（包含文字筆記內文）、截圖與照片圖片、連結位址及該網頁的標題與說明、我的筆記（包含以語音輸入聽寫的內容）、使用者已在使用的標籤清單（用於一致地加上標籤，最多150個）、在 AI 搜尋中輸入的搜尋句子、以語音說出的標籤句子、在「彙整生成」中寫下的請求句子、使用「整理標籤」時的標籤名稱及各標籤的筆記數（不傳送筆記內容）— 以各功能處理所需的範圍為限</td></tr>
+      <tr><th>傳輸國家 / 時間與方式</th><td>美國 / <b>僅在使用者於 App 中同意 AI 分析後</b>，於每次儲存內容、「用 AI 重新整理」、AI 搜尋、「彙整生成」、「整理標籤」時，透過加密連線（HTTPS）呼叫 API 即時傳輸</td></tr>
+      <tr><th>接收者的利用目的</th><td>分析已儲存的內容及我的筆記，自動產生標題、AI 筆記、類別、標籤；將搜尋句子解讀為搜尋條件（期間、來源、關鍵字、排序）；將使用者按下「彙整生成」的筆記（最多50則）撰寫成一則彙整筆記（Claude API）。AI 已被指示不得以照片中的臉孔識別人物，或推測敏感特徵。</td></tr>
+      <tr><th>保存與利用期間</th><td>依 Anthropic 的商業條款，<b>不會用於 AI 模型訓練</b>，於 Anthropic 伺服器<b>最多保存30日</b>後自動刪除（為調查違反使用政策或有法令上義務時，可能例外保存更久）。</td></tr>
+      <tr><th>接收者聯絡方式</th><td>privacy@anthropic.com（個人資料保護長 dpo@anthropic.com），548 Market St, PMB 90375, San Francisco, CA 94104, USA</td></tr>
+    </table>
+    <table>
+      <tr><th>接收者</th><td>Oracle Corporation (Oracle Cloud)</td></tr>
+      <tr><th>傳輸項目</th><td>營運本服務所需的全部請求與回應資料（伺服器代管）</td></tr>
+      <tr><th>傳輸國家 / 時間與方式</th><td>日本（東京區域）/ 使用本服務期間持續處理</td></tr>
+      <tr><th>接收者的利用目的</th><td>服務伺服器（後端 API、網站）代管</td></tr>
+      <tr><th>保存與利用期間</th><td>提供本服務的期間（刪除帳號時相關資料的刪除依第3項辦理）</td></tr>
+      <tr><th>接收者聯絡方式</th><td>Oracle 個人資料詢問：<a href="https://www.oracle.com/legal/privacy/">www.oracle.com/legal/privacy</a></td></tr>
+    </table>
+    <table>
+      <tr><th>接收者</th><td>Google LLC (Google 登入、Google Play 付款、Google Cloud Pub/Sub)</td></tr>
+      <tr><th>傳輸項目</th><td>Google 登入時的登入驗證資訊 / 購買權杖、方案 ID（請求確認購買時）、不含姓名與電子郵件的隨機帳號 ID（付款請求時）/ 接收 Google 傳來的付款狀態通知</td></tr>
+      <tr><th>傳輸國家 / 時間與方式</th><td>美國 / Google 登入時，以及 Pro 購買、續訂、取消、退款時，透過加密連線（HTTPS）即時傳輸</td></tr>
+      <tr><th>接收者的利用目的</th><td>以 Google 帳號確認本人身分、確認 Google Play 購買是否有效，並通知訂閱狀態的變更</td></tr>
+      <tr><th>保存與利用期間</th><td>依 Google 的隱私權政策及 Google Play 付款條款</td></tr>
+      <tr><th>接收者聯絡方式</th><td><a href="https://support.google.com/policies?p=privpol_privts">support.google.com/policies?p=privpol_privts</a></td></tr>
+    </table>
+    <p style="font-size:13px;color:var(--sub)">傳輸至 Anthropic（AI 分析）會在 App 中<b>另行取得同意</b>。不同意或日後撤回同意，仍可照常使用儲存內容、關鍵字搜尋等基本功能，只會關閉 AI 功能。可隨時在 App 的「我的帳號 › AI 分析授權」變更是否同意。傳輸至 Oracle（伺服器代管）及 Google（付款確認）為提供本服務及付款所必需，如拒絕，將無法使用本服務或付費購買。</p>
+
+    <h3>8. 給境外使用者的說明</h3>
+    <ol>
+      <li>本服務於大韓民國營運，無論使用者在哪個國家使用，個人資料均於第6項、第7項所列地點（大韓民國、日本、美國）處理。傳輸至美國（Anthropic）係依據在 App 中取得的同意。</li>
+      <li>本服務目前不於<b>歐洲經濟區（EEA）、英國、瑞士</b>，以及<b>中國、香港、澳門、俄羅斯、白俄羅斯</b>提供。</li>
+      <li>本政策另提供翻譯版本，譯本與韓文原文內容不一致時，以韓文版為準。</li>
+    </ol>
+
+    <h3>9. 假名資料的處理事項</h3>
+    <p>為製作服務使用統計，營運者以單向雜湊（HMAC-SHA256）將使用者識別碼假名化後另行儲存。僅憑此假名資料無法辨識特定個人，且不包含已儲存內容的實際內容（標題、內文、標籤等）。假名資料僅用於製作統計，於刪除帳號後仍可能在此目的範圍內保存。</p>
+
+    <h3>10. 使用者及法定代理人的權利與行使方式</h3>
+    <ol>
+      <li>使用者可隨時在 App 內「我的帳號」畫面，自行查閱及刪除（刪除帳號）本人的帳號及所有已儲存的內容。</li>
+      <li>如需請求查閱、更正、停止處理個人資料等其他事項，可透過下列聯絡方式提出，我們將立即處理。查閱請求將於收到之日起10日內處理；如無法於期限內處理，將告知理由及可處理的日期。</li>
+      <li>本服務不以未滿14歲的兒童為對象，亦不另行蒐集兒童的個人資料。</li>
+    </ol>
+
+    <h3>11. 個人資料的安全維護措施</h3>
+    <ul>
+      <li>使用者驗證以核發的存取權杖（Access Token）方式處理，伺服器於每次請求時驗證權杖的有效性。</li>
+      <li>資料庫採用以帳號為單位的存取控制（列層級安全政策），限制只能查詢及修改本人所有的資料。</li>
+      <li>截圖等圖片檔案保存於非公開儲存空間，僅在需要查看時核發一段時間後失效的臨時連結。</li>
+      <li>假名化的統計資料僅以無法還原為原始識別碼的單向雜湊儲存。</li>
+      <li>App 與伺服器之間，以及伺服器與受託業者、接收者之間的所有通訊，皆僅透過加密連線（HTTPS）進行。</li>
+      <li>AI 業者金鑰、付款確認用金鑰等機密資訊僅保存在伺服器，不放入 App 中。</li>
+    </ul>
+
+    <h3>12. Cookie 及本機儲存空間的使用</h3>
+    <p>網頁版為維持登入狀態，會在瀏覽器的本機儲存空間（localStorage）儲存驗證權杖。App 只在裝置內儲存主題、首頁分頁、搜尋方式等畫面設定。這些並非用於廣告或追蹤，本服務不使用行銷 Cookie 或廣告識別碼。</p>
+
+    <h3>13. 個人資料保護負責人</h3>
+    <table>
+      <tr><th>姓名</th><td>Choi Solip（최솔잎）</td></tr>
+      <tr><th>職稱</th><td>代表人</td></tr>
+      <tr><th>電子郵件</th><td>cortex@itssophie.dev</td></tr>
+    </table>
+    <p>使用者可就使用本服務時所發生的個人資料相關詢問、申訴處理、損害救濟等，透過上述聯絡方式提出。</p>
+
+    <h3>14. 權益受侵害時的救濟方式</h3>
+    <p>如需就個人資料侵害提出申報或諮詢，可洽詢下列韓國機關。</p>
+    <ul>
+      <li>個人資訊糾紛調解委員會（개인정보분쟁조정위원회）：（韓國境內直撥，無須區碼）1833-6972，www.kopico.go.kr</li>
+      <li>個人資訊侵害申報中心（개인정보침해신고센터）：（韓國境內直撥，無須區碼）118，privacy.kisa.or.kr</li>
+      <li>大檢察廳（대검찰청）：（韓國境內直撥，無須區碼）1301，www.spo.go.kr</li>
+      <li>警察廳（경찰청）：（韓國境內直撥，無須區碼）182，ecrm.police.go.kr</li>
+    </ul>
+
+    <h3>15. 告知義務</h3>
+    <p>本隱私權政策的內容如有新增、刪除或修改，將於生效至少7日前透過本服務內的公告事項告知。</p>
+
+    <p style="margin-top:28px; color:var(--sub); font-size:13px;">公告日期：2026年11月7日 / 生效日期：2026年11月14日<br>主要變更：App 錯誤資訊（保存90日）、付款畫面與購買步驟統計、付款請求中的隨機帳號 ID、刪除帳號後付款紀錄的保存範圍、解除 Kakao 連結時保留30日、新增標籤鎖定 / 記載處理受託業者與接收者的聯絡方式、查閱處理期限、保護負責人姓名、權益受侵害時的救濟方式。</p>
+  </article>
+
+  <footer>Cortex · 聯絡方式: cortex@itssophie.dev</footer>
+</div>
+</body>
+</html>

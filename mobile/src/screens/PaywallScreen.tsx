@@ -172,7 +172,9 @@ export default function PaywallScreen() {
         ) : (
         <>
         <View style={[styles.card, { backgroundColor: theme.surface, ...frameStyle(theme), borderRadius: theme.cardRadius }]}>
-          <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
+          {/* Under the plain 'Cortex Pro' title a second 'Pro' only repeats it
+              and pushes the plans below the fold (Sophie 11-12). */}
+          {reason && <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>}
           {benefits.map((b) => (
             <View key={b} style={styles.benefit}>
               <View style={styles.benefitIcon}>
@@ -261,8 +263,8 @@ export default function PaywallScreen() {
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
   card: { padding: 18, marginTop: 18, gap: 12 },
-  planName: { fontSize: 20, fontFamily: BODY_KR_MEDIUM, marginBottom: 2 },
   // Icon on the first line when the text wraps (rule 2026-10-26).
+  planName: { fontSize: 20, fontFamily: BODY_KR_MEDIUM, marginBottom: 2 },
   benefit: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   benefitIcon: { marginTop: 2 },
   benefitText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: BODY_KR },

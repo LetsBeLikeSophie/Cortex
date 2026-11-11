@@ -158,6 +158,14 @@ function logPlayFailure(err: unknown) {
   logAppEvent('purchase_failed', `play:${code || 'unknown'}`);
 }
 
+// Play's own error text is English and technical ("Invalid arguments provided
+// to the API"): the person sees one plain line, the code goes to the funnel.
+// Only the messages this file raises itself are shown as they are.
+function ownMessage(err: unknown): string | null {
+  const m = err instanceof Error ? err.message : '';
+  return m === S.noSub || m === S.noLifetime ? m : null;
+}
+
 // The purchase is already paid for when this runs, so a dropped connection or
 // a restarting server gets more tries. A refusal (400, 409) stays one.
 const VERIFY_RETRY_MS = [2000, 5000];
@@ -306,7 +314,7 @@ export function AndroidPurchase({
         setBusy(false);
         if (isUserCancelledError(err)) return;
         logPlayFailure(err);
-        setError(err.message || S.purchaseFailed);
+        setError(S.purchaseFailed);
       },
     });
 
@@ -379,7 +387,7 @@ export function AndroidPurchase({
       setBusy(false);
       if (isUserCancelledError(err)) return;
       logPlayFailure(err);
-      setError(err instanceof Error ? err.message : friendlyError(err));
+      setError(ownMessage(err) ?? S.purchaseFailed);
     }
   };
 
@@ -405,7 +413,7 @@ export function AndroidPurchase({
       setBusy(false);
       if (isUserCancelledError(err)) return;
       logPlayFailure(err);
-      setError(err instanceof Error ? err.message : friendlyError(err));
+      setError(ownMessage(err) ?? S.purchaseFailed);
     }
   };
 
@@ -464,7 +472,8 @@ export function AndroidPurchase({
         )
       ) : (
         <ButtonRow theme={theme} style={styles.buttons}>
-          <SolidButton label={connected ? S.start : S.connecting} theme={theme} onPress={buy} loading={busy} disabled={!connected} />
+          {/* Says which plan the button buys (Sophie 11-12: buttons). */}
+          <SolidButton label={!connected ? S.connecting : selected ? `${S.start} · ${planLabels[selected]}` : S.start} theme={theme} onPress={buy} loading={busy} disabled={!connected || !selected} />
         </ButtonRow>
       )}
       {!current && (

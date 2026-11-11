@@ -17,7 +17,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "dev.itssophie.cortex",
-      "versionCode": 10111,
+      "versionCode": 10112,
       "blockedPermissions": [
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",

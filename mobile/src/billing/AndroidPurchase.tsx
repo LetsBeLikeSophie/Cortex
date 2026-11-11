@@ -16,6 +16,7 @@ import { showToast } from '../native/toast';
 import { useAuth } from '../auth/AuthContext';
 
 import type { PlanOption, StorePrices } from './types';
+import { PLAY_SUBSCRIPTIONS_URL } from './types';
 import { LANG, TERMS_URL, TOKUSHOHO_URL, strings } from '../i18n';
 
 const S = strings({
@@ -24,6 +25,8 @@ const S = strings({
     backlogManual: (first: string) => `${first} · 미분류함에서 'AI로 정리'를 눌러 주세요`,
     started: 'Pro가 시작됐어요',
     purchaseFailed: '결제를 마치지 못했어요',
+    notConfirmed: '구매가 확인되지 않았어요',
+    resubscribe: (plan: string) => `${plan} 다시 구독하기 (Play 스토어)`,
     perMonth: (price: string) => `월 ${price}`,
     perYear: (price: string) => `연 ${price}`,
     noLifetime: '평생권 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
@@ -45,6 +48,8 @@ const S = strings({
     backlogManual: (first: string) => `${first} · Tap 'Sort with AI' in Unsorted`,
     started: 'Pro is on',
     purchaseFailed: "Couldn't complete the purchase",
+    notConfirmed: "Purchase couldn't be confirmed",
+    resubscribe: (plan: string) => `Resubscribe ${plan.toLowerCase()} (Play Store)`,
     perMonth: (price: string) => `${price}/mo`,
     perYear: (price: string) => `${price}/yr`,
     noLifetime: "Couldn't load the lifetime plan. Please try again shortly.",
@@ -66,6 +71,8 @@ const S = strings({
     backlogManual: (first: string) => `${first} · 未分類で「AIで整理」を押してください`,
     started: 'Proが始まりました',
     purchaseFailed: '購入を完了できませんでした',
+    notConfirmed: '購入を確認できませんでした',
+    resubscribe: (plan: string) => `${plan}を再登録(Play Store)`,
     perMonth: (price: string) => `月額 ${price}`,
     perYear: (price: string) => `年額 ${price}`,
     noLifetime: '買い切りプランを読み込めませんでした。しばらくしてからもう一度お試しください。',
@@ -87,6 +94,8 @@ const S = strings({
     backlogManual: (first: string) => `${first} · 请在“未分类”中点按“用 AI 整理”`,
     started: 'Pro 已开通',
     purchaseFailed: '未能完成付款',
+    notConfirmed: '无法确认购买',
+    resubscribe: (plan: string) => `重新订阅${plan}（Play 商店）`,
     perMonth: (price: string) => `${price}/月`,
     perYear: (price: string) => `${price}/年`,
     noLifetime: '无法加载终身版信息，请稍后再试。',
@@ -108,6 +117,8 @@ const S = strings({
     backlogManual: (first: string) => `${first} · 請在「未分類」中點按「用 AI 整理」`,
     started: 'Pro 已開通',
     purchaseFailed: '未能完成付款',
+    notConfirmed: '無法確認購買',
+    resubscribe: (plan: string) => `重新訂閱${plan}（Play 商店）`,
     perMonth: (price: string) => `${price}/月`,
     perYear: (price: string) => `${price}/年`,
     noLifetime: '無法載入終身版資訊，請稍後再試。',
@@ -210,6 +221,7 @@ export function AndroidPurchase({
   offers,
   selected,
   current = null,
+  ending = false,
   planLabels,
   onPrices,
   onPlan,
@@ -217,10 +229,14 @@ export function AndroidPurchase({
 }: {
   theme: Theme;
   offers: Offers;
-  selected: PlanOption;
-  // On Pro already: the plan in use (null: not on Pro, or unknown). Picking
-  // another one changes it instead of buying a second subscription.
+  // null: nothing picked yet (a cancelled subscription starts that way).
+  selected: PlanOption | null;
+  // On a subscription already: its plan (null: not on one). Picking another
+  // changes it instead of buying a second subscription.
   current?: PlanOption | null;
+  // That subscription is cancelled but still running: picking its own plan
+  // again resubscribes (in Play), another plan switches to it.
+  ending?: boolean;
   planLabels: Record<PlanOption, string>;
   onPrices: (prices: StorePrices) => void;
   onPlan: (plan: Plan) => void;
@@ -240,6 +256,9 @@ export function AndroidPurchase({
     const plan = await verifyWithRetry(purchase.productId, token);
     await finishTransaction({ purchase, isConsumable: false }).catch(() => {});
     onPlan(plan);
+    // Play can hand back an old purchase (e.g. a refunded one it still lists
+    // as owned): the server checked it and Pro stayed off, so no "started".
+    if (plan.tier !== 'pro') throw new Error(S.notConfirmed);
     return plan;
   };
 
@@ -316,6 +335,11 @@ export function AndroidPurchase({
   // purchase; the subscription is then cancelled in Play.
   const ownedSub = availablePurchases.find((p) => p.productId === offers.subscriptionId);
   const changePlan = async () => {
+    if (!selected) return;
+    if (ending && selected === current) {
+      Linking.openURL(PLAY_SUBSCRIPTIONS_URL).catch(() => {});
+      return;
+    }
     if (selected === 'lifetime') {
       changing.current = 'lifetime';
       return buy();
@@ -349,6 +373,7 @@ export function AndroidPurchase({
   };
 
   const buy = async () => {
+    if (!selected) return;
     setError('');
     logAppEvent('purchase_started', selected);
     try {
@@ -405,14 +430,22 @@ export function AndroidPurchase({
       {error !== '' && <Text style={[styles.error, { color: theme.danger }]}>{error}</Text>}
       {current ? (
         // On Pro: a button only once another plan is picked.
-        selected !== current && (
+        selected !== null && (selected !== current || ending) && (
           <ButtonRow theme={theme} style={styles.buttons}>
             <SolidButton
-              label={!connected ? S.connecting : selected === 'lifetime' ? S.toLifetime : S.changeTo(planLabels[selected])}
+              label={
+                !connected
+                  ? S.connecting
+                  : ending && selected === current
+                    ? S.resubscribe(planLabels[selected])
+                    : selected === 'lifetime'
+                      ? S.toLifetime
+                      : S.changeTo(planLabels[selected])
+              }
               theme={theme}
               onPress={changePlan}
               loading={busy}
-              disabled={!connected}
+              disabled={!connected && !(ending && selected === current)}
             />
           </ButtonRow>
         )

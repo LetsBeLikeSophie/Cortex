@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -48,7 +48,7 @@ export default function PaywallScreen() {
   const reason = route.params?.reason;
   const [plan, setPlan] = useState<Plan | null>(null);
   const [offers, setOffers] = useState<Offers | null>(null);
-  const [selected, setSelected] = useState<PlanOption>('yearly');
+  const [selected, setSelected] = useState<PlanOption | null>(null);
   const [prices, setPrices] = useState<StorePrices>({});
 
   useEffect(() => {
@@ -57,7 +57,8 @@ export default function PaywallScreen() {
       .catch(() => {});
     fetchOffers()
       .then(setOffers)
-      .catch(() => {});
+      // Unreachable: the screen still opens, with buying off.
+      .catch(() => setOffers({ enabled: false, subscriptionId: '', lifetimeId: '', lifetimeRemaining: 0 }));
   }, []);
 
   useEffect(() => {
@@ -80,6 +81,8 @@ export default function PaywallScreen() {
     ...(reason === 'tag_lock' ? [S.tagLocks] : []),
   ];
 
+  // Read at render: the strings follow the language picked in the app.
+  const PLAN_LABELS: Record<PlanOption, string> = { monthly: S.monthly, yearly: S.yearly, lifetime: S.lifetime };
   const sub = plan?.subscription;
   // Trial just ended: what the trial was used for, and when free would run
   // out at that pace, instead of a freshly reset 0/50 (decision 11-04 B2).
@@ -97,7 +100,7 @@ export default function PaywallScreen() {
           : sub?.status === 'renewing'
             ? S.renews(dateLabel(sub.until))
             : sub?.status === 'ending'
-              ? S.ending(dateLabel(sub.until))
+              ? S.ending(dateLabel(sub.until), sub.plan === 'monthly' || sub.plan === 'yearly' ? PLAN_LABELS[sub.plan] : undefined)
               : S.pro(plan.proUntil ? dateLabel(plan.proUntil) : null)
         : trialStats
           ? S.trialStats(trialStats.days, trialStats.saved, trialStats.searched)
@@ -123,29 +126,37 @@ export default function PaywallScreen() {
     ...(lifetimeLeft > 0 ? [{ key: 'lifetime' as const, label: S.lifetime, note: S.lifetimeNote(lifetimeLeft) }] : []),
   ];
   const isPro = plan?.tier === 'pro';
-  // Read at render: the strings follow the language picked in the app.
-  const PLAN_LABELS: Record<PlanOption, string> = { monthly: S.monthly, yearly: S.yearly, lifetime: S.lifetime };
-  // On Pro the plans stay on screen, read-only, with the one in use marked
-  // (Sophie 11-08: the screen used to drop to the benefits alone).
-  const subPlan = sub && (sub.status === 'renewing' || sub.status === 'ending') ? sub.plan : null;
-  const currentPlan: PlanOption | null = !isPro
-    ? null
-    : isLifetimePro(plan?.proUntil)
-      ? 'lifetime'
-      : subPlan === 'monthly' || subPlan === 'yearly'
-        ? subPlan
-        : null;
+  // Nothing is drawn until both the plan and (Android) the store offers are
+  // known, so the screen never shows one state and then turns into another
+  // (Sophie 11-11).
+  const ready = plan !== null && (Platform.OS !== 'android' || offers !== null);
+  // What the person has now (Sophie 11-11):
+  // - renewing monthly / yearly: that plan is marked as current and selected;
+  //   picking another switches to it.
+  // - cancelled but still running: nothing marked or selected, the status
+  //   says which plan runs until when; picking its plan resubscribes (Play),
+  //   another switches.
+  // - lifetime: lifetime alone, read-only.
+  const subPlan = sub && (sub.status === 'renewing' || sub.status === 'ending') && (sub.plan === 'monthly' || sub.plan === 'yearly') ? sub.plan : null;
+  const ending = isPro && sub?.status === 'ending' && subPlan !== null;
+  const lifetimePro = isPro && isLifetimePro(plan?.proUntil);
+  const currentPlan: PlanOption | null = !isPro ? null : lifetimePro ? 'lifetime' : sub?.status === 'renewing' ? subPlan : null;
   // A held payment is fixed in Play, not by buying again.
   const canBuy = Platform.OS === 'android' && !!offers?.enabled && !isPro && !paymentIssue;
-  // On a monthly or yearly plan: the same plans, the one in use selected, and
-  // picking another changes it (Sophie 11-08). Lifetime has nothing to change.
-  const canChange = Platform.OS === 'android' && !!offers?.enabled && !paymentIssue && (currentPlan === 'monthly' || currentPlan === 'yearly');
+  const canChange = Platform.OS === 'android' && !!offers?.enabled && !paymentIssue && !lifetimePro && subPlan !== null;
   const pickable = !isPro || canChange;
-  const shownOptions = currentPlan === 'lifetime' ? [{ key: 'lifetime' as const, label: S.lifetime, note: '' }] : options;
-  // Start on the plan in use once it's known.
+  const shownOptions = lifetimePro ? [{ key: 'lifetime' as const, label: S.lifetime, note: '' }] : options;
+  // The first selection, once: the plan in use, nothing when cancelled,
+  // yearly for someone choosing for the first time.
+  const initialized = useRef(false);
   useEffect(() => {
-    if (currentPlan) setSelected(currentPlan);
-  }, [currentPlan]);
+    if (!ready || initialized.current) return;
+    initialized.current = true;
+    setSelected(currentPlan ?? (isPro ? null : 'yearly'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
+  // A change button stands where the close button would (Sophie 11-11).
+  const actionShown = canChange && selected !== null && (selected !== currentPlan || ending);
 
   return (
     <ModalSheet theme={theme} onClose={close} bordered={false} paddingBottom={24} paddingHorizontal={20} maxHeightRatio={0.9}>
@@ -154,6 +165,12 @@ export default function PaywallScreen() {
       <ScrollView style={styles.flexShrink} showsVerticalScrollIndicator={false}>
         <SheetTitle theme={theme} title={S.headlines[reason ?? 'default']} sub={subline} />
 
+        {!ready ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={theme.sub} />
+          </View>
+        ) : (
+        <>
         <View style={[styles.card, { backgroundColor: theme.surface, ...frameStyle(theme), borderRadius: theme.cardRadius }]}>
           <Text style={[styles.planName, { color: theme.ink }]}>Pro</Text>
           {benefits.map((b) => (
@@ -170,10 +187,10 @@ export default function PaywallScreen() {
             (what the person will actually be charged). Shown only once the
             plan is known, so a Pro member never sees them flash as buyable;
             on Pro they're read-only with the current one marked. */}
-        {plan !== null && (!isPro || currentPlan !== null) && (
+        {(!isPro || currentPlan !== null || ending) && (
           <View style={styles.options}>
             {shownOptions.map((o) => {
-              const active = pickable ? selected === o.key : currentPlan === o.key;
+              const active = selected === o.key;
               return (
                 <Pressable
                   key={o.key}
@@ -199,25 +216,24 @@ export default function PaywallScreen() {
         )}
 
         {status !== '' && <Text style={[styles.status, { color: theme.sub }]}>{status}</Text>}
+        </>
+        )}
       </ScrollView>
 
       {/* Android, offers still loading: hold the buy button's place so it
           doesn't pop in late under a placeholder line. */}
       {/* Plan not known yet either: a Pro member mustn't see 'Pro 시작하기' flash first (Sophie 11-10). */}
-      {Platform.OS === 'android' && (plan === null || (!isPro && offers === null)) ? (
-        <ButtonRow theme={theme} style={styles.buttons}>
-          <SolidButton label={S.start} theme={theme} onPress={() => {}} loading />
-        </ButtonRow>
-      ) : canBuy && offers && AndroidPurchase ? (
+      {!ready ? null : canBuy && offers && AndroidPurchase ? (
         <AndroidPurchase theme={theme} offers={offers} selected={selected} planLabels={PLAN_LABELS} onPrices={setPrices} onPlan={setPlan} onClose={close} />
       ) : (
         <>
           {canChange && offers && AndroidPurchase && (
-            <AndroidPurchase theme={theme} offers={offers} selected={selected} current={currentPlan} planLabels={PLAN_LABELS} onPrices={setPrices} onPlan={setPlan} onClose={close} />
+            <AndroidPurchase theme={theme} offers={offers} selected={selected} current={subPlan} ending={ending} planLabels={PLAN_LABELS} onPrices={setPrices} onPlan={setPlan} onClose={close} />
           )}
           {isPro || paymentIssue ? (
-            // Where a subscription is changed, cancelled or its payment fixed: Play, not here.
-            !isLifetimePro(plan?.proUntil) && (
+            // Cancelling or fixing a payment happens in Play. A cancelled one
+            // has nothing to cancel; resubscribing is a plan pick above.
+            !lifetimePro && !ending && (
               <Pressable onPress={() => Linking.openURL(PLAY_SUBSCRIPTIONS_URL).catch(() => {})} hitSlop={6}>
                 <Text style={[styles.status, styles.manageLink, { color: theme.ink }]}>{paymentIssue ? S.fixPayment : S.manage}</Text>
               </Pressable>
@@ -229,9 +245,11 @@ export default function PaywallScreen() {
                 : S.preparing}
             </Text>
           )}
-          <ButtonRow theme={theme} style={styles.buttons}>
-            <SolidButton label={COMMON.close} theme={theme} onPress={close} />
-          </ButtonRow>
+          {!actionShown && (
+            <ButtonRow theme={theme} style={styles.buttons}>
+              <SolidButton label={COMMON.close} theme={theme} onPress={close} />
+            </ButtonRow>
+          )}
           {/* A held payment hides buying, not restoring (S-1). */}
           {paymentIssue && offers?.enabled && RestorePurchase && <RestorePurchase theme={theme} offers={offers} onPlan={setPlan} onClose={close} />}
         </>
@@ -254,6 +272,7 @@ const styles = StyleSheet.create({
   optionLabel: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
   optionPrice: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
   optionNote: { fontSize: 12.5, marginTop: 3, fontFamily: BODY_KR },
+  loading: { paddingVertical: 48, alignItems: 'center' },
   status: { fontSize: 12.5, marginTop: 12, paddingHorizontal: 4, fontFamily: BODY_KR },
   buttons: { marginTop: 18 },
   manageLink: { fontFamily: BODY_KR_MEDIUM, textDecorationLine: 'underline' },

@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { getClient, logAnalyticsEvent } from "./supabase.js";
 import { getEntitlement } from "./plans.js";
-import { buyerAccount, needsResync, nextProUntil, recordOnlyRaw, voidedToRecheck, type PurchaseRow, type PurchaseState } from "./billingRules.js";
+import { buyerAccount, keepRefunded, needsResync, nextProUntil, recordOnlyRaw, voidedToRecheck, type PurchaseRow, type PurchaseState } from "./billingRules.js";
 import {
   PlaySubscription,
   acknowledgeProduct,
@@ -10,6 +10,7 @@ import {
   getSubscription,
   isPurchaseGone,
   listVoidedPurchases,
+  PlayApiError,
 } from "./googlePlay.js";
 
 // Purchases -> user_plans.pro_until. Every store purchase is a row in
@@ -69,6 +70,31 @@ async function accountExists(userId: string | null): Promise<boolean> {
   return false;
 }
 
+type PurchaseInsert = Parameters<typeof upsertPurchase>[0];
+
+// The app's verify and Google's purchase notice arrive within milliseconds of
+// each other (Sophie 11-11), and both saw no row. Only the one whose insert
+// lands counts the purchase as new; the other just updates it.
+async function claimNew(row: PurchaseInsert): Promise<boolean> {
+  const { data, error } = await getClient()
+    .from("purchases")
+    .upsert({ ...row, store: "google", updated_at: new Date().toISOString() }, { onConflict: "purchase_token", ignoreDuplicates: true })
+    .select("purchase_token");
+  if (error) throw new Error(`claimNew failed: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+// Acknowledge, unless the other of those two calls already did: Play refuses a
+// second acknowledgement, which used to fail the app's verify after Pro was on.
+async function acknowledgeOnce(ack: () => Promise<unknown>, acknowledged: () => Promise<boolean>): Promise<void> {
+  try {
+    await ack();
+  } catch (err) {
+    if (err instanceof PlayApiError && err.status < 500 && (await acknowledged())) return;
+    throw err;
+  }
+}
+
 // Checks a Google Play purchase with Google, records it for this account,
 // acknowledges it (unacknowledged purchases are refunded after 3 days),
 // and recomputes the account's pro_until.
@@ -89,18 +115,34 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
   if (productId === config.playLifetimeId) {
     const p = await getProductPurchase(productId, token);
     if (existing?.user_id !== userId) await refuseIfBoughtByAnother(buyerAccount(p), userId);
-    const state: PurchaseState = p.purchaseState === 0 ? "active" : p.purchaseState === 2 ? "pending" : "canceled";
-    await upsertPurchase({ user_id: userId, product_id: productId, purchase_token: token, kind: "lifetime", expires_at: null, state, raw: p });
-    await logPurchaseChange(userId, existing?.state as PurchaseState | undefined, state, "lifetime");
-    if (state === "active" && p.acknowledgementState === 0) await acknowledgeProduct(productId, token);
+    const before = existing?.state as PurchaseState | undefined;
+    const state = keepRefunded(before, p.purchaseState === 0 ? "active" : p.purchaseState === 2 ? "pending" : "canceled");
+    const row: PurchaseInsert = { user_id: userId, product_id: productId, purchase_token: token, kind: "lifetime", expires_at: null, state, raw: p };
+    const isNew = !existing && (await claimNew(row));
+    await upsertPurchase(row);
+    await logPurchaseChange(userId, existing || isNew ? before : state, state, "lifetime");
+    if (state === "active" && p.acknowledgementState === 0) {
+      await acknowledgeOnce(
+        () => acknowledgeProduct(productId, token),
+        async () => (await getProductPurchase(productId, token)).acknowledgementState === 1
+      );
+    }
   } else if (productId === config.playSubscriptionId) {
     const s = await getSubscription(token);
     if (existing?.user_id !== userId) await refuseIfBoughtByAnother(buyerAccount(s), userId);
-    const { state, expiresAt } = subscriptionState(s);
-    await upsertPurchase({ user_id: userId, product_id: productId, purchase_token: token, kind: "subscription", expires_at: expiresAt, state, raw: s });
-    await logPurchaseChange(userId, existing?.state as PurchaseState | undefined, state, s.lineItems?.[0]?.offerDetails?.basePlanId ?? "subscription");
+    const before = existing?.state as PurchaseState | undefined;
+    const fresh = subscriptionState(s);
+    const state = keepRefunded(before, fresh.state);
+    const row: PurchaseInsert = { user_id: userId, product_id: productId, purchase_token: token, kind: "subscription", expires_at: fresh.expiresAt, state, raw: s };
+    const isNew = !existing && (await claimNew(row));
+    await upsertPurchase(row);
+    // Lost the race to the other call: it already counted this purchase.
+    await logPurchaseChange(userId, existing || isNew ? before : state, state, s.lineItems?.[0]?.offerDetails?.basePlanId ?? "subscription");
     if (state === "active" && s.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
-      await acknowledgeSubscription(productId, token);
+      await acknowledgeOnce(
+        () => acknowledgeSubscription(productId, token),
+        async () => (await getSubscription(token)).acknowledgementState === "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED"
+      );
     }
   } else {
     throw new UnknownProductError(`unknown product ${productId}`);

@@ -4,6 +4,8 @@ import { config } from "../config.js";
 import { resolveUserId, UnauthorizedError } from "../lib/auth.js";
 import { withPlanDetails } from "../lib/plans.js";
 import { isPlayBillingConfigured, isPurchaseGone } from "../lib/googlePlay.js";
+import { logAnalyticsEvent } from "../lib/analytics.js";
+import { purchaseFailureDetail } from "../lib/billingRules.js";
 import {
   PurchaseConflictError,
   UnknownProductError,
@@ -54,6 +56,9 @@ export async function billingRoutes(app: FastifyInstance) {
     try {
       await applyGooglePurchase(userId, parsed.data.productId, parsed.data.purchaseToken);
     } catch (err) {
+      // Which step failed, for the purchase funnel (Sophie 11-11: what happened when).
+      const kind = parsed.data.productId === config.playLifetimeId ? "lifetime" : "subscription";
+      await logAnalyticsEvent({ eventType: "purchase_failed", userId, detail: purchaseFailureDetail(`verify:${kind}`, err) }).catch(() => {});
       if (err instanceof PurchaseConflictError) return reply.code(409).send({ error: "purchase_other_account" });
       if (err instanceof UnknownProductError) return reply.code(400).send({ error: "unknown_product" });
       if (isPurchaseGone(err)) return reply.code(400).send({ error: "invalid_purchase" });

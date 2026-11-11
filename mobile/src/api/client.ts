@@ -552,7 +552,7 @@ export interface Offers {
   lifetimeRemaining: number;
 }
 // Best effort: a lost count must never get in the way of the screen.
-export function logAppEvent(type: 'paywall_view' | 'purchase_started', detail: string) {
+export function logAppEvent(type: 'paywall_view' | 'purchase_started' | 'purchase_failed', detail: string) {
   request<void>('/me/event', { method: 'POST', body: JSON.stringify({ type, detail }) }).catch(() => {});
 }
 

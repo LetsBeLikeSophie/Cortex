@@ -129,3 +129,19 @@ export function voidedToRecheck(voidedTokens: string[], rows: { purchase_token: 
   const open = new Set(rows.filter((r) => r.state !== "refunded").map((r) => r.purchase_token));
   return [...new Set(voidedTokens)].filter((t) => open.has(t));
 }
+
+// A refund stays a refund: re-checking a refunded purchase (the app re-sends
+// one Play still lists as owned, or a renewal notice for it) gets "canceled"
+// or "expired" from Google, which would hide that the money went back. Only a
+// live purchase again (a real resubscribe on the same token) replaces it.
+export function keepRefunded(before: PurchaseState | undefined, next: PurchaseState): PurchaseState {
+  return before === "refunded" && next !== "active" && next !== "grace" && next !== "pending" ? "refunded" : next;
+}
+
+// What a failed purchase step leaves in the funnel: where it failed and the
+// status or error class, never a message (which could quote a token).
+export function purchaseFailureDetail(step: string, err: unknown): string {
+  const status = (err as { status?: unknown } | null)?.status;
+  const kind = typeof status === "number" ? String(status) : err instanceof Error ? err.constructor.name : "unknown";
+  return `${step}:${kind}`.slice(0, 60);
+}

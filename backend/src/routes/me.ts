@@ -65,10 +65,14 @@ const AppErrorSchema = z.object({
   stack: z.string().max(16_000),
 });
 
-const AppEventSchema = z.object({
-  type: z.enum(["paywall_view", "purchase_started"]),
-  detail: z.enum(["default", "classify", "search", "compose", "tag_cleanup", "trial_ending", "trial_ended", "monthly", "yearly", "lifetime"]),
-});
+const AppEventSchema = z.union([
+  z.object({
+    type: z.enum(["paywall_view", "purchase_started"]),
+    detail: z.enum(["default", "classify", "search", "compose", "tag_cleanup", "trial_ending", "trial_ended", "monthly", "yearly", "lifetime"]),
+  }),
+  // Play's own refusal in the app ("play:<code>"), a code, never a message.
+  z.object({ type: z.literal("purchase_failed"), detail: z.string().regex(/^play:[a-z0-9_-]{1,40}$/) }),
+]);
 
 export async function meRoutes(app: FastifyInstance) {
   // Plan + this month's AI usage, for the app's quota/미분류함 UI.

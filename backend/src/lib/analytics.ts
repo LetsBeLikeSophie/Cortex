@@ -27,6 +27,8 @@ export type AnalyticsEventType =
   | "paywall_view"
   | "purchase_started"
   | "purchase_done"
+  // A step on the way failed: detail is "<step>:<status or error class>".
+  | "purchase_failed"
   | "purchase_refunded"
   | "subscription_canceled"
   | "subscription_expired";

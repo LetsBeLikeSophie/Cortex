@@ -1,7 +1,7 @@
 // npm test -- pro_until after each way a purchase can change.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buyerAccount, FOREVER, needsResync, nextProUntil, PurchaseRow, recordOnlyRaw, subscriptionStatus, voidedToRecheck } from "./billingRules.js";
+import { buyerAccount, FOREVER, keepRefunded, needsResync, nextProUntil, PurchaseRow, purchaseFailureDetail, recordOnlyRaw, subscriptionStatus, voidedToRecheck } from "./billingRules.js";
 
 const ACCOUNT = "3f2b8c1e-9a4d-4e7b-8f10-2c6d5e4a1b09";
 
@@ -134,4 +134,25 @@ test("voided check: an expired subscription and a resubscribe's old token are st
 test("voided check: a deleted account's row (kept for records) is re-checked so it ends refunded", () => {
   // The lookup returns rows regardless of owner; refreshGooglePurchase handles the orphan.
   assert.deepEqual(voidedToRecheck(["orphan"], [{ purchase_token: "orphan", state: "active" }]), ["orphan"]);
+});
+
+test("refund: a refunded purchase re-checked as canceled or expired stays refunded", () => {
+  assert.equal(keepRefunded("refunded", "canceled"), "refunded");
+  assert.equal(keepRefunded("refunded", "expired"), "refunded");
+});
+
+test("resubscribing on the same token after a refund makes it live again", () => {
+  assert.equal(keepRefunded("refunded", "active"), "active");
+  assert.equal(keepRefunded("refunded", "grace"), "grace");
+});
+
+test("expiry and other states pass through when there was no refund (also after account deletion: no before)", () => {
+  assert.equal(keepRefunded("active", "expired"), "expired");
+  assert.equal(keepRefunded(undefined, "canceled"), "canceled");
+});
+
+test("a failed purchase step is recorded by status or error class, never its message", () => {
+  assert.equal(purchaseFailureDetail("verify:subscription", { status: 400, message: "token abc" }), "verify:subscription:400");
+  assert.equal(purchaseFailureDetail("verify:lifetime", new TypeError("boom")), "verify:lifetime:TypeError");
+  assert.equal(purchaseFailureDetail("verify", null), "verify:unknown");
 });

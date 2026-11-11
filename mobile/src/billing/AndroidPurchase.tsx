@@ -151,6 +151,13 @@ function baseOffer(sub: unknown, plan: 'monthly' | 'yearly'): SubOffer | undefin
   return offers.find((o) => !o.id || o.id === o.basePlanIdAndroid) ?? offers[0];
 }
 
+// Play's refusal as a code for the purchase funnel ("play:developer-error"),
+// so a failure like 11-11's "Invalid arguments" shows up without a message.
+function logPlayFailure(err: unknown) {
+  const code = String((err as { code?: unknown } | null)?.code ?? 'unknown').toLowerCase().replace(/[^a-z0-9_-]/g, '-').slice(0, 40);
+  logAppEvent('purchase_failed', `play:${code || 'unknown'}`);
+}
+
 // The purchase is already paid for when this runs, so a dropped connection or
 // a restarting server gets more tries. A refusal (400, 409) stays one.
 const VERIFY_RETRY_MS = [2000, 5000];
@@ -297,7 +304,9 @@ export function AndroidPurchase({
       },
       onPurchaseError: (err) => {
         setBusy(false);
-        if (!isUserCancelledError(err)) setError(err.message || S.purchaseFailed);
+        if (isUserCancelledError(err)) return;
+        logPlayFailure(err);
+        setError(err.message || S.purchaseFailed);
       },
     });
 
@@ -368,7 +377,9 @@ export function AndroidPurchase({
     } catch (err) {
       changing.current = null;
       setBusy(false);
-      if (!isUserCancelledError(err)) setError(err instanceof Error ? err.message : friendlyError(err));
+      if (isUserCancelledError(err)) return;
+      logPlayFailure(err);
+      setError(err instanceof Error ? err.message : friendlyError(err));
     }
   };
 
@@ -392,7 +403,9 @@ export function AndroidPurchase({
       }
     } catch (err) {
       setBusy(false);
-      if (!isUserCancelledError(err)) setError(err instanceof Error ? err.message : friendlyError(err));
+      if (isUserCancelledError(err)) return;
+      logPlayFailure(err);
+      setError(err instanceof Error ? err.message : friendlyError(err));
     }
   };
 

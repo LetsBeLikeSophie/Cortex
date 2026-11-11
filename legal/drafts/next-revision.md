@@ -4,17 +4,17 @@
 
 ## 1. 판매자 정보 (약관 맨 아래, 스토어 링크에서도 보이게)
 
-- 상호: [상호]
-- 대표자: [이름]
-- 사업장 주소: [주소]
+- 상호: 소피 앱스(Sophie Apps)
+- 대표자: 최솔잎
+- 사업장 주소: 서울특별시 동작구 신대방1나길 65-1 (신대방동)
 - 전화: [번호]
-- 사업자등록번호: [번호]
-- 통신판매업 신고번호: [번호] ([신고기관])
+- 사업자등록번호: 539-32-01828
+- 통신판매업 신고번호: 제2026-서울동작-1304호 (서울특별시 동작구청)
 - 문의: cortex@itssophie.dev
 
 ## 2. 제1조
 
-"Cortex 개발자(개인)" → "[상호]"
+"Cortex 개발자(개인)" → "소피 앱스(Sophie Apps)"
 
 ## 3. 제4조 제공 지역
 
@@ -106,11 +106,11 @@ Supabase(6항, 서울 리전)도 같은 형식으로 적어 두면 좋아요: pr
 
 ### 10-4. 13항 보호책임자
 
-- 성명: [Sophie 확인]
-- 직책: 대표(개인 개발자) [Sophie 확인]
+- 성명: 최솔잎
+- 직책: 대표
 - 이메일: cortex@itssophie.dev
 
-영어: Name: [to confirm], Role: owner (individual developer), Email: cortex@itssophie.dev
+영어: Name: Choi Solip, Role: owner (individual developer), Email: cortex@itssophie.dev
 
 ### 10-5. 새 항목 "권익침해 구제 방법" (13항 뒤)
 

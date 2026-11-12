@@ -16,7 +16,7 @@ import { showToast } from '../native/toast';
 import { useAuth } from '../auth/AuthContext';
 
 import type { PlanOption, StorePrices } from './types';
-import { PLAY_SUBSCRIPTIONS_URL } from './types';
+import { PLAY_SUBSCRIPTIONS_URL, isLifetimePro } from './types';
 import { LANG, TERMS_URL, TOKUSHOHO_URL, strings } from '../i18n';
 
 const S = strings({
@@ -299,15 +299,19 @@ export function AndroidPurchase({
         const change = changing.current;
         changing.current = null;
         confirmWithServer(purchase)
-          .then((plan) =>
-            change === 'lifetime'
+          .then((plan) => {
+            // Play answers "already owned" with the old purchase (a refunded
+            // test pass did this, 11-12): only say lifetime started when the
+            // server says so, otherwise it's a failed buy.
+            if (change === 'lifetime' && !isLifetimePro(plan?.proUntil)) throw new Error(S.purchaseFailed);
+            return change === 'lifetime'
               ? showToast(S.lifetimeAfterSub)
               : change
                 ? showToast(S.changeDone(planLabels[change]))
-                : announcePro(plan, S.started)
-          )
+                : announcePro(plan, S.started);
+          })
           .then(() => onClose())
-          .catch((err) => setError(friendlyError(err)))
+          .catch((err) => setError(err instanceof Error && err.message === S.purchaseFailed ? S.purchaseFailed : friendlyError(err)))
           .finally(() => setBusy(false));
       },
       onPurchaseError: (err) => {

@@ -1,11 +1,12 @@
 import { config } from "../config.js";
 import { getClient, logAnalyticsEvent } from "./supabase.js";
 import { getEntitlement } from "./plans.js";
-import { buyerAccount, keepRefunded, needsResync, nextProUntil, recordOnlyRaw, voidedToRecheck, type PurchaseRow, type PurchaseState } from "./billingRules.js";
+import { buyerAccount, keepRefunded, needsResync, nextProUntil, recordOnlyRaw, subscriptionsToStop, voidedToRecheck, type PurchaseRow, type PurchaseState } from "./billingRules.js";
 import {
   PlaySubscription,
   acknowledgeProduct,
   acknowledgeSubscription,
+  cancelSubscription,
   getProductPurchase,
   getSubscription,
   isPurchaseGone,
@@ -127,6 +128,7 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
         async () => (await getProductPurchase(productId, token)).acknowledgementState === 1
       );
     }
+    await stopRenewalsForLifetime(userId, state);
   } else if (productId === config.playSubscriptionId) {
     const s = await getSubscription(token);
     if (existing?.user_id !== userId) await refuseIfBoughtByAnother(buyerAccount(s), userId);
@@ -148,6 +150,28 @@ export async function applyGooglePurchase(userId: string, productId: string, tok
     throw new UnknownProductError(`unknown product ${productId}`);
   }
   await recomputeProUntil(userId);
+}
+
+// A lifetime pass replaces the subscription: turn its renewal off so the
+// person isn't charged again (they keep the paid period, which changes
+// nothing while lifetime is on). Play's cancel notice then updates the row.
+// One that fails is logged and retried on the next check of this lifetime
+// pass; it never undoes the lifetime pass itself.
+async function stopRenewalsForLifetime(userId: string, lifetimeState: PurchaseState): Promise<void> {
+  if (lifetimeState !== "active") return;
+  const { data, error } = await getClient().from("purchases").select("purchase_token, kind, state").eq("user_id", userId).eq("kind", "subscription");
+  if (error) {
+    console.error("subscriptions lookup for lifetime failed:", error.message);
+    return;
+  }
+  for (const token of subscriptionsToStop(lifetimeState, data ?? [])) {
+    try {
+      await cancelSubscription(config.playSubscriptionId, token);
+      await logAnalyticsEvent({ eventType: "subscription_stopped_for_lifetime", userId, detail: config.playSubscriptionId });
+    } catch (err) {
+      console.error("stopping subscription for lifetime failed:", err);
+    }
+  }
 }
 
 // Bought on one account, then the app was opened on another: it stays with the

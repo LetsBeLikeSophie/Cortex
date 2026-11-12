@@ -3,8 +3,9 @@ import { readFileSync } from "node:fs";
 import { config } from "../config.js";
 
 // Google Play Developer API (androidpublisher v3), just the calls billing
-// needs: read a subscription / one-time purchase by its token, and
-// acknowledge it (Play refunds anything not acknowledged within 3 days).
+// needs: read a subscription / one-time purchase by its token, acknowledge
+// it (Play refunds anything not acknowledged within 3 days), and stop a
+// subscription's renewal once a lifetime pass replaces it.
 // Auth is a service-account JWT signed with node:crypto -- no SDK.
 
 interface ServiceAccount {
@@ -116,6 +117,15 @@ export function getSubscription(token: string): Promise<PlaySubscription> {
 
 export function acknowledgeSubscription(subscriptionId: string, token: string): Promise<unknown> {
   return call(`/subscriptions/${encodeURIComponent(subscriptionId)}/tokens/${encodeURIComponent(token)}:acknowledge`, {
+    method: "POST",
+    body: "{}",
+  });
+}
+
+// Turns auto-renew off; the person keeps Pro until the paid period ends.
+// https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptions/cancel
+export function cancelSubscription(subscriptionId: string, token: string): Promise<unknown> {
+  return call(`/subscriptions/${encodeURIComponent(subscriptionId)}/tokens/${encodeURIComponent(token)}:cancel`, {
     method: "POST",
     body: "{}",
   });

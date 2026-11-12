@@ -1,7 +1,7 @@
 // npm test -- pro_until after each way a purchase can change.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buyerAccount, FOREVER, keepRefunded, needsResync, nextProUntil, PurchaseRow, purchaseFailureDetail, recordOnlyRaw, subscriptionStatus, voidedToRecheck } from "./billingRules.js";
+import { buyerAccount, FOREVER, keepRefunded, needsResync, nextProUntil, PurchaseRow, purchaseFailureDetail, recordOnlyRaw, subscriptionStatus, subscriptionsToStop, voidedToRecheck } from "./billingRules.js";
 
 const ACCOUNT = "3f2b8c1e-9a4d-4e7b-8f10-2c6d5e4a1b09";
 
@@ -155,4 +155,36 @@ test("a failed purchase step is recorded by status or error class, never its mes
   assert.equal(purchaseFailureDetail("verify:subscription", { status: 400, message: "token abc" }), "verify:subscription:400");
   assert.equal(purchaseFailureDetail("verify:lifetime", new TypeError("boom")), "verify:lifetime:TypeError");
   assert.equal(purchaseFailureDetail("verify", null), "verify:unknown");
+});
+
+test("lifetime on: subscriptions that could still renew are stopped", () => {
+  const rows = [
+    { purchase_token: "renewing", kind: "subscription", state: "active" },
+    { purchase_token: "retrying", kind: "subscription", state: "grace" },
+    { purchase_token: "held", kind: "subscription", state: "on_hold" },
+    { purchase_token: "cancelled", kind: "subscription", state: "canceled" },
+    { purchase_token: "ended", kind: "subscription", state: "expired" },
+    { purchase_token: "refunded", kind: "subscription", state: "refunded" },
+    { purchase_token: "unpaid", kind: "subscription", state: "pending" },
+    { purchase_token: "pass", kind: "lifetime", state: "active" },
+  ];
+  assert.deepEqual(subscriptionsToStop("active", rows), ["renewing", "retrying", "held"]);
+});
+
+test("a lifetime pass that isn't on (pending, refunded, cancelled) stops nothing", () => {
+  const rows = [{ purchase_token: "renewing", kind: "subscription", state: "active" }];
+  for (const state of ["pending", "refunded", "canceled"] as const) assert.deepEqual(subscriptionsToStop(state, rows), []);
+});
+
+test("resubscribing after an expired or refunded subscription: only the new one is stopped", () => {
+  const rows = [
+    { purchase_token: "old", kind: "subscription", state: "expired" },
+    { purchase_token: "old-refunded", kind: "subscription", state: "refunded" },
+    { purchase_token: "new", kind: "subscription", state: "active" },
+  ];
+  assert.deepEqual(subscriptionsToStop("active", rows), ["new"]);
+});
+
+test("no subscriptions (deleted account came back, or lifetime only): nothing to stop", () => {
+  assert.deepEqual(subscriptionsToStop("active", []), []);
 });

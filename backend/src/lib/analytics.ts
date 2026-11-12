@@ -31,6 +31,8 @@ export type AnalyticsEventType =
   | "purchase_failed"
   | "purchase_refunded"
   | "subscription_canceled"
+  // Its renewal turned off by the server because a lifetime pass replaced it.
+  | "subscription_stopped_for_lifetime"
   | "subscription_expired";
 
 export interface AnalyticsEvent {

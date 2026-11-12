@@ -145,3 +145,13 @@ export function purchaseFailureDetail(step: string, err: unknown): string {
   const kind = typeof status === "number" ? String(status) : err instanceof Error ? err.constructor.name : "unknown";
   return `${step}:${kind}`.slice(0, 60);
 }
+
+// Lifetime is on: which of the person's subscriptions would still charge them.
+// Those whose renewal may still be on (active, grace, on_hold) get it turned
+// off; already cancelled, ended, refunded or never-paid ones are left alone
+// (Sophie 11-12: the server stops them, not a toast asking the person to).
+const STILL_RENEWING: PurchaseState[] = ["active", "grace", "on_hold"];
+export function subscriptionsToStop(lifetimeState: PurchaseState, rows: { purchase_token: string; kind: string; state: string }[]): string[] {
+  if (lifetimeState !== "active") return [];
+  return rows.filter((r) => r.kind === "subscription" && STILL_RENEWING.includes(r.state as PurchaseState)).map((r) => r.purchase_token);
+}

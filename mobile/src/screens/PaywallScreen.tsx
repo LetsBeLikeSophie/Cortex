@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -59,6 +59,24 @@ export default function PaywallScreen() {
       .then(setOffers)
       // Unreachable: the screen still opens, with buying off.
       .catch(() => setOffers({ enabled: false, subscriptionId: '', lifetimeId: '', lifetimeRemaining: 0 }));
+  }, []);
+
+  // Back from Play (cancel, resume) the plan is read again, so the screen
+  // doesn't keep saying "다음 결제" after a cancel (Sophie 11-12 test). Play's
+  // notice can reach the server a few seconds later, hence the second read.
+  useEffect(() => {
+    let later: ReturnType<typeof setTimeout> | undefined;
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st !== 'active') return;
+      const read = () => fetchPlan().then(setPlan).catch(() => {});
+      read();
+      clearTimeout(later);
+      later = setTimeout(read, 5000);
+    });
+    return () => {
+      sub.remove();
+      clearTimeout(later);
+    };
   }, []);
 
   useEffect(() => {

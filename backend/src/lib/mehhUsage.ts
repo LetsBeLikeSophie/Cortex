@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { config } from "../config.js";
 import { getMehhPurchase, isPlayBillingConfigured, isPurchaseGone } from "./googlePlay.js";
-import { isMehhPro } from "./mehhRules.js";
+import { isMehhPro, type MehhProduct } from "./mehhRules.js";
 import { monthWindow } from "./plans.js";
 import { getClient } from "./db.js";
 
@@ -23,12 +23,13 @@ export function mehhBillingReady(): boolean {
   return isPlayBillingConfigured();
 }
 
-export async function requireMehhPro(token: string, key: string, now = Date.now()): Promise<void> {
+export async function requireMehhPro(token: string, key: string, product: MehhProduct = "lifetime", now = Date.now()): Promise<void> {
   const until = verified.get(key);
   if (until && until > now) return;
   let ok: boolean;
   try {
-    ok = isMehhPro(await getMehhPurchase(token));
+    const id = product === "trial" ? config.mehhTrialId : config.mehhLifetimeId;
+    ok = isMehhPro(await getMehhPurchase(id, token), product, now, config.mehhTrialDays);
   } catch (err) {
     if (isPurchaseGone(err)) ok = false;
     else throw err; // Google down: 503, Mehh tries later

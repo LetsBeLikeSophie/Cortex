@@ -10,7 +10,7 @@ export const mehhDeps: MehhDeps = {
   billingReady: mehhBillingReady,
   aiReady: () => config.hasAnthropicKey && config.hasSupabase,
   purchaseKey,
-  requirePro: (token, key) => requireMehhPro(token, key),
+  requirePro: (token, key, product) => requireMehhPro(token, key, product),
   NotPro: MehhNotProError,
   prepare: prepareMehhThumbnail,
   isImageRejected: (err): err is ImageRejectedError => err instanceof ImageRejectedError,

@@ -71,6 +71,10 @@ export const config = {
   mehhAiEnabled: optional("MEHH_AI_ENABLED") === "1",
   mehhPackageName: optional("MEHH_PACKAGE_NAME") ?? "dev.itssophie.mehh",
   mehhLifetimeId: optional("MEHH_LIFETIME_ID") ?? "mehh_pro_lifetime",
+  // Mehh's 3-month Pro: a one-time product handed out only as Play promo
+  // codes (Sophie 11-14). Counts for this many days from its purchase time.
+  mehhTrialId: optional("MEHH_TRIAL_ID") ?? "mehh_pro_3months",
+  mehhTrialDays: Number(optional("MEHH_TRIAL_DAYS") ?? 90),
   mehhAiMonthly: Number(optional("MEHH_AI_MONTHLY") ?? 100),
   // Bursts per purchase per 15 minutes (each request is up to 10 photos).
   mehhRateLimitMax: Number(optional("MEHH_RATE_LIMIT_MAX") ?? 30),

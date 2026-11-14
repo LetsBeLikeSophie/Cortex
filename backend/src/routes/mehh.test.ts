@@ -77,6 +77,20 @@ test("Pro gets one verdict per photo and this month's count", async () => {
   assert.deepEqual(j.usage, { used: 3, limit: 12, resetsAt: "2026-11-30T15:00:00.000Z" });
 });
 
+test("the product is checked as sent: 3-month Pro as trial, none (older Mehh) as lifetime, others refused", async () => {
+  const seen: string[] = [];
+  const { deps } = fakes({
+    requirePro: async (_t, _k, product) => {
+      seen.push(product);
+    },
+  });
+  const a = await app(deps);
+  assert.equal((await post(a, { ...body(1), productId: "mehh_pro_3months" })).statusCode, 200);
+  assert.equal((await post(a, body(1))).statusCode, 200);
+  assert.equal((await post(a, { ...body(1), productId: "cortex_lifetime" })).statusCode, 400);
+  assert.deepEqual(seen, ["trial", "lifetime"]);
+});
+
 test("not Pro (never bought, or refunded): 401 and nothing counted", async () => {
   const { deps, log } = fakes();
   const res = await post(await app(deps), body(2, "refunded"));

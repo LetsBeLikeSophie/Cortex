@@ -139,17 +139,19 @@ export interface PlayProductPurchase {
   purchaseType?: number;
   orderId?: string;
   obfuscatedExternalAccountId?: string;
+  // When it was bought (ms since epoch, as a string).
+  purchaseTimeMillis?: string;
 }
 
 export function getProductPurchase(productId: string, token: string): Promise<PlayProductPurchase> {
   return call<PlayProductPurchase>(`/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(token)}`);
 }
 
-// Mehh's lifetime pass, read with Mehh's package name. Mehh acknowledges its
-// own purchases on the phone; the server only reads.
-export function getMehhPurchase(token: string): Promise<PlayProductPurchase> {
+// A Mehh Pro purchase (lifetime pass or 3-month Pro), read with Mehh's package
+// name. Mehh acknowledges its own purchases on the phone; the server only reads.
+export function getMehhPurchase(productId: string, token: string): Promise<PlayProductPurchase> {
   return call<PlayProductPurchase>(
-    `/products/${encodeURIComponent(config.mehhLifetimeId)}/tokens/${encodeURIComponent(token)}`,
+    `/products/${encodeURIComponent(productId)}/tokens/${encodeURIComponent(token)}`,
     undefined,
     config.mehhPackageName
   );

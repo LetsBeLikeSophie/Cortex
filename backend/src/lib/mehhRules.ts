@@ -35,12 +35,23 @@ export interface MehhResult {
 // this needs (see googlePlay.ts PlayProductPurchase).
 export interface MehhPurchase {
   purchaseState: number; // 0 purchased, 1 canceled (refunded), 2 pending
+  purchaseTimeMillis?: string;
 }
+
+// Which Mehh Pro product a token belongs to.
+export type MehhProduct = "lifetime" | "trial";
 
 // Lifetime product: no expiry. A refund turns purchaseState to 1 and the pass
 // stops counting from the next check; a pending payment doesn't count yet.
-export function isMehhPro(p: MehhPurchase): boolean {
-  return p.purchaseState === 0;
+// 3-month Pro (`trial`, promo codes only): the same, and only for `trialDays`
+// from its purchase time -- Mehh counts the same days on the phone. Without a
+// purchase time it doesn't count (nothing to count from).
+export function isMehhPro(p: MehhPurchase, product: MehhProduct = "lifetime", now = Date.now(), trialDays = 90): boolean {
+  if (p.purchaseState !== 0) return false;
+  if (product === "lifetime") return true;
+  const at = Number(p.purchaseTimeMillis);
+  if (!Number.isFinite(at) || at <= 0) return false;
+  return now < at + trialDays * 24 * 60 * 60 * 1000;
 }
 
 // How many photos of this batch go to the AI: all of them while the month

@@ -11,7 +11,8 @@ Mehh Pro가 폰에서 애매하다고 본 **캡처** 썸네일(얼굴 없는 것
 
 ```json
 {
-  "purchaseToken": "<Play 구매 토큰, mehh_pro_lifetime>",
+  "purchaseToken": "<Play 구매 토큰>",
+  "productId": "mehh_pro_lifetime | mehh_pro_3months (없으면 lifetime, 예전 Mehh)",
   "today": "2026-11-08",
   "photos": [
     { "id": "p0", "image": "<base64 JPEG>" }
@@ -22,6 +23,7 @@ Mehh Pro가 폰에서 애매하다고 본 **캡처** 썸네일(얼굴 없는 것
 | 필드 | 규칙 |
 |---|---|
 | `purchaseToken` | 1–2000자. 서버는 저장하지 않고 SHA-256만 상한 키로 씀 |
+| `productId` | `mehh_pro_lifetime`(기본) 또는 `mehh_pro_3months`. 그 밖은 400 |
 | `today` | 폰의 날짜 `YYYY-MM-DD` (쿠폰 기한 판단용) |
 | `photos` | 1–10장. `id`는 `[A-Za-z0-9_-]{1,64}` — Mehh가 이번 묶음 안에서만 쓰는 이름(파일 이름·경로 금지, 경로는 400). 같은 `id` 두 번은 400 |
 | `image` | JPEG 권장, 긴 변 **768px**, 품질 ~70 (대략 30–60KB). 디코딩 후 300KB 넘으면 413 |
@@ -62,7 +64,7 @@ Mehh Pro가 폰에서 애매하다고 본 **캡처** 썸네일(얼굴 없는 것
 
 ## Pro 확인
 
-- Google Play Developer API `purchases.products.get` (패키지 `dev.itssophie.mehh`, 상품 `mehh_pro_lifetime`). Cortex와 같은 서비스 계정, 패키지만 다름.
+- Google Play Developer API `purchases.products.get` (패키지 `dev.itssophie.mehh`, 상품 `mehh_pro_lifetime` 또는 `mehh_pro_3months`). 3개월 Pro(프로모 코드 전용, 2026-11-14 Sophie)는 `purchaseTimeMillis`부터 90일(`MEHH_TRIAL_DAYS`) 안일 때만 Pro, 산 때가 없으면 아님. Cortex와 같은 서비스 계정, 패키지만 다름.
 - `purchaseState === 0`만 Pro. 1(환불·취소), 2(대기)는 401.
 - 확인 결과는 서버 메모리에 **1시간** 캐시 (매 묶음마다 Google을 기다리지 않게). 환불은 길어야 1시간 뒤 반영.
 - acknowledge는 Mehh 앱이 함(지금처럼). 서버는 읽기만.

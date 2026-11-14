@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { resultsFor, type MehhResult } from "../lib/mehhRules.js";
+import { resultsFor, type MehhProduct, type MehhResult } from "../lib/mehhRules.js";
 
 // POST /mehh/screenshots/analyze -- Mehh Pro's screenshot AI
 // (docs/mehh-screenshot-ai.md). Mehh sends small thumbnails of the
@@ -25,6 +25,9 @@ const PhotoSchema = z.object({
 
 const BodySchema = z.object({
   purchaseToken: z.string().min(1).max(2000),
+  // Which Mehh Pro product the token is for. Older Mehh builds send none
+  // (they only send the lifetime pass).
+  productId: z.enum(["mehh_pro_lifetime", "mehh_pro_3months"]).default("mehh_pro_lifetime"),
   // The phone's local date, for "is this coupon past its date".
   today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   photos: z.array(PhotoSchema).min(1).max(MEHH_MAX_PHOTOS),
@@ -43,7 +46,7 @@ export interface MehhDeps {
   aiReady(): boolean;
   purchaseKey(token: string): string;
   // Throws deps.NotPro when the token isn't a live Mehh Pro purchase.
-  requirePro(token: string, key: string): Promise<void>;
+  requirePro(token: string, key: string, product: MehhProduct): Promise<void>;
   NotPro: new (...args: never[]) => Error;
   // Throws an ImageRejected-like error ({ status: 400 | 413 }) for a bad image.
   prepare(bytes: Buffer): Promise<Buffer>;
@@ -72,14 +75,15 @@ export function mehhRoutes(deps: MehhDeps) {
       async (req, reply) => {
         const parsed = BodySchema.safeParse(req.body);
         if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
-        const { purchaseToken, today, photos } = parsed.data;
+        const { purchaseToken, productId, today, photos } = parsed.data;
+        const product: MehhProduct = productId === "mehh_pro_3months" ? "trial" : "lifetime";
         if (new Set(photos.map((p) => p.id)).size !== photos.length) return reply.code(400).send({ error: "invalid_body" });
         if (!deps.billingReady()) return reply.code(503).send({ error: "billing_unavailable" });
         if (!deps.aiReady()) return reply.code(503).send({ error: "ai_unavailable" });
 
         const key = deps.purchaseKey(purchaseToken);
         try {
-          await deps.requirePro(purchaseToken, key);
+          await deps.requirePro(purchaseToken, key, product);
         } catch (err) {
           if (err instanceof deps.NotPro) return reply.code(401).send({ error: "not_pro" });
           req.log.error(err, "mehh: Play check failed");

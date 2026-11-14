@@ -9,6 +9,17 @@ test("a bought lifetime pass counts; a refunded or pending one does not", () => 
   assert.equal(isMehhPro({ purchaseState: 2 }), false); // pending payment
 });
 
+test("3-month Pro counts for 90 days from its purchase time, not after, not refunded", () => {
+  const day = 24 * 60 * 60 * 1000;
+  const at = Date.UTC(2026, 10, 14);
+  const bought = { purchaseState: 0, purchaseTimeMillis: String(at) };
+  assert.equal(isMehhPro(bought, "trial", at + 89 * day), true);
+  assert.equal(isMehhPro(bought, "trial", at + 90 * day), false);
+  assert.equal(isMehhPro({ ...bought, purchaseState: 1 }, "trial", at + day), false);
+  assert.equal(isMehhPro({ purchaseState: 0 }, "trial", at), false); // no purchase time
+  assert.equal(isMehhPro(bought, "lifetime", at + 400 * day), true); // the lifetime pass never ends
+});
+
 test("the cap lets through what is left of the month, never more", () => {
   assert.equal(photosGranted(10, 0, 300), 10);
   assert.equal(photosGranted(10, 295, 300), 5);

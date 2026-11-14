@@ -75,7 +75,11 @@ export const config = {
   // codes (Sophie 11-14). Counts for this many days from its purchase time.
   mehhTrialId: optional("MEHH_TRIAL_ID") ?? "mehh_pro_3months",
   mehhTrialDays: Number(optional("MEHH_TRIAL_DAYS") ?? 90),
-  mehhAiMonthly: Number(optional("MEHH_AI_MONTHLY") ?? 100),
+  // Pro: screenshots and day sets together (Sophie 11-14: 100 -> 300).
+  mehhAiMonthly: Number(optional("MEHH_AI_MONTHLY") ?? 300),
+  // All free AI coins together may analyze this many photos a day (UTC);
+  // past it the free sessions answer "quota" until tomorrow.
+  mehhFreeDailyPhotos: Number(optional("MEHH_FREE_DAILY_PHOTOS") ?? 20000),
   // Bursts per purchase per 15 minutes (each request is up to 10 photos).
   mehhRateLimitMax: Number(optional("MEHH_RATE_LIMIT_MAX") ?? 30),
 

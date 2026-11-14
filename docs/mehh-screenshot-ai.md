@@ -130,3 +130,18 @@ Mehh Pro가 폰에서 애매하다고 본 **캡처** 썸네일(얼굴 없는 것
 - `backend/src/lib/anthropic.ts` `analyzeMehhScreenshots` — Claude 호출 (한 번에 최대 10장)
 - `backend/src/lib/image.ts` `prepareMehhThumbnail` — 메타데이터 제거·768px
 - `backend/src/lib/googlePlay.ts` `getMehhPurchase`
+
+## Free coins and day sets (Sophie 2026-11-14, before Mehh's launch)
+
+Mehh's structure changed: on-device analysis is free everywhere, **coins are AI analyses**, Pro is "more AI".
+
+- **Free coins**: 3 for a new install, +1 each month (KST), never more than 3. One coin opens one **session** = one day set or one screenshot run, up to 100 photos, valid 1 hour.
+- `POST /mehh/free/start` `{installId, nonce, integrityToken, kind}` → `{session, coins, nextCoinAt}`. Mehh asks Play Integrity (standard request) with `requestHash = sha256("mehh-free-ai|" + installId + "|" + nonce)`. The server has Google decode it and requires: Mehh's package, that request hash, < 10 min old, `LICENSED`, `PLAY_RECOGNIZED`, `MEETS_DEVICE_INTEGRITY` (`integrityProblem` in `mehhRules.ts`). Errors: `403 not_verified` (emulator, not from Play, wrong hash), `402 no_coins` (+ `nextCoinAt`), `503 integrity_unavailable`.
+- `POST /mehh/screenshots/analyze` takes either `purchaseToken` (Pro) or `session` (free), and `kind: "screenshots" | "day"` (default screenshots, older builds). Free sessions answer `402 quota` when their 100 photos are used or the hour is over; all free sessions together stop at `MEHH_FREE_DAILY_PHOTOS` (20,000) a day.
+- **Pro**: `MEHH_AI_MONTHLY` now defaults to **300** (screenshots and day sets together).
+- **Day sets** (`kind: "day"`): faces are never sent (Mehh filters on the phone). Verdicts: `useless` (`blurry`, `accidental`, `meaningless`), `memo` (`memo_info`: signs, menus, price tags — Mehh suggests keeping the info in Cortex), `keep`, `unsure`. A screenshot never gets `memo` (mapped to keep/note).
+- Reinstalling gives a new install id and 3 coins again until Play Integrity **device recall** is approved (interest form sent 2026-11-14); then bit 1 = "first coins given", bit 2's write month = "this month's coin given".
+- Cloud project `cortex` (5317344898) is linked to Mehh in Play Console (2026-11-14) so the same service account decodes Mehh's tokens; Play Integrity API must be enabled in that project.
+- Database: `db/migrations/2026-11-14-mehh-free-ai.sql` (run before deploying).
+
+**Privacy policy / Play data safety (must ship with this):** new data kept on the server per free install: the SHA-256 of an app-generated random install id, coin count and last refill month, and per AI session the number of photos and time. No photo, result, device detail or Integrity verdict is stored. Purpose: limiting free AI analysis (fraud prevention). Play data safety: "App activity / Other actions" or "Device or other IDs" (the hashed install id) — collected, not shared, used for fraud prevention.

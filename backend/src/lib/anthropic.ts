@@ -766,6 +766,44 @@ something the person wanted.
 If a person's face or body is visible, answer keep with reason person, and nothing about them.
 Never read out or repeat any text from the images; only the labels are answered.`;
 
+const MEHH_DAY_SYSTEM = `You help "Mehh", a phone photo-cleanup app, find photos from one day that the person
+can let go of. Each image is a small thumbnail of a photo from the person's camera roll (the app never
+sends photos with a face). For every photo, answer one verdict and one reason:
+- useless: worth nothing -- shaky, out of focus or motion-blurred so the subject is lost (blurry);
+  a pocket shot, the floor, a finger over the lens, a black or nearly black frame (accidental);
+  nothing to see, like a blank wall, ceiling, plain sky or a random corner (meaningless).
+- memo: taken only to note something -- a sign, menu, price tag, notice, timetable, whiteboard,
+  parking spot number, a product label (memo_info). The information may matter, the photo less.
+- keep: anything else -- a scene, food, a place, an object, a pet, a view, anything someone might
+  want to look at again (other). A slightly soft photo that still shows its subject is keep.
+- unsure: you can't tell.
+When unsure between useless and anything else, choose the other one: a wrong "useless" can lose
+a photo the person wanted. If a person's face or body is visible, answer keep with reason person,
+and nothing about them. Never read out or repeat any text from the images; only the labels are answered.`;
+
+// Photos from one day (Sophie 11-14): blurry / accidental / meaningless as
+// useless, notes as memo. Same answer shape as screenshots.
+export async function analyzeMehhDayPhotos(
+  images: Buffer[]
+): Promise<{ index: number; verdict: string; reason: string }[]> {
+  const content: Anthropic.Messages.ContentBlockParam[] = [];
+  images.forEach((img, i) => {
+    content.push({ type: "text", text: `Photo ${i}:` });
+    content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: img.toString("base64") } });
+  });
+  content.push({ type: "text", text: `Answer for all ${images.length} photos.` });
+  const response = await mehhClient.messages.parse({
+    model: MEHH_MODEL,
+    max_tokens: 2048,
+    system: MEHH_DAY_SYSTEM,
+    messages: [{ role: "user", content }],
+    output_config: { effort: "low", format: zodOutputFormat(MehhAnswerSchema) },
+  });
+  logAiCall("mehh_day", MEHH_MODEL, response.usage);
+  if (!response.parsed_output) throw new Error("Claude response did not parse against the Mehh schema");
+  return response.parsed_output.photos;
+}
+
 export async function analyzeMehhScreenshots(
   images: Buffer[],
   today: string

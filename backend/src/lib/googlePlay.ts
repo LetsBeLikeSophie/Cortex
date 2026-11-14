@@ -29,10 +29,14 @@ export function isPlayBillingConfigured(): boolean {
 // /me/plan waits on these calls, so a slow Google can't hold the app up long.
 const GOOGLE_TIMEOUT_MS = 10_000;
 
-let cachedToken: { value: string; expiresAt: number } | null = null;
+const ANDROID_PUBLISHER = "https://www.googleapis.com/auth/androidpublisher";
+const cachedTokens = new Map<string, { value: string; expiresAt: number }>();
 
-async function accessToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) return cachedToken.value;
+// The same service account also decodes Play Integrity tokens (its Cloud
+// project is linked to Mehh in Play Console); each scope gets its own token.
+export async function accessToken(scope = ANDROID_PUBLISHER): Promise<string> {
+  const cached = cachedTokens.get(scope);
+  if (cached && cached.expiresAt > Date.now() + 60_000) return cached.value;
   const sa = serviceAccount();
   if (!sa) throw new Error("Google Play service account not configured");
   const tokenUri = sa.token_uri ?? "https://oauth2.googleapis.com/token";
@@ -40,7 +44,7 @@ async function accessToken(): Promise<string> {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const unsigned = `${b64({ alg: "RS256", typ: "JWT" })}.${b64({
     iss: sa.client_email,
-    scope: "https://www.googleapis.com/auth/androidpublisher",
+    scope,
     aud: tokenUri,
     iat: now,
     exp: now + 3600,
@@ -54,7 +58,7 @@ async function accessToken(): Promise<string> {
   });
   if (!res.ok) throw new Error(`Google token request failed: ${res.status} ${await res.text()}`);
   const body = (await res.json()) as { access_token: string; expires_in: number };
-  cachedToken = { value: body.access_token, expiresAt: Date.now() + body.expires_in * 1000 };
+  cachedTokens.set(scope, { value: body.access_token, expiresAt: Date.now() + body.expires_in * 1000 });
   return body.access_token;
 }
 

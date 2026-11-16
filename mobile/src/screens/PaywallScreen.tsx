@@ -135,7 +135,9 @@ export default function PaywallScreen() {
     ? (reason === 'trial_ending' && plan && plan.classify.used > 0 ? `${S.trialUsed(plan.classify.used)} · ` : '') + S.trialSafe
     : reason
       ? S.ranOut
-      : S.promise;
+      // Opened from the profile: what the person has now goes right under
+      // the title, not below the plans where it needed a scroll (11-16).
+      : status || S.promise;
 
   const lifetimeLeft = offers?.enabled ? offers.lifetimeRemaining : 0;
   const options: { key: PlanOption; label: string; note: string }[] = [
@@ -235,7 +237,7 @@ export default function PaywallScreen() {
           </View>
         )}
 
-        {status !== '' && <Text style={[styles.status, { color: theme.sub }]}>{status}</Text>}
+        {reason && status !== '' && <Text style={[styles.status, { color: theme.sub }]}>{status}</Text>}
         </>
         )}
       </ScrollView>
@@ -280,14 +282,14 @@ export default function PaywallScreen() {
 
 const styles = StyleSheet.create({
   flexShrink: { flexShrink: 1 },
-  card: { padding: 18, marginTop: 18, gap: 12 },
+  card: { paddingHorizontal: 18, paddingVertical: 14, marginTop: 14, gap: 9 },
   // Icon on the first line when the text wraps (rule 2026-10-26).
   planName: { fontSize: 20, fontFamily: BODY_KR_MEDIUM, marginBottom: 2 },
   benefit: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   benefitIcon: { marginTop: 2 },
   benefitText: { flex: 1, fontSize: 14, lineHeight: 20, fontFamily: BODY_KR },
-  options: { gap: 8, marginTop: 14 },
-  option: { paddingHorizontal: 16, paddingVertical: 12 },
+  options: { gap: 8, marginTop: 12 },
+  option: { paddingHorizontal: 16, paddingVertical: 10 },
   optionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   optionLabel: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },
   optionPrice: { fontSize: 15, fontFamily: BODY_KR_MEDIUM },

@@ -40,7 +40,7 @@ const S = strings({
     start: 'Pro 시작하기',
     connecting: '스토어 연결 중...',
     restore: '구매 복원',
-    fine: 'Google Play로 결제돼요. 해지 전까지 자동 갱신되고, Play 스토어에서 해지할 수 있어요. 결제 후 7일 안에 Pro로 늘어난 기능을 쓰지 않았다면 환불할 수 있어요.',
+    fine: 'Google Play 결제 · Play 스토어에서 해지 전까지 자동 갱신 · 7일 안에 Pro 기능을 안 썼다면 환불',
     terms: '약관',
   },
   en: {
@@ -63,7 +63,7 @@ const S = strings({
     start: 'Start Pro',
     connecting: 'Connecting to store...',
     restore: 'Restore purchase',
-    fine: 'Billed through Google Play. Renews automatically until you cancel, which you can do in the Play Store. Refundable within 7 days if you haven\'t used what Pro adds.',
+    fine: 'Billed by Google Play · renews until you cancel in the Play Store · refundable within 7 days if Pro extras are unused',
     terms: 'Terms',
   },
   ja: {
@@ -86,7 +86,7 @@ const S = strings({
     start: 'Proを始める',
     connecting: 'ストアに接続中...',
     restore: '購入を復元',
-    fine: 'Google Playで決済されます。解約するまで自動更新され、Play Storeで解約できます。決済後7日以内にProの追加機能を使っていなければ返金できます。',
+    fine: 'Google Play決済 · Play Storeで解約するまで自動更新 · 7日以内にPro機能を使っていなければ返金可',
     terms: '利用規約',
   },
   'zh-Hans': {
@@ -109,7 +109,7 @@ const S = strings({
     start: '开通 Pro',
     connecting: '正在连接商店...',
     restore: '恢复购买',
-    fine: '通过 Google Play 付款。取消前会自动续订，可在 Play 商店中取消。付款后 7 天内未使用 Pro 增加的功能可退款。',
+    fine: '通过 Google Play 付款 · 在 Play 商店取消前自动续订 · 7 天内未使用 Pro 功能可退款',
     terms: '条款',
   },
   'zh-Hant': {
@@ -132,7 +132,7 @@ const S = strings({
     start: '開通 Pro',
     connecting: '正在連線商店...',
     restore: '還原購買',
-    fine: '透過 Google Play 付款。取消前會自動續訂，可在 Play 商店中取消。付款後 7 天內未使用 Pro 增加的功能可退款。',
+    fine: '透過 Google Play 付款 · 在 Play 商店取消前自動續訂 · 7 天內未使用 Pro 功能可退款',
     terms: '條款',
   },
 });

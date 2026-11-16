@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -141,6 +141,12 @@ export default function ProfileScreen() {
         .then(setPlan)
         .catch(() => {});
       getDeclinedChoice().then(setMehhChoice);
+      // Left open for days, the screen kept showing an ended plan as 'Pro'
+      // (11-16): read it again whenever the app comes back while it's shown.
+      const sub = AppState.addEventListener('change', (st) => {
+        if (st === 'active') fetchPlan().then(setPlan).catch(() => {});
+      });
+      return () => sub.remove();
     }, [])
   );
   // The body font is fixed at startup (CJK_SYSTEM_FONT), so a switch into or
